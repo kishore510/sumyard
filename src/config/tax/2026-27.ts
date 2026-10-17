@@ -1,4 +1,5 @@
 import type { IsoDate } from '@/lib/isoDate'
+import { fromPounds, ratio } from '@/lib/money'
 import type { TaxYearConfig } from './schema'
 import { type SourceUrl, TODO, type Verified } from './sourced'
 
@@ -18,6 +19,8 @@ const READ_ON: IsoDate = '2026-10-17'
 const read = <T>(value: T, sourceUrl: SourceUrl): Verified<T> => ({ status: 'verified', value, sourceUrl, verifiedOn: READ_ON })
 
 const INCOME_TAX_RATES: SourceUrl = 'https://www.gov.uk/income-tax-rates'
+const HMRC_INCOME_TAX_RATES: SourceUrl =
+  'https://www.gov.uk/government/publications/rates-and-allowances-income-tax/income-tax-rates-and-allowances-current-and-past'
 
 export const taxYear: TaxYearConfig = {
   id: '2026-27',
@@ -26,9 +29,9 @@ export const taxYear: TaxYearConfig = {
     end: read<IsoDate>('2027-04-05', INCOME_TAX_RATES),
   },
   incomeTax: {
-    personalAllowance: TODO,
-    taperStart: TODO,
-    taperRate: TODO,
+    personalAllowance: read(fromPounds(12_570), HMRC_INCOME_TAX_RATES),
+    taperStart: read(fromPounds(100_000), HMRC_INCOME_TAX_RATES),
+    taperRate: read(ratio(1, 2), HMRC_INCOME_TAX_RATES),
     bands: { rUK: TODO, scotland: TODO },
   },
   nationalInsurance: {

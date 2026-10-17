@@ -19,7 +19,7 @@ Checked by Claude in slice 1a session E, from pages fetched on 17 October 2026. 
 | Group | Verified | Todo |
 |---|---|---|
 | period | 2 | 0 |
-| personal-allowance | 0 | 3 |
+| personal-allowance | 3 | 0 |
 | income-tax-ruk | 0 | 1 |
 | income-tax-scotland | 0 | 1 |
 | ni-employee | 0 | 4 |
@@ -28,7 +28,7 @@ Checked by Claude in slice 1a session E, from pages fetched on 17 October 2026. 
 | pension | 0 | 8 |
 | child-benefit | 0 | 5 |
 | childcare | 0 | 2 |
-| **All** | **2** | **36** |
+| **All** | **5** | **33** |
 
 ### OPEN questions
 
@@ -50,9 +50,9 @@ Questions about how a published figure is applied. None of them blocks a value f
 |---|---|---|---|---|---|---|---|---|---|
 | period | `period.start` | 6 April 2026 | Income Tax rates and Personal Allowances | https://www.gov.uk/income-tax-rates | 2026-10-17 | "The current tax year is from 6 April 2026 to 5 April 2027." | Rates and thresholds for employers 2026 to 2027 (HMRC, last updated 1 September 2026), https://www.gov.uk/guidance/rates-and-thresholds-for-employers-2026-to-2027: "Unless otherwise stated, the following figures apply from 6 April 2026 to 5 April 2027." | verified |  |
 | period | `period.end` | 5 April 2027 | Income Tax rates and Personal Allowances | https://www.gov.uk/income-tax-rates | 2026-10-17 | "The current tax year is from 6 April 2026 to 5 April 2027." | Rates and thresholds for employers 2026 to 2027 (HMRC, last updated 1 September 2026), https://www.gov.uk/guidance/rates-and-thresholds-for-employers-2026-to-2027: same sentence. | verified |  |
-| personal-allowance | `incomeTax.personalAllowance` | — | — | — | — | — | — | todo | Not yet checked in session E. |
-| personal-allowance | `incomeTax.taperStart` | — | — | — | — | — | — | todo | Not yet checked in session E. |
-| personal-allowance | `incomeTax.taperRate` | — | — | — | — | — | — | todo | Not yet checked in session E. |
+| personal-allowance | `incomeTax.personalAllowance` | £12,570 | Income Tax rates and allowances for current and previous tax years (HMRC, updated 6 April 2026) | https://www.gov.uk/government/publications/rates-and-allowances-income-tax/income-tax-rates-and-allowances-current-and-past | 2026-10-17 | Personal Allowances table, row "Personal Allowance", column "2026 to 2027": "£12,570" | Income Tax rates and Personal Allowances, https://www.gov.uk/income-tax-rates: "The standard Personal Allowance is £12,570" (page states the current tax year is 6 April 2026 to 5 April 2027). Also Budget 2025 OOTLAR, Annex A: rates and allowances (updated 5 December 2025), https://www.gov.uk/government/publications/budget-2025-overview-of-tax-legislation-and-rates-ootlar/annex-a-rates-and-allowances and Rates and thresholds for employers 2026 to 2027 (HMRC, last updated 1 September 2026), https://www.gov.uk/guidance/rates-and-thresholds-for-employers-2026-to-2027 ("£12,570 per year"). | verified |  |
+| personal-allowance | `incomeTax.taperStart` | £100,000 | Income Tax rates and allowances for current and previous tax years (HMRC, updated 6 April 2026) | https://www.gov.uk/government/publications/rates-and-allowances-income-tax/income-tax-rates-and-allowances-current-and-past | 2026-10-17 | Row "Income limit for Personal Allowance", column "2026 to 2027": "£100,000" | Income Tax rates and Personal Allowances, https://www.gov.uk/income-tax-rates: "Your personal allowance goes down by £1 for every £2 that your adjusted net income is above £100,000." Also Budget 2025 OOTLAR, Annex A: rates and allowances (updated 5 December 2025), https://www.gov.uk/government/publications/budget-2025-overview-of-tax-legislation-and-rates-ootlar/annex-a-rates-and-allowances. | verified | The HMRC rates page says "income"; the GOV.UK guide says "adjusted net income". The measure is adjusted net income (see the ANI guidance in the OPEN questions). |
+| personal-allowance | `incomeTax.taperRate` | 1/2 (£1 for every £2) | Income Tax rates and allowances for current and previous tax years (HMRC, updated 6 April 2026) | https://www.gov.uk/government/publications/rates-and-allowances-income-tax/income-tax-rates-and-allowances-current-and-past | 2026-10-17 | "The Personal Allowance goes down by £1 for every £2 of income above the £100,000 limit. It can go down to zero." | Income Tax rates and Personal Allowances, https://www.gov.uk/income-tax-rates: same rule. Also Budget 2025 OOTLAR, Annex A: rates and allowances (updated 5 December 2025), https://www.gov.uk/government/publications/budget-2025-overview-of-tax-legislation-and-rates-ootlar/annex-a-rates-and-allowances: "by £1 for every £2 of income above the £100,000 limit". | verified | Zero point: STATED on the GOV.UK guide ("your allowance is zero if your income is £125,140 or above"); only implied on the HMRC rates page ("It can go down to zero"). Not stored; see "Published but not stored". Rounding of an odd pound: OPEN (O5). |
 | income-tax-ruk | `incomeTax.bands.rUK` | — | — | — | — | — | — | todo | Not yet checked in session E. |
 | income-tax-scotland | `incomeTax.bands.scotland` | — | — | — | — | — | — | todo | Not yet checked in session E. |
 | ni-employee | `nationalInsurance.employee.primaryThreshold` | — | — | — | — | — | — | todo | Not yet checked in session E. |
