@@ -25,21 +25,39 @@ import {
   ZERO,
 } from '@/lib/money'
 import { MONTHS_PER_YEAR, WEEKS_PER_YEAR } from '@/lib/periods'
+import { DEFAULT_SWEEP_STEP, MAX_SWEEP_POINTS } from '@/lib/sweep'
 import {
   type AdjustedNetIncomeResult,
+  type AnnualAllowanceChargeResult,
+  type AnnualAllowanceResult,
   type BandSlice,
+  type CarryForwardUse,
   CHILD_BENEFIT_PAYMENTS,
+  CHILDCARE_SCHEMES,
+  type ChargeSlice,
   type ChildBenefitInput,
+  type ChildcareResult,
+  type ChildcareScheme,
+  type Cliff,
+  type CliffKind,
   type EmployeeNIResult,
+  type EngineWarning,
   type HicbcResult,
   type IncomeTaxResult,
   type ModellingPolicy,
   type NiSlice,
+  type OptimiseOptions,
+  type OptimiseResult,
+  type OptimiserInputs,
+  type OptimiserPoint,
   PENSION_METHODS,
   type PensionInput,
+  type PensionMethod,
   type PensionResult,
+  type PensionSavingsInput,
   type PeriodView,
   type PersonalAllowanceResult,
+  type PointReason,
   REGIONS,
   type Region,
   STUDENT_LOAN_PLANS,
@@ -49,6 +67,9 @@ import {
   TAPER_ROUNDINGS,
   type TakeHomeResult,
   type TaxInputs,
+  type ThresholdContribution,
+  type ThresholdContributionsResult,
+  type ThresholdId,
 } from './types'
 
 /*
@@ -345,6 +366,16 @@ function basicRateBand(bands: readonly TaxBand[], rate: Ratio): number {
   return matches[0]!
 }
 
+/** Where each band starts: relief at source moves every band above the basic rate band up by the gross amount. */
+function bandStarts(bands: readonly TaxBand[], extension: ExactPence, basic: number): ExactPence[] {
+  return bands.map((band, i) => (i > basic ? exactAdd(exact(band.from), extension) : exact(band.from)))
+}
+
+/** Taxable income after the allowance (tapered on adjusted net income), exactly: 'reduced net income' (PTM056120). */
+function exactTaxable(effect: PensionEffect, values: AllowanceValues, policy: ModellingPolicy): ExactPence {
+  return atLeastNothing(exactSubtract(exact(effect.taxablePay), allowanceLeft(effect.ani, values, policy)))
+}
+
 function computeIncomeTax(
   income: Money,
   effect: PensionEffect,
@@ -357,9 +388,8 @@ function computeIncomeTax(
   const extension = effect.reliefAtSource
   const rate = values[RAS_PATH]
   const basic = compareExact(extension, NOTHING) > 0 && rate ? basicRateBand(bands, rate) : bands.length
-  // Relief at source: every band above the basic rate band starts later by the gross amount.
-  const starts = bands.map((band, i) => (i > basic ? exactAdd(exact(band.from), extension) : exact(band.from)))
-  const taxable = atLeastNothing(exactSubtract(exact(effect.taxablePay), allowanceLeft(effect.ani, values, policy)))
+  const starts = bandStarts(bands, extension, basic)
+  const taxable = exactTaxable(effect, values, policy)
   const slices: BandSlice[] = bands.map((band, i) => {
     const start = starts[i]!
     const next = starts[i + 1]
@@ -634,13 +664,36 @@ function assumptions(inputs: TaxInputs, plans: StudentLoanPlanId[], policy: Mode
  * values only with Child Benefit).
  */
 export function takeHome(inputs: TaxInputs, config: TaxYearConfig, policy: ModellingPolicy): TakeHomeResult | Refusal {
-  const grossPay = checkAmount(inputs.grossPay, 'gross pay')
-  const region = checkRegion(inputs.region)
-  const plans = checkPlans(inputs.studentLoans)
-  const pension = checkPension(inputs.pension)
-  const childBenefit = inputs.childBenefit === undefined ? undefined : checkChildBenefit(inputs.childBenefit)
+  const checked = checkInputs(inputs)
   checkPolicy(policy)
-  const paths: LeafPath[] = [
+  const paths = takeHomePaths(checked)
+  const granted = requireVerified(config, paths)
+  if (!granted.ok) return granted
+  return computeTakeHome(checked, inputs, granted.values, policy, config.id)
+}
+
+/** Checked take-home inputs. */
+interface CheckedInputs {
+  readonly grossPay: Money
+  readonly region: Region
+  readonly plans: StudentLoanPlanId[]
+  readonly pension: PensionInput | undefined
+  readonly childBenefit: ChildBenefitInput | undefined
+}
+
+function checkInputs(inputs: TaxInputs): CheckedInputs {
+  return {
+    grossPay: checkAmount(inputs.grossPay, 'gross pay'),
+    region: checkRegion(inputs.region),
+    plans: checkPlans(inputs.studentLoans),
+    pension: checkPension(inputs.pension),
+    childBenefit: inputs.childBenefit === undefined ? undefined : checkChildBenefit(inputs.childBenefit),
+  }
+}
+
+/** Every value take-home needs for these inputs. */
+function takeHomePaths({ region, plans, pension, childBenefit }: CheckedInputs): LeafPath[] {
+  return [
     ...ALLOWANCE_PATHS,
     BAND_PATHS[region],
     ...NI_PATHS,
@@ -648,16 +701,21 @@ export function takeHome(inputs: TaxInputs, config: TaxYearConfig, policy: Model
     ...pensionPaths(pension),
     ...(childBenefit ? CHILD_BENEFIT_PATHS : []),
   ]
-  const granted = requireVerified(config, paths)
-  if (!granted.ok) return granted
-  const { values } = granted
+}
 
+function computeTakeHome(
+  { grossPay, region, plans, pension, childBenefit }: CheckedInputs,
+  inputs: TaxInputs,
+  values: Values<LeafPath>,
+  policy: ModellingPolicy,
+  taxYear: TaxYearConfig['id'],
+): TakeHomeResult {
   const effect = pensionEffect(grossPay, pension, values[RAS_PATH])
-  const tax = computeIncomeTax(grossPay, effect, region, values, policy, config.id)
-  const ni = computeNI(effect.niablePay, values, config.id)
+  const tax = computeIncomeTax(grossPay, effect, region, values, policy, taxYear)
+  const ni = computeNI(effect.niablePay, values, taxYear)
   // The student loan is worked out on NI-able pay: the employer's secondary NIC pay (decisions D5 and G6).
-  const loans = computeStudentLoan(plans, ni.niablePay, values, config.id)
-  const charge = childBenefit ? computeHicbc(effect.ani, childBenefit, values, policy, config.id) : null
+  const loans = computeStudentLoan(plans, ni.niablePay, values, taxYear)
+  const charge = childBenefit ? computeHicbc(effect.ani, childBenefit, values, policy, taxYear) : null
   const contribution = pension?.contribution ?? ZERO
   const hicbcCharge = charge?.charge ?? ZERO
   const received = charge?.childBenefit ?? ZERO
@@ -675,7 +733,7 @@ export function takeHome(inputs: TaxInputs, config: TaxYearConfig, policy: Model
   }
   return {
     ok: true,
-    taxYear: config.id,
+    taxYear,
     estimate: true,
     inputs: {
       grossPay,
@@ -688,12 +746,604 @@ export function takeHome(inputs: TaxInputs, config: TaxYearConfig, policy: Model
     incomeTax: tax,
     nationalInsurance: ni,
     studentLoan: loans,
-    pension: pension ? pensionResult(grossPay, effect, pension, config.id) : null,
-    adjustedNetIncome: aniResult(grossPay, effect, config.id),
+    pension: pension ? pensionResult(grossPay, effect, pension, taxYear) : null,
+    adjustedNetIncome: aniResult(grossPay, effect, taxYear),
     hicbc: charge,
     annual: view('annual', 'Annual: the tax year’s figures', annual, 1),
     monthly: view('monthly', 'Monthly: each annual figure divided by the months in a year, to the nearest penny', annual, MONTHS_PER_YEAR),
     weekly: view('weekly', 'Weekly: each annual figure divided by the weeks in a year, to the nearest penny', annual, WEEKS_PER_YEAR),
     assumptions: assumptions(inputs, plans, policy),
+  }
+}
+
+/* Session G2: the annual allowance, carry forward, the childcare check and optimise() (decisions G7 to G14). */
+
+const AA_PATHS = [
+  'pension.annualAllowance',
+  'pension.taper.thresholdIncome',
+  'pension.taper.adjustedIncome',
+  'pension.taper.minimumAllowance',
+  'pension.taper.reductionRate',
+  'pension.carryForward.yearsBack',
+] as const
+const MPAA_PATH = 'pension.moneyPurchaseAnnualAllowance' as const
+const CHILDCARE_PATHS = {
+  taxFreeChildcare: 'childcare.taxFreeChildcare.incomeLimit',
+  thirtyHours: 'childcare.thirtyHours.incomeLimit',
+} as const satisfies Record<ChildcareScheme, LeafPath>
+
+type AaValues = Values<(typeof AA_PATHS)[number]> & Partial<Values<typeof MPAA_PATH>>
+type ChildcareValues = Values<(typeof CHILDCARE_PATHS)[ChildcareScheme]>
+
+const exactMax = (a: ExactPence, b: ExactPence) => (compareExact(a, b) >= 0 ? a : b)
+const exactMin = (a: ExactPence, b: ExactPence) => (compareExact(a, b) <= 0 ? a : b)
+
+function checkSavings(savings: PensionSavingsInput): PensionSavingsInput {
+  checkAmount(savings?.employerContribution, 'employer contribution')
+  if (typeof savings.moneyPurchaseAnnualAllowance !== 'boolean')
+    throw new EngineInputError('the money purchase annual allowance flag must be true or false')
+  const seen = new Set<number>()
+  for (const year of savings.carryForward ?? []) {
+    if (!Number.isSafeInteger(year?.yearsAgo) || year.yearsAgo < 1)
+      throw new EngineInputError('carry forward years must be whole numbers of one or more')
+    if (seen.has(year.yearsAgo)) throw new EngineInputError('each earlier year may appear only once in carry forward')
+    seen.add(year.yearsAgo)
+    checkAmount(year.amount, 'unused annual allowance')
+  }
+  return savings
+}
+
+/* The charge (G11). */
+
+function computeCharge(
+  excess: Money,
+  taxable: ExactPence,
+  extension: ExactPence,
+  region: Region,
+  values: BandValues & Values<typeof RAS_PATH>,
+  taxYear: TaxYearConfig['id'],
+): AnnualAllowanceChargeResult {
+  const bands = checkBands(values[BAND_PATHS[region]])
+  const basic = basicRateBand(bands, values[RAS_PATH])
+  const starts = bandStarts(bands, extension, basic)
+  const top = exactAdd(taxable, exact(excess))
+  const slices: ChargeSlice[] = bands.map((band, i) => {
+    const next = starts[i + 1]
+    const low = exactMax(starts[i]!, taxable)
+    const high = next ? exactMin(next, top) : top
+    const inBand = atLeastNothing(exactSubtract(high, low))
+    // Nothing is charged below the basic rate (PTM056110: the Scottish starter rate does not apply).
+    const rate = bands[Math.max(i, basic)]!.rate
+    return { name: band.name, rate, excess: roundExact(inBand, 'nearest'), charge: roundExact(exactMul(inBand, rate), 'nearest') }
+  })
+  return {
+    ok: true,
+    taxYear,
+    region,
+    excess,
+    reducedNetIncome: roundExact(taxable, 'nearest'),
+    bands: slices,
+    total: slices.reduce((sum, slice) => add(sum, slice.charge), ZERO),
+  }
+}
+
+/**
+ * The annual allowance charge on an excess (PTM056110): the excess is added
+ * on top of reduced net income (taxable income after allowances) and taxed at
+ * the rates of the bands it falls in, with every band above the basic rate
+ * band moved up by any relief at source extension (PTM056120). A part below
+ * the basic rate band is charged at the basic rate. Each band's charge to the
+ * nearest penny.
+ */
+export function annualAllowanceCharge(
+  excess: Money,
+  reducedNetIncome: Money,
+  region: Region,
+  config: TaxYearConfig,
+  basicRateBandExtension: Money = ZERO,
+): AnnualAllowanceChargeResult | Refusal {
+  checkAmount(excess, 'excess')
+  checkAmount(reducedNetIncome, 'reduced net income')
+  checkAmount(basicRateBandExtension, 'basic rate band extension')
+  checkRegion(region)
+  const granted = requireVerified(config, [BAND_PATHS[region], RAS_PATH])
+  if (!granted.ok) return granted
+  return computeCharge(excess, exact(reducedNetIncome), exact(basicRateBandExtension), region, granted.values, config.id)
+}
+
+/* The annual allowance (G7 to G10). */
+
+/** Threshold income (PTM057100): net income, plus salary sacrificed (an arrangement made after the date PTM057100 gives is assumed), less the gross relief at source contribution. */
+function thresholdIncome(effect: PensionEffect): ExactPence {
+  const sacrificed = effect.pension?.method === 'salarySacrifice' ? exact(effect.pension.contribution) : NOTHING
+  return exactSubtract(exactAdd(exact(effect.taxablePay), sacrificed), effect.reliefAtSource)
+}
+
+/** Pension savings counted (PTM053200): the gross employee contribution as it reaches the pot, and employer contributions with any salary sacrifice. */
+function counted(effect: PensionEffect, savings: PensionSavingsInput) {
+  const method = effect.pension?.method
+  const employee = method && method !== 'salarySacrifice' ? roundExact(effect.gross, 'nearest') : ZERO
+  const employer = add(savings.employerContribution, method === 'salarySacrifice' ? effect.pension!.contribution : ZERO)
+  return { employee, employer, total: add(employee, employer) }
+}
+
+interface AllowancePosition {
+  readonly thresholdIncome: ExactPence
+  readonly adjustedIncome: Money
+  readonly tapered: boolean
+  readonly allowance: Money
+  readonly carryForward: readonly CarryForwardUse[]
+  readonly outOfTime: boolean
+  readonly route: 'standard' | 'moneyPurchase'
+  readonly available: Money
+  readonly counted: { readonly employee: Money; readonly employer: Money; readonly total: Money }
+}
+
+function allowancePosition(effect: PensionEffect, savings: PensionSavingsInput, values: AaValues): AllowancePosition {
+  const standard = values['pension.annualAllowance']
+  const threshold = thresholdIncome(effect)
+  const sums = counted(effect, savings)
+  // Adjusted income (PTM057100): net income + net pay contributions + (total pension input − member contributions).
+  const netPay = effect.pension?.method === 'netPay' ? effect.pension.contribution : ZERO
+  const memberContributions = sums.employee
+  const totalInput = sums.total
+  const adjustedIncome = add(add(effect.taxablePay, netPay), subtract(totalInput, memberContributions))
+  const adjustedLimit = values['pension.taper.adjustedIncome']
+  const tapered = compareExact(threshold, exact(values['pension.taper.thresholdIncome'])) > 0 && compare(adjustedIncome, adjustedLimit) > 0
+  let allowance = standard
+  if (tapered) {
+    // Rounded down to a whole pound (PTM057100), never below the minimum.
+    const reduction = roundToPounds(
+      mulRound(subtract(adjustedIncome, adjustedLimit), values['pension.taper.reductionRate'], 'down'),
+      'down',
+    )
+    allowance = min(standard, max(values['pension.taper.minimumAllowance'], subtract(standard, reduction)))
+  }
+  const yearsBack = values['pension.carryForward.yearsBack']
+  const years = [...savings.carryForward].filter((year) => year.yearsAgo <= yearsBack).sort((a, b) => b.yearsAgo - a.yearsAgo)
+  const defaultAvailable = years.reduce((sum, year) => add(sum, year.amount), allowance)
+  const mpaa = savings.moneyPurchaseAnnualAllowance ? values[MPAA_PATH] : undefined
+  // Carry forward cannot be added to the MPAA; on a tie the default route's figure is used (the MPAA guidance).
+  const route = mpaa !== undefined && compare(mpaa, defaultAvailable) < 0 ? 'moneyPurchase' : 'standard'
+  // The current year's allowance first, then the earliest year first (PTM055100).
+  let needed = route === 'standard' ? max(ZERO, subtract(sums.total, allowance)) : ZERO
+  const carryForward = years.map((year) => {
+    const used = min(year.amount, needed)
+    needed = subtract(needed, used)
+    return { yearsAgo: year.yearsAgo, available: year.amount, used, left: subtract(year.amount, used) }
+  })
+  return {
+    thresholdIncome: threshold,
+    adjustedIncome,
+    tapered,
+    allowance,
+    carryForward,
+    outOfTime: years.length < savings.carryForward.length,
+    route,
+    available: route === 'moneyPurchase' && mpaa !== undefined ? mpaa : defaultAvailable,
+    counted: sums,
+  }
+}
+
+const WARNINGS = {
+  overAllowance:
+    'Pension savings are over the available annual allowance: the excess is taxed through Self Assessment (the charge shown is an estimate).',
+  overMoneyPurchaseAllowance:
+    'Money purchase savings are over the money purchase annual allowance: the excess is taxed, and carry forward cannot reduce it.',
+  tapered: 'The annual allowance is tapered: threshold income and adjusted income are both over their limits.',
+  carryForwardUsed:
+    'Unused allowance from earlier years is used, earliest year first; what is left of the earliest year is lost next year.',
+  carryForwardOutOfTime: 'Unused allowance entered for a year beyond the carry forward period is ignored.',
+  childcareOverLimit: 'Adjusted net income is over a childcare income limit: the support is lost entirely, not tapered.',
+} as const satisfies Record<EngineWarning['code'], string>
+
+const warn = (code: EngineWarning['code']): EngineWarning => ({ code, message: WARNINGS[code] })
+
+const ALLOWANCE_ASSUMPTIONS = [
+  'All pension savings are money purchase (defined contribution): the employee’s contribution grossed up for any relief at source, a salary sacrifice and other employer contributions. Defined benefit savings are not modelled.',
+  'Threshold income is gross pay less net pay contributions and gross relief at source contributions; a salary sacrifice is added back, as for an arrangement made after the date the rules set. Adjusted income adds back net pay contributions and adds employer contributions, so no employee contribution lowers it.',
+  'Employment income only: no other income, lump sum death benefits, Gift Aid or relief claimed through Self Assessment.',
+  'Unused allowance from earlier years is as entered: each year’s own allowance and pension scheme membership are not checked.',
+  'The money purchase annual allowance, if set, applies to the whole year (pension flexibly accessed in an earlier year); carry forward cannot be added to it.',
+  'The charge on any excess is worked out as if the excess were added on top of taxable income, at the rates of the bands it falls in, nothing below the basic rate; each band’s part is rounded to the nearest penny. Who pays it (Scheme Pays) is not modelled.',
+]
+
+function computeAllowance(
+  checked: CheckedInputs,
+  savings: PensionSavingsInput,
+  values: AllowanceValues & BandValues & Values<typeof RAS_PATH> & AaValues,
+  policy: ModellingPolicy,
+  taxYear: TaxYearConfig['id'],
+): AnnualAllowanceResult {
+  const effect = pensionEffect(checked.grossPay, checked.pension, values[RAS_PATH])
+  const position = allowancePosition(effect, savings, values)
+  const { available, counted: sums } = position
+  const excess = max(ZERO, subtract(sums.total, available))
+  const used = position.carryForward.reduce((sum, year) => add(sum, year.used), ZERO)
+  const charge = computeCharge(excess, exactTaxable(effect, values, policy), effect.reliefAtSource, checked.region, values, taxYear)
+  const warnings: EngineWarning[] = []
+  if (compare(excess, ZERO) > 0) warnings.push(warn(position.route === 'moneyPurchase' ? 'overMoneyPurchaseAllowance' : 'overAllowance'))
+  if (position.tapered) warnings.push(warn('tapered'))
+  if (compare(used, ZERO) > 0) warnings.push(warn('carryForwardUsed'))
+  if (position.outOfTime) warnings.push(warn('carryForwardOutOfTime'))
+  const standard = values['pension.annualAllowance']
+  return {
+    ok: true,
+    taxYear,
+    thresholdIncome: roundExact(position.thresholdIncome, 'nearest'),
+    adjustedIncome: position.adjustedIncome,
+    tapered: position.tapered,
+    standardAllowance: standard,
+    taperReduction: subtract(standard, position.allowance),
+    allowance: position.allowance,
+    carryForward: position.carryForward,
+    carryForwardUsed: used,
+    moneyPurchaseAnnualAllowance: savings.moneyPurchaseAnnualAllowance ? (values[MPAA_PATH] ?? null) : null,
+    route: position.route,
+    allowanceAvailable: available,
+    counted: sums,
+    headroom: max(ZERO, subtract(available, sums.total)),
+    excess,
+    charge,
+    warnings,
+    assumptions: ALLOWANCE_ASSUMPTIONS,
+  }
+}
+
+const allowancePaths = (savings: PensionSavingsInput): LeafPath[] => [
+  ...AA_PATHS,
+  ...(savings.moneyPurchaseAnnualAllowance ? [MPAA_PATH] : []),
+]
+
+/**
+ * The annual allowance for the year, money purchase savings only: the taper
+ * (threshold income and adjusted income both over their limits, the reduction
+ * rounded down to a pound, never below the minimum), carry forward (the
+ * current year first, then the earliest year), the MPAA if flagged, what is
+ * counted, headroom, excess, the charge on the excess and warnings. A
+ * contribution over the allowance is never capped.
+ */
+export function annualAllowanceCheck(
+  inputs: TaxInputs,
+  savings: PensionSavingsInput,
+  config: TaxYearConfig,
+  policy: ModellingPolicy,
+): AnnualAllowanceResult | Refusal {
+  const checked = checkInputs(inputs)
+  checkSavings(savings)
+  checkPolicy(policy)
+  const granted = requireVerified(config, [...allowancePaths(savings), ...ALLOWANCE_PATHS, BAND_PATHS[checked.region], RAS_PATH])
+  if (!granted.ok) return granted
+  return computeAllowance(checked, savings, granted.values, policy, config.id)
+}
+
+/* Childcare (G12). */
+
+const CHILDCARE_ASSUMPTIONS = [
+  'Childcare: eligibility is checked on this person’s adjusted net income against each scheme’s limit only; a partner’s income is not checked.',
+  'The limit is a cliff: at the limit the support is kept, a penny over it the whole support is lost.',
+  'Not checked: minimum expected earnings, the child’s age and circumstances, immigration status, Universal Credit or childcare vouchers, and for Free Childcare for Working Parents living in England.',
+]
+
+function computeChildcare(ani: ExactPence, values: ChildcareValues, taxYear: TaxYearConfig['id']): ChildcareResult {
+  const schemes = CHILDCARE_SCHEMES.map((scheme) => {
+    const incomeLimit = values[CHILDCARE_PATHS[scheme]]
+    const gap = exactSubtract(exact(incomeLimit), ani)
+    // "over" the limit is not eligible (G12).
+    const eligibleOnIncome = compareExact(gap, NOTHING) >= 0
+    return {
+      scheme,
+      incomeLimit,
+      eligibleOnIncome,
+      headroom: eligibleOnIncome ? roundExact(gap, 'down') : ZERO,
+      over: eligibleOnIncome ? ZERO : roundExact(exactSubtract(NOTHING, gap), 'up'),
+    }
+  })
+  return {
+    ok: true,
+    taxYear,
+    adjustedNetIncome: roundExact(ani, 'nearest'),
+    cliff: true,
+    schemes,
+    warnings: schemes.filter((s) => !s.eligibleOnIncome).map(() => warn('childcareOverLimit')),
+    assumptions: CHILDCARE_ASSUMPTIONS,
+  }
+}
+
+/** Eligibility on income for each childcare scheme in the config, on adjusted net income: a cliff at the limit (G12). */
+export function childcareCheck(grossPay: Money, pension: PensionInput | undefined, config: TaxYearConfig): ChildcareResult | Refusal {
+  checkAmount(grossPay, 'gross pay')
+  const checked = checkPension(pension)
+  const granted = requireVerified(config, [...Object.values(CHILDCARE_PATHS), ...pensionPaths(checked)])
+  if (!granted.ok) return granted
+  return computeChildcare(pensionEffect(grossPay, checked, granted.values[RAS_PATH]).ani, granted.values, config.id)
+}
+
+/* Threshold contributions (G14). */
+
+interface Threshold {
+  readonly id: ThresholdId
+  readonly measure: ThresholdContribution['measure']
+  readonly limit: ExactPence
+}
+
+const hicbcApplies = (childBenefit: ChildBenefitInput | undefined) =>
+  childBenefit !== undefined && childBenefit.payments === 'claimed' && childBenefit.children > 0
+
+function optimiserPaths(checked: CheckedInputs, inputs: OptimiserInputs): LeafPath[] {
+  return [
+    ...takeHomePaths(checked),
+    ...allowancePaths(inputs.savings),
+    RAS_PATH,
+    ...(hicbcApplies(checked.childBenefit) ? CHILD_BENEFIT_PATHS : []),
+    ...(inputs.checkChildcare ? Object.values(CHILDCARE_PATHS) : []),
+  ]
+}
+
+function thresholdList(checked: CheckedInputs, inputs: OptimiserInputs, values: Values<LeafPath>): Threshold[] {
+  const start = exact(values['incomeTax.taperStart'])
+  const rate = values['incomeTax.taperRate']
+  const list: Threshold[] = [{ id: 'personalAllowanceTaperStart', measure: 'adjustedNetIncome', limit: start }]
+  // The zero point: the allowance divided by the taper rate, over the taper start.
+  if (rate.numerator > 0) {
+    const zero = exactAdd(start, exactMul(exact(values['incomeTax.personalAllowance']), ratio(rate.denominator, rate.numerator)))
+    list.push({ id: 'personalAllowanceTaperEnd', measure: 'adjustedNetIncome', limit: zero })
+  }
+  if (hicbcApplies(checked.childBenefit)) {
+    list.push({ id: 'hicbcThreshold', measure: 'adjustedNetIncome', limit: exact(values['childBenefit.hicbc.threshold']) })
+    list.push({ id: 'hicbcFullCharge', measure: 'adjustedNetIncome', limit: exact(values['childBenefit.hicbc.fullChargeAt']) })
+  }
+  if (inputs.checkChildcare) {
+    list.push({ id: 'taxFreeChildcareLimit', measure: 'adjustedNetIncome', limit: exact(values[CHILDCARE_PATHS.taxFreeChildcare]) })
+    list.push({ id: 'thirtyHoursLimit', measure: 'adjustedNetIncome', limit: exact(values[CHILDCARE_PATHS.thirtyHours]) })
+  }
+  list.push({ id: 'annualAllowanceThresholdIncome', measure: 'thresholdIncome', limit: exact(values['pension.taper.thresholdIncome']) })
+  return list
+}
+
+/** One less the relief-at-source rate: the payment per pound that goes in. */
+const keptShare = (rate: Ratio) => subtractRatio(ratio(1, 1), rate)
+
+/** The largest contribution the engine models: its gross amount equals gross pay at most. */
+function maximumContribution(grossPay: Money, method: PensionMethod, rate: Ratio): Money {
+  return method === 'reliefAtSource' ? mulRound(grossPay, keptShare(rate), 'down') : grossPay
+}
+
+/** The measure at a contribution, exactly, without the engine's check that the gross amount is within gross pay. */
+function measureAt(
+  measure: ThresholdContribution['measure'],
+  grossPay: Money,
+  method: PensionMethod,
+  contribution: Money,
+  rate: Ratio,
+): ExactPence {
+  const gross =
+    method === 'reliefAtSource'
+      ? exactMul(exact(contribution), ratio(keptShare(rate).denominator, keptShare(rate).numerator))
+      : exact(contribution)
+  // Salary sacrifice is added back to threshold income, so it does not lower it.
+  if (measure === 'thresholdIncome' && method === 'salarySacrifice') return exact(grossPay)
+  return exactSubtract(exact(grossPay), gross)
+}
+
+function solveThreshold(
+  threshold: Threshold,
+  checked: CheckedInputs,
+  inputs: OptimiserInputs,
+  values: Values<LeafPath>,
+): ThresholdContribution {
+  const { grossPay } = checked
+  const { method, contribution: current } = inputs.pension
+  const rate = values[RAS_PATH]
+  const base = { threshold: threshold.id, measure: threshold.measure, limit: roundExact(threshold.limit, 'nearest') }
+  const over = exactSubtract(measureAt(threshold.measure, grossPay, method, ZERO, rate), threshold.limit)
+  if (threshold.measure === 'thresholdIncome' && method === 'salarySacrifice' && compareExact(over, NOTHING) > 0)
+    return { ...base, status: 'unreachable', reason: 'notLoweredByMethod', contribution: null, extra: null, measureAt: null }
+  // Closed form: salary sacrifice and net pay lower the measure penny for penny; relief at source by the grossed-up amount.
+  const needed = compareExact(over, NOTHING) <= 0 ? NOTHING : method === 'reliefAtSource' ? exactMul(over, keptShare(rate)) : over
+  const contribution = roundExact(needed, 'up')
+  const at = roundExact(measureAt(threshold.measure, grossPay, method, contribution, rate), 'nearest')
+  const result = { ...base, contribution, measureAt: at }
+  if (compare(current, contribution) >= 0) return { ...result, status: 'alreadyMet', reason: null, extra: ZERO }
+  const extra = subtract(contribution, current)
+  if (compare(contribution, maximumContribution(grossPay, method, rate)) > 0)
+    return { ...result, status: 'unreachable', reason: 'overGrossPay', extra }
+  const effect = pensionEffect(grossPay, { method, contribution }, rate)
+  const position = allowancePosition(effect, inputs.savings, values)
+  if (compare(position.counted.total, position.available) > 0) return { ...result, status: 'unreachable', reason: 'overAllowance', extra }
+  return { ...result, status: 'reachable', reason: null, extra }
+}
+
+function checkOptimiserInputs(inputs: OptimiserInputs): CheckedInputs {
+  if (!inputs?.pension) throw new EngineInputError('the optimiser needs a pension method and the current contribution')
+  const checked = checkInputs(inputs)
+  checkSavings(inputs.savings)
+  if (typeof inputs.checkChildcare !== 'boolean') throw new EngineInputError('checkChildcare must be true or false')
+  return checked
+}
+
+function computeThresholds(checked: CheckedInputs, inputs: OptimiserInputs, values: Values<LeafPath>): ThresholdContribution[] {
+  return thresholdList(checked, inputs, values).map((threshold) => solveThreshold(threshold, checked, inputs, values))
+}
+
+/**
+ * For each threshold (the personal allowance taper start and zero point, the
+ * HICBC threshold and full-charge point with Child Benefit claimed, the
+ * childcare limits if asked, on adjusted net income; the threshold income
+ * limit on threshold income), the smallest total contribution by the method
+ * given that brings the measure to the limit or under, solved in exact pence,
+ * and how much more that is than the current contribution.
+ */
+export function thresholdContributions(
+  inputs: OptimiserInputs,
+  config: TaxYearConfig,
+  policy: ModellingPolicy,
+): ThresholdContributionsResult | Refusal {
+  const checked = checkOptimiserInputs(inputs)
+  checkPolicy(policy)
+  const granted = requireVerified(config, optimiserPaths(checked, inputs))
+  if (!granted.ok) return granted
+  return {
+    ok: true,
+    taxYear: config.id,
+    method: inputs.pension.method,
+    currentContribution: inputs.pension.contribution,
+    thresholds: computeThresholds(checked, inputs, granted.values),
+  }
+}
+
+/* optimise() (G13). */
+
+const OPTIMISER_ASSUMPTIONS = [
+  'Candidate contributions only: no point is called the best, and none is advice.',
+  'The contribution is the only thing that changes: pay, other employer contributions, carry forward and Child Benefit stay as entered.',
+  'Annual model: contribution timing within the year (before or after a bonus, say) is not modelled; only the year’s totals count.',
+  'Spendable is take-home pay with Child Benefit, less any annual allowance charge. Childcare support is not valued: eligibility is shown, and its loss is a cliff.',
+  'Net cost per pound of pension is the spendable income given up against no contribution, per pound more going into the pension (the employee’s contribution, the provider’s relief and other employer contributions).',
+  'The marginal rate between two points is the share of each extra pound into the pension that did not come out of spendable income.',
+]
+
+interface Evaluated {
+  readonly point: Omit<OptimiserPoint, 'reasons' | 'netCostPerPound' | 'marginalRate'>
+  readonly percentCharged: number | null
+  readonly studentLoan: Money
+}
+
+function evaluate(
+  contribution: Money,
+  checked: CheckedInputs,
+  inputs: OptimiserInputs,
+  values: Values<LeafPath>,
+  policy: ModellingPolicy,
+  taxYear: TaxYearConfig['id'],
+): Evaluated {
+  const pension: PensionInput = { method: inputs.pension.method, contribution }
+  const at: CheckedInputs = { ...checked, pension }
+  const home = computeTakeHome(at, { ...inputs, pension }, values, policy, taxYear)
+  const allowance = computeAllowance(at, inputs.savings, values, policy, taxYear)
+  const childcare = inputs.checkChildcare
+    ? computeChildcare(pensionEffect(checked.grossPay, pension, values[RAS_PATH]).ani, values, taxYear)
+    : null
+  const relief = home.pension?.providerRelief ?? ZERO
+  const employer = inputs.savings.employerContribution
+  const into = { employee: contribution, employer, relief, total: add(add(contribution, employer), relief) }
+  return {
+    point: {
+      contribution,
+      extra: subtract(contribution, inputs.pension.contribution),
+      takeHome: home.annual.net,
+      childBenefit: home.annual.childBenefit,
+      takeHomeIncludingChildBenefit: home.annual.netIncludingChildBenefit,
+      annualAllowanceCharge: allowance.charge.total,
+      spendable: subtract(home.annual.netIncludingChildBenefit, allowance.charge.total),
+      pension: into,
+      adjustedNetIncome: home.adjustedNetIncome.adjustedNetIncome,
+      thresholdIncome: allowance.thresholdIncome,
+      annualAllowance: {
+        tapered: allowance.tapered,
+        allowanceAvailable: allowance.allowanceAvailable,
+        counted: allowance.counted.total,
+        headroom: allowance.headroom,
+        excess: allowance.excess,
+      },
+      childcare: childcare ? childcare.schemes.map((s) => ({ scheme: s.scheme, eligibleOnIncome: s.eligibleOnIncome })) : [],
+      warnings: [...allowance.warnings, ...(childcare?.warnings ?? [])],
+    },
+    percentCharged: home.hicbc?.percentCharged ?? null,
+    studentLoan: home.studentLoan.total,
+  }
+}
+
+/** Spendable given up per pound more in the pension, as an exact ratio. */
+const perPound = (given: Money, more: Money): Ratio => ratio(toPence(given), toPence(more))
+
+function cliffsBetween(prev: Evaluated, next: Evaluated, method: PensionMethod): CliffKind[] {
+  const kinds: CliffKind[] = []
+  if (prev.percentCharged !== next.percentCharged) kinds.push('hicbcStep')
+  if (prev.point.childcare.some((s, i) => s.eligibleOnIncome !== next.point.childcare[i]?.eligibleOnIncome)) kinds.push('childcareLimit')
+  if (prev.point.annualAllowance.tapered !== next.point.annualAllowance.tapered) kinds.push('annualAllowanceTaper')
+  // Only a salary sacrifice moves the student loan base (G6); repayments move in whole pounds.
+  if (method === 'salarySacrifice' && compare(prev.studentLoan, next.studentLoan) !== 0) kinds.push('studentLoanWholePounds')
+  return kinds
+}
+
+/**
+ * Candidate contributions for the method given: a sweep from nothing to the
+ * most the engine models, in steps from the options (DEFAULT_SWEEP_STEP from
+ * src/lib/sweep.ts if none), plus the current contribution and the threshold
+ * points. Each point carries take-home, the annual allowance charge, the
+ * pension, the net cost per pound and the marginal rate, the annual allowance
+ * position, childcare eligibility if asked, warnings and why it exists. The
+ * cliffs between neighbouring points are listed. No point is called the best.
+ */
+export function optimise(
+  inputs: OptimiserInputs,
+  config: TaxYearConfig,
+  policy: ModellingPolicy,
+  options: OptimiseOptions = { step: DEFAULT_SWEEP_STEP, maxPoints: MAX_SWEEP_POINTS },
+): OptimiseResult | Refusal {
+  const checked = checkOptimiserInputs(inputs)
+  checkPolicy(policy)
+  const step = checkAmount(options?.step, 'sweep step')
+  if (compare(step, ZERO) <= 0) throw new EngineInputError('the sweep step must be above nothing')
+  if (!Number.isSafeInteger(options.maxPoints) || options.maxPoints < 1)
+    throw new EngineInputError('the most sweep points must be a whole number of one or more')
+  const granted = requireVerified(config, optimiserPaths(checked, inputs))
+  if (!granted.ok) return granted
+  const { values } = granted
+  const { method, contribution: current } = inputs.pension
+  const maximum = maximumContribution(checked.grossPay, method, values[RAS_PATH])
+  const sweeps = wholeSteps(exact(maximum), step) + 1
+  if (sweeps > options.maxPoints) throw new EngineInputError('the sweep step is too small for this range: too many points')
+  const thresholds = computeThresholds(checked, inputs, values)
+
+  const reasons = new Map<number, PointReason[]>()
+  const mark = (contribution: Money, reason: PointReason) => {
+    const list = reasons.get(toPence(contribution)) ?? []
+    list.push(reason)
+    reasons.set(toPence(contribution), list)
+  }
+  for (let k = 0; k < sweeps; k++) mark(mulRound(step, ratio(k, 1), 'nearest'), { kind: 'sweep' })
+  mark(current, { kind: 'current' })
+  mark(maximum, { kind: 'maximum' })
+  for (const t of thresholds)
+    if (t.contribution !== null && compare(t.contribution, maximum) <= 0)
+      mark(t.contribution, { kind: 'threshold', threshold: t.threshold })
+
+  const contributions = [...reasons.keys()].sort((a, b) => a - b).map((pence) => pence as Money)
+  const evaluated = contributions.map((c) => evaluate(c, checked, inputs, values, policy, config.id))
+  const first = evaluated[0]!.point
+  const points: OptimiserPoint[] = evaluated.map(({ point }, k) => {
+    const prev = k > 0 ? evaluated[k - 1]!.point : null
+    return {
+      ...point,
+      reasons: reasons.get(toPence(point.contribution))!,
+      netCostPerPound:
+        k === 0 ? null : perPound(subtract(first.spendable, point.spendable), subtract(point.pension.total, first.pension.total)),
+      marginalRate:
+        prev === null
+          ? null
+          : (() => {
+              const more = subtract(point.pension.total, prev.pension.total)
+              return perPound(subtract(more, subtract(prev.spendable, point.spendable)), more)
+            })(),
+    }
+  })
+  const cliffs: Cliff[] = evaluated.slice(1).flatMap((next, k) => {
+    const prev = evaluated[k]!
+    return cliffsBetween(prev, next, method).map((kind) => ({ kind, from: prev.point.contribution, to: next.point.contribution }))
+  })
+  return {
+    ok: true,
+    taxYear: config.id,
+    estimate: true,
+    method,
+    currentContribution: current,
+    maximumContribution: maximum,
+    step,
+    points,
+    thresholds,
+    cliffs,
+    assumptions: [...OPTIMISER_ASSUMPTIONS, ...ALLOWANCE_ASSUMPTIONS, ...(inputs.checkChildcare ? CHILDCARE_ASSUMPTIONS : [])],
   }
 }
