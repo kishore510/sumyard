@@ -1,6 +1,6 @@
-# PHASE-BRIEF: Slice 0.5 Core plumbing
+# PHASE-BRIEF: Slice 1a Optimiser: config and engine
 
-Status: In progress. Sessions C (0.3.0) and D (0.4.0) are done; the slice waits on the owner's manual checks of the deployed site (session D log below), then goes to Done. Slice 0.5 runs as two build sessions: **C** (money and tax config, 0.3.0) and **D** (scenarios, shared components, chart, backup and restore). Rewritten at the start of every slice. Roadmap and status live in `PLAN.md`. Slice 0 is Done (0.2.0, PR #2); its progress log is archived at the end of this file.
+Status: In progress. Slice 1a runs as two build sessions: **E** (verify and populate the 2026-27 tax config, docs only around it, no engine code, 0.5.0) and **F** (the pure engine, tests first, after the owner answers session E's open questions). Rewritten at the start of every slice. Roadmap and status live in `PLAN.md`. Slice 0.5 is Done (0.4.0, PR #4, 17 October 2026); its progress log is archived at the end of this file, above slice 0's.
 
 ## Docs rule
 
@@ -8,56 +8,43 @@ Every build session ends by updating the docs: this file (progress and next sess
 
 ## Goal
 
-The plumbing every calculator needs, with no calculator and **no real tax figure**: a money type and formatting, a typed and sourced tax-config pipeline with a skeleton `2026-27` in which every value is unverified, a Tax data screen and a verified badge, a real tax-year default in Settings (session C); then versioned scenarios with export and import, shared inputs and result components, a token-aware chart, and backup and restore (session D).
+A tax config for 2026 to 2027 in which every value Sumyard holds was read on a www.gov.uk page in a build session and logged with its source, then a pure engine (income tax with the personal allowance taper, NI, student loans, three pension methods, HICBC, annual allowance, `optimise()`) built tests first on top of it. Gate (from `PLAN.md`): the config step is finished and logged before any engine code is written.
 
-## Session C: money and tax config (0.3.0)
+## Session E: verify and populate the 2026-27 config (0.5.0)
 
 ### Scope
 
-1. **Money** (`src/lib/money`): integer pence as a branded type. `fromPounds`, `fromPence`, `add`, `subtract`, `compare`, `min`, `max`, `mulRound(amount, factor, mode)` with explicit modes (nearest, down, up). No float arithmetic on amounts anywhere else; safe-integer guard on every operation. `docs/money.md` documents rounding and says the mode each tax step needs is verified in slice 1a, not assumed.
-2. **Formatting** (`src/lib/format`): GBP in whole pounds or pence (the Settings value), percentages, a compact form for charts later. Locale en-GB.
-3. **Schema** (`src/config/tax/schema.ts`): `TaxYearConfig` with the tax-year period; income tax bands and rates (rUK and Scotland); personal allowance, taper start and rate; NI (employee and employer); student loan plans 1, 2, 4, 5 and postgraduate; pension (annual allowance, taper thresholds and minimum, carry forward, MPAA); HICBC thresholds and Child Benefit rates; tax-free childcare and 30-hours limits; a typed, unused placeholder for dividend and savings allowances.
-4. **Sourced values**: `Sourced<T>` = `{ status: 'todo' }` or `{ status: 'verified', value, sourceUrl, verifiedOn }`. A malformed verified leaf is a type error and a failing test. `isVerified`, and `requireVerified(config, paths)` returning the values or a typed refusal listing unverified paths.
-5. **Registry** (`src/config/tax/index.ts`): `getTaxYear(id)`, `latestTaxYear()`, `listTaxYears()`. Skeleton `2026-27.ts`, every leaf `{ status: 'todo' }`: structure only, no rate, threshold, allowance or date.
-6. **Fixtures**: fake configs (clearly marked, never imported by the app) prove the guard, the refusal path, the registry and schema coverage. A repo-level test fails if a real config file has a number-valued leaf without a verified source.
-7. **Tax data screen** (`#/tax-data`): each tax year, each value group with a verified count, a source link and date per verified leaf, unverified groups flagged. Linked from About and the Help topic on tax data. Same sheet behaviour as the others.
-8. **VerifiedBadge**: tax-year label and "Not yet verified" or "Last verified <date>", linking to Tax data.
-9. **Settings**: a real default-tax-year selector from the registry, labelled "not yet verified" while the year has unverified groups. Settings schema version bumped, with a tested migration.
-10. **Menu footnote**: "Changes are saved in this browser." until export exists (session D); the Help topic to match.
-
-**URL-scan question:** report how the build scan treats gov.uk URLs inside JavaScript strings and propose the narrowest rule. Implement only if it adds no allowlist entry; otherwise stop and ask. Prove the behaviour with fixtures.
-
-### Out of scope
-
-Any real tax figure or date (code, tests, comments, Help, docs), scenarios, backup and restore, shared inputs, charts, calculators.
+1. Replace `{ status: 'todo' }` in `src/config/tax/2026-27.ts`, group by group, only with values read on a www.gov.uk page in this session; everything else stays `todo` and is reported.
+2. Groups: tax year dates; personal allowance and taper (and whether the zero point is stated); income tax bands for England, Wales and Northern Ireland and for Scotland, noting whether each page states bands on taxable income or income after allowances; employee and employer NI (category A assumed); student loan plans 1, 2, 4, 5 and postgraduate; pensions (annual allowance, taper, carry forward, MPAA, relief-at-source rate); Child Benefit rates and HICBC mechanics; Tax-Free Childcare and 30 hours income limits; the announced salary sacrifice change (informational, not modelled); a Budget check.
+3. `docs/verification-log.md`: one row per value (path, value, page title, URL, date read, quote, second source, status, notes), OPEN questions first.
+4. `docs/money.md`: what GOV.UK and HMRC say about rounding for each step; "not stated" where silent.
+5. `docs/worked-examples.md`: examples GOV.UK publishes (inputs, published result, URL), not computed.
+6. Tests: every verified leaf has a www.gov.uk URL and a past date; each group's verified count matches the log.
+7. Tax data screen checked in Chromium at 360 and 1280 px, light and dark, with axe.
 
 ### Rules
 
-Tests first (red, then green) for money, format, schema guards, registry, the settings migration and the screen's states. No new dependencies, no network requests, hand-written validation only. WCAG AA in both themes, focus handling, 44 px targets, reduced motion; check the Tax data sheet and Settings at 360, 768 and 1280 px in both themes and run axe on the new sheet. Storage-key changes keep the guard and `docs/privacy.md` in step.
+- Source rules: values only from pages fetched in the session; `sourceUrl` an exact `https://www.gov.uk/` page; `verifiedOn` the date read; check the tax year on every page; two sources where two pages cover a value; conflicts and ambiguity stay `todo` or OPEN. No URL-scan change.
+- No calculation logic; no real figure in code comments, Help text or tests (tests use the fake fixtures).
+- One commit per group. No new dependency, no runtime network request.
 
-### Acceptance
+### Out of scope
 
-- Money, format, schema guards, registry, settings migration and the Tax data screen are tested, red commit before green.
-- `2026-27.ts` holds no figure; the repo-level config test passes on it and fails on an unsourced number.
-- The Tax data screen shows everything as unverified; Settings offers 2026 to 2027 labelled not yet verified.
-- Lint, typecheck, test and build green; 0.3.0 with a changelog entry; docs updated.
+Engine code, UI work beyond fixing layout problems on the Tax data screen, URL-allowlist changes, any other tax year.
 
-## Session D: scenarios, shared components, chart, backup and restore (0.4.0)
+## Session F: the engine (planned)
 
-Scope (from the session D prompt): calculator registry; pages at `#/c/<id>` with a decision on sheets over a page; scenarios under one key `sumyard:v1:scenarios` with hand-written validation and limits; save, update, save as new, load, rename, duplicate, delete with Undo and an unsaved-changes indicator; export (`sumyard-scenarios-YYYY-MM-DD.json`) and import with a preview (Add or Replace); backup, restore and clear all data in Settings; compare for 2 or 3 scenarios; shared inputs (`CurrencyInput`, `PercentInput`, `NumberInput`, `Select`, `Toggle`, `Segmented`) and results (`ResultCard`, `StatRow`, `AssumptionsPanel`, `ScenarioBar`, `RefusalNotice`, `VerifiedBadge`); a hand-rolled SVG chart; the Hello calculator; the Scenarios menu item, menu footnote and Help topics; Lighthouse recorded. Out of scope: any real calculator or tax figure, URL-scan changes, tour, shortcuts, Help search, service worker, URL-hash state.
-
-### Acceptance
-
-- Tests first (red `b3d4d53`, green `fcc5a23`) for the scenario store and migration, import validation, backup and restore, input parsing, chart scales and the registry. Done.
-- No real tax figure, rate, threshold, allowance or date anywhere. Done (Hello's defaults are arbitrary demo values).
-- No new dependency, no network request, no allowlist change. Done.
-- WCAG AA, focus, reduced motion; new surfaces checked at 360, 768 and 1280 px in both themes with axe. Done in Chromium.
-- 0.4.0 with a changelog entry; lint, typecheck, test and build green; docs updated. Done.
-- Owner's manual checks on the deployed site (below). **Open**: slice 0.5 goes to Done after these.
+Starts after the owner answers session E's OPEN questions (`docs/verification-log.md`). Scope as in `PLAN.md` > 1a > Engine. Tests first: a red commit, then green.
 
 ## Progress log
 
 Add one entry per session: date, what was done, what differs from the brief, what the next session should pick up, and which docs were updated.
+
+<!-- session E entry goes here -->
+
+## Archive: slice 0.5 progress log
+
+Slice 0.5 Core plumbing, Done (0.4.0, PR #4, 17 October 2026). The owner confirmed the session D manual checklist on the deployed site at the start of slice 1a session E. Kept as written at the time.
 
 - **17 October 2026, build session D (scenarios, shared components, chart, backup and restore). Version 0.4.0.**
   - Pre-check: PR #3 merged; its Pages deploy (run 39034251400) succeeded. No conflict with this log, except that the prompt's scenario shape replaces session C's suggested per-scenario `schemaVersion` (see differences).
