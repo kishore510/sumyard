@@ -1,0 +1,61 @@
+import { describe, expect, it } from 'vitest'
+import { HELP_TOPICS } from './content'
+import { linksIn } from './markdown'
+import { buildTopics, parseFrontMatter } from './topics'
+
+describe('parseFrontMatter', () => {
+  it('reads title, order and summary', () => {
+    expect(parseFrontMatter('---\ntitle: Quick start\norder: 1\nsummary: Start here.\n---\nBody')).toEqual({
+      meta: { title: 'Quick start', order: 1, summary: 'Start here.' },
+      body: 'Body',
+    })
+  })
+
+  it.each([
+    ['no front matter', 'Body'],
+    ['no title', '---\norder: 1\nsummary: s\n---\n'],
+    ['no summary', '---\ntitle: t\norder: 1\n---\n'],
+    ['bad order', '---\ntitle: t\norder: first\nsummary: s\n---\n'],
+    ['unknown field', '---\ntitle: t\norder: 1\nsummary: s\nkeywords: a\n---\n'],
+    ['bad line', '---\ntitle t\n---\n'],
+  ])('rejects %s', (_label, source) => {
+    expect(() => parseFrontMatter(source)).toThrow()
+  })
+})
+
+describe('buildTopics', () => {
+  it('sorts by order and names topics after their files', () => {
+    const topics = buildTopics({
+      'content/help/b.md': '---\ntitle: B\norder: 2\nsummary: s\n---\n',
+      'content/help/a.md': '---\ntitle: A\norder: 1\nsummary: s\n---\n',
+    })
+    expect(topics.map((t) => t.id)).toEqual(['a', 'b'])
+  })
+
+  it('names the file when one is bad', () => {
+    expect(() => buildTopics({ 'content/help/x.md': 'no front matter' })).toThrow(/x\.md/)
+  })
+})
+
+describe('content/help', () => {
+  it('has the four slice 0 topics, Quick start first', () => {
+    expect(HELP_TOPICS.map((t) => t.id)).toEqual(['quick-start', 'scenarios-and-saving', 'tax-data-and-last-verified', 'troubleshooting'])
+  })
+
+  it('links only to topics that exist (no external links)', () => {
+    const ids = new Set(HELP_TOPICS.map((t) => t.id))
+    for (const topic of HELP_TOPICS) {
+      for (const href of linksIn(topic.blocks)) {
+        expect(href, `${topic.id} links to ${href}`).toMatch(/^help:/)
+        expect(ids.has(href.slice(5)), `${topic.id} links to ${href}`).toBe(true)
+      }
+    }
+  })
+
+  it('states no money amounts or percentages (tax figures belong in config, not Help)', () => {
+    for (const topic of HELP_TOPICS) {
+      const text = JSON.stringify(topic.blocks)
+      expect(text, topic.id).not.toMatch(/£\s?\d|\d\s?%|\d+\s?(?:per ?cent|pence|p\b)/i)
+    }
+  })
+})

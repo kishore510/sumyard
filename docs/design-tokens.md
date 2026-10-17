@@ -6,7 +6,7 @@ All tokens live in `src/styles/tokens.css`. They are adapted from Chalkline's `s
 
 1. **Raw palette** (`--sy-palette-*`): every colour value, defined once in `:root` and never changed by a theme. Used only inside `tokens.css` (a test fails if any other file names a palette token).
 2. **Semantic layer** (`--sy-bg`, `--sy-surface`, `--sy-text`, `--sy-accent`, `--sy-danger`, ...): what components use, usually through the Tailwind utilities (`bg-bg`, `bg-surface`, `text-text`, `text-accent`, ...). The `[data-theme='light']` and `[data-theme='dark']` blocks set only this layer, and every value is a `var()` pointing at the palette (a test checks).
-3. **Theme-independent tokens**: touch target, focus ring, motion, layout sizes, plus Tailwind's type scale, radii, spacing base and breakpoints in `@theme`.
+3. **Theme-independent tokens**: touch target, focus ring, toast duration, motion, layout and chrome sizes, plus Tailwind's type scale, radii, spacing base and breakpoints in `@theme`.
 
 ## Differences from Chalkline
 
@@ -14,7 +14,8 @@ All tokens live in `src/styles/tokens.css`. They are adapted from Chalkline's `s
 |---|---|
 | Prefix `--sy-` instead of `--cl-`. | Sumyard's own namespace; the names after the prefix are Chalkline's. |
 | New raw-palette layer, `--sy-palette-*` (30 colours, including 8 translucent). | The brief asks for themes to swap only a semantic layer over a raw palette. Chalkline sets each theme's semantic tokens straight to hex. **Every palette value is a Chalkline value**; no new colour was introduced. |
-| Dropped the diagram-only tokens: canvas, grid, guides, find highlight, node, edge, group, minimap, swatches, handles, docking, palette and panel widths, AI, tour, stencils, Mermaid. | Not used by Sumyard. Session B copies back any chrome sizes it needs (sheet heights, help and settings widths, toast duration, badge dot) from Chalkline. |
+| Dropped the diagram-only tokens: canvas, grid, guides, find highlight, node, edge, group, minimap, swatches, handles, docking, palette and panel widths, AI, tour, stencils, Mermaid. | Not used by Sumyard. |
+| Session B copied back six chrome tokens, with Chalkline's names and values: `--sy-toast-duration` (5000ms), `--sy-drawer-max-height` (80dvh, the menu), `--sy-full-sheet-height`, `--sy-help-width` (400px, every sheet; Chalkline's settings width equals it), `--sy-banner-width` (560px, the first-run notice) and `--sy-badge-dot` (8px). | The app chrome. No new token was invented. |
 | No logo token or logo. | Chalkline's mark is a diagram sketch. Sumyard has a text wordmark until a mark is designed (flagged; not invented). |
 
 No semantic token was invented. The semantic names and values are Chalkline's.

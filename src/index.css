@@ -36,18 +36,37 @@
   }
 }
 
-@layer components {
-  /* Side padding that respects notches and rounded corners. */
-  .sy-safe-x {
-    padding-left: max(var(--sy-gutter), env(safe-area-inset-left));
-    padding-right: max(var(--sy-gutter), env(safe-area-inset-right));
-  }
+/* Side padding that respects notches and rounded corners. Utilities, so variants such as md: work. */
+@utility sy-safe-x {
+  padding-left: max(var(--sy-gutter), env(safe-area-inset-left));
+  padding-right: max(var(--sy-gutter), env(safe-area-inset-right));
+}
 
-  .sy-safe-top {
-    padding-top: env(safe-area-inset-top);
-  }
+@utility sy-safe-top {
+  padding-top: env(safe-area-inset-top);
+}
 
-  .sy-safe-bottom {
-    padding-bottom: max(var(--sy-gutter), env(safe-area-inset-bottom));
+@utility sy-safe-bottom {
+  padding-bottom: max(var(--sy-gutter), env(safe-area-inset-bottom));
+}
+
+/* Sheets slide up on phones and in from the right from tablet width. Reduced motion zeroes the duration (see base). */
+@keyframes sy-sheet-up {
+  from {
+    transform: translateY(100%);
+  }
+}
+
+@keyframes sy-sheet-left {
+  from {
+    transform: translateX(100%);
+  }
+}
+
+@utility sy-sheet {
+  animation: sy-sheet-up var(--sy-duration-base) var(--sy-ease);
+
+  @media (min-width: 48rem) {
+    animation-name: sy-sheet-left;
   }
 }

@@ -44,12 +44,19 @@ describe('scanText', () => {
   })
 
   it('allows only the exact inert identifiers, each with a reason', () => {
-    for (const [url, reason] of Object.entries(INERT_URLS)) {
+    for (const [url, { reason, fileType }] of Object.entries(INERT_URLS)) {
       expect(reason.length, url).toBeGreaterThan(10)
-      expect(scanText('a.js', `"${url}"`), url).toEqual([])
+      expect(scanText(`assets/a${fileType}`, `"${url}"`), url).toEqual([])
     }
     expect(urls('a.js', '"http://www.w3.org/2000/svg/evil.js"')).toHaveLength(1)
     expect(urls('a.js', '"https://react.dev/errors/../../tracker"')).toHaveLength(1)
+  })
+
+  it('allows each inert identifier only in the kind of file it comes from', () => {
+    expect(urls('index.html', '<p>http://www.w3.org/2000/svg</p>')).toEqual(['http://www.w3.org/2000/svg'])
+    expect(urls('a.css', '"https://react.dev/errors/"')).toEqual(['https://react.dev/errors/'])
+    expect(urls('a.js', '"https://tailwindcss.com"')).toEqual(['https://tailwindcss.com'])
+    expect(urls('a.css', '/*! tailwindcss | https://tailwindcss.com */')).toEqual([])
   })
 
   it('reports the file for each finding', () => {

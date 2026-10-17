@@ -118,6 +118,8 @@
   --sy-touch-target: 44px;
   --sy-focus-ring-width: 2px;
   --sy-focus-ring-offset: 2px;
+  /* How long a toast stays (paused while focused or hovered). */
+  --sy-toast-duration: 5000ms;
 
   /* Motion */
   --sy-duration-fast: 120ms;
@@ -131,6 +133,15 @@
   --sy-toolbar-gap: 4px;
   --sy-gutter: 16px;
   --sy-content-max: 1200px;
+  /* Main menu: never taller than this, so it scrolls instead of running off a short screen. */
+  --sy-drawer-max-height: 80dvh;
+  /* Sheets: a full-height bottom sheet on phones (a sliver of the page shows above), a side panel from tablet up. */
+  --sy-full-sheet-height: calc(100dvh - max(var(--sy-gutter), env(safe-area-inset-top)));
+  --sy-help-width: 400px;
+  /* First-run notice under the top bar. */
+  --sy-banner-width: 560px;
+  /* "What's new" dot on the menu button. */
+  --sy-badge-dot: 8px;
 }
 
 /* Reduce motion: every animation length is 0. */
