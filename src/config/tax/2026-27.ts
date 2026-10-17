@@ -1,6 +1,6 @@
 import type { IsoDate } from '@/lib/isoDate'
-import { fromPounds, ratio } from '@/lib/money'
-import type { TaxYearConfig } from './schema'
+import { fromPounds, percent, ratio, ZERO } from '@/lib/money'
+import type { TaxBand, TaxYearConfig } from './schema'
 import { type SourceUrl, TODO, type Verified } from './sourced'
 
 /*
@@ -32,7 +32,17 @@ export const taxYear: TaxYearConfig = {
     personalAllowance: read(fromPounds(12_570), HMRC_INCOME_TAX_RATES),
     taperStart: read(fromPounds(100_000), HMRC_INCOME_TAX_RATES),
     taperRate: read(ratio(1, 2), HMRC_INCOME_TAX_RATES),
-    bands: { rUK: TODO, scotland: TODO },
+    bands: {
+      rUK: read<readonly TaxBand[]>(
+        [
+          { name: 'Basic rate', from: ZERO, rate: percent('20') },
+          { name: 'Higher rate', from: fromPounds(37_700), rate: percent('40') },
+          { name: 'Additional rate', from: fromPounds(125_140), rate: percent('45') },
+        ],
+        HMRC_INCOME_TAX_RATES,
+      ),
+      scotland: TODO,
+    },
   },
   nationalInsurance: {
     employee: { primaryThreshold: TODO, upperEarningsLimit: TODO, mainRate: TODO, additionalRate: TODO },
