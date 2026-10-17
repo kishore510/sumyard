@@ -2,6 +2,8 @@
 import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { getTaxYear } from '@/config/tax/index'
+import { yearStatus } from '@/config/tax/sourced'
 import { STORAGE_KEYS } from '@/lib/storageKeys'
 import { DEFAULT_SETTINGS, settingsStore } from '@/settings/settings'
 import { SettingsPage } from './SettingsPage'
@@ -34,12 +36,15 @@ describe('Settings: default tax year', () => {
     const group = taxYear()!
     expect(group.querySelector('legend')!.textContent).toBe('Tax year')
     const options = [...group.querySelectorAll('button')]
-    expect(options.map((b) => b.textContent)).toEqual(['2026 to 2027 (not yet verified)'])
+    const complete = yearStatus(getTaxYear('2026-27')!).complete
+    expect(options.map((b) => b.textContent)).toEqual([complete ? '2026 to 2027' : '2026 to 2027 (not yet verified)'])
     expect(options[0]!.getAttribute('aria-pressed')).toBe('true')
   })
 
-  it('explains that an unverified year shows no results, and links to Tax data', () => {
-    expect(taxYear()!.textContent).toMatch(/no results/i)
+  it('says when the year is unverified that calculators show no results, and links to Tax data', () => {
+    const complete = yearStatus(getTaxYear('2026-27')!).complete
+    if (complete) expect(taxYear()!.textContent).not.toMatch(/no results/i)
+    else expect(taxYear()!.textContent).toMatch(/no results/i)
     const link = [...host.querySelectorAll('a')].find((a) => a.getAttribute('href') === '#/tax-data')
     expect(link).toBeDefined()
   })

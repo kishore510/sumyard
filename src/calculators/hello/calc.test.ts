@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { taxYear as skeleton } from '@/config/tax/2026-27'
-import { FAKE_VERIFIED_YEAR } from '@/config/tax/fixtures/fakeTaxYears'
+import { FAKE_TODO_YEAR, FAKE_VERIFIED_YEAR } from '@/config/tax/fixtures/fakeTaxYears'
 import { fromPence, type Money } from '@/lib/money'
 import { calculateHello, HELLO_LIMITS, HELLO_TAX_PATHS, type HelloInputs } from './calc'
 import { helloCalculator } from './definition'
@@ -16,7 +15,7 @@ const base: HelloInputs = {
   referenceLine: true,
   useTaxYearDates: false,
 }
-const run = (patch: Partial<HelloInputs>, config = skeleton) => calculateHello({ ...base, ...patch }, config)
+const run = (patch: Partial<HelloInputs>, config = FAKE_TODO_YEAR) => calculateHello({ ...base, ...patch }, config)
 const granted = (result: ReturnType<typeof calculateHello>) => {
   if (!result.ok) throw new Error('expected results')
   return result
@@ -57,13 +56,13 @@ describe('calculateHello', () => {
     expect(Number.isSafeInteger(series.at(-1))).toBe(true)
   })
 
-  it('needs no tax data unless asked, so the skeleton year still gives results', () => {
+  it('needs no tax data unless asked, so an unverified year still gives results', () => {
     expect(run({}).ok).toBe(true)
     expect(granted(run({})).taxYearDates).toBeNull()
   })
 
-  it('asks requireVerified for the tax-year dates and refuses on the skeleton', () => {
-    expect(run({ useTaxYearDates: true })).toEqual({ ok: false, taxYear: '2026-27', unverified: [...HELLO_TAX_PATHS] })
+  it('asks requireVerified for the tax-year dates and refuses while they are unverified (fake year)', () => {
+    expect(run({ useTaxYearDates: true }, FAKE_TODO_YEAR)).toEqual({ ok: false, taxYear: '2096-97', unverified: [...HELLO_TAX_PATHS] })
   })
 
   it('shows the dates when they are verified (fake year)', () => {
@@ -118,9 +117,9 @@ describe('Hello inputs validation', () => {
   })
 
   it('summarises inputs and results for compare', () => {
-    const summary = helloCalculator.summarise(base, skeleton)
+    const summary = helloCalculator.summarise(base, FAKE_TODO_YEAR)
     expect(summary.inputs.map((r) => r.label)).toContain('Amount')
     expect(summary.results.ok && summary.results.rows.map((r) => r.label)).toContain('Amount × percentage')
-    expect(helloCalculator.summarise({ ...base, useTaxYearDates: true }, skeleton).results.ok).toBe(false)
+    expect(helloCalculator.summarise({ ...base, useTaxYearDates: true }, FAKE_TODO_YEAR).results.ok).toBe(false)
   })
 })

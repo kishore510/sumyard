@@ -2,12 +2,11 @@ import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { join, relative } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { fromPounds, ratio, ZERO } from '@/lib/money'
-import skeletonSource from './2026-27.ts?raw'
 import { auditTaxYear } from './audit'
 import { FAKE_MARKER, FAKE_PARTIAL_YEAR, FAKE_TODO_YEAR, FAKE_VERIFIED_YEAR } from './fixtures/fakeTaxYears'
 import { getTaxYear, listTaxYears } from './index'
 import { TAX_FIELDS, TAX_GROUPS, type TaxYearConfig } from './schema'
-import { leafPaths, yearStatus } from './sourced'
+import { leafPaths } from './sourced'
 
 /*
  * Repo-level guard on the real config files (src/config/tax/<yyyy-yy>.ts),
@@ -16,7 +15,7 @@ import { leafPaths, yearStatus } from './sourced'
  * other value) sits outside a Sourced leaf.
  */
 
-const YEAR_FILES = import.meta.glob<{ taxYear?: TaxYearConfig }>('./*.ts', { eager: true })
+const YEAR_FILES = import.meta.glob<{ taxYear?: TaxYearConfig }>(['./*.ts', '!./*.test.ts'], { eager: true })
 const yearFiles = Object.entries(YEAR_FILES).filter(([path]) => /^\.\/\d{4}-\d{2}\.ts$/.test(path))
 
 describe('real tax-year files', () => {
@@ -37,22 +36,19 @@ describe('real tax-year files', () => {
   })
 })
 
-describe('the 2026-27 skeleton', () => {
-  const year = getTaxYear('2026-27')!
+describe('real tax-year files: comments', () => {
+  const sources = import.meta.glob<string>(['./[0-9]*.ts'], { eager: true, query: '?raw', import: 'default' })
+  const yearSources = Object.entries(sources).filter(([path]) => /^\.\/\d{4}-\d{2}\.ts$/.test(path))
 
-  it('has every leaf { status: "todo" }', () => {
-    expect(yearStatus(year)).toMatchObject({ verified: 0, complete: false })
-    for (const path of leafPaths(year)) expect(TAX_FIELDS.some((f) => f.path === path)).toBe(true)
-  })
-
-  it('contains no figure, rate, threshold, allowance or date: no number literal except its own id', () => {
-    const code = skeletonSource
-      .replace(/\/\*[\s\S]*?\*\//g, '')
-      .replace(/\/\/.*$/gm, '')
-      .replaceAll("'2026-27'", "'<id>'")
-    expect(code.match(/(?<![\w$])\d/g) ?? []).toEqual([])
-    expect(code).not.toMatch(/https?:/)
-    expect(code).not.toMatch(/verified'|value:|sourceUrl|verifiedOn/)
+  it('keep figures out of comments: values live only in verified leaves, with their source', () => {
+    expect(yearSources.length).toBe(yearFiles.length)
+    for (const [path, code] of yearSources) {
+      const id = path.slice(2, -3)
+      const comments = [...code.matchAll(/\/\*[\s\S]*?\*\/|(?<![:"'\w])\/\/.*$/gm)].map((m) => m[0].replaceAll(id, '<id>')).join('\n')
+      // No amount, rate or date: no £ or %, and no run of three or more digits ("slice 1a" is fine).
+      expect(comments.match(/\d[\d,.]{2,}/g) ?? [], path).toEqual([])
+      expect(comments, path).not.toMatch(/£|%|per cent/)
+    }
   })
 })
 
