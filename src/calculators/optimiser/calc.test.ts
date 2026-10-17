@@ -30,9 +30,10 @@ const config = taxYear
 const v = configValues(config)
 const penny = fromPence(1)
 const pound = fromPounds(1)
-const exact: ModellingPolicy = { taperRounding: 'exact' }
-const wholePounds: ModellingPolicy = { taperRounding: 'wholePoundsDown' }
-const POLICIES: readonly ModellingPolicy[] = TAPER_ROUNDINGS.map((taperRounding) => ({ taperRounding }))
+// Session G1 made childBenefitWeeks a required policy field (decision G4), so policies here start from the default.
+const exact: ModellingPolicy = { ...DEFAULT_POLICY, taperRounding: 'exact' }
+const wholePounds: ModellingPolicy = { ...DEFAULT_POLICY, taperRounding: 'wholePoundsDown' }
+const POLICIES: readonly ModellingPolicy[] = TAPER_ROUNDINGS.map((taperRounding) => ({ ...DEFAULT_POLICY, taperRounding }))
 
 function ok<T extends { ok: true }>(result: T | Refusal): T {
   if (!result.ok) throw new Error(`expected a result, got a refusal for ${result.unverified.join(', ')}`)

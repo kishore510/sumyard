@@ -21,11 +21,16 @@ import {
 } from '@/lib/money'
 import { MONTHS_PER_YEAR, WEEKS_PER_YEAR } from '@/lib/periods'
 import {
+  type AdjustedNetIncomeResult,
   type BandSlice,
+  type ChildBenefitInput,
   type EmployeeNIResult,
+  type HicbcResult,
   type IncomeTaxResult,
   type ModellingPolicy,
   type NiSlice,
+  type PensionInput,
+  type PensionResult,
   type PeriodView,
   type PersonalAllowanceResult,
   REGIONS,
@@ -192,6 +197,10 @@ function computeIncomeTax(
     taxYear,
     region,
     income,
+    pensionMethod: null,
+    taxablePay: income,
+    adjustedNetIncome: income,
+    basicRateBandExtension: ZERO,
     personalAllowance: allowanceResult(income, values, policy, taxYear),
     taxableIncome: roundExact(taxable, 'nearest'),
     bands: slices,
@@ -204,7 +213,14 @@ function computeIncomeTax(
  * comes off first, then each band's rate applies to the taxable income above
  * that band's start, up to the next band's start.
  */
-export function incomeTax(income: Money, region: Region, config: TaxYearConfig, policy: ModellingPolicy): IncomeTaxResult | Refusal {
+export function incomeTax(
+  income: Money,
+  region: Region,
+  config: TaxYearConfig,
+  policy: ModellingPolicy,
+  pension?: PensionInput,
+): IncomeTaxResult | Refusal {
+  void pension
   checkAmount(income, 'income')
   checkRegion(region)
   checkPolicy(policy)
@@ -281,6 +297,37 @@ export function studentLoan(plans: readonly StudentLoanPlanId[], pay: Money, con
   return computeStudentLoan(held, pay, granted.values, config.id)
 }
 
+/* Pensions, adjusted net income and the High Income Child Benefit Charge (session G1). */
+
+/** The effect of a pension contribution on taxable pay, NI-able pay, adjusted net income and the bands. */
+export function pensionContribution(pension: PensionInput, grossPay: Money, config: TaxYearConfig): PensionResult | Refusal {
+  void pension
+  void grossPay
+  void config
+  throw new Error('pensionContribution: not implemented yet')
+}
+
+/** Adjusted net income for employment income with an optional pension contribution. */
+export function adjustedNetIncome(
+  grossPay: Money,
+  pension: PensionInput | undefined,
+  config: TaxYearConfig,
+): AdjustedNetIncomeResult | Refusal {
+  void pension
+  void grossPay
+  void config
+  throw new Error('adjustedNetIncome: not implemented yet')
+}
+
+/** The High Income Child Benefit Charge on an adjusted net income. */
+export function hicbc(ani: Money, children: ChildBenefitInput, config: TaxYearConfig, policy: ModellingPolicy): HicbcResult | Refusal {
+  void ani
+  void children
+  void config
+  void policy
+  throw new Error('hicbc: not implemented yet')
+}
+
 /* Take-home pay. */
 
 function view(period: PeriodView['period'], label: string, annual: Omit<PeriodView, 'period' | 'label'>, divisor: number): PeriodView {
@@ -292,7 +339,11 @@ function view(period: PeriodView['period'], label: string, annual: Omit<PeriodVi
     incomeTax: part(annual.incomeTax),
     nationalInsurance: part(annual.nationalInsurance),
     studentLoan: part(annual.studentLoan),
+    pension: part(annual.pension),
+    hicbc: part(annual.hicbc),
     net: part(annual.net),
+    childBenefit: part(annual.childBenefit),
+    netIncludingChildBenefit: part(annual.netIncludingChildBenefit),
   }
 }
 
@@ -345,17 +396,32 @@ export function takeHome(inputs: TaxInputs, config: TaxYearConfig, policy: Model
     incomeTax: tax.total,
     nationalInsurance: ni.total,
     studentLoan: loans.total,
+    pension: ZERO,
+    hicbc: ZERO,
     net: subtract(subtract(subtract(grossPay, tax.total), ni.total), loans.total),
+    childBenefit: ZERO,
+    netIncludingChildBenefit: subtract(subtract(subtract(grossPay, tax.total), ni.total), loans.total),
   }
   return {
     ok: true,
     taxYear: config.id,
     estimate: true,
     inputs: { grossPay, region, studentLoans: [...inputs.studentLoans] },
-    policy: { taperRounding: policy.taperRounding },
+    policy: { taperRounding: policy.taperRounding, childBenefitWeeks: policy.childBenefitWeeks },
     incomeTax: tax,
     nationalInsurance: ni,
     studentLoan: loans,
+    pension: null,
+    adjustedNetIncome: {
+      ok: true,
+      taxYear: config.id,
+      grossPay,
+      method: null,
+      netIncome: grossPay,
+      reliefAtSourceDeduction: ZERO,
+      adjustedNetIncome: grossPay,
+    },
+    hicbc: null,
     annual: view('annual', 'Annual: the tax year’s figures', annual, 1),
     monthly: view('monthly', 'Monthly: each annual figure divided by the months in a year, to the nearest penny', annual, MONTHS_PER_YEAR),
     weekly: view('weekly', 'Weekly: each annual figure divided by the weeks in a year, to the nearest penny', annual, WEEKS_PER_YEAR),

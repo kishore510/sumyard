@@ -246,3 +246,15 @@ export function roundExact(amount: ExactPence, mode: RoundingMode): Money {
   if (amount.denominator <= 0n) throw new MoneyError('roundExact: the denominator must be above zero')
   return fromBigInt(divideRound(amount.numerator, amount.denominator, mode), 'roundExact')
 }
+
+/**
+ * How many whole `step`s fit in an exact amount: the amount divided by the
+ * step, rounded down. For a rule that counts complete steps of income (the
+ * High Income Child Benefit Charge). The amount must be zero or more and the
+ * step above zero.
+ */
+export function wholeSteps(amount: ExactPence, step: Money): number {
+  void amount
+  void step
+  throw new MoneyError('wholeSteps: not implemented yet')
+}
