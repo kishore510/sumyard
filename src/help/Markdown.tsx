@@ -102,9 +102,10 @@ export function Markdown({ blocks, onTopic = noTopic }: { blocks: Block[]; onTop
           }
           case 'tip':
             return (
-              <aside key={i} className="rounded-md border border-border bg-accent-subtle px-3 py-2">
+              // A note, not an <aside>: a complementary landmark may not sit inside the sheet's dialog (axe landmark-complementary-is-top-level).
+              <p key={i} role="note" className="rounded-md border border-border bg-accent-subtle px-3 py-2">
                 <InlineView nodes={block.children} onTopic={onTopic} />
-              </aside>
+              </p>
             )
           case 'code':
             return (
