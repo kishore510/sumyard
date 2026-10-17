@@ -588,6 +588,7 @@ function view(period: PeriodView['period'], label: string, annual: Omit<PeriodVi
     studentLoan: part(annual.studentLoan),
     pension: part(annual.pension),
     hicbc: part(annual.hicbc),
+    postTaxDeductions: part(annual.postTaxDeductions),
     net: part(annual.net),
     childBenefit: part(annual.childBenefit),
     netIncludingChildBenefit: part(annual.netIncludingChildBenefit),
@@ -727,6 +728,7 @@ function computeTakeHome(
     studentLoan: loans.total,
     pension: contribution,
     hicbc: hicbcCharge,
+    postTaxDeductions: ZERO,
     net,
     childBenefit: received,
     netIncludingChildBenefit: add(net, received),
@@ -752,6 +754,7 @@ function computeTakeHome(
     annual: view('annual', 'Annual: the tax year’s figures', annual, 1),
     monthly: view('monthly', 'Monthly: each annual figure divided by the months in a year, to the nearest penny', annual, MONTHS_PER_YEAR),
     weekly: view('weekly', 'Weekly: each annual figure divided by the weeks in a year, to the nearest penny', annual, WEEKS_PER_YEAR),
+    warnings: [],
     assumptions: assumptions(inputs, plans, policy),
   }
 }
@@ -935,6 +938,7 @@ const WARNINGS = {
     'Unused allowance from earlier years is used, earliest year first; what is left of the earliest year is lost next year.',
   carryForwardOutOfTime: 'Unused allowance entered for a year beyond the carry forward period is ignored.',
   childcareOverLimit: 'Adjusted net income is over a childcare income limit: the support is lost entirely, not tapered.',
+  takeHomeBelowNothing: '',
 } as const satisfies Record<EngineWarning['code'], string>
 
 const warn = (code: EngineWarning['code']): EngineWarning => ({ code, message: WARNINGS[code] })

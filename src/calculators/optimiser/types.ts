@@ -95,6 +95,14 @@ export interface TaxInputs {
   readonly pension?: PensionInput
   /** Child Benefit, if any is due; without it there is no Child Benefit and no charge. */
   readonly childBenefit?: ChildBenefitInput
+  /**
+   * Taxable benefits in kind for the year, in pence, zero or more (none if absent): the net taxable value the employer works out,
+   * after anything the employee pays towards it. Added to taxable pay and adjusted net income; not to NI-able pay or the student
+   * loan base (Class 1A benefits, decision B1). Not cash, so not in take-home.
+   */
+  readonly taxableBenefits?: Money
+  /** Amounts taken from net pay for the year with no tax effect, in pence, zero or more (none if absent). Off take-home only (B2). */
+  readonly postTaxDeductions?: Money
 }
 
 /** A pension contribution's effect on pay, adjusted net income and the bands. */
@@ -109,7 +117,7 @@ export interface PensionResult {
   readonly providerRelief: Money
   /** What goes into the pension: the contribution, or for relief at source the contribution grossed up, to the nearest penny. */
   readonly grossContribution: Money
-  /** Employment income liable to income tax: gross pay less salary sacrificed or net pay contributions. */
+  /** Employment income liable to income tax: gross pay less salary sacrificed or net pay contributions, plus any taxable benefits. */
   readonly taxablePay: Money
   /** Pay for employee and employer Class 1 NI: gross pay less salary sacrificed. */
   readonly niablePay: Money
@@ -127,7 +135,7 @@ export interface AdjustedNetIncomeResult {
   readonly taxYear: TaxYearId
   readonly grossPay: Money
   readonly method: PensionMethod | null
-  /** Step 1, net income: taxable employment pay (after salary sacrifice and net pay contributions). */
+  /** Step 1, net income: taxable employment pay (after salary sacrifice and net pay contributions), taxable benefits included. */
   readonly netIncome: Money
   /** Step 3: the grossed-up relief at source contribution. */
   readonly reliefAtSourceDeduction: Money
@@ -192,7 +200,7 @@ export interface IncomeTaxResult {
   readonly income: Money
   /** The pension method, if a contribution was passed in. */
   readonly pensionMethod: PensionMethod | null
-  /** Employment income liable to tax: the income less salary sacrificed or net pay contributions. */
+  /** Employment income liable to tax: the income less salary sacrificed or net pay contributions, plus any taxable benefits. */
   readonly taxablePay: Money
   /** The income the taper used, to the nearest penny. */
   readonly adjustedNetIncome: Money
@@ -263,7 +271,9 @@ export interface PeriodView {
   readonly pension: Money
   /** The High Income Child Benefit Charge (nothing without Child Benefit). */
   readonly hicbc: Money
-  /** Take-home pay: gross less income tax, NI, student loan, pension and the charge. */
+  /** Amounts taken from net pay with no tax effect (nothing without them). */
+  readonly postTaxDeductions: Money
+  /** Take-home pay: gross less income tax, NI, student loan, pension, the charge and post-tax deductions. */
   readonly net: Money
   /** Child Benefit received (nothing without it). */
   readonly childBenefit: Money
@@ -289,6 +299,8 @@ export interface TakeHomeResult {
   readonly annual: PeriodView
   readonly monthly: PeriodView
   readonly weekly: PeriodView
+  /** Things to know about this result (take-home below nothing), never a change to it. */
+  readonly warnings: readonly EngineWarning[]
   /** Plain-language assumptions behind the result, for the UI to list. */
   readonly assumptions: readonly string[]
 }
@@ -325,6 +337,7 @@ export interface EngineWarning {
     | 'carryForwardUsed'
     | 'carryForwardOutOfTime'
     | 'childcareOverLimit'
+    | 'takeHomeBelowNothing'
   readonly message: string
 }
 
