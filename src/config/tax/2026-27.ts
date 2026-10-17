@@ -33,10 +33,11 @@ export const taxYear: TaxYearConfig = {
     taper: { thresholdIncome: TODO, adjustedIncome: TODO, minimumAllowance: TODO, reductionRate: TODO },
     carryForward: { yearsBack: TODO },
     moneyPurchaseAnnualAllowance: TODO,
+    reliefAtSourceRate: TODO,
   },
   childBenefit: {
     weeklyRates: { eldestOrOnly: TODO, additionalChild: TODO },
-    hicbc: { threshold: TODO, fullChargeAt: TODO },
+    hicbc: { threshold: TODO, fullChargeAt: TODO, incomePerPercent: TODO },
   },
   childcare: {
     taxFreeChildcare: { incomeLimit: TODO },
