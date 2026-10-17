@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { HELP_TOPICS } from './content'
+import { parseHash } from '@/sheets/route'
+import { HELP_TOPICS, topicById } from './content'
 import { linksIn } from './markdown'
 import { buildTopics, parseFrontMatter } from './topics'
 
@@ -42,13 +43,25 @@ describe('content/help', () => {
     expect(HELP_TOPICS.map((t) => t.id)).toEqual(['quick-start', 'scenarios-and-saving', 'tax-data-and-last-verified', 'troubleshooting'])
   })
 
-  it('links only to topics that exist (no external links)', () => {
+  it('links only to topics and sheets that exist (no external links)', () => {
     const ids = new Set(HELP_TOPICS.map((t) => t.id))
     for (const topic of HELP_TOPICS) {
       for (const href of linksIn(topic.blocks)) {
-        expect(href, `${topic.id} links to ${href}`).toMatch(/^help:/)
-        expect(ids.has(href.slice(5)), `${topic.id} links to ${href}`).toBe(true)
+        expect(href, `${topic.id} links to ${href}`).toMatch(/^(?:help|sheet):/)
+        if (href.startsWith('help:')) expect(ids.has(href.slice(5)), `${topic.id} links to ${href}`).toBe(true)
+        else expect(parseHash(`#/${href.slice(6)}`), `${topic.id} links to ${href}`).not.toBeNull()
       }
+    }
+  })
+
+  it('the tax data topic links to the Tax data screen', () => {
+    expect(linksIn(topicById('tax-data-and-last-verified')!.blocks)).toContain('sheet:tax-data')
+  })
+
+  it('describes saving as it is: no export until it exists', () => {
+    for (const topic of HELP_TOPICS) {
+      const text = JSON.stringify(topic.blocks)
+      expect(text, topic.id).not.toMatch(/Export to keep a copy/i)
     }
   })
 

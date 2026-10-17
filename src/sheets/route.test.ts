@@ -10,16 +10,28 @@ describe('parseHash', () => {
     ['#/whats-new', { kind: 'whats-new' }],
     ['#/about', { kind: 'about' }],
     ['#/settings', { kind: 'settings' }],
+    ['#/tax-data', { kind: 'tax-data' }],
   ])('%s', (hash, route) => {
     expect(parseHash(hash)).toEqual(route)
   })
 
-  it.each(['', '#', '#/', '#main', '#/nope', '#/help/Quick Start', '#/help/a/b', '#/about/x', '#/settings/x', '#//help', 'help'])(
-    'no sheet for %j',
-    (hash) => {
-      expect(parseHash(hash)).toBeNull()
-    },
-  )
+  it.each([
+    '',
+    '#',
+    '#/',
+    '#main',
+    '#/nope',
+    '#/help/Quick Start',
+    '#/help/a/b',
+    '#/about/x',
+    '#/settings/x',
+    '#/tax-data/x',
+    '#/taxdata',
+    '#//help',
+    'help',
+  ])('no sheet for %j', (hash) => {
+    expect(parseHash(hash)).toBeNull()
+  })
 })
 
 describe('formatHash and parentOf', () => {
@@ -29,6 +41,7 @@ describe('formatHash and parentOf', () => {
     { kind: 'whats-new' },
     { kind: 'about' },
     { kind: 'settings' },
+    { kind: 'tax-data' },
   ]
 
   it.each(routes)('round-trips %o', (route) => {
@@ -41,6 +54,10 @@ describe('formatHash and parentOf', () => {
     expect(parentOf({ kind: 'about' })).toEqual({ kind: 'help' })
     expect(parentOf({ kind: 'help' })).toBeNull()
     expect(parentOf({ kind: 'settings' })).toBeNull()
+  })
+
+  it('puts Tax data under About (About links to it; so will each calculator’s verified badge)', () => {
+    expect(parentOf({ kind: 'tax-data' })).toEqual({ kind: 'about' })
   })
 })
 
@@ -104,6 +121,27 @@ describe('createSheetNavigator', () => {
     t.nav.back()
     expect(t.nav.current()).toEqual({ kind: 'help' })
     expect(t.at()).toBe(1)
+  })
+
+  it('Help > About > Tax data: the back arrow steps to About, then Help, through history', () => {
+    const t = fakeWindow()
+    t.nav.open({ kind: 'help' })
+    t.nav.open({ kind: 'about' })
+    t.nav.open({ kind: 'tax-data' })
+    expect(t.entries()).toEqual(['', '#/help', '#/about', '#/tax-data'])
+    t.nav.back()
+    expect(t.nav.current()).toEqual({ kind: 'about' })
+    t.nav.back()
+    expect(t.nav.current()).toEqual({ kind: 'help' })
+    expect(t.at()).toBe(1)
+  })
+
+  it('Tax data deep link: back arrow goes to About, and close lands on the page', () => {
+    const t = fakeWindow('#/tax-data')
+    t.nav.back()
+    expect(t.nav.current()).toEqual({ kind: 'about' })
+    t.nav.close()
+    expect(t.nav.current()).toBeNull()
   })
 
   it('opening the sheet that is already showing does nothing', () => {

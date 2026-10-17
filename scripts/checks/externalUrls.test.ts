@@ -2,6 +2,8 @@ import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { FAKE_VERIFIED_YEAR } from '../../src/config/tax/fixtures/fakeTaxYears'
+import { isSourceUrl } from '../../src/config/tax/sourced'
 import { INERT_URLS, scanDir, scanText } from './externalUrls'
 
 const urls = (file: string, text: string) => scanText(file, text).map((f) => f.url)
@@ -63,6 +65,41 @@ describe('scanText', () => {
     expect(scanText('assets/a.js', '"https://example.com"')).toEqual([
       expect.objectContaining({ file: 'assets/a.js', url: 'https://example.com' }),
     ])
+  })
+})
+
+describe('tax-config source URLs in the bundle (fake fixtures)', () => {
+  // A verified leaf as Vite emits it in a chunk, and the anchor the Tax data screen renders from it.
+  const chunk = `const e=${JSON.stringify(FAKE_VERIFIED_YEAR)};export{e as t};`
+  const anchor = '<a href="https://www.gov.uk/sumyard-fake-fixture/x" target="_blank" rel="noopener noreferrer">GOV.UK</a>'
+
+  it('passes GOV.UK sources inside JavaScript strings, with no new allowlist entry', () => {
+    expect(chunk).toContain('"sourceUrl":"https://www.gov.uk/')
+    expect(scanText('assets/index.js', chunk)).toEqual([])
+    expect(scanText('index.html', anchor)).toEqual([])
+    expect(Object.keys(INERT_URLS).some((url) => url.includes('gov.uk'))).toBe(false)
+  })
+
+  it('accepts every URL the config accepts as a source (the config rule is the narrower one)', () => {
+    for (const url of ['https://www.gov.uk/x', 'https://www.gov.uk/guidance/a-b?c=d#e']) {
+      expect(isSourceUrl(url), url).toBe(true)
+      expect(scanText('assets/a.js', `"${url}"`), url).toEqual([])
+    }
+  })
+
+  it('still fails legislation.gov.uk and other hosts: allowing them would widen the allowlist (owner decision)', () => {
+    for (const url of [
+      'https://www.legislation.gov.uk/ukpga/x',
+      'https://assets.publishing.service.gov.uk/x.pdf',
+      'https://www.hmrc.gov.uk/x',
+    ]) {
+      expect(isSourceUrl(url), url).toBe(false)
+      expect(urls('assets/a.js', `"${url}"`), url).toEqual([url])
+    }
+  })
+
+  it('fails a GOV.UK source the browser would fetch, even from config', () => {
+    expect(urls('index.html', '<img src="https://www.gov.uk/sumyard-fake-fixture/x.png">')).toHaveLength(1)
   })
 })
 

@@ -1,0 +1,108 @@
+import { describe, expect, it } from 'vitest'
+import { formatGBP, formatGBPCompact, formatIsoDate, formatPercent } from './format'
+import { fromPence, ratio } from './money'
+
+/* Made-up amounts and rates; none is a tax figure. */
+
+const p = fromPence
+const MAX = Number.MAX_SAFE_INTEGER
+
+describe('formatGBP, pounds and pence', () => {
+  it.each<[number, string]>([
+    [0, '£0.00'],
+    [5, '£0.05'],
+    [50, '£0.50'],
+    [100, '£1.00'],
+    [123_456, '£1,234.56'],
+    [100_000_000, '£1,000,000.00'],
+    [-5, '-£0.05'],
+    [-123_456, '-£1,234.56'],
+    [MAX, '£90,071,992,547,409.91'],
+    [-MAX, '-£90,071,992,547,409.91'],
+  ])('%d pence is %s', (pence, text) => {
+    expect(formatGBP(p(pence), 'pence')).toBe(text)
+  })
+})
+
+describe('formatGBP, whole pounds', () => {
+  it.each<[number, string]>([
+    [0, '£0'],
+    [49, '£0'],
+    [50, '£1'],
+    [149, '£1'],
+    [150, '£2'],
+    [123_456, '£1,235'],
+    [123_449, '£1,234'],
+    [-49, '£0'],
+    [-50, '-£1'],
+    [-123_456, '-£1,235'],
+    [MAX, '£90,071,992,547,410'],
+  ])('%d pence is %s (nearest pound, halves away from zero)', (pence, text) => {
+    expect(formatGBP(p(pence), 'pounds')).toBe(text)
+  })
+
+  it('never shows "-£0"', () => {
+    for (let pence = -49; pence <= 0; pence++) expect(formatGBP(p(pence), 'pounds')).toBe('£0')
+  })
+})
+
+describe('formatGBPCompact (for chart axes)', () => {
+  it.each<[number, string]>([
+    [0, '£0'],
+    [99_900, '£999'],
+    [99_949, '£999'],
+    [99_950, '£1k'],
+    [100_000, '£1k'],
+    [120_000, '£1.2k'],
+    [125_000, '£1.3k'],
+    [995_000, '£10k'],
+    [1_234_500, '£12k'],
+    [12_345_600, '£123k'],
+    [99_949_900, '£999k'],
+    [99_950_000, '£1m'],
+    [150_000_000, '£1.5m'],
+    [2_500_000_000, '£25m'],
+    [99_950_000_000, '£1bn'],
+    [123_400_000_000_00, '£123bn'],
+    [MAX, '£90,072bn'],
+    [-120_000, '-£1.2k'],
+    [-49, '£0'],
+  ])('%d pence is %s', (pence, text) => {
+    expect(formatGBPCompact(p(pence))).toBe(text)
+  })
+})
+
+describe('formatPercent', () => {
+  it.each<[number, number, string]>([
+    [0, 1, '0%'],
+    [7, 100, '7%'],
+    [75, 1000, '7.5%'],
+    [1225, 10000, '12.25%'],
+    [1, 1, '100%'],
+    [1, 3, '33.33%'],
+    [2, 3, '66.67%'],
+    [1, 200000, '0%'],
+    [1, 2000, '0.05%'],
+    [-1, 8, '-12.5%'],
+    [-1, 300000, '0%'],
+  ])('%d / %d is %s', (n, d, text) => {
+    expect(formatPercent(ratio(n, d))).toBe(text)
+  })
+
+  it('takes a maximum number of decimals', () => {
+    expect(formatPercent(ratio(1, 3), 0)).toBe('33%')
+    expect(formatPercent(ratio(1, 3), 4)).toBe('33.3333%')
+    expect(formatPercent(ratio(1, 8), 1)).toBe('12.5%')
+  })
+})
+
+describe('formatIsoDate', () => {
+  it('shows an ISO date as an en-GB date, whatever the time zone', () => {
+    expect(formatIsoDate('2099-01-01')).toBe('1 January 2099')
+    expect(formatIsoDate('2098-12-31')).toBe('31 December 2098')
+  })
+
+  it('shows an invalid date as such rather than guessing', () => {
+    expect(formatIsoDate('2099-02-30' as never)).toBe('invalid date')
+  })
+})

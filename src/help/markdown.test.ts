@@ -30,6 +30,14 @@ describe('parseInline', () => {
     expect(parseInline('[no](https://www.gov.uk.example.com/x)')).toEqual([{ type: 'text', text: 'no' }])
   })
 
+  it('links to the app’s own sheets with sheet:<page>, and to nothing else that way', () => {
+    expect(parseInline('[Tax data](sheet:tax-data)')).toEqual([
+      { type: 'link', href: 'sheet:tax-data', children: [{ type: 'text', text: 'Tax data' }] },
+    ])
+    expect(parseInline('[x](sheet:nope) [y](sheet:help/quick-start) [z](sheet:)')).toEqual([{ type: 'text', text: 'x y z' }])
+    expect(parseInline('[Tax data](sheet:tax-data)', { untrusted: true })).toEqual([{ type: 'text', text: 'Tax data (sheet:tax-data)' }])
+  })
+
   it('treats HTML as plain text', () => {
     expect(parseInline('<img src=x onerror=alert(1)>')).toEqual([{ type: 'text', text: '<img src=x onerror=alert(1)>' }])
   })
