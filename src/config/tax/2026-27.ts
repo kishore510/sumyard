@@ -41,7 +41,17 @@ export const taxYear: TaxYearConfig = {
         ],
         HMRC_INCOME_TAX_RATES,
       ),
-      scotland: TODO,
+      scotland: read<readonly TaxBand[]>(
+        [
+          { name: 'Starter rate', from: ZERO, rate: percent('19') },
+          { name: 'Basic rate', from: fromPounds(3_967), rate: percent('20') },
+          { name: 'Intermediate rate', from: fromPounds(16_956), rate: percent('21') },
+          { name: 'Higher rate', from: fromPounds(31_092), rate: percent('42') },
+          { name: 'Advanced rate', from: fromPounds(62_430), rate: percent('45') },
+          { name: 'Top rate', from: fromPounds(125_140), rate: percent('48') },
+        ],
+        HMRC_INCOME_TAX_RATES,
+      ),
     },
   },
   nationalInsurance: {
