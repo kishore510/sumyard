@@ -70,11 +70,11 @@ export const taxYear: TaxYearConfig = {
     },
   },
   studentLoans: {
-    plan1: { threshold: TODO, rate: TODO },
-    plan2: { threshold: TODO, rate: TODO },
-    plan4: { threshold: TODO, rate: TODO },
-    plan5: { threshold: TODO, rate: TODO },
-    postgraduate: { threshold: TODO, rate: TODO },
+    plan1: { threshold: read(fromPounds(26_900), EMPLOYER_RATES), rate: read(percent('9'), EMPLOYER_RATES) },
+    plan2: { threshold: read(fromPounds(29_385), EMPLOYER_RATES), rate: read(percent('9'), EMPLOYER_RATES) },
+    plan4: { threshold: read(fromPounds(33_795), EMPLOYER_RATES), rate: read(percent('9'), EMPLOYER_RATES) },
+    plan5: { threshold: read(fromPounds(25_000), EMPLOYER_RATES), rate: read(percent('9'), EMPLOYER_RATES) },
+    postgraduate: { threshold: read(fromPounds(21_000), EMPLOYER_RATES), rate: read(percent('6'), EMPLOYER_RATES) },
   },
   pension: {
     annualAllowance: TODO,
