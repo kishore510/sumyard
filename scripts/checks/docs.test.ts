@@ -33,7 +33,12 @@ const changelog = (...releases: string[]) => `# Changelog
 
 ## [Unreleased]
 
-${releases.map((r) => `## [${r}]\n\n### Added\n- Something.\n`).join('\n')}`
+${releases
+  .map((r) => {
+    const [version, date] = r.split(' - ')
+    return `## [${version}]${date ? ` - ${date}` : ''}\n\n### Added\n- Something.\n`
+  })
+  .join('\n')}`
 
 const pkg = (version: string) => JSON.stringify({ name: 'sumyard', version })
 const lock = (version: string) => JSON.stringify({ name: 'sumyard', version, packages: { '': { version } } })
