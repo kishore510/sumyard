@@ -1,6 +1,6 @@
 # Phase plan: Sumyard
 
-Last updated: 17 October 2026 (slice 0.5 session D: scenarios, export and import, backup and restore, shared components, chart, Hello calculator, 0.4.0; slice 0.5 waits on the owner's checks of the deployed site)
+Last updated: 17 October 2026 (slice 0.5 Done: 0.4.0, PR #4, owner checked the deployed site; slice 1a next)
 
 Draft roadmap. When a slice starts, rewrite its prompt against the real code (see the skeleton in PHASE-BRIEF.md). Do not treat these notes as final prompts.
 
@@ -13,7 +13,7 @@ Status values: Not started, In progress, Done (version, PR, date).
 | Slice | Scope | Status |
 |---|---|---|
 | 0 Foundation | Recon of Chalkline and Stickyard (stack, tokens, theme toggle, chrome inventory). Repo, TypeScript strict, lint, tests, CI, GitHub Pages deploy, `CLAUDE.md`, `PHASE-BRIEF.md`, `CHANGELOG.md`. Tokens from Chalkline, light / dark / system theme, app shell (top bar, menu, Help / What's new / About / Settings sheets), toasts with Undo, disclaimer footer. Web only | Done (0.2.0, PR #2, 17 October 2026) |
-| 0.5 Core plumbing | Money type and formatting, `Sourced<T>` tax config pipeline with a skeleton `2026-27`, Tax data screen, versioned scenario storage with JSON export and import, shared inputs and result components, token-aware chart, backup and restore, a "Hello calculator" placeholder that exercises all of it | In progress |
+| 0.5 Core plumbing | Money type and formatting, `Sourced<T>` tax config pipeline with a skeleton `2026-27`, Tax data screen, versioned scenario storage with JSON export and import, shared inputs and result components, token-aware chart, backup and restore, a "Hello calculator" placeholder that exercises all of it | Done (0.4.0, PR #4, 17 October 2026) |
 | 1a Optimiser: config and engine | Verify and populate `2026-27` from gov.uk/HMRC, verification log, worked examples; then the pure engine (income tax with taper, NI, student loan, three pension methods, HICBC, annual allowance, `optimise()`). Tests first. No UI | Not started |
 | 1b Optimiser: UI | The £100k+ page: inputs, current vs optimised take-home, marginal-rate and take-home-vs-contribution charts, cost of £1 more pension, warnings, scenario compare, assumptions, Help topic | Not started |
 | 2 Compound interest | Regular contributions, frequency and timing, compounding, inflation-adjusted view, fee drag, yearly table and chart | Not started |
@@ -109,7 +109,7 @@ Status values: Not started, In progress, Done (version, PR, date).
 
 ### 0.5 Core plumbing
 - **Progress (17 October 2026).** Runs as two sessions. **Session C done (0.3.0):** money type and formatting, `Sourced<T>` tax-config pipeline with the registry and a `2026-27` skeleton (every leaf unverified, no figure), Tax data screen, verified badge, Settings tax-year default with a settings migration, menu footnote trimmed. **Session D done (0.4.0):** calculator registry and pages at `#/c/<id>`, scenarios under `sumyard:v1:scenarios` (save, update, save as new, load, rename, duplicate, delete with Undo, unsaved-changes indicator), export and import with a preview (Add or Replace), backup and restore and clear all data in Settings, compare page, shared inputs and result components, hand-rolled SVG chart, Hello calculator placeholder. Lighthouse mobile recorded in `docs/performance.md`. Details in the `PHASE-BRIEF.md` progress log.
-- **Status: In progress, not Done.** Every acceptance item that can be checked before merge passes (tests, Chromium checks at 360, 768 and 1280 px in both themes, axe, Lighthouse). The gap: the owner's manual checks on the deployed site (real phone, Safari, VoiceOver, a real file picker for import and restore on mobile), listed in `PHASE-BRIEF.md`. Set Done (0.4.0, the PR, the date) once they pass, as for slice 0.
+- **Done (17 October 2026).** PR #4 merged and deployed. The owner ran the 7-step checklist on the deployed site (phone, Safari, VoiceOver, file picker), with their own numbers, and reported it broadly good, with no failures named.
 - **Session D decisions:**
   - **Sheets over a calculator page:** each sheet history entry remembers the page underneath (`page` in the entry's state), so the page stays put behind the sheet and Close, Esc or Back land on it. A deep-linked sheet closes to home. Sheet routes are unchanged; `#/scenarios`, `#/import` (under Scenarios) and `#/restore` (under Settings) are new.
   - **Compare is a page** (`#/c/<id>/compare`) for the width; on a phone the table scrolls sideways with the row labels sticky. The selection lasts for the visit (not in the URL).

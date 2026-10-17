@@ -1,6 +1,6 @@
 # PHASE-BRIEF: Slice 0.5 Core plumbing
 
-Status: In progress. Sessions C (0.3.0) and D (0.4.0) are done; the slice waits on the owner's manual checks of the deployed site (session D log below), then goes to Done. Slice 0.5 runs as two build sessions: **C** (money and tax config, 0.3.0) and **D** (scenarios, shared components, chart, backup and restore). Rewritten at the start of every slice. Roadmap and status live in `PLAN.md`. Slice 0 is Done (0.2.0, PR #2); its progress log is archived at the end of this file.
+Status: Done (0.4.0, PR #4, 17 October 2026). Sessions C (0.3.0) and D (0.4.0) are done, and the owner checked the deployed site. Next: slice 1a, which rewrites this file. Slice 0.5 runs as two build sessions: **C** (money and tax config, 0.3.0) and **D** (scenarios, shared components, chart, backup and restore). Rewritten at the start of every slice. Roadmap and status live in `PLAN.md`. Slice 0 is Done (0.2.0, PR #2); its progress log is archived at the end of this file.
 
 ## Docs rule
 
@@ -53,7 +53,7 @@ Scope (from the session D prompt): calculator registry; pages at `#/c/<id>` with
 - No new dependency, no network request, no allowlist change. Done.
 - WCAG AA, focus, reduced motion; new surfaces checked at 360, 768 and 1280 px in both themes with axe. Done in Chromium.
 - 0.4.0 with a changelog entry; lint, typecheck, test and build green; docs updated. Done.
-- Owner's manual checks on the deployed site (below). **Open**: slice 0.5 goes to Done after these.
+- Owner's manual checks on the deployed site (below). Done: the owner reported them broadly good on 17 October 2026, with no failures named.
 
 ## Progress log
 
@@ -94,7 +94,8 @@ Add one entry per session: date, what was done, what differs from the brief, wha
     5. Settings > Export a backup, change the theme, Restore from a backup: the preview shows, then your theme comes back.
     6. Turn on "Show the tax year’s dates": the "not verified" notice replaces the results; its link opens Tax data, and closing returns to the calculator.
     7. VoiceOver: the chart reads its title and summary; an input error is read with the field; the Delete toast says Undo is available.
-  - Next: the owner runs the checklist, then sets slice 0.5 to Done (0.4.0, the PR number, the date). Then **slice 1a** (config and engine): verify and fill `2026-27` from GOV.UK and HMRC with sources in `docs/verification-log.md`, collect worked examples, fill the rounding table in `docs/money.md`, then the pure engine, tests first. Notes for 1a and 1b:
+  - Owner sign-off (17 October 2026): PR #4 merged and deployed (Pages run 39053101048); the owner ran the checklist with their own numbers and reported it broadly good. Slice 0.5 set to Done (0.4.0, PR #4).
+  - Next: **slice 1a** (config and engine): verify and fill `2026-27` from GOV.UK and HMRC with sources in `docs/verification-log.md`, collect worked examples, fill the rounding table in `docs/money.md`, then the pure engine, tests first. Notes for 1a and 1b:
     - A new calculator is a registry entry (`src/calculators/<name>/definition.ts`: defaults, `validateInputs` building a fresh object, `migrateInputs`, `summarise`), a page in `pages.tsx`, and `requireVerified` inside `calc.ts`; build the page from the shared components (see the Hello page).
     - Money inputs are `Money` (pence); percentages are stored as canonical text and read with `percentRatio`.
     - Bump a calculator's `inputsVersion` and handle the old shape in `migrateInputs` whenever its inputs change after release.
