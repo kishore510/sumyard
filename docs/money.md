@@ -26,7 +26,7 @@ Code: `src/lib/money.ts` (arithmetic) and `src/lib/format.ts` (display). Both ar
 
 ## Rounding per calculation (slice 1a, session E)
 
-What GOV.UK and HMRC say about rounding for each step the optimiser needs, read on 17 October 2026. **No mode is chosen here.** Where guidance states a rule, the quote and source are given; where it is silent, the row says **not stated** and the mode is to be agreed with the owner before session F writes the step. The `money.ts` mode that appears to match is noted only as a pointer for that conversation.
+What GOV.UK and HMRC say about rounding for each step the optimiser needs, read on 17 October 2026. Where guidance states a rule, the quote and source are given; where it is silent, the row says **not stated**. The modes now used are in **Decided rounding** below (session F); this table stays as the record of what the guidance says.
 
 | Step | What the guidance says | Unit | Source | Status |
 |---|---|---|---|---|
@@ -42,6 +42,23 @@ What GOV.UK and HMRC say about rounding for each step the optimiser needs, read 
 Not read: HMRC's CA38 (National Insurance tables) and CA44 (directors) for 2026 to 2027, and the taxable pay tables, all PDFs that this environment's proxy refused. Legislation was not consulted.
 
 If a step's guidance rounds negative amounts differently (for example towards zero rather than towards minus infinity), session F adds a mode rather than reuse one that does not match.
+
+## Decided rounding (slice 1a, session F)
+
+The owner's decision D3 (`docs/modelling-decisions.md`), recorded 17 October 2026. **Where the guidance above states a rule, it is used. Everywhere else there is no intermediate rounding:** amounts stay exact, fractions of a penny included, and each output component is rounded once to the nearest penny (`nearest`, halves away from zero). Totals are sums of the rounded components.
+
+| Step | Mode | Where | Basis |
+|---|---|---|---|
+| Personal allowance taper reduction | Exact by default (`ModellingPolicy.taperRounding: 'exact'`); the allowance shown is rounded to the nearest penny, and income tax uses the exact figure. Option `'wholePoundsDown'`: the reduction is rounded down to a whole pound (`roundToPounds(…, 'down')`). | `personalAllowance`, `incomeTax` | Decisions D3, D4. Not stated on GOV.UK. The option differs from the default by less than £1 of allowance. |
+| Taxable income and each band's income | Exact; rounded to the nearest penny for output only. | `incomeTax` | D3. |
+| Income tax, each band | Exact rate × band income, rounded to the nearest penny (`roundExact(…, 'nearest')`). Total = sum of the bands. | `incomeTax` | D3 (O6: not stated on GOV.UK). |
+| Employee National Insurance | Each rate's contribution to the nearest penny (`mulRound(…, 'nearest')`; amounts are never negative, so a half penny rounds up, as NIM11002 states). Annual, not per period. | `employeeNI` | Stated (NIM11002); annual model D1. |
+| Student loan and postgraduate loan repayments | Rate × pay above the threshold, rounded down to a whole pound (`mulRound(…, 'down')` then `roundToPounds(…, 'down')`, which equals one floor to the pound). Each plan's repayment separately. Annual, not per period. | `studentLoan` | Stated for PAYE deductions (SL3 2026 to 2027), applied to the annual figure by decision D3; annual model D1. |
+| Monthly and weekly views | Each annual component divided by the months or weeks in a year (`src/lib/periods.ts`), to the nearest penny. A view's net can differ by a penny or so from its gross less its deductions. | `takeHome` | D3. Display only, not payroll. |
+| HICBC charge (session G) | Whole steps only; the charge to the nearest penny at output. | Session G | Decisions G1, D3. |
+| Relief at source gross-up, annual allowance taper (session G) | Gross-up: exact, nearest penny at output (D3). Annual allowance taper: the stated rule above (reduction rounded down to £1). | Session G | D3; PTM057100. |
+
+Exact amounts use `ExactPence` (`exact`, `exactMul`, `exactAdd`, `exactSubtract`, `compareExact`, `roundExact` in `money.ts`, added in session F): BigInt fractions of a penny in lowest terms, which become `Money` only through `roundExact`.
 
 ## Display (`format.ts`)
 

@@ -34,6 +34,7 @@ Decided in the slice 0 recon (see `PHASE-BRIEF.md` progress log): mirror Chalkli
 - Never state a tax rate, threshold, allowance or rule from memory as fact, in code, tests, comments, docs or the UI. If a figure is needed and not in config, stop and flag it for verification against gov.uk/HMRC.
 - Each calculator is cross-checked against an authoritative source or a worked example. Examples live in `docs/worked-examples.md` with source links and are mirrored as tests.
 - List edge cases per calculator and give each a test (for example: personal allowance taper over the threshold, Scottish bands, daily vs monthly mortgage interest).
+- Where GOV.UK leaves a choice, the owner's decision in `docs/modelling-decisions.md` applies; a GOV.UK page that contradicts one wins (stop and report). Engine code holds no figure: `literals.test.ts` allows only 0, 1, 2 and 100.
 - If the maths or design looks wrong, say so and propose an alternative before building it.
 
 ## Privacy and data

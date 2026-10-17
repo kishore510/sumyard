@@ -4,5 +4,6 @@ One folder per calculator: `<name>/calc.ts` (pure function, no UI, storage, date
 
 - `registry.ts`: the registry type and `readInputs` (migrate, then validate). `index.ts`: the app's calculators. `pages.tsx`: each one's lazily loaded page (`#/c/<id>`).
 - `session.ts`: what a page shows (tax year, inputs, which scenario is open) for the visit.
+- `optimiser/`: the optimiser's core tax engine (slice 1a): pure take-home pay functions (income tax with the taper, employee NI, student loans), tests and `README.md`. Internal for now: no page or registry entry until slice 1b.
 - `hello/`: the Hello calculator, a **placeholder** removed when the first real calculator ships.
 - `fixtures/`: fake calculators for tests only.

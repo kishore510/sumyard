@@ -1,6 +1,6 @@
 # Phase plan: Sumyard
 
-Last updated: 17 October 2026 (slice 0.5 Done; slice 1a session E: 2026-27 tax config verified, 38 of 38 values, with nine OPEN questions for the engine, 0.5.0, PR #5)
+Last updated: 17 October 2026 (slice 1a session F: core tax engine, take-home pay without pension, internal, 0.6.0; session G next)
 
 Draft roadmap. When a slice starts, rewrite its prompt against the real code (see the skeleton in PHASE-BRIEF.md). Do not treat these notes as final prompts.
 
@@ -141,7 +141,7 @@ Status values: Not started, In progress, Done (version, PR, date).
 ### 1a Optimiser: config and engine
 Gate: the config step must be finished and logged before any engine code is written.
 
-- **Progress (17 October 2026).** Runs as two sessions. **Session E done (0.5.0, PR #5, merged and deployed 17 October 2026): config step done.** All 38 values in `2026-27.ts` verified from www.gov.uk pages read on 17 October 2026, one commit per group, each logged in `docs/verification-log.md` with the line it came from and a second source where one exists. Counts: tax year dates 2/2, personal allowance and taper 3/3, rUK bands 1/1, Scottish bands 1/1, employee NI 4/4, employer NI 2/2, student loans 10/10, pensions 8/8, Child Benefit and HICBC 5/5, childcare 2/2. Nothing left `todo`. Rounding guidance in `docs/money.md` (stated for NI, student loan deductions and the annual allowance taper; not stated for the rest). 23 published worked examples in `docs/worked-examples.md`. **Session F (engine) not started**: it waits on the owner's answers to the log's OPEN questions O1 to O9.
+- **Progress (17 October 2026).** Runs as two sessions. **Session E done (0.5.0, PR #5, merged and deployed 17 October 2026): config step done.** All 38 values in `2026-27.ts` verified from www.gov.uk pages read on 17 October 2026, one commit per group, each logged in `docs/verification-log.md` with the line it came from and a second source where one exists. Counts: tax year dates 2/2, personal allowance and taper 3/3, rUK bands 1/1, Scottish bands 1/1, employee NI 4/4, employer NI 2/2, student loans 10/10, pensions 8/8, Child Benefit and HICBC 5/5, childcare 2/2. Nothing left `todo`. Rounding guidance in `docs/money.md` (stated for NI, student loan deductions and the annual allowance taper; not stated for the rest). 23 published worked examples in `docs/worked-examples.md`. **Session F done (0.6.0, internal): core tax engine.** The owner confirmed the spot-check of the verified values and answered O1 to O9 as modelling decisions (`docs/modelling-decisions.md`: D1 to D7 for F, G1 to G4 recorded for G). `src/calculators/optimiser/`: `personalAllowance`, `incomeTax`, `employeeNI`, `studentLoan`, `takeHome`, `ModellingPolicy` and `TaxInputs`, pure and config-driven, tests first (red, then green). 12 published examples mirrored; property, edge-case and literal-guard tests; 72 HMRC cross-check cases pending in `docs/hmrc-cross-checks.json`. No UI, registry entry or new dependency. **Session G** (pensions, adjusted net income, HICBC, annual allowance, childcare check, `optimise()`) is next.
 - **What changed from these notes (session E):**
   - Schema change: two new leaves, `pension.reliefAtSourceRate` and `childBenefit.hicbc.incomePerPercent`, so the engine never hardcodes the relief-at-source rate or the HICBC step. No `note` field was needed: every value is on www.gov.uk.
   - Bands are stored as income after allowances (as HMRC's tables state them), each rate applying above its `from` (the previous band's published upper limit). NI thresholds are the annual figures; weekly and monthly ones are logged, not stored (O1).
@@ -151,7 +151,15 @@ Gate: the config step must be finished and logged before any engine code is writ
   - HMRC PDFs on assets.publishing.service.gov.uk (CA38, CA44, tax tables) could not be fetched from the build environment.
   - The Tax data screen shows bands as "20% above £…" on income after allowances.
 - **Rollback (0.5.0 to 0.4.0):** safe. No storage key or record changed; 0.4.0 shows the year as not verified again.
-- **Follow-up for session F:** answers to O1 to O9; the rounding modes to use (`docs/money.md`); which worked examples to mirror; then the engine, tests first.
+- **What changed from these notes (session F):**
+  - The engine is **annual** (D1): NI and student loans use the annual thresholds; results say payroll works per pay period. Monthly and weekly views are the annual figures divided evenly, labelled.
+  - The taper takes an income figure as input (gross pay in `takeHome`); `adjustedNetIncome` moves to session G, so `incomeTax` takes `(income, region, config, policy)` rather than `(taxableIncome, region, config)`.
+  - `ModellingPolicy.taperRounding` (`'exact'` default, `'wholePoundsDown'`) settles odd taper amounts (D4); the two differ by less than £1 of allowance.
+  - `studentLoan` uses NI-able pay, checked against SL3 and CSLM16030 (D5); with several undergraduate plans, one repayment at the lowest threshold; the postgraduate loan on top.
+  - No intermediate rounding (D3): `money.ts` gained `ExactPence` (exact fractions of a penny until output). `src/lib/periods.ts` holds the month and week divisors, outside the engine, so the engine's literal guard (only 0, 1, 2, 100) holds.
+  - Two published income tax examples added to `docs/worked-examples.md` (IT-1, IT-2) to confirm marginal bands (D2), and the stated zero point (PA-1).
+- **Rollback (0.6.0 to 0.5.0):** safe. Internal code only; no storage key, record, config value or screen changed.
+- **Follow-up for session G:** the pension methods' effect on NI-able pay, taxable pay and the student loan figure (confirm on GOV.UK, D5); the ANI step order for salary sacrifice and net pay (G2, OPEN); Child Benefit weeks (G4, OPEN); HICBC whole steps (G1); the owner's HMRC cross-checks (`docs/hmrc-cross-checks.json`).
 
 Config. All values must be looked up on gov.uk/HMRC and entered with source URL and date. Do not rely on memory or on this document.
 - Personal allowance, taper start, taper rate, and the income at which it reaches zero.
@@ -207,7 +215,8 @@ Engine (pure functions, tests first: red commit, then green).
 ## Open questions
 
 - Tax-config sources beyond www.gov.uk: allow `https://www.legislation.gov.uk/` (exact prefix, `.js` only) if a value is only published there? Widens the URL allowlist, so the owner decides. Not needed for 2026-27 (session E found every value on www.gov.uk).
-- Slice 1a engine questions O1 to O9 (`docs/verification-log.md`): NI per period or annual; the student loan pay figure; band boundaries; HICBC partial £200 and rounding; taper rounding; income tax rounding; childcare minimum earnings; Child Benefit weeks; higher-rate relief and ANI order.
+- Slice 1a engine questions: O1 to O9 answered by the owner's decisions (`docs/modelling-decisions.md`). Still open for session G: the order of the adjusted net income steps for salary sacrifice and net pay (O9, G2); Child Benefit weeks in the year, unless a GOV.UK page states it (O8, G4); the student loan pay figure under each pension method (O2).
+- HMRC cross-checks: 72 cases in `docs/hmrc-cross-checks.json` wait for the owner's figures from HMRC's calculators.
 - URL-hash state sharing (a shareable link of inputs, local only): in or out.
 - Coverage target for pure calculator code.
 - Sumyard name and domain availability.
@@ -230,6 +239,7 @@ Engine (pure functions, tests first: red commit, then green).
 - Remember the compare selection across visits (it lasts for the visit now).
 - A "Discard changes" action on a loaded scenario (today: load it again).
 - Chart tooltips on hover or tap (values are in the summary and the data table now).
+- A per-pay-period payroll view (monthly thresholds, bonus months) beside the annual model, if payslip matching is wanted (D1).
 - Add Zustand and Zod if a later slice's state or import validation outgrows the small store and hand-written checks.
 - A later tax year that includes April 2029: model the salary sacrifice NICs cap (logged as informational in session E).
 - Show the source page's title next to "Source: GOV.UK" on Tax data, so identical link texts are told apart by sight (they differ only in their accessible names today).

@@ -2,7 +2,12 @@ import { describe, expect, it } from 'vitest'
 import {
   add,
   compare,
+  compareExact,
   compareRatio,
+  exact,
+  exactAdd,
+  exactMul,
+  exactSubtract,
   fromPence,
   fromPounds,
   MoneyError,
@@ -12,6 +17,7 @@ import {
   percent,
   type RoundingMode,
   ratio,
+  roundExact,
   roundToPounds,
   subtract,
   subtractRatio,
@@ -286,5 +292,60 @@ describe('ratio comparison and difference (added in session D for inputs and com
 
   it('subtractRatio throws past the safe range', () => {
     expect(() => subtractRatio(ratio(1, 9_007_199_254_740_881), ratio(1, 9_007_199_254_740_847))).toThrow(MoneyError)
+  })
+})
+
+describe('exact pence (added in slice 1a session F for rules that leave part of a penny before output)', () => {
+  const half = ratio(1, 2)
+  const third = ratio(1, 3)
+
+  it('exact keeps whole pence, in lowest terms', () => {
+    expect(exact(p(7))).toEqual({ numerator: 7n, denominator: 1n })
+    expect(exact(p(-3))).toEqual({ numerator: -3n, denominator: 1n })
+    expect(() => exact(1.5 as never)).toThrow(MoneyError)
+  })
+
+  it('multiplies by a Ratio exactly and reduces', () => {
+    expect(exactMul(exact(p(3)), half)).toEqual({ numerator: 3n, denominator: 2n })
+    expect(exactMul(exact(p(4)), half)).toEqual({ numerator: 2n, denominator: 1n })
+    expect(exactMul(exactMul(exact(p(1)), third), ratio(3, 1))).toEqual({ numerator: 1n, denominator: 1n })
+    expect(() => exactMul(exact(p(1)), { numerator: 1, denominator: 0 })).toThrow(MoneyError)
+  })
+
+  it('adds, subtracts and compares fractions exactly', () => {
+    const a = exactMul(exact(p(1)), half)
+    const b = exactMul(exact(p(1)), third)
+    expect(exactAdd(a, b)).toEqual({ numerator: 5n, denominator: 6n })
+    expect(exactSubtract(a, b)).toEqual({ numerator: 1n, denominator: 6n })
+    expect(exactSubtract(b, a)).toEqual({ numerator: -1n, denominator: 6n })
+    expect(exactSubtract(a, a)).toEqual({ numerator: 0n, denominator: 1n })
+    expect(compareExact(a, b)).toBe(1)
+    expect(compareExact(b, a)).toBe(-1)
+    expect(compareExact(a, exactMul(exact(p(2)), ratio(1, 4)))).toBe(0)
+  })
+
+  it('rounds once, by mode, like mulRound', () => {
+    const cases: [number, number, RoundingMode, number][] = [
+      [3, 2, 'nearest', 2],
+      [3, 2, 'down', 1],
+      [3, 2, 'up', 2],
+      [-3, 2, 'nearest', -2],
+      [-3, 2, 'down', -2],
+      [-3, 2, 'up', -1],
+      [4, 3, 'nearest', 1],
+      [5, 3, 'nearest', 2],
+    ]
+    for (const [n, d, mode, expected] of cases) expect(roundExact(exactMul(exact(p(n)), ratio(1, d)), mode)).toBe(expected)
+    for (const [amount, factor, mode] of [
+      [p(12_345), ratio(7, 9), 'nearest'],
+      [p(-12_345), ratio(7, 9), 'down'],
+      [p(999), ratio(1, 3), 'up'],
+    ] as const)
+      expect(roundExact(exactMul(exact(amount), factor), mode)).toBe(mulRound(amount, factor, mode))
+  })
+
+  it('refuses a result past the safe range', () => {
+    expect(() => roundExact(exactMul(exact(p(MAX)), ratio(2, 1)), 'nearest')).toThrow(MoneyError)
+    expect(roundExact(exact(p(MAX)), 'nearest')).toBe(MAX)
   })
 })
