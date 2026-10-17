@@ -4,8 +4,8 @@
  * inject markup or scripts.
  *
  * Blocks: ## and ### headings, paragraphs, - and 1. lists, > tips, ``` code.
- * Inline: **bold**, _italic_, `keys or code`, [links](help:topic-id) and
- * [links](https://www.gov.uk/…). Any other link target (including any other
+ * Inline: **bold**, _italic_, `keys or code`, [links](help:topic-id),
+ * [links](sheet:tax-data) to another sheet, and [links](https://www.gov.uk/…). Any other link target (including any other
  * https site) is shown as plain text, so Help can only link where the
  * build's URL scan allows. Images are never shown: only their alt text.
  *
@@ -35,8 +35,9 @@ export interface ParseOptions {
   untrusted?: boolean
 }
 
-/** `help:topic-id` links open another topic; GOV.UK links open in a new tab. */
+/** `help:topic-id` links open another topic; `sheet:<page>` opens another sheet; GOV.UK links open in a new tab. */
 export const HELP_LINK = /^help:([a-z0-9-]+)$/
+export const SHEET_LINK = /^sheet:(tax-data|settings|about|whats-new)$/
 const SAFE_EXTERNAL = /^https:\/\/(?:www\.)?gov\.uk(?:[/?#][^\s]*)?$/
 
 const INLINE = /`([^`]+)`|\*\*(.+?)\*\*|(?<![\w])_(.+?)_(?![\w])|!\[([^\]]*)\]\(([^)]*)\)|\[([^\]]+)\]\(([^)\s]+)\)/g
@@ -70,7 +71,8 @@ export function parseInline(text: string, options: ParseOptions = {}): Inline[] 
       // Not a link: the text, then the address as plain text so the person can see (and copy) it.
       out.push(...parseInline(linkText!, options))
       if (href !== linkText) push(` (${href})`)
-    } else if (HELP_LINK.test(href!) || SAFE_EXTERNAL.test(href!)) out.push({ type: 'link', href: href!, children: parseInline(linkText!) })
+    } else if (HELP_LINK.test(href!) || SHEET_LINK.test(href!) || SAFE_EXTERNAL.test(href!))
+      out.push({ type: 'link', href: href!, children: parseInline(linkText!) })
     else push(linkText!)
   }
   push(text.slice(last))

@@ -21,6 +21,10 @@ If saving fails, Sumyard tells you, and the change lasts until you close it. Abo
 
 The marker is remembered in this browser. If storage is blocked, it shows again on each visit.
 
+## Tax data says “Not yet verified”
+
+That is expected in this version: no tax figure has been checked yet, so none is used. See [How tax data and “last verified” work](help:tax-data-and-last-verified).
+
 ## The page looks out of date
 
 Reload the page. What’s new shows the version you are on; About shows its build.

@@ -17,7 +17,7 @@ export interface OwnedKey {
 
 export const STORAGE_KEYS = {
   theme: { key: 'sumyard:v1:theme', what: 'Your theme choice: System, Light or Dark', schemaVersion: 1 },
-  settings: { key: 'sumyard:v1:settings', what: 'Your default region and how amounts are shown', schemaVersion: 1 },
+  settings: { key: 'sumyard:v1:settings', what: 'Your default region, tax year and how amounts are shown', schemaVersion: 2 },
   lastSeenVersion: { key: 'sumyard:v1:last-seen-version', what: 'The last version whose What’s new you opened', schemaVersion: 1 },
   acknowledged: { key: 'sumyard:v1:acknowledged', what: 'That you have read the “illustrative, not advice” notice', schemaVersion: 1 },
 } as const satisfies Record<string, OwnedKey>

@@ -8,6 +8,7 @@ import { useStore } from '@/lib/store'
 import { APP_VERSION } from '@/version'
 import { sheets } from './navigation'
 import { NavRow, SectionTitle } from './parts'
+import { parseHash } from './route'
 
 const QUICK_START = 'quick-start'
 
@@ -62,7 +63,7 @@ export function HelpPage() {
           <NavRow
             icon={<Settings />}
             title="Settings"
-            detail="Theme, region and how amounts are shown"
+            detail="Theme, region, tax year and how amounts are shown"
             onClick={() => nav.open({ kind: 'settings' })}
           />
           <NavRow
@@ -96,7 +97,13 @@ export function TopicPage({ id }: { id: string }) {
   }
   return (
     <div className="pb-4">
-      <Markdown blocks={topic.blocks} onTopic={(next) => nav.open({ kind: 'topic', id: next })} />
+      <Markdown
+        blocks={topic.blocks}
+        onTopic={(next) => {
+          const sheet = next.startsWith('sheet:') ? parseHash(`#/${next.slice(6)}`) : null
+          nav.open(sheet ?? { kind: 'topic', id: next })
+        }}
+      />
     </div>
   )
 }

@@ -11,9 +11,10 @@ This version sets up the app itself. **There are no calculators yet**; they arri
 
 - **Theme**: the button in the top bar cycles through **System**, **Light** and **Dark**. System follows your device.
 - **Menu**: the menu button in the top bar opens Settings, Help and what’s new, and About Sumyard.
-- **Settings**: your theme, a default region and how amounts will be shown. See [Scenarios and saving](help:scenarios-and-saving) for what is kept.
+- **Settings**: your theme, a default region, a default tax year and how amounts will be shown. See [Scenarios and saving](help:scenarios-and-saving) for what is kept.
 - **What’s new**: the changes in each version. A **New** marker shows until you open it.
 - **About**: the version, how much Sumyard stores in this browser, privacy and credits.
+- **Tax data**: every tax figure Sumyard will use, with its GOV.UK source and the date it was checked. None is verified yet. See [How tax data and “last verified” work](help:tax-data-and-last-verified).
 
 ## Getting around
 

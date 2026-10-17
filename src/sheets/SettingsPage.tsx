@@ -1,6 +1,10 @@
 import { RotateCcw } from 'lucide-react'
 import { Choice } from '@/components/Choice'
+import { SheetLink } from '@/components/SheetLink'
 import { Button } from '@/components/ui/button'
+import { listTaxYears, taxYearLabel } from '@/config/tax/index'
+import type { TaxYearId } from '@/config/tax/schema'
+import { yearStatus } from '@/config/tax/sourced'
 import { themeStore, useTheme } from '@/hooks/useTheme'
 import { useStore } from '@/lib/store'
 import type { ThemePreference } from '@/lib/theme'
@@ -10,7 +14,8 @@ import { SectionTitle } from './parts'
 
 /*
  * Settings (generalised from Chalkline's SettingsSheet: the diagram, AI and
- * backup sections are dropped; backup and restore arrive in slice 0.5).
+ * backup sections are dropped; backup and restore arrive in slice 0.5
+ * session D).
  */
 
 const THEMES: { value: ThemePreference; label: string }[] = [
@@ -28,6 +33,12 @@ const AMOUNT_OPTIONS: { value: AmountStyle; label: string }[] = [
   { value: 'pounds', label: 'Whole pounds' },
   { value: 'pence', label: 'Pounds and pence' },
 ]
+
+/** The registry's years, each labelled "not yet verified" while any of its values is. */
+const TAX_YEAR_OPTIONS: { value: TaxYearId; label: string; verified: boolean }[] = listTaxYears().map((year) => {
+  const verified = yearStatus(year).complete
+  return { value: year.id, label: `${taxYearLabel(year.id)}${verified ? '' : ' (not yet verified)'}`, verified }
+})
 
 const notSaved = () =>
   toasts.show({ message: 'Couldn’t save in this browser (storage is blocked or full). This change lasts until you close Sumyard.' })
@@ -81,17 +92,23 @@ export function SettingsPage() {
             onChange={(amounts) => update({ amounts })}
             hint="How results will be shown. No calculator uses it yet."
           />
-          {/*
-           * Slice 0.5: a tax-year default goes here, offering the years in the
-           * config registry (src/config/tax/index.ts). Until that exists,
-           * this is a labelled placeholder with no control, so nothing
-           * implies a tax year is loaded or verified.
-           */}
-          <div className="flex flex-col gap-1.5" data-stub="tax-year">
-            <span className="text-sm font-medium text-text">Tax year</span>
-            <p className="rounded-md border border-dashed border-border-strong px-3 py-2 text-sm text-text-muted">
-              Coming in a later version. Sumyard has no tax figures yet, so there is no tax year to choose.
-            </p>
+          <div className="flex flex-col gap-1">
+            <Choice
+              id="settings-tax-year"
+              label="Tax year"
+              value={settings.taxYear}
+              options={TAX_YEAR_OPTIONS}
+              onChange={(taxYear) => update({ taxYear })}
+              stacked
+              hint={
+                TAX_YEAR_OPTIONS.find((o) => o.value === settings.taxYear)?.verified
+                  ? 'Which tax year calculators start with.'
+                  : 'Which tax year calculators start with. Its figures are not yet verified, so calculators will show no results for it.'
+              }
+            />
+            <SheetLink route={{ kind: 'tax-data' }} className="inline-flex min-h-touch items-center self-start text-sm">
+              See tax data
+            </SheetLink>
           </div>
         </div>
       </section>
@@ -103,7 +120,9 @@ export function SettingsPage() {
             <RotateCcw />
             Reset settings to defaults
           </Button>
-          <p className="text-xs text-text-muted">Theme back to System, region and amounts back to their defaults. You can undo it.</p>
+          <p className="text-xs text-text-muted">
+            Theme back to System; region, amounts and tax year back to their defaults. You can undo it.
+          </p>
         </div>
       </section>
 

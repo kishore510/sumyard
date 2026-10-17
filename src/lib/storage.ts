@@ -51,6 +51,44 @@ export function readRecord(text: string | null, schemaVersion: number): Record<s
   }
 }
 
+/** Upgrades a record from schema version n to n + 1. May throw if it can't read the old record. */
+export type Migration = (record: Record<string, unknown>) => Record<string, unknown>
+
+/**
+ * The migration hook. Reads a versioned record at any version from 1 up to
+ * `schemaVersion`, runs `migrations[n]` for each step from its version up, and
+ * returns it stamped with `schemaVersion`. Null if the text is unreadable, is
+ * a newer version, needs a step that doesn't exist, or a step throws: callers
+ * then use their defaults, as for a missing record.
+ */
+export function upgradeRecord(
+  text: string | null,
+  schemaVersion: number,
+  migrations: Readonly<Record<number, Migration>>,
+): Record<string, unknown> | null {
+  if (text === null) return null
+  let record: Record<string, unknown>
+  try {
+    const parsed: unknown = JSON.parse(text)
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) return null
+    record = parsed as Record<string, unknown>
+  } catch {
+    return null
+  }
+  const from = record.schemaVersion
+  if (typeof from !== 'number' || !Number.isInteger(from) || from < 1 || from > schemaVersion) return null
+  try {
+    for (let version = from; version < schemaVersion; version++) {
+      const step = migrations[version]
+      if (!step) return null
+      record = step(record)
+    }
+  } catch {
+    return null
+  }
+  return { ...record, schemaVersion }
+}
+
 const NAMESPACE = 'sumyard:'
 
 type Enumerable = Pick<Storage, 'length' | 'key' | 'getItem'>

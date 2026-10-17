@@ -142,7 +142,7 @@ export function MainMenu() {
               Scenarios
             </Item>
           </div>
-          <p className="px-3 pt-1 pb-2 text-xs text-text-muted">Changes are saved in this browser. Export to keep a copy.</p>
+          <p className="px-3 pt-1 pb-2 text-xs text-text-muted">Changes are saved in this browser.</p>
         </Panel>
       )}
     </div>
