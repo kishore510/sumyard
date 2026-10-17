@@ -1,6 +1,6 @@
 # PHASE-BRIEF: Slice 0.5 Core plumbing
 
-Status: In progress. Slice 0.5 runs as two build sessions: **C** (money and tax config, 0.3.0) and **D** (scenarios, shared components, chart, backup and restore). Rewritten at the start of every slice. Roadmap and status live in `PLAN.md`. Slice 0 is Done (0.2.0, PR #2); its progress log is archived at the end of this file.
+Status: In progress. Session C (money and tax config, 0.3.0) is done; session D is next. Slice 0.5 runs as two build sessions: **C** (money and tax config, 0.3.0) and **D** (scenarios, shared components, chart, backup and restore). Rewritten at the start of every slice. Roadmap and status live in `PLAN.md`. Slice 0 is Done (0.2.0, PR #2); its progress log is archived at the end of this file.
 
 ## Docs rule
 
@@ -44,11 +44,40 @@ Tests first (red, then green) for money, format, schema guards, registry, the se
 
 ## Session D: scenarios, shared components, chart, backup and restore
 
-Not started. Scope comes from `PLAN.md` slice 0.5 notes and session C's handover below.
+Not started. Scope comes from `PLAN.md` slice 0.5 notes and session C's handover in the progress log below.
 
 ## Progress log
 
 Add one entry per session: date, what was done, what differs from the brief, what the next session should pick up, and which docs were updated.
+
+- **17 October 2026, build session C (money and tax config). Version 0.3.0.**
+  - Pre-check: PR #2 merged, Pages deploy for it succeeded; the owner confirmed the session B manual checklist, so slice 0 is Done (0.2.0, PR #2, 17 October 2026).
+  - Done (tests first: red `421253b`, green `a525056`):
+    - [x] 1 Money (`src/lib/money.ts`): branded integer pence; `fromPounds` (safe whole pounds, or a digits string with at most two decimals; no parsing or rounding), `fromPence`, `toPence`, `add`, `subtract`, `compare`, `min`, `max`, `mulRound(amount, Ratio, mode)` in BigInt with `nearest` (halves away from zero), `down` (floor), `up` (ceiling), and `roundToPounds`. Every operation checks inputs and result and throws `MoneyError` past the safe-integer range. Rates are `Ratio`s (`ratio`, `percent("7.5")`). `docs/money.md` documents it, with the per-step rounding table left for 1a.
+    - [x] 2 Formatting (`src/lib/format.ts`): `formatGBP(amount, 'pounds' | 'pence')` (the Settings value), `formatGBPCompact` for charts, `formatPercent`, `formatIsoDate`; en-GB, all from integer pence in BigInt.
+    - [x] 3 Schema (`src/config/tax/schema.ts`): `TaxYearConfig` with every area in the brief; income tax bands as a sourced list per region; a reserved `savingsAndDividends` slot. `TAX_GROUPS` gives the screen's ten groups and a label and kind per leaf; leaf paths and value types are derived from the type.
+    - [x] 4 Sourced values (`sourced.ts`): `Sourced<T>` union with `SourceUrl` (`https://www.gov.uk/${string}`) and `IsoDate`; `isSourceUrl`, `isVerified` (a malformed leaf counts as unverified), `requireVerified(config, paths)` returning typed values or `{ ok: false, taxYear, unverified }`. Twelve `@ts-expect-error` cases prove the type errors (malformed leaves and unknown paths).
+    - [x] 5 Registry (`index.ts`): `createRegistry`, `getTaxYear`, `latestTaxYear` (from ids, never today's date), `listTaxYears` (newest first), `taxYearLabel`. Skeleton `2026-27.ts`: every leaf `TODO`, no number literal apart from its id.
+    - [x] 6 Fixtures and guards: `fixtures/fakeTaxYears.ts` (years 2096-97 to 2098-99, fake values, marker `sumyard-fake-fixture`). `audit.ts` plus `configs.test.ts`: every real year file is registered and audits clean; 22 fault cases fail it (bare numbers, todo with a value, missing or non-GOV.UK source, bad date, wrong value kind, unknown or missing leaf), plus a future date and a legislation.gov.uk source. Only tests import the fixtures, and the build fails if the marker reaches `dist/`.
+    - [x] 7 Tax data screen (`#/tax-data`, `TaxDataPage.tsx`): each year with its badge and count, each group as a disclosure with "Not yet verified (0 of n verified)", "x of n verified. Some not yet verified" or "All n verified" (icon and words, not colour alone); each verified leaf shows its value, "Verified <date>" and a "Source: GOV.UK" link (`target="_blank" rel="noopener noreferrer"`). Empty state for no years. Linked from About, Settings and the Help topic.
+    - [x] 8 `VerifiedBadge`: "<year> tax year · Not yet verified" or "· Last verified <date>" (the most recent check, once every value is verified); a link to Tax data, or plain on the Tax data screen.
+    - [x] 9 Settings: real tax-year choice ("2026 to 2027 (not yet verified)"), a hint that unverified years show no results, and a "See tax data" link. Settings record schema 2 with `taxYear`; schema 1 migrates on read through the new `upgradeRecord` hook in `src/lib/storage.ts`. Reset covers the tax year.
+    - [x] 10 Menu footnote "Changes are saved in this browser."; Help topics updated (tax data topic rewritten; Quick start, Scenarios and saving, Troubleshooting adjusted).
+    - [x] URL-scan question answered (below); no allowlist change.
+    - [x] Checked in Chromium (Playwright and axe-core 4.10, scratch script, not committed): 267 checks at 360, 768 and 1280 px in light and dark, plus reduced motion at 360. Tax data deep link, title focus, ten groups all unverified, keyboard-opened disclosure, focus trap, Esc to About, then Help, then close; About link and back arrow; focus back on the menu button; Settings option, schema 2 saved, link to Tax data; Help topic link; menu footnote; 44 px targets; no horizontal scroll; only owned keys; no external requests; no console errors; reduced-motion sheet animation 0 s; a schema 1 record migrating in the real app. axe found 0 violations on Tax data (closed and open), About, Settings and the tax data Help topic in every combination, after one fix (below).
+  - **URL-scan finding:** `scripts/checks/externalUrls.ts` scans every URL in every text file in `dist/`, JavaScript strings included. `https://www.gov.uk/...` and `https://gov.uk/...` pass anywhere except a fetch context; all other hosts fail, including `www.legislation.gov.uk` and `assets.publishing.service.gov.uk`; no `INERT_URLS` entry concerns gov.uk. So GOV.UK sources need **no new allowlist entry**, and the scan is unchanged. The narrowest rule is enforced on the config side instead (a minified bundle can't show where a string came from): `isSourceUrl` accepts only `https://www.gov.uk/` pages without credentials, port or quote-like characters; the `SourceUrl` type and the audit test enforce it; sources render only from verified leaves as plain anchors. Fixture tests prove a verified leaf and its anchor pass the scan and legislation.gov.uk fails. **Owner decision pending:** allowing legislation.gov.uk would need an exact `https://www.legislation.gov.uk/` prefix rule (`.js` only), mirrored in `isSourceUrl`. Not done.
+  - Differences from the brief:
+    - `Sourced<T>` uses `status: 'todo'` instead of the `TODO_VERIFY` marker in `PLAN.md`; the audit rejects a leftover `TODO_VERIFY`.
+    - Bands are one sourced list per region, so the schema assumes no number of bands. The NI, HICBC and childcare groups hold only what the brief names (annual amounts; HICBC as the two thresholds); 1a may reshape them once the sources are read.
+    - The fixtures' `fakeYear` uses a small `mapLeaves` helper exported from `sourced.ts`.
+    - `fromPounds` is strict (no commas or `£`); input parsing is for session D's `CurrencyInput`. `roundToPounds` and `toPence` were added beyond the listed API.
+    - Tax data sits under About in the back stack. Help Markdown gained `sheet:` links (`sheet:tax-data`, `settings`, `about`, `whats-new`) so the Help topic can link to it.
+    - The tax-year choice is a one-option `Choice` (same component as region and amounts).
+    - **Fix outside the brief:** axe flagged `landmark-complementary-is-top-level` on Help topics with a `>` tip (an `<aside>` inside the dialog). Tips now render as `<p role="note">`. Session B's axe run likely used a topic without a tip.
+    - One red test was wrong (`percent("0")` expected 0 / 1; the rule is n / 100); corrected in the green commit.
+  - Not verified: a real phone, Safari and Firefox, a screen reader, the deployed URL, Windows high contrast; verified leaves (values, links and dates) rendered only in happy-dom tests, since no real config has one; rounding modes for tax steps (by design, 1a).
+  - Next (session D): versioned scenarios (`{ id, calculatorId, taxYear, name, inputs, createdAt, schemaVersion }`) with save, load, rename, delete with Undo, duplicate, JSON export and validated import with preview; backup and restore and clear all data in Settings; shared inputs (`CurrencyInput` parsing typed amounts into `Money`, `PercentInput` into a `Ratio`, and the rest) and result components; the token-aware `Chart` with table fallback (use `formatGBPCompact` for axes); the Hello calculator, which should call `requireVerified` and show the refusal state, with `VerifiedBadge`. When export exists, restore the menu footnote's "Export to keep a copy" and the Help wording. New storage keys must pass the storage-key guard and go in `docs/privacy.md`. Owner: decide on legislation.gov.uk sources before 1a.
+  - Docs updated: `PHASE-BRIEF.md`, `PLAN.md`, `CHANGELOG.md` (0.3.0), `CLAUDE.md` (Sourced shape, `requireVerified`, money rule, tax-source rule), new `docs/money.md` and `docs/verification-log.md`, `docs/privacy.md` (settings schema 2, migration hook, rollback, tax-source URLs), `docs/README.md`, `src/lib/README.md`, `src/config/tax/README.md`, `content/help/README.md`, the Help topics. `docs/design-tokens.md` unchanged: no token added.
 
 ## Archive: slice 0 progress log
 

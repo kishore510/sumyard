@@ -4,6 +4,21 @@ All notable changes to Sumyard are listed here, newest first. The format follows
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-17
+
+### Added
+- **Tax data:** a new page listing each tax year Sumyard has, grouped by topic: income tax, National Insurance, student loans, pensions, Child Benefit and childcare. Each group shows how many of its figures are verified, and each verified figure will show its value, a link to its GOV.UK source and the date it was checked. Open it from **About Sumyard**, **Settings** or the Help topic on tax data.
+- **No tax figures yet:** every figure for 2026 to 2027 is marked **Not yet verified**. Sumyard holds the structure only; the figures are checked against GOV.UK before any calculator uses them, and a calculator will show no results while a figure it needs is unchecked.
+- **Settings:** a default **Tax year** (2026 to 2027), labelled “not yet verified” while its figures are unchecked. Your existing settings carry over.
+- A **“last verified” label** shows a tax year and either **Not yet verified** or the date of its latest check. It appears on the Tax data page now, and next to calculator results later.
+
+### Changed
+- The menu now says only “Changes are saved in this browser.” Export arrives with scenarios.
+- Help: the tax data topic describes the Tax data page and the “last verified” label, and Quick start and Troubleshooting mention them.
+
+### Fixed
+- Tips in Help are read by screen readers as notes inside the page, not as a separate region.
+
 ## [0.2.0] - 2026-10-17
 
 ### Added

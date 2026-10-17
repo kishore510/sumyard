@@ -12,6 +12,6 @@ summary: One line shown under the title in the topic list.
 ---
 ```
 
-Supported Markdown (see `src/help/markdown.ts`): `##` and `###` headings, paragraphs, `-` and `1.` lists, `>` tips, `**bold**`, `_italic_`, `` `keys` ``, links to other topics (`[text](help:topic-id)`) and to GOV.UK (`https://www.gov.uk/...`). Any other link shows as plain text.
+Supported Markdown (see `src/help/markdown.ts`): `##` and `###` headings, paragraphs, `-` and `1.` lists, `>` tips, `**bold**`, `_italic_`, `` `keys` ``, links to other topics (`[text](help:topic-id)`), to another sheet (`[text](sheet:tax-data)`; also `settings`, `about`, `whats-new`) and to GOV.UK (`https://www.gov.uk/...`). Any other link shows as plain text.
 
 Rules: describe only what exists, or mark it clearly as coming. Never state a tax rate, threshold, allowance or rule (`src/help/topics.test.ts` rejects money amounts and percentages); calculators show their figures from config.
