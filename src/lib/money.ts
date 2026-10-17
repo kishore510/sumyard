@@ -254,7 +254,11 @@ export function roundExact(amount: ExactPence, mode: RoundingMode): Money {
  * step above zero.
  */
 export function wholeSteps(amount: ExactPence, step: Money): number {
-  void amount
-  void step
-  throw new MoneyError('wholeSteps: not implemented yet')
+  const size = BigInt(assertMoney(step, 'wholeSteps'))
+  if (size <= 0n) throw new MoneyError('wholeSteps: the step must be above zero')
+  if (amount.denominator <= 0n) throw new MoneyError('wholeSteps: the denominator must be above zero')
+  if (amount.numerator < 0n) throw new MoneyError('wholeSteps: the amount must be zero or more')
+  const count = amount.numerator / (amount.denominator * size)
+  if (count > BigInt(Number.MAX_SAFE_INTEGER)) throw new MoneyError('wholeSteps: the count is past the safe-integer range')
+  return Number(count)
 }
