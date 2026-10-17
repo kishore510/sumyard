@@ -1,6 +1,6 @@
 # PHASE-BRIEF: Slice 1a Optimiser: config and engine
 
-Status: In progress. Session E is done (0.5.0, PR #5, merged and deployed): the config step is finished and logged. Session F is done (0.6.0, internal: the core tax engine for take-home pay without pension): the owner spot-checked the verified values and answered the engine questions as modelling decisions (`docs/modelling-decisions.md`). Session G is split into G1 (pensions, adjusted net income, HICBC; 0.7.0, internal) and G2 (annual allowance, carry forward, childcare check, `optimise()`; 0.8.0). **G1 is done (0.7.0, internal); G2 is next.** Slice 1a runs as two build sessions: **E** (verify and populate the 2026-27 tax config, docs only around it, no engine code, 0.5.0) and **F** (the pure engine, tests first, after the owner answers session E's open questions). Rewritten at the start of every slice. Roadmap and status live in `PLAN.md`. Slice 0.5 is Done (0.4.0, PR #4, 17 October 2026); its progress log is archived at the end of this file, above slice 0's.
+Status: In progress. Session E is done (0.5.0, PR #5, merged and deployed): the config step is finished and logged. Session F is done (0.6.0, internal: the core tax engine for take-home pay without pension): the owner spot-checked the verified values and answered the engine questions as modelling decisions (`docs/modelling-decisions.md`). Session G is split into G1 (pensions, adjusted net income, HICBC; 0.7.0, internal) and G2 (annual allowance, carry forward, childcare check, `optimise()`; 0.8.0). **G1 is done (0.7.0, internal); G2 is done (0.8.0, internal): the engine is complete.** Slice 1a stays In progress until the owner agrees it is Done; **slice 1b (the optimiser page) is next**, and rewrites this brief. Slice 1a runs as two build sessions: **E** (verify and populate the 2026-27 tax config, docs only around it, no engine code, 0.5.0) and **F** (the pure engine, tests first, after the owner answers session E's open questions). Rewritten at the start of every slice. Roadmap and status live in `PLAN.md`. Slice 0.5 is Done (0.4.0, PR #4, 17 October 2026); its progress log is archived at the end of this file, above slice 0's.
 
 ## Docs rule
 
@@ -81,7 +81,7 @@ Out of scope: the annual allowance, carry forward, childcare, `optimise()` (G2, 
 
 ### Session G2: annual allowance, carry forward, childcare, `optimise()` (0.8.0)
 
-Next. Pure functions in `src/calculators/optimiser/`, tests first, no UI.
+Done (see the progress log). Pure functions in `src/calculators/optimiser/`, tests first, no UI.
 
 Pre-check (17 October 2026): PR #7 merged; its Pages deploy (run 39076987400) succeeded. Names and signatures confirmed in the code: `pensionContribution(pension, grossPay, config)`, `adjustedNetIncome(grossPay, pension, config)`, `hicbc(ani, children, config, policy)`, `takeHome(inputs, config, policy)`, `ModellingPolicy { taperRounding, childBenefitWeeks }`, `TaxInputs { grossPay, region, studentLoans, pension?, childBenefit? }`, `ExactPence` in `money.ts`. They match the prompt.
 
@@ -93,9 +93,45 @@ Owner decisions for G2 (recorded in `docs/modelling-decisions.md`, G4 update and
 4. `optimise(inputs, config, policy)`: sweep contribution levels on `takeHome`; the take-home and marginal-rate curves; the contribution that brings ANI to each threshold (taper start, HICBC full-charge point and threshold, childcare limit); the cliffs the sweep crosses (HICBC whole steps, student loan whole pounds) documented.
 5. Owner inputs before or during G2: Child Benefit weeks (G4); the HMRC cross-checks.
 
+## Next: slice 1b (the optimiser page)
+
+Rewrite this brief for 1b at its start, against the real code. What 1b picks up from the engine:
+
+- **Entry points:** `optimise(inputs, config, policy, options?)` for the page; `takeHome`, `annualAllowanceCheck`, `childcareCheck` and `thresholdContributions` for the breakdowns. Inputs are `OptimiserInputs` (take-home inputs, a required `pension` with the method and current contribution, `savings` with employer contributions, carry forward and the MPAA flag, `checkChildcare`). Every result has `assumptions` (no figures) to show beside it; a `Refusal` shows the unverified values instead.
+- **How to present candidate points (decision G13): never as "the best".** Suggested:
+  - The take-home (or spendable) against contribution chart from `points`, with markers for `current`, `maximum` and each threshold point, and the `cliffs` drawn as visible jumps with a label (HICBC step, childcare limit, taper switching off, student loan whole pounds), not smoothed over. A table fallback of the same points.
+  - A "cost of £1 more pension" table from `netCostPerPound` and `marginalRate`, labelled as against no contribution and since the previous point.
+  - A threshold list from `thresholds`: each one's status in words ("already under", "contribute £X more", "out of reach: over the annual allowance / over your pay / this method does not lower it"). The HICBC full-charge point: say plainly that under whole steps the charge only starts to fall a penny below it.
+  - Warnings from each point's `warnings` in a panel (over the allowance with the estimated charge, tapered allowance, carry forward used or out of time, childcare over the limit), never hidden and never a cap.
+  - Childcare: eligibility only (the support is not valued); say what is not checked (partner, minimum earnings, England only for 30 hours).
+- **Still with the owner:** agree slice 1a Done; the HMRC cross-checks (`docs/hmrc-cross-checks.json`, 72 pending; no pension or annual allowance cases yet); confirm 52 Child Benefit weeks.
+- **Not modelled (list in the page's assumptions):** defined benefit savings, first flexible access part-way through the year, Scheme Pays, the partner's income for HICBC and childcare, employer NI savings, the salary sacrifice change from April 2029, contribution timing within the year.
+
 ## Progress log
 
 Add one entry per session: date, what was done, what differs from the brief, what the next session should pick up, and which docs were updated.
+
+- **17 October 2026, build session G2 (annual allowance, carry forward, childcare, `optimise()`). Version 0.8.0, internal.**
+  - Pre-check: PR #7 merged; its Pages deploy (run 39076987400) succeeded. Names and signatures confirmed in the code (listed under "Session G2" above); they match the prompt.
+  - Done (docs and lookups `d4a2ca6`; tests first: red `2fb77d2`, green `f313108`):
+    - [x] GOV.UK lookups, logged with exact lines in `docs/verification-log.md` ("Session G2 lookups"): threshold income and adjusted income (PTM057100, PTM057200, the tapered annual allowance guidance), what counts (PTM053200, the annual allowance guide), carry forward (PTM055100, the unused allowance guidance), the MPAA (the MPAA guidance, PTM055100, PTM057100, PTM056510), the charge (PTM056110, PTM056120, PTM056130), childcare (both eligibility pages), Child Benefit for the year (HMRC press release, 31 March 2026).
+    - [x] Owner decisions and lookups recorded (`docs/modelling-decisions.md`): G4 update, G7 to G14.
+    - [x] `annualAllowanceCheck`, `annualAllowanceCharge`, `childcareCheck`, `thresholdContributions`, `optimise`; types in `types.ts`; `DEFAULT_SWEEP_STEP` and `MAX_SWEEP_POINTS` in `src/lib/sweep.ts`.
+    - [x] Tests: published AA-1 to AA-3, AA-4a, AA-4b (PTM057200), CF-1 (PTM055100), AAC-1 (PTM056110), AAC-2, AAC-3 (PTM056130), CB-1 (press release), CC-3 (Tax-Free Childcare), each citing its page; properties (headroom plus counted equals the allowance, the engine against the reference on random inputs, spendable never rising away from flagged cliffs, tax never negative, threshold points a penny either side); edge cases (the taper at both limits, its floor and beyond; carry forward unused, partly and fully used, out of time, with the taper; the MPAA; contributions above earnings; zero and negative inputs; Scotland vs rUK; each method; zero children and opt-out; a bonus over the HICBC threshold). `fixtures/reference.ts` extended independently (its threshold search walks whole pence). Literal guard passes. Mutation spot-checks: the taper without its adjusted income test (4 fail), the reduction rounded to nearest (4) or up (5), carry forward most recent first (2), childcare ineligible at the limit (6), the solver rounding down (3) or not grossing up (1), the charge at the starter rate (2), HICBC steps not flagged (1), the MPAA ignored (4).
+    - [x] `test` (1,216 passed, 72 todo), `lint`, `typecheck`, `build` pass.
+  - Differences from the brief and prompt:
+    - **Adjusted income cannot be lowered by an employee contribution under any method** (PTM057100); only threshold income can, by net pay or relief at source. The prompt's "taper start, taper end" thresholds are read as the personal allowance taper on ANI; the annual allowance threshold point is on threshold income, and adjusted income has none.
+    - **The annual allowance charge is modelled** (the owner's condition holds: PTM056110 states the steps; the config holds the bands). PTM056120 names the basic rate band extension G1 could not find.
+    - **Child Benefit weeks:** no page prints a count, but HMRC's 31 March 2026 press release gives 2026 to 2027 yearly amounts equal to 52 weeks of the weekly rates; logged, mirrored (CB-1); the default stands.
+    - Childcare eligibility uses the exact ANI, so a quarter penny over the limit is over though it shows as the limit.
+    - `takeHome`'s body moved into an internal `computeTakeHome` (behaviour unchanged) so `optimise()` reuses it without asking for the config again.
+    - "Contribution timing against the bonus": the annual model (D1) has no timing within the year; it is an assumption on every `optimise()` result, and the bonus case is tested on annual figures.
+    - Alternative annual allowance: PTM056510 and the MPAA guidance disagree (OPEN); not used with money purchase savings only.
+    - Spendable can rise by a penny between points a penny apart from rounding of each component; no test sweep hits it, but 1b should not promise strict monotonicity.
+    - `docs/hmrc-cross-checks.json` not extended (expected values must come from HMRC).
+  - Not verified: HMRC's calculators (the annual allowance calculator and cross-checks); legislation; PDFs on assets.publishing.service.gov.uk; the membership condition for carry forward and each earlier year's allowance (inputs).
+  - Next: slice 1b (above). Owner: agree slice 1a Done; HMRC cross-checks; confirm 52 Child Benefit weeks.
+  - Docs updated: `PHASE-BRIEF.md`, `PLAN.md`, `CHANGELOG.md` (0.8.0, internal), `docs/modelling-decisions.md` (G4 update, G7 to G14), `docs/verification-log.md` (Session G2 lookups; O7, O8; G1's "not found"), `docs/worked-examples.md`, `docs/money.md`, `docs/README.md`, `src/calculators/optimiser/README.md`, `src/lib/README.md`. `CLAUDE.md` unchanged: no rule changed. No Help topic or privacy text: nothing user-visible or stored changed.
 
 - **17 October 2026, build session G1 (pensions, adjusted net income, HICBC). Version 0.7.0, internal.**
   - Pre-check: PR #6 merged; its Pages deploy (run 39062754954) succeeded. Names and signatures confirmed in the code before designing: `personalAllowance(income, config, policy)`, `incomeTax(income, region, config, policy)`, `employeeNI(niablePay, config)`, `studentLoan(plans, pay, config)`, `takeHome(inputs, config, policy)`, `ModellingPolicy { taperRounding }`, `TaxInputs { grossPay, region, studentLoans }`, `ExactPence` in `money.ts`. They match the prompt.

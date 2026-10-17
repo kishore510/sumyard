@@ -4,6 +4,11 @@ All notable changes to Sumyard are listed here, newest first. The format follows
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-10-17
+
+### Added
+- **Internal only: the pension annual allowance, childcare checks and the optimiser engine.** Nothing you can see in the app has changed. The behind-the-scenes calculations now check pension savings against the annual allowance: the reduced (tapered) allowance for very high incomes, unused allowance carried forward from earlier years, the lower allowance after flexibly accessing a pension, and the tax charge on any amount over the limit, worked out the way HMRC’s manuals set out. They check whether income is under the Tax-Free Childcare and 30 hours free childcare limits, where a penny over loses the support entirely. And they can try a range of pension contributions, showing for each take-home pay, the cost of each pound of pension, the marginal rate, the contribution that brings income back under each threshold, warnings, and the cliffs where pay jumps, without calling any one of them the best. All figures are the verified 2026 to 2027 ones, tested against examples GOV.UK publishes. The optimiser page comes in a later release.
+- Child Benefit for the year now has a GOV.UK source: HMRC’s published yearly amounts for 2026 to 2027 match the 52 weeks the engine counts.
 ## [0.7.0] - 2026-10-17
 
 ### Added

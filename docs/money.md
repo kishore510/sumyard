@@ -60,9 +60,17 @@ The owner's decision D3 (`docs/modelling-decisions.md`), recorded 17 October 202
 | Band starts after a relief at source extension | Exact; shown to the nearest penny. | `incomeTax` | D3. Session G1. |
 | Child Benefit for the year | The weekly rate times the policy's weeks (whole pence, so exact), per child. | `hicbc` | D3, G4. |
 | HICBC charge | Whole steps of exact ANI over the threshold (`wholeSteps`, rounded down); the charge, the percentage times the Child Benefit received, to the nearest penny. | `hicbc` | Decisions G1, D3. Session G1 found no GOV.UK rounding rule; PAYE14015's older example prints whole pounds (HICBC-2, not followed). |
-| Annual allowance taper (session G2) | The stated rule above (reduction rounded down to £1). | Session G2 | PTM057100. |
+| Annual allowance taper | The reduction is the reduction rate times adjusted income over the limit, rounded down to a whole pound (`mulRound(…, 'down')` then `roundToPounds(…, 'down')`, one floor to the pound); the allowance never goes below the minimum. Adjusted income is whole pence. | `annualAllowanceCheck` | Stated (PTM057100); mirrored (AA-3). Session G2. |
+| Threshold income | Exact (a relief at source gross-up can leave part of a penny); the taper test and the threshold solver use the exact figure; shown to the nearest penny. | `annualAllowanceCheck`, `thresholdContributions` | D3. Session G2. |
+| Pension savings counted | The gross relief at source contribution as it reaches the pot, to the nearest penny (the same figure as the gross contribution shown); salary sacrifice and employer contributions are whole pence. | `annualAllowanceCheck` | D3, G8. Session G2. |
+| Annual allowance charge | The excess stacked on exact taxable income; each band's part and its charge to the nearest penny; the total is the sum of the bands. | `annualAllowanceCharge`, `annualAllowanceCheck` | D3 (no rounding stated in PTM056110 to PTM056130, whose examples are whole pounds). Session G2. |
+| Childcare headroom | Exact adjusted net income against the limit; the headroom rounded down and the amount over rounded up to a penny, so a part of a penny over shows as a penny over. | `childcareCheck` | G12. Session G2. |
+| Threshold contributions | Closed form in exact pence: the measure over the limit (times one less the relief-at-source rate for relief at source), rounded up to a penny, so the measure lands on or just under the limit. | `thresholdContributions` | G14. Session G2. |
+| Net cost per pound and marginal rate | Exact ratios of whole pence (no rounding). | `optimise` | G13. Session G2. |
 
 Exact amounts use `ExactPence` (`exact`, `exactMul`, `exactAdd`, `exactSubtract`, `compareExact`, `roundExact` in `money.ts`, added in session F): BigInt fractions of a penny in lowest terms, which become `Money` only through `roundExact`. `wholeSteps(amount, step)` (session G1) counts the whole steps in an exact amount, rounded down, for the HICBC.
+
+Rounding of each component means take-home is not strictly monotone at a penny: under salary sacrifice in the personal allowance taper zone, a penny more sacrifice can leave a penny more take-home (income tax and NI each round to the nearest penny). Session G2 found such steps when scanning a range penny by penny; they are not listed as cliffs.
 
 ## Display (`format.ts`)
 

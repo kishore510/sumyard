@@ -4,7 +4,7 @@ Examples that GOV.UK and HMRC publish for the rules Sumyard models, copied as pu
 
 Collected in slice 1a session E from pages read on 17 October 2026. Each example says which tax year its figures belong to. Where that is not 2026 to 2027, the example tests the method with that year's figures passed in as test inputs (a fake config), never as 2026 to 2027 values. Two published examples are internally inconsistent; they are listed so nobody mirrors them by mistake.
 
-**Count:** 23 published examples collected in session E, plus 3 added in session F for income tax (IT-1, IT-2, PA-1), plus 5 added in session G1 (PEN-1, PEN-2, PEN-3, ANI-3, HICBC-3). 5 are stated for 2026 to 2027 and 7 more use current thresholds that match 2026 to 2027; the rest illustrate a method with another year's figures. More than five in total, but the **personal allowance taper has no published numeric example** on the pages read, and both HICBC examples need the owner's check (O4). The owner's HMRC-calculator cross-checks fill those gaps.
+**Count:** 23 published examples collected in session E, plus 3 added in session F for income tax (IT-1, IT-2, PA-1), plus 5 added in session G1 (PEN-1, PEN-2, PEN-3, ANI-3, HICBC-3), plus 6 added in session G2 (CF-1, AAC-1, AAC-2, AAC-3, CB-1, CC-3; AA-1 to AA-4 were collected in E and are now mirrored). 5 are stated for 2026 to 2027 and 7 more use current thresholds that match 2026 to 2027; the rest illustrate a method with another year's figures. More than five in total, but the **personal allowance taper has no published numeric example** on the pages read, and both HICBC examples need the owner's check (O4). The owner's HMRC-calculator cross-checks fill those gaps.
 
 ## Income tax and the personal allowance (added in session F)
 
@@ -42,10 +42,10 @@ Read on 17 October 2026, to confirm decision D2 (marginal bands) and the taper's
 
 | # | Year | Inputs | Published result | Source | Mirror in F? |
 |---|---|---|---|---|---|
-| AA-1 | 2016-17 to 2019-20 figures ("The standard annual allowance is £40,000"; taper above £150,000; minimum £10,000) | Adjusted income £160,000 | "a reduced annual allowance of £35,000" | PTM057200, https://www.gov.uk/hmrc-internal-manuals/pensions-tax-manual/ptm057200 | Yes, with those figures as test inputs (method only). |
-| AA-2 | Same | Adjusted income £215,000 | "a reduced annual allowance of £10,000" ("would have been reduced to £7,500") | Same page | Yes (minimum floor). |
-| AA-3 | Same | Adjusted income £177,979 | "a reduced annual allowance of £26,011"; "One half of £27,979 is £13989.50 ... rounded down to the nearest £1 which is £13,989" | Same page | Yes (rounding). |
-| AA-4 | Not tied to a year's limits | Jon: salary £112,000, net pay contributions £14,000, self-employed profit £44,000, £360 a month relief at source, £600 taxable savings, £1,900 dividends | Net income "£144,500"; relief at source gross "£450 per month", "£5,400"; threshold income "£139,100"; adjusted income running total "£158,500" after adding net pay contributions (the page continues with the defined benefit input amount) | Same page | Partly: threshold income and the net pay step. |
+| AA-1 | 2016-17 to 2019-20 figures ("The standard annual allowance is £40,000"; taper above £150,000; minimum £10,000) | Adjusted income £160,000 | "a reduced annual allowance of £35,000" | PTM057200, https://www.gov.uk/hmrc-internal-manuals/pensions-tax-manual/ptm057200 | **Mirrored in G2**, with those figures as test inputs (method only). |
+| AA-2 | Same | Adjusted income £215,000 | "a reduced annual allowance of £10,000" ("would have been reduced to £7,500") | Same page | **Mirrored in G2** (minimum floor). |
+| AA-3 | Same | Adjusted income £177,979 | "a reduced annual allowance of £26,011"; "One half of £27,979 is £13989.50 ... rounded down to the nearest £1 which is £13,989" | Same page | **Mirrored in G2** (rounding). |
+| AA-4 | Not tied to a year's limits | Jon: salary £112,000, net pay contributions £14,000, self-employed profit £44,000, £360 a month relief at source, £600 taxable savings, £1,900 dividends | Net income "£144,500"; relief at source gross "£450 per month", "£5,400"; threshold income "£139,100"; adjusted income running total "£158,500" after adding net pay contributions (the page continues with the defined benefit input amount) | Same page | **Mirrored in G2, partly** (AA-4a, AA-4b): each step on its own, with the published net income standing in as employment pay (the engine takes employment income and one pension method). |
 
 ## High Income Child Benefit Charge
 
@@ -81,7 +81,26 @@ Read on 17 October 2026.
 | ANI-3 | Not tied to a year | A relief at source contribution | "So, for every £1 of pension contribution you made, take £1.25 from your ‘net income’." | Personal Allowances: adjusted net income, https://www.gov.uk/guidance/adjusted-net-income | **Yes** (a stated rule). |
 | HICBC-3 | 2024 to 2025 onwards | Income over the threshold | "You’ll pay back 1% of your Child Benefit for every £200 you earn over £60,000."; "If you earn over £80,000 you’ll pay it all back." | High Income Child Benefit Charge, https://www.gov.uk/child-benefit-tax-charge | **Yes** (a stated rule, whole steps per G1). |
 
-Still not mirrored: HICBC-1 (inconsistent as published) and HICBC-2 (the 2023 to 2024 rule; it prints £700 for 40% of £1,752, whole pounds, where decision G1 rounds to the nearest penny); ANI-1 and ANI-2 (self-employment, property, savings income, Gift Aid and gross contributions are not inputs); the annual allowance examples (session G2). No GOV.UK page read gives a worked example of the student loan base under a pension method, or of salary sacrifice with figures for 2026 to 2027 (the salary sacrifice guide's examples are weekly childcare vouchers and a bonus, not tied to a year).
+Still not mirrored: HICBC-1 (inconsistent as published) and HICBC-2 (the 2023 to 2024 rule; it prints £700 for 40% of £1,752, whole pounds, where decision G1 rounds to the nearest penny); ANI-1 and ANI-2 (self-employment, property, savings income, Gift Aid and gross contributions are not inputs); the annual allowance examples (mirrored in session G2). No GOV.UK page read gives a worked example of the student loan base under a pension method, or of salary sacrifice with figures for 2026 to 2027 (the salary sacrifice guide's examples are weekly childcare vouchers and a bonus, not tied to a year).
+
+## Annual allowance, carry forward, the charge, Child Benefit and childcare (added in session G2)
+
+Read on 17 October 2026.
+
+| # | Year | Inputs | Published result | Source | Mirrored? |
+|---|---|---|---|---|---|
+| CF-1 | 2014-15 (annual allowance £40,000; earlier years' unused amounts given) | Total pension input amount £65,000; unused 2013-14 £15,000, 2012-13 £20,000, 2011-12 £27,000 | "available annual allowance of £102,000"; "used up the £40,000 annual allowance for the current tax year and £25,000 worth of the unused annual allowance from three years ago"; "she still has £2,000 unused annual allowance from three years ago" | PTM055100 (example 9), https://www.gov.uk/hmrc-internal-manuals/pensions-tax-manual/ptm055100 | **Yes**, with the example's allowance as a test input. |
+| AAC-1 | Not tied to a year's limits | Excess £30,000; reduced net income £140,000; basic rate limit £40,000; higher rate limit £150,000 | "£20,000 @ 45 per cent = £9,000"; "£10,000 @ 40 per cent = £4,000"; "Frances’s annual allowance tax charge is £13,000" | PTM056110, https://www.gov.uk/hmrc-internal-manuals/pensions-tax-manual/ptm056110 | **Yes**, with those limits as test inputs. |
+| AAC-2 | Not tied to a year's limits (limits £37,400 and £150,000) | Siva: Gift Aid lifts the limits to £38,400 and £151,000; reduced net income £112,275; £15,000 over | "taxed at 40 per cent"; "The amount of Siva’s annual allowance charge is £6,000" | PTM056130, https://www.gov.uk/hmrc-internal-manuals/pensions-tax-manual/ptm056130 | **Yes** (the Gift Aid extension passed in as the band extension). |
+| AAC-3 | As AAC-2 | Alan: relief at source £40,000 gross and Gift Aid £1,000 lift the limits to £78,400 and £191,000; reduced net income £152,275; £15,000 over | "The amount of Alan’s annual allowance charge is £6,000" | Same page | **Yes.** |
+| CB-1 | 2026 to 2027 ("From 6 April", published 31 March 2026) | Weekly rates | "£27.05 per week - or £1,406.60 a year - for the eldest or only child and £17.90 per week - or £930.80 a year - for each additional child" | Millions of families in line for Child Benefit rate increase (HMRC), https://www.gov.uk/government/news/millions-of-families-in-line-for-child-benefit-rate-increase | **Yes** (the default weeks give the yearly amounts; G4). |
+| CC-3 | Current tax year | Expected adjusted net income | "You cannot claim if ... you or your partner’s expected adjusted net income ... is over £100,000 for the current tax year" | Tax-Free Childcare: Check if you're eligible, https://www.gov.uk/tax-free-childcare/check-if-youre-eligible | **Yes** (a stated rule: eligible at the limit, not a penny over). |
+
+Not mirrored: Jon's full adjusted income (it needs a defined benefit pension input amount, not modelled); PTM057100's carry forward amounts under the MPAA and the taper for an earlier year (unused amounts are inputs here); the MPAA guidance has no worked figures. No GOV.UK page read gives a worked annual allowance example with 2026 to 2027 limits; HMRC's annual allowance calculator is the cross-check for that (owner).
+
+## Mirrored in session G2
+
+`published.test.ts` adds AA-1, AA-2, AA-3, AA-4a, AA-4b, CF-1, AAC-1, AAC-2, AAC-3, CB-1 and CC-3, each citing its page.
 
 ## Mirrored in session G1
 
@@ -101,5 +120,5 @@ Still not mirrored: HICBC-1 (inconsistent as published) and HICBC-2 (the 2023 to
 
 - **Personal allowance taper and income tax:** no published numeric example found. Suggested: HMRC's "Estimate your Income Tax for the current year" at a few incomes either side of the taper, in England and Scotland.
 - **HICBC:** HMRC's Child Benefit tax calculator at incomes such as just over the threshold, mid-band with a part of £200, and above the full-charge point.
-- **Annual allowance with 2026 to 2027 limits:** HMRC's annual allowance calculator.
+- **Annual allowance with 2026 to 2027 limits:** HMRC's annual allowance calculator (the engine now models the taper, carry forward, the MPAA and the charge; the harness has no annual allowance cases yet).
 - **National Insurance monthly:** an HMRC calculator or a payslip, once O1 is decided.
