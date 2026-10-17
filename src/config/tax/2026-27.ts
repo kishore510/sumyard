@@ -21,6 +21,9 @@ const read = <T>(value: T, sourceUrl: SourceUrl): Verified<T> => ({ status: 'ver
 const INCOME_TAX_RATES: SourceUrl = 'https://www.gov.uk/income-tax-rates'
 const HMRC_INCOME_TAX_RATES: SourceUrl =
   'https://www.gov.uk/government/publications/rates-and-allowances-income-tax/income-tax-rates-and-allowances-current-and-past'
+const EMPLOYER_RATES: SourceUrl = 'https://www.gov.uk/guidance/rates-and-thresholds-for-employers-2026-to-2027'
+const HMRC_NI_RATES: SourceUrl =
+  'https://www.gov.uk/government/publications/rates-and-allowances-national-insurance-contributions/rates-and-allowances-national-insurance-contributions'
 
 export const taxYear: TaxYearConfig = {
   id: '2026-27',
@@ -55,7 +58,12 @@ export const taxYear: TaxYearConfig = {
     },
   },
   nationalInsurance: {
-    employee: { primaryThreshold: TODO, upperEarningsLimit: TODO, mainRate: TODO, additionalRate: TODO },
+    employee: {
+      primaryThreshold: read(fromPounds(12_570), EMPLOYER_RATES),
+      upperEarningsLimit: read(fromPounds(50_270), EMPLOYER_RATES),
+      mainRate: read(percent('8'), HMRC_NI_RATES),
+      additionalRate: read(percent('2'), HMRC_NI_RATES),
+    },
     employer: { secondaryThreshold: TODO, rate: TODO },
   },
   studentLoans: {
