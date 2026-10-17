@@ -1,6 +1,6 @@
 # Phase plan: Sumyard
 
-Last updated: 17 October 2026 (slice 0: session B built the app chrome, 0.2.0; awaiting the owner's phone check before Done)
+Last updated: 17 October 2026 (slice 0 Done; slice 0.5 session C starting: money and tax config)
 
 Draft roadmap. When a slice starts, rewrite its prompt against the real code (see the skeleton in PHASE-BRIEF.md). Do not treat these notes as final prompts.
 
@@ -12,7 +12,7 @@ Status values: Not started, In progress, Done (version, PR, date).
 
 | Slice | Scope | Status |
 |---|---|---|
-| 0 Foundation | Recon of Chalkline and Stickyard (stack, tokens, theme toggle, chrome inventory). Repo, TypeScript strict, lint, tests, CI, GitHub Pages deploy, `CLAUDE.md`, `PHASE-BRIEF.md`, `CHANGELOG.md`. Tokens from Chalkline, light / dark / system theme, app shell (top bar, menu, Help / What's new / About / Settings sheets), toasts with Undo, disclaimer footer. Web only | In progress |
+| 0 Foundation | Recon of Chalkline and Stickyard (stack, tokens, theme toggle, chrome inventory). Repo, TypeScript strict, lint, tests, CI, GitHub Pages deploy, `CLAUDE.md`, `PHASE-BRIEF.md`, `CHANGELOG.md`. Tokens from Chalkline, light / dark / system theme, app shell (top bar, menu, Help / What's new / About / Settings sheets), toasts with Undo, disclaimer footer. Web only | Done (0.2.0, PR #2, 17 October 2026) |
 | 0.5 Core plumbing | Money type and formatting, `Sourced<T>` tax config pipeline with a skeleton `2026-27`, Tax data screen, versioned scenario storage with JSON export and import, shared inputs and result components, token-aware chart, backup and restore, a "Hello calculator" placeholder that exercises all of it | Not started |
 | 1a Optimiser: config and engine | Verify and populate `2026-27` from gov.uk/HMRC, verification log, worked examples; then the pure engine (income tax with taper, NI, student loan, three pension methods, HICBC, annual allowance, `optimise()`). Tests first. No UI | Not started |
 | 1b Optimiser: UI | The £100k+ page: inputs, current vs optimised take-home, marginal-rate and take-home-vs-contribution charts, cost of £1 more pension, warnings, scenario compare, assumptions, Help topic | Not started |
@@ -96,7 +96,7 @@ Status values: Not started, In progress, Done (version, PR, date).
 - Toast with Undo, consistent empty, error and loading states, footer disclaimer, first-run acknowledgement stored locally.
 - Accessibility baseline: WCAG AA contrast in both themes, visible focus rings, 44 px touch targets, `prefers-reduced-motion` respected.
 
-- **Progress (17 October 2026).** Recon and build session A done (0.1.0: scaffold, tokens, fonts, theme with pre-paint script, CI and Pages workflows, guards for docs drift, external URLs and the pre-paint theme). Build session B done (0.2.0): menu, hash-routed sheet stack, Help, What's new, About, Settings, toast with Undo, shared states, footer disclaimer, first-run notice, storage-key guard, docs guard in the build, tighter URL allowlist. The acceptance criteria that can be checked before merge pass in local Chromium checks; the slice stays In progress until the deployed site is checked on a real phone. Details are in the `PHASE-BRIEF.md` progress log.
+- **Progress (17 October 2026).** Recon and build session A done (0.1.0: scaffold, tokens, fonts, theme with pre-paint script, CI and Pages workflows, guards for docs drift, external URLs and the pre-paint theme). Build session B done (0.2.0): menu, hash-routed sheet stack, Help, What's new, About, Settings, toast with Undo, shared states, footer disclaimer, first-run notice, storage-key guard, docs guard in the build, tighter URL allowlist. The acceptance criteria that can be checked before merge pass in local Chromium checks; the deployed site was then checked on a real phone by the owner. Details are in the `PHASE-BRIEF.md` progress log.
 - **What changed from these notes:**
   - Lint and format use Biome, not ESLint and Prettier (Chalkline has neither, and typescript-eslint does not support TypeScript 7).
   - The URL allowlist also holds exact inert strings that are never fetched: XML namespaces and React's error-link prefix inside React DOM, and Tailwind's licence comment.
@@ -104,7 +104,8 @@ Status values: Not started, In progress, Done (version, PR, date).
   - Session A was split from the shell work, so slice 0 runs as recon, session A and session B.
   - Session B: no Zustand or Zod (a small `useSyncExternalStore` store instead); `lastSeenVersion` is stored as `sumyard:v1:last-seen-version`; What's new is parsed at build time and injected, not bundled raw; the tax-year default is a labelled stub until 0.5; sheet parents are fixed (Help over topics, What's new and About).
 - **Rollback.** Safe to roll back to 0.1.0: it reads only `sumyard:v1:theme` and ignores the three keys 0.2.0 adds (`settings`, `last-seen-version`, `acknowledged`). Losing any of them only resets a default or shows a marker or notice again.
-- **Follow-up.** Owner: run the phone checklist in `PHASE-BRIEF.md` on the deployed site, then set slice 0 to Done (0.2.0, PR, date). Slice 0.5 replaces the Settings tax-year stub and makes the Scenarios menu item, its Help topic and the menu's "Export" footnote real.
+- **Done (17 October 2026).** PR #2 merged and deployed; the owner ran the phone, Safari and VoiceOver checklist on the live site and it passed.
+- **Follow-up.** Slice 0.5 replaces the Settings tax-year stub and makes the Scenarios menu item, its Help topic and the menu's "Export" footnote real.
 
 ### 0.5 Core plumbing
 - Money: decide first between integer pence and a decimal library. Document rounding rules per calculation. `lib/money` and `lib/format` with tests.
