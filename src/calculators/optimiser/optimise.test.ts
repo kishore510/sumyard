@@ -393,7 +393,7 @@ describe('optimise: cliffs and shape', () => {
 
   it('student loan whole pounds: flagged under salary sacrifice only (the other methods leave the loan base alone)', () => {
     const grossPay = add(v.plans.plan2.threshold, fromPounds(4_000))
-    const ss = run(make({ grossPay, method: 'salarySacrifice', studentLoans: ['plan2'] }), fromPence(37))
+    const ss = run(make({ grossPay, method: 'salarySacrifice', studentLoans: ['plan2'] }), fromPounds(50))
     expect(ss.cliffs.some((c) => c.kind === 'studentLoanWholePounds')).toBe(true)
     spendableNeverRisesOutsideCliffs(ss)
     const np = run(make({ grossPay, method: 'netPay', studentLoans: ['plan2'] }), fromPence(3_700))
