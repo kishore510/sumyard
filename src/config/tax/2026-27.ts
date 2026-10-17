@@ -64,7 +64,10 @@ export const taxYear: TaxYearConfig = {
       mainRate: read(percent('8'), HMRC_NI_RATES),
       additionalRate: read(percent('2'), HMRC_NI_RATES),
     },
-    employer: { secondaryThreshold: TODO, rate: TODO },
+    employer: {
+      secondaryThreshold: read(fromPounds(5_000), EMPLOYER_RATES),
+      rate: read(percent('15'), HMRC_NI_RATES),
+    },
   },
   studentLoans: {
     plan1: { threshold: TODO, rate: TODO },
