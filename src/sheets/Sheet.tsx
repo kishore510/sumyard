@@ -43,7 +43,7 @@ export function SheetHeader({
       <h2 ref={titleRef} id={titleId} tabIndex={-1} className="min-w-0 flex-1 truncate px-2 text-sm font-semibold outline-none">
         {title}
       </h2>
-      <Button variant="ghost" size="icon" aria-label="Close" title="Close (Esc)" onClick={nav.close}>
+      <Button variant="ghost" size="icon" aria-label="Close" title="Close (Esc)" onClick={() => nav.close()}>
         <X />
       </Button>
     </div>

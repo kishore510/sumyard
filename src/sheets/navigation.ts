@@ -1,4 +1,5 @@
 import { useMemo, useSyncExternalStore } from 'react'
+import { type PageRoute, parsePage } from '@/pages/route'
 import { createSheetNavigator, parseHash, type SheetNavigator, type SheetRoute } from './route'
 
 /*
@@ -39,6 +40,27 @@ export function useSheetRoute(): SheetRoute | null {
     () => '',
   )
   return useMemo(() => parseHash(hash), [hash])
+}
+
+/** The sheet the URL asks for (or null) and the page showing, under the sheet if one is open. */
+export function useLocation(): { sheet: SheetRoute | null; page: PageRoute; pageHash: string } {
+  const snapshot = useSyncExternalStore(
+    subscribe,
+    () => `${window.location.hash}\n${sheets().page()}`,
+    () => '\n',
+  )
+  return useMemo(() => {
+    const [hash = '', pageHash = ''] = snapshot.split('\n')
+    return { sheet: parseHash(hash), page: parsePage(pageHash) ?? { kind: 'home' }, pageHash }
+  }, [snapshot])
+}
+
+/** Goes to a page (a calculator, compare or home): closes any sheet first, then a new history entry. */
+export function goToPage(hash: string) {
+  if (sheets().current()) return sheets().close(hash)
+  if (window.location.hash === hash || (hash === '' && !window.location.hash)) return
+  window.history.pushState(null, '', hash || `${window.location.pathname}${window.location.search}`)
+  notify()
 }
 
 let opener: HTMLElement | null = null

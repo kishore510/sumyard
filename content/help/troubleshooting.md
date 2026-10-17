@@ -1,9 +1,9 @@
 ---
 title: Troubleshooting
 order: 4
-summary: Settings not remembered, the wrong theme, or an out-of-date page.
+summary: Scenarios or settings not remembered, a file that won’t import, the wrong theme, or an out-of-date page.
 ---
-## My settings or theme aren’t remembered
+## My scenarios, settings or theme aren’t remembered
 
 Sumyard saves them in this browser. They can be lost if:
 
@@ -11,7 +11,15 @@ Sumyard saves them in this browser. They can be lost if:
 - your browser blocks site data for this page, or clears it when you close it;
 - you cleared this site’s data.
 
-If saving fails, Sumyard tells you, and the change lasts until you close it. About Sumyard shows “unavailable” for storage when the browser blocks it.
+If saving fails, Sumyard tells you, and the change lasts until you close it: export your scenarios (or a backup in Settings) to keep a copy. About Sumyard shows “unavailable” for storage when the browser blocks it.
+
+## “Saved scenarios can’t be read”
+
+The scenarios stored in this browser were saved by a newer version of Sumyard, or are damaged, so this version won’t save over them. Changes you make last until you close Sumyard. Export what you need, then restore a backup or use **Clear all data** in Settings to start afresh.
+
+## An import or restore says the file can’t be used
+
+Sumyard reads only its own files: a scenarios export for **Import**, a backup for **Restore**. The message says what is wrong, for example a file made by a newer version, or a backup chosen for Import. Scenarios in a file that can’t be used, such as one for a calculator this version doesn’t have, are listed with the reason and left out; the rest still import.
 
 ## The theme looks wrong
 
@@ -21,9 +29,9 @@ If saving fails, Sumyard tells you, and the change lasts until you close it. Abo
 
 The marker is remembered in this browser. If storage is blocked, it shows again on each visit.
 
-## Tax data says “Not yet verified”
+## Tax data says “Not yet verified”, or a calculator shows no results
 
-That is expected in this version: no tax figure has been checked yet, so none is used. See [How tax data and “last verified” work](help:tax-data-and-last-verified).
+That is expected in this version: no tax figure has been checked yet, so none is used, and anything that needs one shows a “not verified” notice instead of results. See [How tax data and “last verified” work](help:tax-data-and-last-verified).
 
 ## The page looks out of date
 

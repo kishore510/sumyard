@@ -2,7 +2,9 @@ import { useEffect, useRef } from 'react'
 import { topicById } from '@/help/content'
 import { AboutPage } from './AboutPage'
 import { HelpPage, TopicPage } from './HelpPage'
+import { ImportPage } from './ImportPage'
 import type { SheetRoute } from './route'
+import { ScenariosPage } from './ScenariosPage'
 import { SettingsPage } from './SettingsPage'
 import { SheetHeader } from './Sheet'
 import { TaxDataPage } from './TaxDataPage'
@@ -24,6 +26,12 @@ function titleOf(route: SheetRoute): string {
       return 'Settings'
     case 'tax-data':
       return 'Tax data'
+    case 'scenarios':
+      return 'Scenarios'
+    case 'import':
+      return 'Import scenarios'
+    case 'restore':
+      return 'Restore a backup'
   }
 }
 
@@ -56,6 +64,9 @@ export default function SheetPages({ route, titleId }: { route: SheetRoute; titl
         {route.kind === 'about' && <AboutPage />}
         {route.kind === 'settings' && <SettingsPage />}
         {route.kind === 'tax-data' && <TaxDataPage />}
+        {route.kind === 'scenarios' && <ScenariosPage />}
+        {route.kind === 'import' && <ImportPage kind="scenarios" />}
+        {route.kind === 'restore' && <ImportPage kind="backup" />}
       </section>
     </>
   )

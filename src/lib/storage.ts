@@ -36,6 +36,17 @@ export function writeKey(key: string, value: string, storage: Pick<Storage, 'set
   }
 }
 
+/** Removes a key. False if storage is blocked. */
+export function removeKey(key: string, storage: Pick<Storage, 'removeItem'> | undefined = appStorage()): boolean {
+  if (!storage) return false
+  try {
+    storage.removeItem(key)
+    return true
+  } catch {
+    return false
+  }
+}
+
 /**
  * A versioned record `{ schemaVersion, ...fields }`, or null if the text is
  * missing, unreadable, not an object or another schema version.

@@ -1,6 +1,7 @@
 /*
  * Hash routes for the sheet stack: #/help, #/help/<topic>, #/whats-new,
- * #/about, #/settings and #/tax-data. Any other hash shows no sheet.
+ * #/about, #/settings, #/tax-data, #/scenarios, #/import and #/restore. Any
+ * other hash shows no sheet (it is a page: see src/pages/route.ts).
  *
  * Every sheet a person opens is a history entry, so the browser Back button
  * steps back through them. Parents are fixed (topics, What's new and About
@@ -8,6 +9,11 @@
  * by tapping. The back arrow goes to the parent: through history when the
  * parent is the previous entry, otherwise by replacing the current entry.
  * Close removes every sheet entry Sumyard added, landing on the page.
+ *
+ * The page under a sheet: each sheet entry remembers the hash of the page it
+ * was opened over (a calculator, or home), carried through the stack, so
+ * the page stays put behind the sheet and Close, Esc and Back land on it.
+ * A deep-linked sheet has no page underneath, so it closes to home.
  */
 
 export type SheetRoute =
@@ -17,8 +23,12 @@ export type SheetRoute =
   | { kind: 'about' }
   | { kind: 'settings' }
   | { kind: 'tax-data' }
+  | { kind: 'scenarios' }
+  | { kind: 'import' }
+  | { kind: 'restore' }
 
 const TOPIC_ID = /^[a-z0-9-]+$/
+const PLAIN_SHEETS = new Set(['whats-new', 'about', 'settings', 'tax-data', 'scenarios', 'import', 'restore'])
 
 export function parseHash(hash: string): SheetRoute | null {
   const match = /^#\/([a-z-]+)(?:\/([^/]*))?\/?$/.exec(hash)
@@ -29,8 +39,7 @@ export function parseHash(hash: string): SheetRoute | null {
     return TOPIC_ID.test(rest) ? { kind: 'topic', id: rest } : null
   }
   if (rest) return null
-  if (name === 'whats-new' || name === 'about' || name === 'settings' || name === 'tax-data') return { kind: name }
-  return null
+  return PLAIN_SHEETS.has(name!) ? ({ kind: name } as SheetRoute) : null
 }
 
 export function formatHash(route: SheetRoute): string {
@@ -39,6 +48,8 @@ export function formatHash(route: SheetRoute): string {
 
 export function parentOf(route: SheetRoute): SheetRoute | null {
   if (route.kind === 'tax-data') return { kind: 'about' }
+  if (route.kind === 'import') return { kind: 'scenarios' }
+  if (route.kind === 'restore') return { kind: 'settings' }
   return route.kind === 'topic' || route.kind === 'whats-new' || route.kind === 'about' ? { kind: 'help' } : null
 }
 
@@ -61,29 +72,38 @@ interface SheetEntry {
   depth: number
   /** The hash of the entry before this one. */
   from: string
+  /** The hash of the page under the sheet stack ('' for home). */
+  page: string
 }
 
 function entryOf(state: unknown): SheetEntry | null {
   const entry = (state as { sumyardSheet?: unknown } | null)?.sumyardSheet as Partial<SheetEntry> | undefined
-  return entry && typeof entry.depth === 'number' && typeof entry.from === 'string' ? (entry as SheetEntry) : null
+  if (!entry || typeof entry.depth !== 'number' || typeof entry.from !== 'string') return null
+  return { depth: entry.depth, from: entry.from, page: typeof entry.page === 'string' ? entry.page : '' }
 }
 
 export function createSheetNavigator(win: WindowLike, notify: () => void) {
   /** Set while close() waits for history.go to land on the page. */
   let closing = false
+  /** Where to go once close() lands, if not the page underneath. */
+  let closingTo: string | null = null
 
   const current = () => parseHash(win.location.hash)
-  const pageUrl = () => `${win.location.pathname}${win.location.search}`
-  const clearHash = () => win.history.replaceState(null, '', pageUrl())
+  const pageUrl = (hash = '') => `${win.location.pathname}${win.location.search}${hash}`
+  /** The hash of the page showing: under the sheet if one is open, else the current hash. */
+  const page = () => (current() ? (entryOf(win.history.state)?.page ?? '') : win.location.hash)
 
-  function close() {
-    const depth = entryOf(win.history.state)?.depth ?? 0
+  /** Closes every sheet, landing on the page underneath, or on `to` (another page's hash) as a new entry. */
+  function close(to?: string) {
+    const entry = entryOf(win.history.state)
+    const depth = entry?.depth ?? 0
     if (depth > 0) {
       closing = true
+      closingTo = to !== undefined && to !== entry!.page ? to : null
       win.history.go(-depth)
       return
     }
-    clearHash()
+    win.history.replaceState(null, '', pageUrl(to ?? entry?.page ?? ''))
     notify()
   }
 
@@ -99,11 +119,14 @@ export function createSheetNavigator(win: WindowLike, notify: () => void) {
 
   return {
     current,
+    page,
     open(route: SheetRoute) {
       const hash = formatHash(route)
       if (win.location.hash === hash) return
-      const depth = current() ? (entryOf(win.history.state)?.depth ?? 0) : 0
-      win.history.pushState({ sumyardSheet: { depth: depth + 1, from: win.location.hash } satisfies SheetEntry }, '', hash)
+      const onSheet = current() !== null
+      const depth = onSheet ? (entryOf(win.history.state)?.depth ?? 0) : 0
+      const entry: SheetEntry = { depth: depth + 1, from: win.location.hash, page: page() }
+      win.history.pushState({ sumyardSheet: entry }, '', hash)
       notify()
     },
     back,
@@ -114,8 +137,11 @@ export function createSheetNavigator(win: WindowLike, notify: () => void) {
     handlePopState() {
       if (closing) {
         closing = false
+        const to = closingTo
+        closingTo = null
         // Landed on a deep-linked sheet that Sumyard didn't push: clear it too.
-        if (current()) clearHash()
+        if (current()) win.history.replaceState(null, '', pageUrl(to ?? ''))
+        else if (to !== null) win.history.pushState(null, '', to)
       }
       notify()
     },

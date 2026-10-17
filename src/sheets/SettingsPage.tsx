@@ -1,4 +1,5 @@
-import { RotateCcw } from 'lucide-react'
+import { Download, RotateCcw, Trash2, Upload } from 'lucide-react'
+import { useRef, useState } from 'react'
 import { Choice } from '@/components/Choice'
 import { SheetLink } from '@/components/SheetLink'
 import { Button } from '@/components/ui/button'
@@ -8,14 +9,15 @@ import { yearStatus } from '@/config/tax/sourced'
 import { themeStore, useTheme } from '@/hooks/useTheme'
 import { useStore } from '@/lib/store'
 import type { ThemePreference } from '@/lib/theme'
+import { clearEverything, exportBackup, startImport } from '@/scenarios/actions'
 import { type AmountStyle, type Region, resetToDefaults, settingsStore } from '@/settings/settings'
 import { toasts } from '@/toast/toasts'
 import { SectionTitle } from './parts'
 
 /*
- * Settings (generalised from Chalkline's SettingsSheet: the diagram, AI and
- * backup sections are dropped; backup and restore arrive in slice 0.5
- * session D).
+ * Settings (generalised from Chalkline's SettingsSheet: the diagram and AI
+ * sections are dropped): theme, calculator defaults, backup and restore,
+ * reset, and clear all data.
  */
 
 const THEMES: { value: ThemePreference; label: string }[] = [
@@ -42,6 +44,96 @@ const TAX_YEAR_OPTIONS: { value: TaxYearId; label: string; verified: boolean }[]
 
 const notSaved = () =>
   toasts.show({ message: 'Couldn’t save in this browser (storage is blocked or full). This change lasts until you close Sumyard.' })
+
+function BackupSection() {
+  const fileRef = useRef<HTMLInputElement>(null)
+  const restoreRef = useRef<HTMLButtonElement>(null)
+  return (
+    <section aria-labelledby="settings-backup" className="flex flex-col gap-3">
+      <SectionTitle id="settings-backup">Backup and restore</SectionTitle>
+      <div className="flex flex-col gap-2 px-3">
+        <p className="text-xs text-text-muted">
+          A backup is one file with your scenarios, settings, theme and whether you have read the “not advice” notice. Keep it somewhere
+          safe, or use it to move to another device.
+        </p>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="secondary" onClick={exportBackup}>
+            <Download />
+            Export a backup
+          </Button>
+          <Button ref={restoreRef} variant="secondary" onClick={() => fileRef.current?.click()}>
+            <Upload />
+            Restore from a backup
+          </Button>
+          <input
+            ref={fileRef}
+            type="file"
+            accept=".json,application/json"
+            tabIndex={-1}
+            aria-hidden="true"
+            className="sr-only"
+            onChange={(e) => {
+              const file = e.currentTarget.files?.[0]
+              e.currentTarget.value = ''
+              if (file) void startImport(file, 'backup', restoreRef.current)
+            }}
+          />
+        </div>
+        <p className="text-xs text-text-muted">
+          Restoring shows what the backup holds first, and replaces your data only when you confirm.
+        </p>
+      </div>
+    </section>
+  )
+}
+
+function ClearSection() {
+  const [confirming, setConfirming] = useState(false)
+  return (
+    <section aria-labelledby="settings-clear" className="flex flex-col gap-3">
+      <SectionTitle id="settings-clear">Clear all data</SectionTitle>
+      <div className="flex flex-col gap-2 px-3">
+        {!confirming ? (
+          <>
+            <Button variant="secondary" className="self-start" onClick={() => setConfirming(true)}>
+              <Trash2 />
+              Clear all data…
+            </Button>
+            <p className="text-xs text-text-muted">Removes everything Sumyard keeps in this browser. You’ll be asked to confirm.</p>
+          </>
+        ) : (
+          <fieldset className="flex flex-col gap-3 rounded-md border border-border-strong p-3">
+            <legend className="px-1 text-sm font-semibold text-text">
+              Remove all your scenarios, settings, theme and notice from this browser?
+            </legend>
+            <p className="text-sm text-text">
+              This <strong>can’t be undone</strong>. Export a backup first if you might want any of it.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <Button variant="secondary" onClick={exportBackup}>
+                <Download />
+                Export a backup first
+              </Button>
+              <Button
+                variant="danger"
+                onClick={() => {
+                  clearEverything()
+                  setConfirming(false)
+                }}
+              >
+                <Trash2 />
+                Clear all data
+              </Button>
+              <Button variant="ghost" onClick={() => setConfirming(false)}>
+                Cancel
+              </Button>
+            </div>
+          </fieldset>
+        )}
+      </div>
+    </section>
+  )
+}
 
 export function SettingsPage() {
   const { preference, set } = useTheme()
@@ -126,7 +218,11 @@ export function SettingsPage() {
         </div>
       </section>
 
-      <p className="px-3 text-xs text-text-muted">Settings are saved in this browser only.</p>
+      <BackupSection />
+
+      <ClearSection />
+
+      <p className="px-3 text-xs text-text-muted">Settings are saved in this browser only. Export a backup to keep a copy.</p>
     </div>
   )
 }

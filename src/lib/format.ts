@@ -77,3 +77,29 @@ export function formatIsoDate(date: IsoDate): string {
   const [year, month, day] = date.split('-').map(Number) as [number, number, number]
   return DATE.format(new Date(Date.UTC(year, month - 1, day)))
 }
+
+/**
+ * What an amount field shows for a value: grouped pounds, with pence only
+ * when there are any ("1,234", "1,234.50", "-5"). No £ sign: the field shows
+ * it beside the box.
+ */
+export function formatAmountInput(amount: Money): string {
+  const pence = BigInt(toPence(amount))
+  const size = pence < 0n ? -pence : pence
+  const fraction = size % 100n
+  return `${pence < 0n ? '-' : ''}${group(size / 100n)}${fraction === 0n ? '' : `.${String(fraction).padStart(2, '0')}`}`
+}
+
+/** A change in an amount, signed: "+£12.34", "-£12.34", or "£0.00" (no sign when it shows as zero). */
+export function formatGBPDelta(amount: Money, style: AmountStyle): string {
+  const text = formatGBP(amount, style)
+  return toPence(amount) > 0 && /[1-9]/.test(text) ? `+${text}` : text
+}
+
+/** A change in a rate, in percentage points: "+2.5 percentage points", "-1 percentage point", "No change". */
+export function formatPercentPointDelta(change: Ratio, maxDecimals = 2): string {
+  const text = formatPercent(change, maxDecimals).replace('%', '')
+  if (!/[1-9]/.test(text)) return 'No change'
+  const unit = text.replace('-', '') === '1' ? 'percentage point' : 'percentage points'
+  return `${change.numerator > 0 ? '+' : ''}${text} ${unit}`
+}

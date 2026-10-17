@@ -1,4 +1,4 @@
-import { appStorage, readKey, readRecord, writeKey } from '@/lib/storage'
+import { appStorage, readKey, readRecord, removeKey, writeKey } from '@/lib/storage'
 import { STORAGE_KEYS } from '@/lib/storageKeys'
 import { createStore } from '@/lib/store'
 import { APP_VERSION } from '@/version'
@@ -36,4 +36,10 @@ export const unseenStore = createStore(hasUnseenChanges(readLastSeen(), APP_VERS
 export function markThisVersionSeen() {
   markSeen(APP_VERSION)
   unseenStore.set(false)
+}
+
+/** Clear all data: forget which version was seen, so the marker shows again. */
+export function clearSeen() {
+  removeKey(LAST_SEEN_KEY)
+  unseenStore.set(true)
 }

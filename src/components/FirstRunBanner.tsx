@@ -1,20 +1,13 @@
 import { Button } from '@/components/ui/button'
-import { readKey, readRecord, writeKey } from '@/lib/storage'
-import { STORAGE_KEYS } from '@/lib/storageKeys'
-import { createStore, useStore } from '@/lib/store'
+import { useStore } from '@/lib/store'
+import { acknowledgedStore } from '@/settings/acknowledged'
 
 /*
  * First-run acknowledgement: a notice under the top bar, never a dialog, so
- * it blocks nothing and traps no one. "Got it" stores
- * `{ schemaVersion: 1, acknowledged: true }` under sumyard:v1:acknowledged.
- * If storage is blocked, it stays dismissed for this visit only.
+ * it blocks nothing and traps no one. "Got it" stores it through
+ * src/settings/acknowledged.ts (sumyard:v1:acknowledged). If storage is
+ * blocked, it stays dismissed for this visit only.
  */
-
-const { key: ACK_KEY, schemaVersion: ACK_SCHEMA } = STORAGE_KEYS.acknowledged
-
-export const readAcknowledged = (store?: Pick<Storage, 'getItem'>) => readRecord(readKey(ACK_KEY, store), ACK_SCHEMA)?.acknowledged === true
-
-const acknowledgedStore = createStore(readAcknowledged())
 
 export function FirstRunBanner() {
   const acknowledged = useStore(acknowledgedStore)
@@ -34,7 +27,6 @@ export function FirstRunBanner() {
           variant="primary"
           className="self-start sm:self-center"
           onClick={() => {
-            writeKey(ACK_KEY, JSON.stringify({ schemaVersion: ACK_SCHEMA, acknowledged: true }))
             acknowledgedStore.set(true)
             // The button is gone: put focus somewhere sensible instead of dropping it.
             document.getElementById('main-title')?.focus()

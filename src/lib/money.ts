@@ -161,3 +161,40 @@ export function roundToPounds(amount: Money, mode: RoundingMode): Money {
   const pence = assertMoney(amount, 'roundToPounds')
   return fromBigInt(divideRound(BigInt(pence), 100n, mode) * 100n, 'roundToPounds')
 }
+
+const ratioParts = (r: Ratio, what: string): [bigint, bigint] => {
+  const { numerator, denominator } = r ?? {}
+  if (!isSafe(numerator) || !isSafe(denominator) || denominator <= 0) throw new MoneyError(`${what}: not a Ratio`)
+  return [BigInt(numerator), BigInt(denominator)]
+}
+
+/** Exact comparison of two Ratios (rates and percentages, not amounts). */
+export function compareRatio(a: Ratio, b: Ratio): -1 | 0 | 1 {
+  const [an, ad] = ratioParts(a, 'compareRatio')
+  const [bn, bd] = ratioParts(b, 'compareRatio')
+  const left = an * bd
+  const right = bn * ad
+  return left < right ? -1 : left > right ? 1 : 0
+}
+
+const gcd = (a: bigint, b: bigint): bigint => {
+  let [x, y] = [a < 0n ? -a : a, b < 0n ? -b : b]
+  while (y) [x, y] = [y, x % y]
+  return x
+}
+
+/** a − b as an exact Ratio in lowest terms (for showing a change in a rate). Throws past the safe range. */
+export function subtractRatio(a: Ratio, b: Ratio): Ratio {
+  const [an, ad] = ratioParts(a, 'subtractRatio')
+  const [bn, bd] = ratioParts(b, 'subtractRatio')
+  let numerator = an * bd - bn * ad
+  let denominator = ad * bd
+  const divisor = gcd(numerator, denominator)
+  numerator /= divisor || 1n
+  denominator /= divisor || 1n
+  if (numerator === 0n) denominator = 1n
+  const limit = BigInt(Number.MAX_SAFE_INTEGER)
+  if (numerator > limit || numerator < -limit || denominator > limit)
+    throw new MoneyError('subtractRatio: the result is past the safe range')
+  return ratio(Number(numerator), Number(denominator))
+}

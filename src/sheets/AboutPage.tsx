@@ -95,8 +95,8 @@ export function AboutPage() {
       <section aria-label="Privacy" className="flex flex-col gap-2">
         <h3 className="text-base font-semibold">Privacy</h3>
         <p>
-          No analytics, no tracking and no network requests. Your settings stay in this browser until you save or export them. Clearing this
-          site’s data in your browser removes them.
+          No analytics, no tracking and no network requests. Your settings and scenarios stay in this browser; export them to keep a copy.
+          Clearing this site’s data in your browser, or Clear all data in Settings, removes them.
         </p>
         <p className="text-text-muted">What Sumyard keeps in this browser:</p>
         <ul className="flex flex-col gap-2">
