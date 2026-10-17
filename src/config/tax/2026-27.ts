@@ -26,6 +26,11 @@ const PENSION_RATES: SourceUrl = 'https://www.gov.uk/government/publications/rat
 const TAPERED_ALLOWANCE_MANUAL: SourceUrl = 'https://www.gov.uk/hmrc-internal-manuals/pensions-tax-manual/ptm057100'
 const CARRY_FORWARD: SourceUrl = 'https://www.gov.uk/guidance/pension-administrators-check-your-members-annual-allowance'
 const PENSION_TAX_RELIEF: SourceUrl = 'https://www.gov.uk/tax-on-your-private-pension/pension-tax-relief'
+const CHILD_BENEFIT_RATES: SourceUrl =
+  'https://www.gov.uk/government/publications/rates-and-allowances-tax-credits-child-benefit-and-guardians-allowance/tax-credits-child-benefit-and-guardians-allowance'
+const CHILD_BENEFIT_TAX_CALCULATOR: SourceUrl = 'https://www.gov.uk/child-benefit-tax-calculator'
+const HICBC_PAYE_MANUAL: SourceUrl = 'https://www.gov.uk/hmrc-internal-manuals/paye-manual/paye14015'
+const HICBC_GUIDE: SourceUrl = 'https://www.gov.uk/child-benefit-tax-charge'
 const HMRC_NI_RATES: SourceUrl =
   'https://www.gov.uk/government/publications/rates-and-allowances-national-insurance-contributions/rates-and-allowances-national-insurance-contributions'
 
@@ -93,8 +98,15 @@ export const taxYear: TaxYearConfig = {
     reliefAtSourceRate: read(percent('20'), PENSION_TAX_RELIEF),
   },
   childBenefit: {
-    weeklyRates: { eldestOrOnly: TODO, additionalChild: TODO },
-    hicbc: { threshold: TODO, fullChargeAt: TODO, incomePerPercent: TODO },
+    weeklyRates: {
+      eldestOrOnly: read(fromPounds('27.05'), CHILD_BENEFIT_RATES),
+      additionalChild: read(fromPounds('17.90'), CHILD_BENEFIT_RATES),
+    },
+    hicbc: {
+      threshold: read(fromPounds(60_000), CHILD_BENEFIT_TAX_CALCULATOR),
+      fullChargeAt: read(fromPounds(80_000), HICBC_PAYE_MANUAL),
+      incomePerPercent: read(fromPounds(200), HICBC_GUIDE),
+    },
   },
   childcare: {
     taxFreeChildcare: { incomeLimit: TODO },
