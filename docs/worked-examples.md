@@ -4,7 +4,7 @@ Examples that GOV.UK and HMRC publish for the rules Sumyard models, copied as pu
 
 Collected in slice 1a session E from pages read on 17 October 2026. Each example says which tax year its figures belong to. Where that is not 2026 to 2027, the example tests the method with that year's figures passed in as test inputs (a fake config), never as 2026 to 2027 values. Two published examples are internally inconsistent; they are listed so nobody mirrors them by mistake.
 
-**Count:** 23 published examples collected in session E, plus 3 added in session F for income tax (IT-1, IT-2, PA-1). 5 are stated for 2026 to 2027 and 7 more use current thresholds that match 2026 to 2027; the rest illustrate a method with another year's figures. More than five in total, but the **personal allowance taper has no published numeric example** on the pages read, and both HICBC examples need the owner's check (O4). The owner's HMRC-calculator cross-checks fill those gaps.
+**Count:** 23 published examples collected in session E, plus 3 added in session F for income tax (IT-1, IT-2, PA-1), plus 5 added in session G1 (PEN-1, PEN-2, PEN-3, ANI-3, HICBC-3). 5 are stated for 2026 to 2027 and 7 more use current thresholds that match 2026 to 2027; the rest illustrate a method with another year's figures. More than five in total, but the **personal allowance taper has no published numeric example** on the pages read, and both HICBC examples need the owner's check (O4). The owner's HMRC-calculator cross-checks fill those gaps.
 
 ## Income tax and the personal allowance (added in session F)
 
@@ -65,9 +65,27 @@ Read on 17 October 2026, to confirm decision D2 (marginal bands) and the taper's
 
 | # | Year | Inputs | Published result | Source | Mirror in F? |
 |---|---|---|---|---|---|
-| PR-1 | 2024 to 2025 | Earnings £60,270; £12,000 paid into a relief at source scheme | "You can claim an extra 20% tax relief on £10,000 (the same amount you paid 40% tax on)"; "You do not get additional relief on the remaining £2,000" | Tax on your private pension contributions: Tax relief, https://www.gov.uk/tax-on-your-private-pension/pension-tax-relief | Only once O9 is settled; with 2024 to 2025 figures as test inputs. |
+| PR-1 | 2024 to 2025 | Earnings £60,270; £12,000 paid into a relief at source scheme | "You can claim an extra 20% tax relief on £10,000 (the same amount you paid 40% tax on)"; "You do not get additional relief on the remaining £2,000" | Tax on your private pension contributions: Tax relief, https://www.gov.uk/tax-on-your-private-pension/pension-tax-relief | **Mirrored in G1** (decision G2), with the 2026-27 config standing in as for IT-2. The £12,000 is read as the total going in (the "remaining £2,000" is £12,000 less £10,000). |
 | CC-1 | Current | Childcare bill £250 (Tax-Free Childcare) | "You pay £200 into your childcare account (80% of the bill). The government adds £50 (20% of the bill)." | Tax-Free Childcare, https://www.gov.uk/tax-free-childcare | No (Sumyard tests eligibility only). |
 | CC-2 | Current | Aged 21 or over, no regular income, earning £10,574.72 a year | "You’re eligible ... This is the same as earning £2,643.68 every 3 months on average." | Free Childcare for Working Parents: Check if you're eligible, https://www.gov.uk/free-childcare-if-working/check-youre-eligible | Only if minimum earnings are modelled (O7). |
+
+## Pension relief, adjusted net income and HICBC (added in session G1)
+
+Read on 17 October 2026.
+
+| # | Year | Inputs | Published result | Source | Mirrored? |
+|---|---|---|---|---|---|
+| PEN-1 | Not tied to a year's limits (the relief at source rates of the time) | A total contribution of £1,000 by a higher rate (40%) taxpayer | "The member deducts and retains £200 and pays £800 to the pension scheme. The pension scheme claims £200 from HMRC. The total contribution is £1,000. The member is a higher rate taxpayer (40%) and claims the extra £200 (40% - 20% already claimed by pension scheme)" | PTM044220, https://www.gov.uk/hmrc-internal-manuals/pensions-tax-manual/ptm044220 | **Yes** (gross-up, provider relief, and the extra relief from the band extension at a higher-rate pay). |
+| PEN-2 | As PEN-1 | A higher rate taxpayer wanting £100 in the scheme | "They have paid net contributions of £80"; "the extra tax relief due to them will be £20 (40% less 20%)" | Same page | **Yes.** |
+| PEN-3 | Not tied to a year (AA-4's relief at source step) | £360 a month relief at source | "£450 per month"; "£5,400" a year | PTM057200, https://www.gov.uk/hmrc-internal-manuals/pensions-tax-manual/ptm057200 | **Yes** (gross-up only). |
+| ANI-3 | Not tied to a year | A relief at source contribution | "So, for every £1 of pension contribution you made, take £1.25 from your ‘net income’." | Personal Allowances: adjusted net income, https://www.gov.uk/guidance/adjusted-net-income | **Yes** (a stated rule). |
+| HICBC-3 | 2024 to 2025 onwards | Income over the threshold | "You’ll pay back 1% of your Child Benefit for every £200 you earn over £60,000."; "If you earn over £80,000 you’ll pay it all back." | High Income Child Benefit Charge, https://www.gov.uk/child-benefit-tax-charge | **Yes** (a stated rule, whole steps per G1). |
+
+Still not mirrored: HICBC-1 (inconsistent as published) and HICBC-2 (the 2023 to 2024 rule; it prints £700 for 40% of £1,752, whole pounds, where decision G1 rounds to the nearest penny); ANI-1 and ANI-2 (self-employment, property, savings income, Gift Aid and gross contributions are not inputs); the annual allowance examples (session G2). No GOV.UK page read gives a worked example of the student loan base under a pension method, or of salary sacrifice with figures for 2026 to 2027 (the salary sacrifice guide's examples are weekly childcare vouchers and a bonus, not tied to a year).
+
+## Mirrored in session G1
+
+`published.test.ts` adds PEN-1, PEN-2, PEN-3, ANI-3, PR-1 and HICBC-3, each citing its page. The properties test checks that the band extension gives the higher-rate relief the pension tax relief guide states (each band's rate less the relief-at-source rate, up to the income taxed at it).
 
 ## Mirrored in session F
 
@@ -78,6 +96,8 @@ Read on 17 October 2026, to confirm decision D2 (marginal bands) and the taper's
 `docs/hmrc-cross-checks.json` holds 72 input cases derived from the verified 2026-27 config: taper start less £1, at the start, plus £1, the zone's midpoint, the zero point and £10,000 above it; for rUK and Scotland; with no student loan and with each plan alone (1, 2, 4, 5, postgraduate). Every expected result is `null`, so `crossChecks.test.ts` lists each case as a todo. The owner fills them from HMRC's own online calculators (pounds strings, the calculator's www.gov.uk page and the date checked); a filled case is then compared with the engine, within the file's `tolerancePence` (0 now). The test fails if the cases drift from the config.
 
 ## Gaps for the owner's cross-checks
+
+- **Pensions:** not added to `docs/hmrc-cross-checks.json` in G1 (expected values come only from HMRC's calculators, and the harness takes no pension inputs yet). Suggested: HMRC's "Estimate your Income Tax for the current year" with a pension contribution, near the taper start, in England and Scotland.
 
 - **Personal allowance taper and income tax:** no published numeric example found. Suggested: HMRC's "Estimate your Income Tax for the current year" at a few incomes either side of the taper, in England and Scotland.
 - **HICBC:** HMRC's Child Benefit tax calculator at incomes such as just over the threshold, mid-band with a part of £200, and above the full-charge point.

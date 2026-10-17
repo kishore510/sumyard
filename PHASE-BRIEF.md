@@ -1,6 +1,6 @@
 # PHASE-BRIEF: Slice 1a Optimiser: config and engine
 
-Status: In progress. Session E is done (0.5.0, PR #5, merged and deployed): the config step is finished and logged. Session F is done (0.6.0, internal: the core tax engine for take-home pay without pension): the owner spot-checked the verified values and answered the engine questions as modelling decisions (`docs/modelling-decisions.md`). Session G is split into G1 (pensions, adjusted net income, HICBC; 0.7.0, internal) and G2 (annual allowance, carry forward, childcare check, `optimise()`; 0.8.0). G1 is in progress. Slice 1a runs as two build sessions: **E** (verify and populate the 2026-27 tax config, docs only around it, no engine code, 0.5.0) and **F** (the pure engine, tests first, after the owner answers session E's open questions). Rewritten at the start of every slice. Roadmap and status live in `PLAN.md`. Slice 0.5 is Done (0.4.0, PR #4, 17 October 2026); its progress log is archived at the end of this file, above slice 0's.
+Status: In progress. Session E is done (0.5.0, PR #5, merged and deployed): the config step is finished and logged. Session F is done (0.6.0, internal: the core tax engine for take-home pay without pension): the owner spot-checked the verified values and answered the engine questions as modelling decisions (`docs/modelling-decisions.md`). Session G is split into G1 (pensions, adjusted net income, HICBC; 0.7.0, internal) and G2 (annual allowance, carry forward, childcare check, `optimise()`; 0.8.0). **G1 is done (0.7.0, internal); G2 is next.** Slice 1a runs as two build sessions: **E** (verify and populate the 2026-27 tax config, docs only around it, no engine code, 0.5.0) and **F** (the pure engine, tests first, after the owner answers session E's open questions). Rewritten at the start of every slice. Roadmap and status live in `PLAN.md`. Slice 0.5 is Done (0.4.0, PR #4, 17 October 2026); its progress log is archived at the end of this file, above slice 0's.
 
 ## Docs rule
 
@@ -79,9 +79,41 @@ Tests first (red, then green): published GOV.UK examples, properties, edge cases
 
 Out of scope: the annual allowance, carry forward, childcare, `optimise()` (G2, 0.8.0); any UI; any tax value change; any year other than 2026-27.
 
+### Session G2: annual allowance, carry forward, childcare, `optimise()` (0.8.0)
+
+Next. Pure functions in `src/calculators/optimiser/`, tests first, no UI.
+
+1. `annualAllowanceCheck`: the annual allowance, the taper (threshold income and adjusted income, the reduction rounded down to a pound as PTM057100 states, the minimum), the MPAA; warnings, not silent clamping. Read on GOV.UK first how threshold income and adjusted income treat each pension method (PTM057200's AA-4 adds net pay contributions back for adjusted income) and log it.
+2. Carry forward over `pension.carryForward.yearsBack` years, from an input of unused allowance (only 2026-27 is modelled).
+3. The childcare income-limit cliff (G3) on `adjustedNetIncome`, with the minimum earnings condition and the England-only scope listed as assumptions.
+4. `optimise(inputs, config, policy)`: sweep contribution levels on `takeHome`; the take-home and marginal-rate curves; the contribution that brings ANI to each threshold (taper start, HICBC full-charge point and threshold, childcare limit); the cliffs the sweep crosses (HICBC whole steps, student loan whole pounds) documented.
+5. Owner inputs before or during G2: Child Benefit weeks (G4); the HMRC cross-checks.
+
 ## Progress log
 
 Add one entry per session: date, what was done, what differs from the brief, what the next session should pick up, and which docs were updated.
+
+- **17 October 2026, build session G1 (pensions, adjusted net income, HICBC). Version 0.7.0, internal.**
+  - Pre-check: PR #6 merged; its Pages deploy (run 39062754954) succeeded. Names and signatures confirmed in the code before designing: `personalAllowance(income, config, policy)`, `incomeTax(income, region, config, policy)`, `employeeNI(niablePay, config)`, `studentLoan(plans, pay, config)`, `takeHome(inputs, config, policy)`, `ModellingPolicy { taperRounding }`, `TaxInputs { grossPay, region, studentLoans }`, `ExactPence` in `money.ts`. They match the prompt.
+  - Done (docs `2fcd567`; tests first: red `c5aee46`, green `ded2871`):
+    - [x] GOV.UK lookups, logged with exact lines in `docs/verification-log.md` ("Session G1 lookups"): salary sacrifice (EIM42780, NIM02330, NIM02331, the employers' guide), net pay (PTM044230, CWG2 2026 to 2027), relief at source (PTM044220, CWG2, the pension tax relief guide), ANI (the ANI guidance, the HICBC guide), the student loan base (SL3, the employers' student loan guidance), Child Benefit weeks (PAYE130030).
+    - [x] G2 (ANI step order) settled from GOV.UK: salary sacrifice and net pay never count as taxable pay (step 1); relief at source comes off grossed up at step 3; every step subtracts, so order does not change ANI. O2 settled from GOV.UK (G6): the student loan base is the employer's secondary NIC pay, lowered by salary sacrifice only.
+    - [x] Owner decisions recorded (`docs/modelling-decisions.md`): G4 weeks as `ModellingPolicy.childBenefitWeeks` with the default from `src/lib/periods.ts`; G5 taper rounding stays `'exact'`.
+    - [x] `pensionContribution`, `adjustedNetIncome`, `hicbc`; `incomeTax` with an optional pension (taper on ANI, bands above the basic rate band moved up for relief at source); `takeHome` with `pension` and `childBenefit` inputs, views with pension, HICBC, Child Benefit and net including it, assumptions naming the method, weeks and rounding. `money.ts` gains `wholeSteps`.
+    - [x] Tests: published examples PEN-1, PEN-2, PEN-3, ANI-3, PR-1, HICBC-3 (each citing its page); properties (tax and NI never negative; take-home rising by no more than gross, and never falling for rises of a hundred pounds or more without Child Benefit; HICBC never above Child Benefit; salary sacrifice never costing more than the amount sacrificed; the band extension equal to GOV.UK's claim rates; relief at source never behind net pay for the same amount in; engine against reference); edge cases (the taper start, HICBC threshold, a step and the full-charge point, each a penny either side; net pay against relief at source for a non-taxpayer and a taper-zone earner; Scotland's starter rate and Scotland against rUK with relief at source; contributions above earnings; zero and negative inputs; opt-out; zero children; exact ANI a quarter penny under a step). `fixtures/reference.ts` extended independently. Literal guard passes. Mutation spot-checks (no gross-up: 19 fail; no ANI reduction: 9; salary sacrifice leaving NI-able pay: 5; part HICBC steps counted: 7).
+    - [x] `test` (1,119 passed, 72 todo), `lint`, `typecheck`, `build` pass.
+  - Differences from the brief and prompt:
+    - **Child Benefit weeks stay OPEN (G4):** no page states the count; PAYE130030's method reads as 52 or 53 full weeks for 2026 to 2027 (both ends are Mondays). The default is `periods.ts` (52); the owner decides.
+    - **Relief at source moves every band above the basic rate band**, not only the basic rate limit, so the additional and Scottish top rates get the relief GOV.UK states. No GOV.UK page read names the band extension (the owner's G2 choice); tests check it against the stated claim rates. The basic rate band is the band at the relief-at-source rate; a config without exactly one stops with an error.
+    - **A gross contribution above gross pay is refused** (`EngineInputError`) for every method: relief above earnings and the relief-at-source no-earnings allowance (not in the config) are not modelled.
+    - `incomeTax` takes gross pay plus an optional pension rather than an ANI argument, so it cannot be handed an ANI that disagrees with the pension. `personalAllowance` still takes the income (ANI) directly.
+    - `ModellingPolicy.childBenefitWeeks` is required, so existing tests that built a policy now spread `DEFAULT_POLICY` (the only change to F's tests).
+    - The take-home property in the prompt ("never rises when gross rises") is read as "never falls": it fails at a penny (student loans round down to whole pounds) and across a HICBC step (a cliff by design), so it is tested for rises of a hundred pounds or more without Child Benefit, plus "never rises by more than gross".
+    - HICBC-2 (PAYE14015, 2023 to 2024 rule) prints whole pounds; G1 keeps the nearest penny (decision G1) and does not mirror it.
+    - `docs/hmrc-cross-checks.json` not extended: it takes no pension inputs and its expected values must come from HMRC.
+  - Not verified: HMRC's calculators (cross-checks still pending); a GOV.UK page naming the band extension; the Child Benefit week count; legislation; anything behind assets.publishing.service.gov.uk; Self Assessment's own figures for higher-rate relief.
+  - Next (session G2): see "Session G2" above. Owner: Child Benefit weeks (52 or 53 for 2026 to 2027); the HMRC cross-checks.
+  - Docs updated: `PHASE-BRIEF.md` (G split, G1 scope and log, G2 handover), `PLAN.md`, `CHANGELOG.md` (0.7.0, internal), `docs/modelling-decisions.md` (G1 to G6), `docs/verification-log.md` (Session G1 lookups; O2, O8, O9), `docs/worked-examples.md` (PEN-1 to PEN-3, ANI-3, HICBC-3; PR-1 mirrored), `docs/money.md` (ANI, gross-up, HICBC rounding), `docs/README.md`, `src/calculators/optimiser/README.md`, `src/lib/README.md`. `CLAUDE.md` unchanged: no rule changed. No Help topic or privacy text: nothing user-visible or stored changed.
 
 - **17 October 2026, build session F (core tax engine). Version 0.6.0.**
   - Pre-check: PR #5 merged; its Pages deploy (run 39060296115) succeeded; the owner confirmed the spot-check of the verified values (recorded in `docs/verification-log.md`).

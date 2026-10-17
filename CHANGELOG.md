@@ -4,6 +4,12 @@ All notable changes to Sumyard are listed here, newest first. The format follows
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-10-17
+
+### Added
+- **Internal only: pensions and the Child Benefit charge in the tax engine.** Nothing you can see in the app has changed. The behind-the-scenes take-home calculations now handle a pension contribution by salary sacrifice, through a workplace scheme that takes it before tax (net pay), or paid from take-home pay with the provider adding tax relief (relief at source), each with its own effect on income tax, National Insurance and student loan repayments as GOV.UK describes. They also work out adjusted net income, which sets the Personal Allowance taper, and the High Income Child Benefit Charge, whether Child Benefit is claimed or opted out of. All figures are the verified 2026 to 2027 ones, tested against examples GOV.UK publishes. No calculator uses them yet; the annual allowance, childcare checks and the optimiser come later.
+- **Still open:** how many weeks of Child Benefit to count for 2026 to 2027 (GOV.UK’s guidance can be read as 52 or 53); until it is settled the engine counts a 52-week year and says so.
+
 ## [0.6.0] - 2026-10-17
 
 ### Added
