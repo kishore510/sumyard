@@ -55,10 +55,14 @@ The owner's decision D3 (`docs/modelling-decisions.md`), recorded 17 October 202
 | Employee National Insurance | Each rate's contribution to the nearest penny (`mulRound(…, 'nearest')`; amounts are never negative, so a half penny rounds up, as NIM11002 states). Annual, not per period. | `employeeNI` | Stated (NIM11002); annual model D1. |
 | Student loan and postgraduate loan repayments | Rate × pay above the threshold, rounded down to a whole pound (`mulRound(…, 'down')` then `roundToPounds(…, 'down')`, which equals one floor to the pound). Each plan's repayment separately. Annual, not per period. | `studentLoan` | Stated for PAYE deductions (SL3 2026 to 2027), applied to the annual figure by decision D3; annual model D1. |
 | Monthly and weekly views | Each annual component divided by the months or weeks in a year (`src/lib/periods.ts`), to the nearest penny. A view's net can differ by a penny or so from its gross less its deductions. | `takeHome` | D3. Display only, not payroll. |
-| HICBC charge (session G) | Whole steps only; the charge to the nearest penny at output. | Session G | Decisions G1, D3. |
-| Relief at source gross-up, annual allowance taper (session G) | Gross-up: exact, nearest penny at output (D3). Annual allowance taper: the stated rule above (reduction rounded down to £1). | Session G | D3; PTM057100. |
+| Adjusted net income | Exact (a relief at source gross-up can leave part of a penny); the taper and the HICBC steps use the exact figure; shown to the nearest penny. | `adjustedNetIncome`, `incomeTax`, `hicbc`, `takeHome` | D3. Session G1. |
+| Relief at source gross-up | The payment divided by one less the relief-at-source rate, exact; the ANI deduction and the basic rate band extension use the exact amount; the gross contribution and the provider's relief are shown to the nearest penny (the relief as the rounded gross less the payment, so they add up). | `pensionContribution`, `incomeTax`, `takeHome` | D3. Session G1 re-read PTM044220, PTM057200 and the ANI guidance: no rounding stated. |
+| Band starts after a relief at source extension | Exact; shown to the nearest penny. | `incomeTax` | D3. Session G1. |
+| Child Benefit for the year | The weekly rate times the policy's weeks (whole pence, so exact), per child. | `hicbc` | D3, G4. |
+| HICBC charge | Whole steps of exact ANI over the threshold (`wholeSteps`, rounded down); the charge, the percentage times the Child Benefit received, to the nearest penny. | `hicbc` | Decisions G1, D3. Session G1 found no GOV.UK rounding rule; PAYE14015's older example prints whole pounds (HICBC-2, not followed). |
+| Annual allowance taper (session G2) | The stated rule above (reduction rounded down to £1). | Session G2 | PTM057100. |
 
-Exact amounts use `ExactPence` (`exact`, `exactMul`, `exactAdd`, `exactSubtract`, `compareExact`, `roundExact` in `money.ts`, added in session F): BigInt fractions of a penny in lowest terms, which become `Money` only through `roundExact`.
+Exact amounts use `ExactPence` (`exact`, `exactMul`, `exactAdd`, `exactSubtract`, `compareExact`, `roundExact` in `money.ts`, added in session F): BigInt fractions of a penny in lowest terms, which become `Money` only through `roundExact`. `wholeSteps(amount, step)` (session G1) counts the whole steps in an exact amount, rounded down, for the HICBC.
 
 ## Display (`format.ts`)
 

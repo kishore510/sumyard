@@ -9,7 +9,7 @@
 import type { TaxBand, TaxYearConfig } from '@/config/tax/schema'
 import { requireVerified } from '@/config/tax/sourced'
 import type { Money, Ratio } from '@/lib/money'
-import type { ModellingPolicy, Region, StudentLoanPlanId } from '../types'
+import type { ChildBenefitInput, ModellingPolicy, PensionInput, Region, StudentLoanPlanId, TaxInputs } from '../types'
 
 export const REFERENCE_PATHS = [
   'incomeTax.personalAllowance',
@@ -31,6 +31,12 @@ export const REFERENCE_PATHS = [
   'studentLoans.plan5.rate',
   'studentLoans.postgraduate.threshold',
   'studentLoans.postgraduate.rate',
+  'pension.reliefAtSourceRate',
+  'childBenefit.weeklyRates.eldestOrOnly',
+  'childBenefit.weeklyRates.additionalChild',
+  'childBenefit.hicbc.threshold',
+  'childBenefit.hicbc.fullChargeAt',
+  'childBenefit.hicbc.incomePerPercent',
 ] as const
 
 /** Every value the engine reads, straight from the config (throws if one is unverified). */
@@ -60,17 +66,33 @@ export function configValues(config: TaxYearConfig) {
       plan5: plan('plan5'),
       postgraduate: plan('postgraduate'),
     } as Record<StudentLoanPlanId, { threshold: Money; rate: Ratio }>,
+    reliefAtSourceRate: v['pension.reliefAtSourceRate'],
+    childBenefit: {
+      eldestOrOnly: v['childBenefit.weeklyRates.eldestOrOnly'],
+      additionalChild: v['childBenefit.weeklyRates.additionalChild'],
+      threshold: v['childBenefit.hicbc.threshold'],
+      fullChargeAt: v['childBenefit.hicbc.fullChargeAt'],
+      incomePerPercent: v['childBenefit.hicbc.incomePerPercent'],
+    },
   }
 }
 
 /** A fraction of a penny: [numerator, denominator], denominator above zero. */
-type Frac = readonly [bigint, bigint]
+export type Frac = readonly [bigint, bigint]
 
 const big = (pence: number) => BigInt(pence)
 const sub = ([a, b]: Frac, [c, d]: Frac): Frac => [a * d - c * b, b * d]
 const less = ([a, b]: Frac, [c, d]: Frac) => a * d < c * b
 const clamp = (x: Frac, lo: Frac, hi: Frac | null): Frac => (less(x, lo) ? lo : hi && less(hi, x) ? hi : x)
 const times = ([a, b]: Frac, r: Ratio): Frac => [a * big(r.numerator), b * big(r.denominator)]
+const plus = ([a, b]: Frac, [c, d]: Frac): Frac => [a * d + c * b, b * d]
+const whole = (pence: number): Frac => [big(pence), 1n]
+const NONE: Frac = [0n, 1n]
+const smaller = (x: Frac, y: Frac): Frac => (less(y, x) ? y : x)
+const sameRate = (a: Ratio, b: Ratio) => big(a.numerator) * big(b.denominator) === big(b.numerator) * big(a.denominator)
+
+/** Exact equality of two fractions. */
+export const equalFrac = ([a, b]: Frac, [c, d]: Frac) => a * d === c * b
 
 /** Nearest penny, an exact half away from zero (amounts here are never negative). */
 const nearest = ([a, b]: Frac): number => {
@@ -80,13 +102,13 @@ const nearest = ([a, b]: Frac): number => {
 
 const floorPounds = ([a, b]: Frac): number => Number((a / (b * 100n)) * 100n)
 
-/** The personal allowance as a fraction of a penny, under the policy. */
-export function referenceAllowance(income: Money, config: TaxYearConfig, policy: ModellingPolicy): Frac {
+/** The personal allowance as a fraction of a penny, under the policy, tapered on the income given (pence or an exact fraction). */
+export function referenceAllowance(income: Money | Frac, config: TaxYearConfig, policy: ModellingPolicy): Frac {
   const { personalAllowance, taperStart, taperRate } = configValues(config)
   const full: Frac = [big(personalAllowance), 1n]
-  const excess = big(income) - big(taperStart)
-  if (excess <= 0n) return full
-  let reduction: Frac = [excess * big(taperRate.numerator), big(taperRate.denominator)]
+  const excess = sub(typeof income === 'number' ? whole(income) : income, whole(taperStart))
+  if (!less(NONE, excess)) return full
+  let reduction = times(excess, taperRate)
   if (policy.taperRounding === 'wholePoundsDown') reduction = [big(floorPounds(reduction)), 1n]
   const left = sub(full, reduction)
   return less(left, [0n, 1n]) ? [0n, 1n] : left
@@ -140,3 +162,152 @@ export function referenceRepayment(pay: Money, threshold: Money, rate: Ratio): n
   const excess = clamp(sub([big(pay), 1n], [big(threshold), 1n]), [0n, 1n], null)
   return floorPounds(times(excess, rate))
 }
+
+/* Session G1: pensions, adjusted net income, HICBC. The same published rules written a second way. */
+
+/** A pension contribution's effects, by the GOV.UK rules logged in docs/verification-log.md ("Session G1 lookups"). */
+export interface ReferencePension {
+  readonly taxablePay: Frac
+  readonly niablePay: Frac
+  /** Adjusted net income. */
+  readonly ani: Frac
+  /** How far each band above the basic rate band moves up. */
+  readonly extension: Frac
+  /** What goes into the pension. */
+  readonly pot: Frac
+  /** What comes out of pay. */
+  readonly cost: Frac
+}
+
+/** Net ÷ (1 − rate): what goes in for a relief at source payment ("for every £1 ... take £1.25" at the basic rate). */
+export function referenceGrossUp(net: Money, config: TaxYearConfig): Frac {
+  const rate = configValues(config).reliefAtSourceRate
+  return [big(net) * big(rate.denominator), big(rate.denominator) - big(rate.numerator)]
+}
+
+export function referencePension(grossPay: Money, pension: PensionInput | undefined, config: TaxYearConfig): ReferencePension {
+  const gross = whole(grossPay)
+  if (!pension) return { taxablePay: gross, niablePay: gross, ani: gross, extension: NONE, pot: NONE, cost: NONE }
+  const c = whole(pension.contribution)
+  switch (pension.method) {
+    case 'salarySacrifice':
+      return { taxablePay: sub(gross, c), niablePay: sub(gross, c), ani: sub(gross, c), extension: NONE, pot: c, cost: c }
+    case 'netPay':
+      return { taxablePay: sub(gross, c), niablePay: gross, ani: sub(gross, c), extension: NONE, pot: c, cost: c }
+    case 'reliefAtSource': {
+      const g = referenceGrossUp(pension.contribution, config)
+      return { taxablePay: gross, niablePay: gross, ani: sub(gross, g), extension: g, pot: g, cost: c }
+    }
+  }
+}
+
+/** Exact income tax on taxable pay, the allowance tapered on ANI, every band above the basic rate band moved up by the extension. */
+export function referenceExactTax(
+  taxablePay: Frac,
+  ani: Frac,
+  extension: Frac,
+  region: Region,
+  config: TaxYearConfig,
+  policy: ModellingPolicy,
+): { taxable: Frac; bandIncome: Frac[]; bandTax: Frac[]; starts: Frac[] } {
+  const values = configValues(config)
+  const bands = values.bands[region]
+  const basic = bands.findIndex((band) => sameRate(band.rate, values.reliefAtSourceRate))
+  const starts = bands.map((band, i) => (i > basic && basic >= 0 ? plus(whole(band.from), extension) : whole(band.from)))
+  const taxable = clamp(sub(taxablePay, referenceAllowance(ani, config, policy)), NONE, null)
+  const bandIncome = starts.map((start, i) => {
+    const next = starts[i + 1]
+    return clamp(sub(taxable, start), NONE, next ? sub(next, start) : null)
+  })
+  const bandTax = bandIncome.map((income, i) => times(income, bands[i]!.rate))
+  return { taxable, bandIncome, bandTax, starts }
+}
+
+/** Income tax with a pension, each band's tax to the nearest penny. */
+export function referenceIncomeTaxWith(
+  grossPay: Money,
+  pension: PensionInput | undefined,
+  region: Region,
+  config: TaxYearConfig,
+  policy: ModellingPolicy,
+): ReferenceTax & { ani: number } {
+  const p = referencePension(grossPay, pension, config)
+  const { taxable, bandIncome, bandTax } = referenceExactTax(p.taxablePay, p.ani, p.extension, region, config, policy)
+  const rounded = bandTax.map(nearest)
+  return {
+    allowance: nearest(referenceAllowance(p.ani, config, policy)),
+    taxable: nearest(taxable),
+    bandIncome: bandIncome.map(nearest),
+    bandTax: rounded,
+    total: rounded.reduce((a, b) => a + b, 0),
+    ani: nearest(p.ani),
+  }
+}
+
+/**
+ * Higher-rate relief on a relief at source contribution the way the GOV.UK
+ * guide states a claim: for each band above the basic rate band, highest
+ * first, the band's rate less the relief-at-source rate on the income taxed
+ * at that rate, up to the gross contribution in all. Exact.
+ */
+export function referenceClaimRelief(taxable: Frac, gross: Frac, region: Region, config: TaxYearConfig): Frac {
+  const values = configValues(config)
+  const bands = values.bands[region]
+  const basic = bands.findIndex((band) => sameRate(band.rate, values.reliefAtSourceRate))
+  let left = gross
+  let relief = NONE
+  for (let i = bands.length - 1; i > basic; i--) {
+    const band = bands[i]!
+    const next = bands[i + 1]
+    const inBand = clamp(sub(taxable, whole(band.from)), NONE, next ? whole(next.from - band.from) : null)
+    const used = smaller(inBand, left)
+    const extra: Ratio = {
+      numerator: band.rate.numerator * values.reliefAtSourceRate.denominator - values.reliefAtSourceRate.numerator * band.rate.denominator,
+      denominator: band.rate.denominator * values.reliefAtSourceRate.denominator,
+    }
+    relief = plus(relief, times(used, extra))
+    left = sub(left, used)
+  }
+  return relief
+}
+
+/** Child Benefit for the year and the charge: one percentage point per whole step over the threshold, all of it above the full-charge point. */
+export function referenceHicbc(ani: Money | Frac, children: ChildBenefitInput, config: TaxYearConfig, policy: ModellingPolicy) {
+  const cb = configValues(config).childBenefit
+  const income = typeof ani === 'number' ? whole(ani) : ani
+  const weekly = children.children === 0 ? 0n : big(cb.eldestOrOnly) + big(cb.additionalChild) * BigInt(children.children - 1)
+  const entitlement = Number(weekly * BigInt(policy.childBenefitWeeks))
+  const received = children.payments === 'claimed' ? entitlement : 0
+  const over = sub(income, whole(cb.threshold))
+  const steps = less(NONE, over) ? Number(over[0] / (over[1] * big(cb.incomePerPercent))) : 0
+  const percent = less(whole(cb.fullChargeAt), income) ? 100 : Math.min(100, steps)
+  const charge = nearest([BigInt(received) * BigInt(percent), 100n])
+  return { entitlement, received, steps, percent, charge }
+}
+
+/** Annual take-home with a pension and Child Benefit, from the rules above. */
+export function referenceTakeHome(inputs: TaxInputs, config: TaxYearConfig, policy: ModellingPolicy) {
+  const p = referencePension(inputs.grossPay, inputs.pension, config)
+  const tax = referenceIncomeTaxWith(inputs.grossPay, inputs.pension, inputs.region, config, policy).total
+  const niablePay = nearest(p.niablePay) as Money
+  const ni = referenceNI(niablePay, config).total
+  const values = configValues(config)
+  const plans = [...new Set(inputs.studentLoans)]
+  const undergraduate = plans.filter((plan) => plan !== 'postgraduate')
+  let loan = 0
+  if (undergraduate.length > 0) {
+    const lowest = undergraduate.reduce((a, b) => (values.plans[b].threshold < values.plans[a].threshold ? b : a))
+    loan += referenceRepayment(niablePay, values.plans[lowest].threshold, values.plans[lowest].rate)
+  }
+  if (plans.includes('postgraduate'))
+    loan += referenceRepayment(niablePay, values.plans.postgraduate.threshold, values.plans.postgraduate.rate)
+  const child = inputs.childBenefit ? referenceHicbc(p.ani, inputs.childBenefit, config, policy) : null
+  const pension = nearest(p.cost)
+  const charge = child?.charge ?? 0
+  const net = inputs.grossPay - tax - ni - loan - pension - charge
+  return { tax, ni, loan, pension, charge, net, childBenefit: child?.received ?? 0, ani: nearest(p.ani), pot: nearest(p.pot) }
+}
+
+/** For tests: a fraction rounded to the nearest penny, and pence as a fraction. */
+export const nearestPence = (x: Frac): Money => nearest(x) as Money
+export const fracOf = (pence: number): Frac => whole(pence)

@@ -22,6 +22,7 @@ import {
   subtract,
   subtractRatio,
   toPence,
+  wholeSteps,
   ZERO,
 } from './money'
 
@@ -347,5 +348,33 @@ describe('exact pence (added in slice 1a session F for rules that leave part of 
   it('refuses a result past the safe range', () => {
     expect(() => roundExact(exactMul(exact(p(MAX)), ratio(2, 1)), 'nearest')).toThrow(MoneyError)
     expect(roundExact(exact(p(MAX)), 'nearest')).toBe(MAX)
+  })
+})
+
+describe('wholeSteps', () => {
+  const p = fromPence
+  const half = ratio(1, 2)
+
+  it('counts the whole steps in an exact amount, rounding down', () => {
+    expect(wholeSteps(exact(p(0)), p(200))).toBe(0)
+    expect(wholeSteps(exact(p(199)), p(200))).toBe(0)
+    expect(wholeSteps(exact(p(200)), p(200))).toBe(1)
+    expect(wholeSteps(exact(p(399)), p(200))).toBe(1)
+    expect(wholeSteps(exact(p(400)), p(200))).toBe(2)
+    expect(wholeSteps(exact(p(7)), p(1))).toBe(7)
+  })
+
+  it('works on fractions of a penny', () => {
+    // 399.5 pence holds one whole step of 200; 400 holds two.
+    expect(wholeSteps(exactMul(exact(p(799)), half), p(200))).toBe(1)
+    expect(wholeSteps(exactAdd(exactMul(exact(p(799)), half), exactMul(exact(p(1)), half)), p(200))).toBe(2)
+  })
+
+  it('refuses a negative amount, a step that is not above zero, or a count past the safe range', () => {
+    expect(() => wholeSteps(exact(p(-1)), p(200))).toThrow(MoneyError)
+    expect(() => wholeSteps(exact(p(1)), p(0))).toThrow(MoneyError)
+    expect(() => wholeSteps(exact(p(1)), p(-5))).toThrow(MoneyError)
+    expect(() => wholeSteps(exact(p(1)), 0.5 as never)).toThrow(MoneyError)
+    expect(wholeSteps(exact(p(Number.MAX_SAFE_INTEGER)), p(1))).toBe(Number.MAX_SAFE_INTEGER)
   })
 })

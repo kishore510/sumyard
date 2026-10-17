@@ -82,7 +82,9 @@ describe('HMRC cross-checks', () => {
       const result = takeHome(
         { grossPay: fromPounds(c.inputs.grossPay), region: c.inputs.region, studentLoans: c.inputs.studentLoans },
         config!,
-        file.policy.taperRounding === DEFAULT_POLICY.taperRounding ? DEFAULT_POLICY : { taperRounding: 'wholePoundsDown' },
+        file.policy.taperRounding === DEFAULT_POLICY.taperRounding
+          ? DEFAULT_POLICY
+          : { ...DEFAULT_POLICY, taperRounding: 'wholePoundsDown' },
       )
       if (!result.ok) throw new Error(`refused: ${result.unverified.join(', ')}`)
       for (const field of filled) {

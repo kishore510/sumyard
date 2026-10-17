@@ -48,22 +48,47 @@ rUK (England, Wales and Northern Ireland) or Scotland bands from the config. Emp
 
 Every result is an estimate (`estimate: true`) and carries `assumptions`, plain-language strings with no figures, that the UI shows beside it. A refusal (any value needed unverified) carries no result.
 
-## Recorded now for session G
+## Session G (recorded in F, settled in G1)
 
-Session G (pension methods, adjusted net income, HICBC, annual allowance, childcare check, `optimise()`) applies these. A GOV.UK page read in session G that contradicts one wins, and is reported.
+Session G is split into G1 (pension methods, adjusted net income, HICBC; 0.7.0) and G2 (annual allowance, carry forward, childcare check, `optimise()`; 0.8.0). These decisions were recorded in session F; the owner settled G2's lookup and G4 at the start of session G1 (17 October 2026), and G1 read the GOV.UK pages below that day. The quotes are in `docs/verification-log.md`, "Session G1 lookups". A GOV.UK page that contradicts one of these wins, and is reported.
 
 ### G1. HICBC whole steps (answers O4)
 
-The charge counts whole steps only: one percentage point of the Child Benefit for each complete step of income over the threshold (the config's `childBenefit.hicbc.incomePerPercent`), following the GOV.UK guide's wording (one percentage point "for every" step "you earn over" the threshold, High Income Child Benefit Charge, https://www.gov.uk/child-benefit-tax-charge) rather than PAYE14015's 2024 to 2025 example, which is inconsistent as published (`docs/worked-examples.md`, HICBC-1). A part step adds nothing. The charge in pounds is rounded once at output to the nearest penny (D3), unless a GOV.UK page states another rule.
+The charge counts whole steps only: one percentage point of the Child Benefit for each complete step of income over the threshold (the config's `childBenefit.hicbc.incomePerPercent`), following the GOV.UK guide's wording (one percentage point "for every" step "you earn over" the threshold, High Income Child Benefit Charge, https://www.gov.uk/child-benefit-tax-charge) rather than PAYE14015's 2024 to 2025 example, which is inconsistent as published (`docs/worked-examples.md`, HICBC-1). A part step adds nothing. The charge in pounds is rounded once at output to the nearest penny (D3), unless a GOV.UK page states another rule. Above the full-charge point (`childBenefit.hicbc.fullChargeAt`) the charge is the whole Child Benefit. Opted out of payments: no Child Benefit and no charge (the GOV.UK guide: "opt out of getting payments and not pay the tax charge"). Code: `hicbc` in `calc.ts`. G1 found no GOV.UK rounding rule; PAYE14015's older example (HICBC-2) prints whole pounds, which is noted, not followed.
 
-### G2. Relief at source (answers O9 in part)
+### G2. Pension methods and adjusted net income (answers O9)
 
-Modelled as a basic rate band extension by the grossed-up contribution, plus a reduction in adjusted net income by the same grossed-up amount, rather than as a separate Self Assessment claim. **Still OPEN for session G:** the order of the adjusted net income steps for salary sacrifice and net pay (not stated on the ANI page).
+**Relief at source (owner's choice):** modelled as a basic rate band extension by the grossed-up contribution, plus a reduction in adjusted net income by the same grossed-up amount, rather than as a separate Self Assessment claim. The extension moves the start of every band above the basic rate band up by the grossed-up amount (the basic rate band is the band taxed at the relief-at-source rate, which PTM044220 calls "the relevant rate": the basic rate, or the Scottish basic rate for a Scottish taxpayer). G1 found no GOV.UK page that names the band extension; tests check that it gives the higher-rate relief the GOV.UK guide states ("20% up to the amount of any income you have paid 40% tax on", and the Scottish rates), worked out independently as the band's rate less the relief-at-source rate on the income taxed at that rate, highest band first.
+
+**The ANI step order (a GOV.UK lookup, settled in G1, not an owner choice).** Personal Allowances: adjusted net income (https://www.gov.uk/guidance/adjusted-net-income) starts from taxable income (step 1, "money you earn from employment") and takes the grossed-up relief at source contribution off at step 3 ("for every £1 of pension contribution you made, take £1.25"). Salary sacrifice and the net pay arrangement never reach step 1 as income: a successful sacrifice "is not taxable" and the employer's contribution "is not taxable on the employee" (EIM42780); under net pay the employer deducts the contribution "from the ‘gross pay’" and operates PAYE "on the net amount" (PTM044230; CWG2 2026 to 2027: "PAYE purposes deduct the pension contributions from the employee’s gross pay"). So:
+
+- adjusted net income = gross pay − salary sacrificed − net pay contributions − the grossed-up relief at source contribution;
+- every step is a subtraction, so the order does not change the result.
+
+The three methods (GOV.UK, logged in G1):
+
+| Method | Taxable pay | NI-able pay | Adjusted net income | Pension pot gets | Sources |
+|---|---|---|---|---|---|
+| Salary sacrifice | Less the amount sacrificed | Less the amount sacrificed | Less the amount sacrificed | The amount sacrificed, as an employer contribution | EIM42780; NIM02330; NIM02331; Salary sacrifice for employers |
+| Net pay arrangement | Less the contribution | Unchanged | Less the contribution | The contribution | PTM044230; CWG2 2026 to 2027, 2.1 |
+| Relief at source | Unchanged (basic rate band extended by the gross amount) | Unchanged | Less the gross amount | The net contribution grossed up at the relief-at-source rate | PTM044220; CWG2 2026 to 2027, 2.1; Tax on your private pension contributions: Tax relief; the ANI guidance, step 3 |
+
+Code: `pensionContribution`, `adjustedNetIncome`, `incomeTax`, `takeHome`.
 
 ### G3. Childcare (answers O7)
 
-The optimiser models the income-limit cliff only (expected adjusted net income over the limit in the config). The minimum earnings condition and the England-only scope of Free Childcare for Working Parents are listed assumptions, not modelled.
+The optimiser models the income-limit cliff only (expected adjusted net income over the limit in the config). The minimum earnings condition and the England-only scope of Free Childcare for Working Parents are listed assumptions, not modelled. Session G2.
 
-### G4. Child Benefit weeks (O8)
+### G4. Child Benefit weeks (answers O8)
 
-The number of weeks of Child Benefit in the year follows the GOV.UK guidance. Session E found no GOV.UK page that states it for 2026 to 2027 (PAYE130030 counts full weeks of entitlement), so it stays **OPEN** until session G finds it stated, and is reported if not.
+**Resolved by the owner at the start of G1:** the number of weeks of Child Benefit in the year is a `ModellingPolicy` field, `childBenefitWeeks`, whose default comes from `src/lib/periods.ts` (`CHILD_BENEFIT_WEEKS_PER_YEAR`, the same calendar divisor as the weekly view), not a literal in the engine, and is listed in the assumptions. If a www.gov.uk page states the count for the year, that wins and is logged.
+
+G1 found no page that states the count for 2026 to 2027. PAYE130030 states the PAYE service's method: entitlement from the Monday on or after the start (the tax year's start if no date is held) to "the Sunday following the ‘End’ date" (or the end date if it is a Sunday), and "The number of full weeks" between them, times each child's weekly rate. 6 April 2026 and 5 April 2027 are both Mondays, so the method reads two ways for a full year: 52 full weeks if the period stops at 5 April 2027, or 53 if the end moves to the Sunday after it. **Still OPEN for the owner:** which count to use; the default stays `periods.ts` until then.
+
+### G5. Taper rounding default (session G1)
+
+The owner confirmed that `ModellingPolicy.taperRounding` stays `'exact'` by default (D4).
+
+### G6. The student loan base under each pension method (answers O2; a GOV.UK lookup, settled in G1)
+
+The deduction tables (SL3 2026 to 2027) and the employers' guidance (Student loan and postgraduate loan repayment guidance for employers) give the base as "the same gross pay amount that you would use to work out your employer’s secondary Class 1 National Insurance contributions". The NI treatment of each method then gives the base (G2's table): salary sacrifice lowers it by the amount sacrificed (NICs "payable only on the reduced salary", NIM02331); net pay leaves it unchanged ("For ... National Insurance contributions purposes do not deduct the pension contributions from the employee’s gross pay", CWG2 2026 to 2027); relief at source leaves it unchanged (contributions come out of net pay, CWG2). No GOV.UK page read states the student loan base for each pension method in one place; the base follows from two stated rules, so it is logged as answered, with both quotes. `takeHome` passes NI-able pay to `studentLoan`, as in D5.
