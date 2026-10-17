@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { checkDocs } from './docs'
+import { assertDocs, checkDocs } from './docs'
 
 const ROOT = join(import.meta.dirname, '..', '..')
 const read = (name: string) => readFileSync(join(ROOT, name), 'utf8')
@@ -122,6 +122,36 @@ describe('checkDocs', () => {
 
   it('fails when the status table is missing', () => {
     expect(checkDocs({ ...good, plan: 'Last updated: 17 October 2026\n' })).not.toEqual([])
+  })
+})
+
+describe('checkDocs: What’s new (built from CHANGELOG.md)', () => {
+  it('fails when What’s new cannot parse CHANGELOG.md', () => {
+    const changelogText = good.changelog.replace('- Something.', '- Something.\n| a | table |')
+    expect(checkDocs({ ...good, changelog: changelogText }).join('\n')).toMatch(/What’s new/)
+  })
+
+  it('fails on a section other than Added, Changed or Fixed', () => {
+    expect(checkDocs({ ...good, changelog: good.changelog.replace('### Added', '### Notes') }).join('\n')).toMatch(/Notes/)
+  })
+
+  it('fails on a release with nothing in it', () => {
+    expect(checkDocs({ ...good, changelog: good.changelog.replace('- Something.\n', '') }).join('\n')).toMatch(/0\.1\.0/)
+  })
+
+  it('accepts Added, Changed and Fixed, and items under [Unreleased]', () => {
+    const changelogText = `# Changelog\n\n## [Unreleased]\n\n### Added\n- Coming.\n\n## [0.1.0] - 2026-10-17\n\n### Added\n- A.\n\n### Changed\n- B.\n\n### Fixed\n- C.\n`
+    expect(checkDocs({ ...good, changelog: changelogText })).toEqual([])
+  })
+})
+
+describe('assertDocs (run by vite build, so a drift fails the build)', () => {
+  it('passes quietly when the docs agree', () => {
+    expect(() => assertDocs(good)).not.toThrow()
+  })
+
+  it('throws with every problem when the top version differs from package.json', () => {
+    expect(() => assertDocs({ ...good, packageJson: pkg('0.2.0'), packageLock: lock('0.2.0') })).toThrow(/0\.2\.0/)
   })
 })
 
