@@ -12,7 +12,7 @@ Rules for every row:
 
 ## 2026-27
 
-Checked by Claude in slice 1a session E, from pages fetched on 17 October 2026. Owner spot-check pending (the PR lists the riskiest values first).
+Checked by Claude in slice 1a session E, from pages fetched on 17 October 2026. Owner spot-check of the riskiest values (listed in PR #5) confirmed on 17 October 2026, at the start of session F.
 
 ### Summary
 

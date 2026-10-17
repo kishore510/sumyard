@@ -1,6 +1,6 @@
 # PHASE-BRIEF: Slice 1a Optimiser: config and engine
 
-Status: In progress. Session E is done (0.5.0, PR #5, merged and deployed): the config step is finished and logged; session F waits on the owner's answers to the OPEN questions. Slice 1a runs as two build sessions: **E** (verify and populate the 2026-27 tax config, docs only around it, no engine code, 0.5.0) and **F** (the pure engine, tests first, after the owner answers session E's open questions). Rewritten at the start of every slice. Roadmap and status live in `PLAN.md`. Slice 0.5 is Done (0.4.0, PR #4, 17 October 2026); its progress log is archived at the end of this file, above slice 0's.
+Status: In progress. Session E is done (0.5.0, PR #5, merged and deployed): the config step is finished and logged. Session F (core tax engine, 0.6.0) is in progress: the owner has spot-checked the verified values and answered the engine questions as modelling decisions (`docs/modelling-decisions.md`). Session G (pensions, adjusted net income, HICBC, annual allowance, childcare check, `optimise()`) follows. Slice 1a runs as two build sessions: **E** (verify and populate the 2026-27 tax config, docs only around it, no engine code, 0.5.0) and **F** (the pure engine, tests first, after the owner answers session E's open questions). Rewritten at the start of every slice. Roadmap and status live in `PLAN.md`. Slice 0.5 is Done (0.4.0, PR #4, 17 October 2026); its progress log is archived at the end of this file, above slice 0's.
 
 ## Docs rule
 
@@ -32,9 +32,30 @@ A tax config for 2026 to 2027 in which every value Sumyard holds was read on a w
 
 Engine code, UI work beyond fixing layout problems on the Tax data screen, URL-allowlist changes, any other tax year.
 
-## Session F: the engine (planned)
+## Session F: the core tax engine (0.6.0)
 
-Starts after the owner answers session E's OPEN questions (`docs/verification-log.md`). Scope as in `PLAN.md` > 1a > Engine. Tests first: a red commit, then green.
+Pre-check (17 October 2026): PR #5 merged; its Pages deploy (run 39060296115) succeeded; the owner confirmed the spot-check of the verified values.
+
+### Scope
+
+Pure, unit-tested take-home pay functions with **no pension**, in `src/calculators/optimiser/`: no UI, no registry entry, no new dependency. Every figure comes from the verified config through `requireVerified`; a refusal is returned as the typed `Refusal`.
+
+- `personalAllowance(income, config, policy)`: the published taper, driven by an income figure passed in (adjusted net income is session G).
+- `incomeTax(income, region, config, policy)`: marginal bands for rUK or Scotland, the taper, a per-band breakdown.
+- `employeeNI(niablePay, config)`: main and additional rates, annual thresholds.
+- `studentLoan(plans, pay, config)`: plans and the postgraduate loan, on NI-able pay.
+- `takeHome(inputs, config, policy)`: gross, tax, NI, student loan, net; annual, monthly and weekly views; an assumptions list.
+- `ModellingPolicy` (`taperRounding: 'exact' | 'wholePoundsDown'`, default `'exact'`) and `TaxInputs`.
+
+Owner's modelling decisions 1 to 7 are recorded in `docs/modelling-decisions.md`, with the decisions already taken for session G.
+
+### Tests (red commit, then green)
+
+Published gov.uk examples that concern these functions (not those marked "do not mirror"), each citing its URL; property tests (tax never negative, tax and NI never fall as gross rises, take-home never negative, zero in gives zero, taper-zone marginal rate above the band rate, from an independent formula); edge cases (each threshold and a penny either side, beyond the taper's zero point, Scotland against rUK, each student loan plan alone and with the postgraduate loan, zero and negative inputs, the safe-integer guard); a literal guard on the engine source (only 0, 1, 2 and 100); a cross-check harness, `docs/hmrc-cross-checks.json`, with input cases derived from the config and `null` expected results (`it.todo` until the owner fills them from HMRC's calculators).
+
+### Out of scope
+
+Session G's work (pension methods, adjusted net income, HICBC, annual allowance, childcare check, `optimise()`); the UI, the registry and the Tax data screen; any tax value change.
 
 ## Progress log
 
