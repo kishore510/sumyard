@@ -5,6 +5,7 @@ import { HelpPage, TopicPage } from './HelpPage'
 import type { SheetRoute } from './route'
 import { SettingsPage } from './SettingsPage'
 import { SheetHeader } from './Sheet'
+import { TaxDataPage } from './TaxDataPage'
 import { WhatsNewPage } from './WhatsNewPage'
 
 /* The sheet's pages, loaded on first open (Sheet.tsx). */
@@ -21,6 +22,8 @@ function titleOf(route: SheetRoute): string {
       return 'About Sumyard'
     case 'settings':
       return 'Settings'
+    case 'tax-data':
+      return 'Tax data'
   }
 }
 
@@ -52,6 +55,7 @@ export default function SheetPages({ route, titleId }: { route: SheetRoute; titl
         {route.kind === 'whats-new' && <WhatsNewPage />}
         {route.kind === 'about' && <AboutPage />}
         {route.kind === 'settings' && <SettingsPage />}
+        {route.kind === 'tax-data' && <TaxDataPage />}
       </section>
     </>
   )

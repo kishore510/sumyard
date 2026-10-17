@@ -1,17 +1,18 @@
-import { appStorage, type KeyValueStore, readKey, readRecord, writeKey } from '@/lib/storage'
+import { latestTaxYear, listTaxYears } from '@/config/tax/index'
+import type { TaxYearId } from '@/config/tax/schema'
+import { appStorage, type KeyValueStore, type Migration, readKey, upgradeRecord, writeKey } from '@/lib/storage'
 import { STORAGE_KEYS } from '@/lib/storageKeys'
 import { createStore } from '@/lib/store'
 import type { ThemePreference } from '@/lib/theme'
 
 /*
  * App-wide defaults, saved under `sumyard:v1:settings` as
- * `{ schemaVersion: 1, region, amounts }`. The theme keeps its own key
- * (`sumyard:v1:theme`, read before first paint) and its own store, which the
- * Settings sheet and the header toggle share.
+ * `{ schemaVersion: 2, region, amounts, taxYear }`. The theme keeps its own
+ * key (`sumyard:v1:theme`, read before first paint) and its own store, which
+ * the Settings sheet and the header toggle share.
  *
- * Slice 0.5: add the tax-year default here once the config registry
- * (src/config/tax/index.ts) exists. Until then nothing may imply that a tax
- * year is loaded or verified.
+ * Schema 1 (0.2.0) had no tax year; it is migrated on read (the stored record
+ * is rewritten on the next change). See docs/privacy.md.
  */
 
 export const REGIONS = ['ruk', 'scotland'] as const
@@ -25,30 +26,47 @@ export interface Settings {
   region: Region
   /** Whole pounds, or pounds and pence. */
   amounts: AmountStyle
+  /** The tax year calculators start with: one in the registry (src/config/tax/index.ts). */
+  taxYear: TaxYearId
 }
 
-export const DEFAULT_SETTINGS: Readonly<Settings> = Object.freeze({ region: 'ruk', amounts: 'pounds' })
+/** The tax years Settings can offer. The app's registry by default; tests pass fake ones. */
+export interface TaxYearChoices {
+  ids: readonly string[]
+  latest: string
+}
+
+const REGISTRY_YEARS: TaxYearChoices = { ids: listTaxYears().map((y) => y.id), latest: latestTaxYear().id }
+
+export const DEFAULT_SETTINGS: Readonly<Settings> = Object.freeze({ region: 'ruk', amounts: 'pounds', taxYear: latestTaxYear().id })
 
 const { key: SETTINGS_KEY, schemaVersion: SCHEMA_VERSION } = STORAGE_KEYS.settings
+
+/** Schema 1 (0.2.0) to 2 (0.3.0): adds the tax year, which then takes its default. */
+const MIGRATIONS: Record<number, Migration> = {
+  1: (record) => ({ region: record.region, amounts: record.amounts }),
+}
 
 const pick = <T extends string>(options: readonly T[], value: unknown, fallback: T): T =>
   options.includes(value as T) ? (value as T) : fallback
 
-/** Reads a stored record. Untrusted: each field is checked, and an invalid one falls back to its default. */
-export function parseSettings(text: string | null): Settings {
-  const record = readRecord(text, SCHEMA_VERSION)
-  if (!record) return { ...DEFAULT_SETTINGS }
+/** Reads a stored record, migrating an older one. Untrusted: each field is checked, and an invalid one falls back to its default. */
+export function parseSettings(text: string | null, years: TaxYearChoices = REGISTRY_YEARS): Settings {
+  const defaults = { ...DEFAULT_SETTINGS, taxYear: years.latest as TaxYearId }
+  const record = upgradeRecord(text, SCHEMA_VERSION, MIGRATIONS)
+  if (!record) return defaults
   return {
-    region: pick(REGIONS, record.region, DEFAULT_SETTINGS.region),
-    amounts: pick(AMOUNT_STYLES, record.amounts, DEFAULT_SETTINGS.amounts),
+    region: pick(REGIONS, record.region, defaults.region),
+    amounts: pick(AMOUNT_STYLES, record.amounts, defaults.amounts),
+    taxYear: pick(years.ids as readonly TaxYearId[], record.taxYear, defaults.taxYear),
   }
 }
 
 export function serializeSettings(settings: Settings): string {
-  return JSON.stringify({ schemaVersion: SCHEMA_VERSION, region: settings.region, amounts: settings.amounts })
+  return JSON.stringify({ schemaVersion: SCHEMA_VERSION, region: settings.region, amounts: settings.amounts, taxYear: settings.taxYear })
 }
 
-const same = (a: Settings, b: Settings) => a.region === b.region && a.amounts === b.amounts
+const same = (a: Settings, b: Settings) => a.region === b.region && a.amounts === b.amounts && a.taxYear === b.taxYear
 
 export function createSettingsStore(storage: () => KeyValueStore | undefined = appStorage) {
   const store = createStore<Settings>(parseSettings(readKey(SETTINGS_KEY, storage())))

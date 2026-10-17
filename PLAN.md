@@ -1,6 +1,6 @@
 # Phase plan: Sumyard
 
-Last updated: 17 October 2026 (slice 0: session B built the app chrome, 0.2.0; awaiting the owner's phone check before Done)
+Last updated: 17 October 2026 (slice 0.5 session C: money, tax config skeleton and Tax data screen, 0.3.0; session D next)
 
 Draft roadmap. When a slice starts, rewrite its prompt against the real code (see the skeleton in PHASE-BRIEF.md). Do not treat these notes as final prompts.
 
@@ -12,8 +12,8 @@ Status values: Not started, In progress, Done (version, PR, date).
 
 | Slice | Scope | Status |
 |---|---|---|
-| 0 Foundation | Recon of Chalkline and Stickyard (stack, tokens, theme toggle, chrome inventory). Repo, TypeScript strict, lint, tests, CI, GitHub Pages deploy, `CLAUDE.md`, `PHASE-BRIEF.md`, `CHANGELOG.md`. Tokens from Chalkline, light / dark / system theme, app shell (top bar, menu, Help / What's new / About / Settings sheets), toasts with Undo, disclaimer footer. Web only | In progress |
-| 0.5 Core plumbing | Money type and formatting, `Sourced<T>` tax config pipeline with a skeleton `2026-27`, Tax data screen, versioned scenario storage with JSON export and import, shared inputs and result components, token-aware chart, backup and restore, a "Hello calculator" placeholder that exercises all of it | Not started |
+| 0 Foundation | Recon of Chalkline and Stickyard (stack, tokens, theme toggle, chrome inventory). Repo, TypeScript strict, lint, tests, CI, GitHub Pages deploy, `CLAUDE.md`, `PHASE-BRIEF.md`, `CHANGELOG.md`. Tokens from Chalkline, light / dark / system theme, app shell (top bar, menu, Help / What's new / About / Settings sheets), toasts with Undo, disclaimer footer. Web only | Done (0.2.0, PR #2, 17 October 2026) |
+| 0.5 Core plumbing | Money type and formatting, `Sourced<T>` tax config pipeline with a skeleton `2026-27`, Tax data screen, versioned scenario storage with JSON export and import, shared inputs and result components, token-aware chart, backup and restore, a "Hello calculator" placeholder that exercises all of it | In progress |
 | 1a Optimiser: config and engine | Verify and populate `2026-27` from gov.uk/HMRC, verification log, worked examples; then the pure engine (income tax with taper, NI, student loan, three pension methods, HICBC, annual allowance, `optimise()`). Tests first. No UI | Not started |
 | 1b Optimiser: UI | The £100k+ page: inputs, current vs optimised take-home, marginal-rate and take-home-vs-contribution charts, cost of £1 more pension, warnings, scenario compare, assumptions, Help topic | Not started |
 | 2 Compound interest | Regular contributions, frequency and timing, compounding, inflation-adjusted view, fee drag, yearly table and chart | Not started |
@@ -96,7 +96,7 @@ Status values: Not started, In progress, Done (version, PR, date).
 - Toast with Undo, consistent empty, error and loading states, footer disclaimer, first-run acknowledgement stored locally.
 - Accessibility baseline: WCAG AA contrast in both themes, visible focus rings, 44 px touch targets, `prefers-reduced-motion` respected.
 
-- **Progress (17 October 2026).** Recon and build session A done (0.1.0: scaffold, tokens, fonts, theme with pre-paint script, CI and Pages workflows, guards for docs drift, external URLs and the pre-paint theme). Build session B done (0.2.0): menu, hash-routed sheet stack, Help, What's new, About, Settings, toast with Undo, shared states, footer disclaimer, first-run notice, storage-key guard, docs guard in the build, tighter URL allowlist. The acceptance criteria that can be checked before merge pass in local Chromium checks; the slice stays In progress until the deployed site is checked on a real phone. Details are in the `PHASE-BRIEF.md` progress log.
+- **Progress (17 October 2026).** Recon and build session A done (0.1.0: scaffold, tokens, fonts, theme with pre-paint script, CI and Pages workflows, guards for docs drift, external URLs and the pre-paint theme). Build session B done (0.2.0): menu, hash-routed sheet stack, Help, What's new, About, Settings, toast with Undo, shared states, footer disclaimer, first-run notice, storage-key guard, docs guard in the build, tighter URL allowlist. The acceptance criteria that can be checked before merge pass in local Chromium checks; the deployed site was then checked on a real phone by the owner. Details are in the `PHASE-BRIEF.md` progress log.
 - **What changed from these notes:**
   - Lint and format use Biome, not ESLint and Prettier (Chalkline has neither, and typescript-eslint does not support TypeScript 7).
   - The URL allowlist also holds exact inert strings that are never fetched: XML namespaces and React's error-link prefix inside React DOM, and Tailwind's licence comment.
@@ -104,9 +104,21 @@ Status values: Not started, In progress, Done (version, PR, date).
   - Session A was split from the shell work, so slice 0 runs as recon, session A and session B.
   - Session B: no Zustand or Zod (a small `useSyncExternalStore` store instead); `lastSeenVersion` is stored as `sumyard:v1:last-seen-version`; What's new is parsed at build time and injected, not bundled raw; the tax-year default is a labelled stub until 0.5; sheet parents are fixed (Help over topics, What's new and About).
 - **Rollback.** Safe to roll back to 0.1.0: it reads only `sumyard:v1:theme` and ignores the three keys 0.2.0 adds (`settings`, `last-seen-version`, `acknowledged`). Losing any of them only resets a default or shows a marker or notice again.
-- **Follow-up.** Owner: run the phone checklist in `PHASE-BRIEF.md` on the deployed site, then set slice 0 to Done (0.2.0, PR, date). Slice 0.5 replaces the Settings tax-year stub and makes the Scenarios menu item, its Help topic and the menu's "Export" footnote real.
+- **Done (17 October 2026).** PR #2 merged and deployed; the owner ran the phone, Safari and VoiceOver checklist on the live site and it passed.
+- **Follow-up.** Slice 0.5 replaces the Settings tax-year stub and makes the Scenarios menu item, its Help topic and the menu's "Export" footnote real.
 
 ### 0.5 Core plumbing
+- **Progress (17 October 2026).** Runs as two sessions. **Session C done (0.3.0):** money type and formatting, `Sourced<T>` tax-config pipeline with the registry and a `2026-27` skeleton (every leaf unverified, no figure), Tax data screen, verified badge, Settings tax-year default with a settings migration, menu footnote trimmed. **Session D next:** scenarios with export and import, shared inputs and result components, token-aware chart, backup and restore, the Hello calculator. Details in the `PHASE-BRIEF.md` progress log.
+- **Money decision:** integer pence as a branded `number` (safe-integer range, about £90 trillion), with exact integer `Ratio`s for rates and `mulRound` in BigInt with explicit `nearest` (halves away from zero), `down` (floor) and `up` (ceiling) modes. No decimal library. The mode each tax step needs is to be verified in 1a (`docs/money.md` has the table).
+- **URL-scan outcome:** the scan already allows `https://www.gov.uk/` and `https://gov.uk/` URLs inside JavaScript strings (not where fetched), and rejects every other host, legislation.gov.uk included. No allowlist entry was added and the scan is unchanged. Config sources are held to the narrower `https://www.gov.uk/` rule by `isSourceUrl` and the config audit test, and rendered only as plain `noopener noreferrer` links. Fixture tests prove it; the build fails if fake fixtures reach `dist/`. Allowing legislation.gov.uk is an open question for the owner.
+- **What changed from these notes (session C):**
+  - `Sourced<T>` is a discriminated union, `{ status: 'todo' }` or `{ status: 'verified', value, sourceUrl, verifiedOn }`, rather than `{ value, sourceUrl, verifiedOn }` with a `TODO_VERIFY` marker. Calculators read values only through `requireVerified`.
+  - Income tax bands are one sourced list per region (`{ name, from, rate }[]`), so no band count is assumed. Savings and dividends have a reserved slot with no values.
+  - The Tax data sheet sits under About in the back stack (About links to it; Settings and the Help topic link to it too). Help Markdown gained `sheet:` links for this.
+  - Settings record `sumyard:v1:settings` is schema 2 (adds `taxYear`), migrated from schema 1 through a new storage hook, `upgradeRecord`. No new storage key.
+  - Help tips render as `role="note"` paragraphs, not `<aside>` (axe flagged the landmark inside the dialog).
+- **Rollback.** 0.3.0 to 0.2.0 is safe. Once 0.3.0 has saved settings as schema 2, 0.2.0 reads them as another version and falls back to rest of UK and whole pounds; theme and the other keys are unaffected.
+- **Follow-up for 1a:** confirm each group's shape against the sources (annual or per-period NI and student loan figures, whether the HICBC charge needs a step field, childcare minimum-earnings conditions), then verify values.
 - Money: decide first between integer pence and a decimal library. Document rounding rules per calculation. `lib/money` and `lib/format` with tests.
 - Tax config: typed `TaxYearConfig` covering income tax (rUK and Scotland), personal allowance and taper, NI (employee and employer), student loan plans and postgraduate, pension limits (annual allowance, taper, carry forward, MPAA), HICBC thresholds and Child Benefit rates, childcare eligibility thresholds. Every leaf is `Sourced<T>`: `{ value, sourceUrl, verifiedOn }`; a test fails the build if either is missing. Registry with `getTaxYear(id)` and `latestTaxYear()`. `2026-27.ts` is a skeleton with every value `TODO_VERIFY`; a calculator that touches one refuses to show results.
 - Tax data screen: each loaded tax year, each value group with source URL and verified date, `TODO_VERIFY` flagged. Linked from About and from each calculator's verified badge.
@@ -173,7 +185,7 @@ Engine (pure functions, tests first: red commit, then green).
 
 ## Open questions
 
-- Money type: integer pence vs a decimal library (decide at the start of 0.5).
+- Tax-config sources beyond www.gov.uk: allow `https://www.legislation.gov.uk/` (exact prefix, `.js` only) if a value is only published there? Widens the URL allowlist, so the owner decides.
 - Chart library vs hand-rolled SVG (bundle size, token theming, accessibility).
 - URL-hash state sharing (a shareable link of inputs, local only): in or out.
 - Coverage target for pure calculator code.

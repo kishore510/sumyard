@@ -1,16 +1,22 @@
 /*
  * Hash routes for the sheet stack: #/help, #/help/<topic>, #/whats-new,
- * #/about and #/settings. Any other hash shows no sheet.
+ * #/about, #/settings and #/tax-data. Any other hash shows no sheet.
  *
  * Every sheet a person opens is a history entry, so the browser Back button
  * steps back through them. Parents are fixed (topics, What's new and About
- * sit under Help), so a deep link has the same back arrow as a page reached
+ * sit under Help; Tax data sits under About), so a deep link has the same back arrow as a page reached
  * by tapping. The back arrow goes to the parent: through history when the
  * parent is the previous entry, otherwise by replacing the current entry.
  * Close removes every sheet entry Sumyard added, landing on the page.
  */
 
-export type SheetRoute = { kind: 'help' } | { kind: 'topic'; id: string } | { kind: 'whats-new' } | { kind: 'about' } | { kind: 'settings' }
+export type SheetRoute =
+  | { kind: 'help' }
+  | { kind: 'topic'; id: string }
+  | { kind: 'whats-new' }
+  | { kind: 'about' }
+  | { kind: 'settings' }
+  | { kind: 'tax-data' }
 
 const TOPIC_ID = /^[a-z0-9-]+$/
 
@@ -23,7 +29,7 @@ export function parseHash(hash: string): SheetRoute | null {
     return TOPIC_ID.test(rest) ? { kind: 'topic', id: rest } : null
   }
   if (rest) return null
-  if (name === 'whats-new' || name === 'about' || name === 'settings') return { kind: name }
+  if (name === 'whats-new' || name === 'about' || name === 'settings' || name === 'tax-data') return { kind: name }
   return null
 }
 
@@ -32,6 +38,7 @@ export function formatHash(route: SheetRoute): string {
 }
 
 export function parentOf(route: SheetRoute): SheetRoute | null {
+  if (route.kind === 'tax-data') return { kind: 'about' }
   return route.kind === 'topic' || route.kind === 'whats-new' || route.kind === 'about' ? { kind: 'help' } : null
 }
 

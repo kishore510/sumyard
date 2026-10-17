@@ -2,15 +2,16 @@
 // biome-ignore-all lint/suspicious/useIterableCallbackReturn: the switches cover every node type (TypeScript checks), so each callback returns.
 import { ExternalLink } from 'lucide-react'
 import type { ReactNode } from 'react'
-import { type Block, HELP_LINK, type Inline } from './markdown'
+import { type Block, HELP_LINK, type Inline, SHEET_LINK } from './markdown'
 
 /*
  * Renders parsed Markdown as React elements (lifted from Chalkline). No HTML
- * strings are ever injected; links are either help topics or GOV.UK pages in
- * a new tab (and untrusted text, parsed with parseUntrustedMarkdown, has no
+ * strings are ever injected; links are help topics, other sheets, or GOV.UK
+ * pages in a new tab (and untrusted text, parsed with parseUntrustedMarkdown, has no
  * links at all).
  */
 
+/** Topic links pass the topic id; sheet links pass `sheet:<page>` as is. */
 type OnTopic = (id: string) => void
 const noTopic: OnTopic = () => {}
 
@@ -38,7 +39,7 @@ function InlineView({ nodes, onTopic }: { nodes: Inline[]; onTopic: OnTopic }): 
           </kbd>
         )
       case 'link': {
-        const topic = HELP_LINK.exec(node.href)?.[1]
+        const topic = HELP_LINK.exec(node.href)?.[1] ?? (SHEET_LINK.test(node.href) ? node.href : undefined)
         const children = <InlineView nodes={node.children} onTopic={onTopic} />
         return topic ? (
           <button key={i} type="button" onClick={() => onTopic(topic)} className="font-medium text-accent underline underline-offset-2">
@@ -101,9 +102,10 @@ export function Markdown({ blocks, onTopic = noTopic }: { blocks: Block[]; onTop
           }
           case 'tip':
             return (
-              <aside key={i} className="rounded-md border border-border bg-accent-subtle px-3 py-2">
+              // A note, not an <aside>: a complementary landmark may not sit inside the sheet's dialog (axe landmark-complementary-is-top-level).
+              <p key={i} role="note" className="rounded-md border border-border bg-accent-subtle px-3 py-2">
                 <InlineView nodes={block.children} onTopic={onTopic} />
-              </aside>
+              </p>
             )
           case 'code':
             return (

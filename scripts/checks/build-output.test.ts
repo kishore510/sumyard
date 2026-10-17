@@ -37,6 +37,10 @@ describe('built output', () => {
     expect(js).not.toContain('keepachangelog.com')
   })
 
+  it('bundles no fake tax-year fixture (tests only)', () => {
+    for (const path of textFiles(DIST)) expect(readFileSync(path, 'utf8'), path).not.toContain('sumyard-fake-fixture')
+  })
+
   it('applies the theme before first paint (inline script first in <head>)', () => {
     expect(prePaintScriptProblems(readFileSync(join(DIST, 'index.html'), 'utf8'))).toEqual([])
   })

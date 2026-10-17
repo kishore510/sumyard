@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest'
 import { STORAGE_KEYS } from '@/lib/storageKeys'
 import { createSettingsStore, DEFAULT_SETTINGS, parseSettings, resetToDefaults, type Settings, serializeSettings } from './settings'
 
+const LATEST = '2026-27'
+
 const KEY = STORAGE_KEYS.settings.key
 
 function memory(initial: Record<string, string> = {}) {
@@ -35,39 +37,103 @@ describe('settings record', () => {
     })
   })
 
-  it('defaults to rest of UK and whole pounds', () => {
-    expect(DEFAULT_SETTINGS).toEqual({ region: 'ruk', amounts: 'pounds' })
+  it('is schema version 2 (0.3.0 added the tax year)', () => {
+    expect(STORAGE_KEYS.settings.schemaVersion).toBe(2)
+  })
+
+  it('defaults to rest of UK, whole pounds and the latest tax year in the registry', () => {
+    expect(DEFAULT_SETTINGS).toEqual({ region: 'ruk', amounts: 'pounds', taxYear: LATEST })
   })
 
   it('round-trips every combination', () => {
     for (const region of ['ruk', 'scotland'] as const) {
       for (const amounts of ['pounds', 'pence'] as const) {
-        const settings: Settings = { region, amounts }
+        const settings: Settings = { region, amounts, taxYear: LATEST }
         expect(parseSettings(serializeSettings(settings))).toEqual(settings)
       }
     }
   })
 
-  it('falls back to defaults for a missing, unreadable or other-version record', () => {
-    for (const text of [null, '', '{oops', 'null', '[]', '"scotland"', '{"schemaVersion":2,"region":"scotland","amounts":"pence"}']) {
+  it('falls back to defaults for a missing, unreadable or newer-version record', () => {
+    for (const text of [
+      null,
+      '',
+      '{oops',
+      'null',
+      '[]',
+      '"scotland"',
+      '{"schemaVersion":3,"region":"scotland","amounts":"pence","taxYear":"2026-27"}',
+      '{"schemaVersion":0,"region":"scotland"}',
+    ]) {
       expect(parseSettings(text), String(text)).toEqual(DEFAULT_SETTINGS)
     }
   })
 
   it('keeps the valid fields and defaults the rest (untrusted input)', () => {
-    expect(parseSettings('{"schemaVersion":1,"region":"scotland","amounts":"euros"}')).toEqual({ region: 'scotland', amounts: 'pounds' })
-    expect(parseSettings('{"schemaVersion":1,"amounts":"pence","extra":true}')).toEqual({ region: 'ruk', amounts: 'pence' })
+    expect(parseSettings('{"schemaVersion":2,"region":"scotland","amounts":"euros","taxYear":"2026-27"}')).toEqual({
+      region: 'scotland',
+      amounts: 'pounds',
+      taxYear: LATEST,
+    })
+    expect(parseSettings('{"schemaVersion":2,"amounts":"pence","extra":true}')).toEqual({
+      region: 'ruk',
+      amounts: 'pence',
+      taxYear: LATEST,
+    })
   })
 
-  it('has no tax-year default yet (slice 0.5 adds it with the config registry)', () => {
-    expect(Object.keys(DEFAULT_SETTINGS)).not.toContain('taxYear')
+  it('falls back to the latest year when the saved one is no longer in the registry', () => {
+    for (const taxYear of ['2019-20', 'nonsense', 2026, null]) {
+      const text = JSON.stringify({ schemaVersion: 2, region: 'scotland', amounts: 'pence', taxYear })
+      expect(parseSettings(text), String(taxYear)).toEqual({ region: 'scotland', amounts: 'pence', taxYear: LATEST })
+    }
+  })
+
+  it('checks the saved year against the registry it is given (fake years)', () => {
+    const years = { ids: ['2098-99', '2097-98'], latest: '2098-99' }
+    expect(parseSettings('{"schemaVersion":2,"taxYear":"2097-98"}', years).taxYear).toBe('2097-98')
+    expect(parseSettings('{"schemaVersion":2,"taxYear":"2026-27"}', years).taxYear).toBe('2098-99')
+    expect(parseSettings(null, years).taxYear).toBe('2098-99')
+  })
+})
+
+describe('settings migration from schema 1 (0.2.0)', () => {
+  it('keeps region and amounts and adds the default tax year', () => {
+    expect(parseSettings('{"schemaVersion":1,"region":"scotland","amounts":"pence"}')).toEqual({
+      region: 'scotland',
+      amounts: 'pence',
+      taxYear: LATEST,
+    })
+  })
+
+  it('still checks each field of an old record', () => {
+    expect(parseSettings('{"schemaVersion":1,"region":"wales","amounts":"pence"}')).toEqual({
+      region: 'ruk',
+      amounts: 'pence',
+      taxYear: LATEST,
+    })
+    expect(parseSettings('{"schemaVersion":1,"taxYear":"2026-27","region":"scotland"}')).toEqual({
+      region: 'scotland',
+      amounts: 'pounds',
+      taxYear: LATEST,
+    })
+  })
+
+  it('leaves the stored record alone until something changes, then saves schema 2', () => {
+    const v1 = '{"schemaVersion":1,"region":"scotland","amounts":"pence"}'
+    const storage = memory({ [KEY]: v1 })
+    const store = createSettingsStore(() => storage)
+    expect(store.get()).toEqual({ region: 'scotland', amounts: 'pence', taxYear: LATEST })
+    expect(storage.data.get(KEY)).toBe(v1)
+    store.update({ amounts: 'pounds' })
+    expect(JSON.parse(storage.data.get(KEY)!)).toEqual({ schemaVersion: 2, region: 'scotland', amounts: 'pounds', taxYear: LATEST })
   })
 })
 
 describe('createSettingsStore', () => {
   it('loads what was saved', () => {
-    const storage = memory({ [KEY]: serializeSettings({ region: 'scotland', amounts: 'pence' }) })
-    expect(createSettingsStore(() => storage).get()).toEqual({ region: 'scotland', amounts: 'pence' })
+    const storage = memory({ [KEY]: serializeSettings({ region: 'scotland', amounts: 'pence', taxYear: LATEST }) })
+    expect(createSettingsStore(() => storage).get()).toEqual({ region: 'scotland', amounts: 'pence', taxYear: LATEST })
   })
 
   it('saves each change and tells subscribers', () => {
@@ -76,8 +142,8 @@ describe('createSettingsStore', () => {
     let calls = 0
     store.subscribe(() => calls++)
     store.update({ region: 'scotland' })
-    expect(store.get()).toEqual({ region: 'scotland', amounts: 'pounds' })
-    expect(parseSettings(storage.data.get(KEY)!)).toEqual({ region: 'scotland', amounts: 'pounds' })
+    expect(store.get()).toEqual({ region: 'scotland', amounts: 'pounds', taxYear: LATEST })
+    expect(parseSettings(storage.data.get(KEY)!)).toEqual({ region: 'scotland', amounts: 'pounds', taxYear: LATEST })
     expect(calls).toBe(1)
   })
 
@@ -91,9 +157,9 @@ describe('createSettingsStore', () => {
   it('reloads after a change in another tab', () => {
     const storage = memory()
     const store = createSettingsStore(() => storage)
-    storage.data.set(KEY, serializeSettings({ region: 'scotland', amounts: 'pence' }))
+    storage.data.set(KEY, serializeSettings({ region: 'scotland', amounts: 'pence', taxYear: LATEST }))
     store.reload()
-    expect(store.get()).toEqual({ region: 'scotland', amounts: 'pence' })
+    expect(store.get()).toEqual({ region: 'scotland', amounts: 'pence', taxYear: LATEST })
   })
 })
 
@@ -119,7 +185,7 @@ describe('resetToDefaults', () => {
     expect(t.theme()).toBe('system')
     expect(undo).not.toBeNull()
     undo!()
-    expect(t.settings.get()).toEqual({ region: 'scotland', amounts: 'pence' })
+    expect(t.settings.get()).toEqual({ region: 'scotland', amounts: 'pence', taxYear: LATEST })
     expect(t.theme()).toBe('dark')
   })
 

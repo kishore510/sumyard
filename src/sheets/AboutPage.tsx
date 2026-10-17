@@ -1,5 +1,6 @@
 import { Check, Copy } from 'lucide-react'
 import { useState } from 'react'
+import { SheetLink } from '@/components/SheetLink'
 import { Button } from '@/components/ui/button'
 import { formatBytes, sumyardStorageBytes } from '@/lib/storage'
 import { STORAGE_KEYS } from '@/lib/storageKeys'
@@ -8,8 +9,8 @@ import { DISCLAIMER } from './parts'
 
 /*
  * About (lifted from Chalkline's HelpSheet About, without the diagram format
- * line): version, build, storage used, Copy details, privacy with every
- * storage key, the disclaimer and credits.
+ * line): version, build, storage used, Copy details, tax data, privacy with
+ * every storage key, the disclaimer and credits.
  */
 
 const CREDITS = typeof __APP_CREDITS__ === 'undefined' ? [] : __APP_CREDITS__
@@ -79,6 +80,17 @@ export function AboutPage() {
         ))}
       </dl>
       <CopyDetails />
+
+      <section aria-label="Tax data" className="flex flex-col items-start gap-2">
+        <h3 className="text-base font-semibold">Tax data</h3>
+        <p>
+          Where each tax figure comes from on GOV.UK, and when it was checked. Calculators show no results until the figures they need are
+          verified.
+        </p>
+        <SheetLink route={{ kind: 'tax-data' }} className="inline-flex min-h-touch items-center">
+          See tax data
+        </SheetLink>
+      </section>
 
       <section aria-label="Privacy" className="flex flex-col gap-2">
         <h3 className="text-base font-semibold">Privacy</h3>

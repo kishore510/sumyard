@@ -61,3 +61,14 @@ describe('About', () => {
     expect(credits.textContent).not.toMatch(/:\/\//)
   })
 })
+
+describe('About > Tax data', () => {
+  it('links to the Tax data screen', () => {
+    history.replaceState(null, '', '/')
+    render()
+    const link = [...host.querySelectorAll('a')].find((a) => a.getAttribute('href') === '#/tax-data')
+    expect(link, 'a link to #/tax-data').toBeDefined()
+    act(() => link!.click())
+    expect(location.hash).toBe('#/tax-data')
+  })
+})

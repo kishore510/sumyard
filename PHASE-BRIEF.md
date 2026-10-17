@@ -1,6 +1,6 @@
-# PHASE-BRIEF: Slice 0 Foundation
+# PHASE-BRIEF: Slice 0.5 Core plumbing
 
-Status: In progress. Session 1 (recon), build session A and build session B (app chrome, 0.2.0) are done. What is left is the owner's check of the deployed site on a real phone (see session B's entry), then the slice 0 row moves to Done. Rewritten at the start of every slice. Roadmap and status live in `PLAN.md`.
+Status: In progress. Session C (money and tax config, 0.3.0) is done; session D is next. Slice 0.5 runs as two build sessions: **C** (money and tax config, 0.3.0) and **D** (scenarios, shared components, chart, backup and restore). Rewritten at the start of every slice. Roadmap and status live in `PLAN.md`. Slice 0 is Done (0.2.0, PR #2); its progress log is archived at the end of this file.
 
 ## Docs rule
 
@@ -8,61 +8,80 @@ Every build session ends by updating the docs: this file (progress and next sess
 
 ## Goal
 
-A deployed, empty Sumyard shell on GitHub Pages with the Chalkline design language, light / dark / system themes, and the app chrome (menu, Help, What's new, About, Settings). No calculators and no tax data yet (those arrive in slice 0.5 and Phase 1).
+The plumbing every calculator needs, with no calculator and **no real tax figure**: a money type and formatting, a typed and sourced tax-config pipeline with a skeleton `2026-27` in which every value is unverified, a Tax data screen and a verified badge, a real tax-year default in Settings (session C); then versioned scenarios with export and import, shared inputs and result components, a token-aware chart, and backup and restore (session D).
 
-## Session 1: recon only (no code written)
-
-Do this first, in its own session, and report back before any build work.
-
-1. Inspect the Chalkline repo (and Stickyard where useful) and report:
-   - framework and build tool, language, CSS approach, test runner
-   - design token files (colour, type scale, spacing, radii, shadows, motion) and how light/dark is applied
-   - the theme toggle implementation, including how the flash of wrong theme is avoided
-   - font loading (self-hosted? which fonts?)
-   - the GitHub Pages deploy workflow and base-path handling
-   - lint, format and CI setup
-2. Inventory the app-chrome components: main menu, Help panel (search, Quick start card, topics, More), What's new (rendered from the changelog), About (version, build, storage used, Copy details, privacy, credits), Settings, toast with Undo, panel stack and focus handling. For each, say: lift as is, generalise, or drop (diagram-specific).
-3. Recommend the stack for Sumyard (default: mirror Chalkline) and list any reason to differ.
-4. Do not write or change any code except the docs: add the recon report to this file's progress log and update `PLAN.md` ("Last updated" and the slice 0 row to In progress). Output a short report.
-
-## Sessions 2 onwards: build (after the recon report is agreed)
+## Session C: money and tax config (0.3.0)
 
 ### Scope
 
-- Repo scaffold and folder layout as in `PLAN.md` slice 0 notes. TypeScript strict, lint, format, tests, `typecheck`, `build`.
-- `CLAUDE.md` stack section filled in from the recon.
-- GitHub Actions: lint, typecheck, test, build, deploy to GitHub Pages with the correct base path.
-- Docs test: fails CI if `PLAN.md` or `CHANGELOG.md` is stale against `package.json`.
-- Privacy CI check: scan the built output for external URLs; allowlist only plain gov.uk anchors.
-- Tokens reused from Chalkline (one tokens file, semantic layer over raw palette). Flag any token that has to be added.
-- Theme: system / light / dark, persisted, applied before first paint, no flash.
-- Shell: header with menu button and theme toggle; main menu; sheets (bottom sheet on phone, side panel on desktop) with back arrow, title, close and a stack; hash routing; focus trap, Esc to close, focus restored.
-  - Help: simple topic list from `content/help/*.md` (Quick start, Scenarios and saving, How tax data and "last verified" work, Troubleshooting). No search.
-  - What's new: rendered from `CHANGELOG.md` at build time with a "This version" badge; "New" marker until opened; build fails if the top version differs from `package.json`.
-  - About: version, build SHA, built timestamp, storage used, Copy details, privacy statement, credits generated from dependency licences, disclaimer.
-  - Settings: theme, and defaults (tax year, region, whole pounds vs pence). Backup and restore comes in 0.5.
-- Toast with Undo; empty, error and loading states; footer disclaimer and a first-run acknowledgement stored locally.
-- Fonts self-hosted and bundled.
-- First `CHANGELOG.md` entry (0.1.0) and `package.json` version 0.1.0.
+1. **Money** (`src/lib/money`): integer pence as a branded type. `fromPounds`, `fromPence`, `add`, `subtract`, `compare`, `min`, `max`, `mulRound(amount, factor, mode)` with explicit modes (nearest, down, up). No float arithmetic on amounts anywhere else; safe-integer guard on every operation. `docs/money.md` documents rounding and says the mode each tax step needs is verified in slice 1a, not assumed.
+2. **Formatting** (`src/lib/format`): GBP in whole pounds or pence (the Settings value), percentages, a compact form for charts later. Locale en-GB.
+3. **Schema** (`src/config/tax/schema.ts`): `TaxYearConfig` with the tax-year period; income tax bands and rates (rUK and Scotland); personal allowance, taper start and rate; NI (employee and employer); student loan plans 1, 2, 4, 5 and postgraduate; pension (annual allowance, taper thresholds and minimum, carry forward, MPAA); HICBC thresholds and Child Benefit rates; tax-free childcare and 30-hours limits; a typed, unused placeholder for dividend and savings allowances.
+4. **Sourced values**: `Sourced<T>` = `{ status: 'todo' }` or `{ status: 'verified', value, sourceUrl, verifiedOn }`. A malformed verified leaf is a type error and a failing test. `isVerified`, and `requireVerified(config, paths)` returning the values or a typed refusal listing unverified paths.
+5. **Registry** (`src/config/tax/index.ts`): `getTaxYear(id)`, `latestTaxYear()`, `listTaxYears()`. Skeleton `2026-27.ts`, every leaf `{ status: 'todo' }`: structure only, no rate, threshold, allowance or date.
+6. **Fixtures**: fake configs (clearly marked, never imported by the app) prove the guard, the refusal path, the registry and schema coverage. A repo-level test fails if a real config file has a number-valued leaf without a verified source.
+7. **Tax data screen** (`#/tax-data`): each tax year, each value group with a verified count, a source link and date per verified leaf, unverified groups flagged. Linked from About and the Help topic on tax data. Same sheet behaviour as the others.
+8. **VerifiedBadge**: tax-year label and "Not yet verified" or "Last verified <date>", linking to Tax data.
+9. **Settings**: a real default-tax-year selector from the registry, labelled "not yet verified" while the year has unverified groups. Settings schema version bumped, with a tested migration.
+10. **Menu footnote**: "Changes are saved in this browser." until export exists (session D); the Help topic to match.
+
+**URL-scan question:** report how the build scan treats gov.uk URLs inside JavaScript strings and propose the narrowest rule. Implement only if it adds no allowlist entry; otherwise stop and ask. Prove the behaviour with fixtures.
 
 ### Out of scope
 
-Money type, tax config, scenarios, calculators, charts, first-run tour, keyboard shortcuts, Help search, service worker. Any of these needed for the shell stays a stub with a note.
+Any real tax figure or date (code, tests, comments, Help, docs), scenarios, backup and restore, shared inputs, charts, calculators.
+
+### Rules
+
+Tests first (red, then green) for money, format, schema guards, registry, the settings migration and the screen's states. No new dependencies, no network requests, hand-written validation only. WCAG AA in both themes, focus handling, 44 px targets, reduced motion; check the Tax data sheet and Settings at 360, 768 and 1280 px in both themes and run axe on the new sheet. Storage-key changes keep the guard and `docs/privacy.md` in step.
 
 ### Acceptance
 
-- Deployed to GitHub Pages and reachable on a phone.
-- Theme toggle works, persists, shows no flash on load, and matches Chalkline's look and behaviour in both themes.
-- Menu, Help, What's new, About and Settings work on phone and desktop, in both themes, with the back stack, Esc and focus handling.
-- About's version matches `package.json` and the top `CHANGELOG.md` entry; CI enforces it.
-- The built output contains no external network requests (CI enforces it).
-- WCAG AA contrast in both themes, visible focus, 44 px touch targets, reduced motion respected.
-- Lint, typecheck, tests and build are green in CI.
-- `PLAN.md` slice 0 row updated, `CHANGELOG.md` entry added.
+- Money, format, schema guards, registry, settings migration and the Tax data screen are tested, red commit before green.
+- `2026-27.ts` holds no figure; the repo-level config test passes on it and fails on an unsourced number.
+- The Tax data screen shows everything as unverified; Settings offers 2026 to 2027 labelled not yet verified.
+- Lint, typecheck, test and build green; 0.3.0 with a changelog entry; docs updated.
+
+## Session D: scenarios, shared components, chart, backup and restore
+
+Not started. Scope comes from `PLAN.md` slice 0.5 notes and session C's handover in the progress log below.
 
 ## Progress log
 
 Add one entry per session: date, what was done, what differs from the brief, what the next session should pick up, and which docs were updated.
+
+- **17 October 2026, build session C (money and tax config). Version 0.3.0.**
+  - Pre-check: PR #2 merged, Pages deploy for it succeeded; the owner confirmed the session B manual checklist, so slice 0 is Done (0.2.0, PR #2, 17 October 2026).
+  - Done (tests first: red `421253b`, green `a525056`):
+    - [x] 1 Money (`src/lib/money.ts`): branded integer pence; `fromPounds` (safe whole pounds, or a digits string with at most two decimals; no parsing or rounding), `fromPence`, `toPence`, `add`, `subtract`, `compare`, `min`, `max`, `mulRound(amount, Ratio, mode)` in BigInt with `nearest` (halves away from zero), `down` (floor), `up` (ceiling), and `roundToPounds`. Every operation checks inputs and result and throws `MoneyError` past the safe-integer range. Rates are `Ratio`s (`ratio`, `percent("7.5")`). `docs/money.md` documents it, with the per-step rounding table left for 1a.
+    - [x] 2 Formatting (`src/lib/format.ts`): `formatGBP(amount, 'pounds' | 'pence')` (the Settings value), `formatGBPCompact` for charts, `formatPercent`, `formatIsoDate`; en-GB, all from integer pence in BigInt.
+    - [x] 3 Schema (`src/config/tax/schema.ts`): `TaxYearConfig` with every area in the brief; income tax bands as a sourced list per region; a reserved `savingsAndDividends` slot. `TAX_GROUPS` gives the screen's ten groups and a label and kind per leaf; leaf paths and value types are derived from the type.
+    - [x] 4 Sourced values (`sourced.ts`): `Sourced<T>` union with `SourceUrl` (`https://www.gov.uk/${string}`) and `IsoDate`; `isSourceUrl`, `isVerified` (a malformed leaf counts as unverified), `requireVerified(config, paths)` returning typed values or `{ ok: false, taxYear, unverified }`. Twelve `@ts-expect-error` cases prove the type errors (malformed leaves and unknown paths).
+    - [x] 5 Registry (`index.ts`): `createRegistry`, `getTaxYear`, `latestTaxYear` (from ids, never today's date), `listTaxYears` (newest first), `taxYearLabel`. Skeleton `2026-27.ts`: every leaf `TODO`, no number literal apart from its id.
+    - [x] 6 Fixtures and guards: `fixtures/fakeTaxYears.ts` (years 2096-97 to 2098-99, fake values, marker `sumyard-fake-fixture`). `audit.ts` plus `configs.test.ts`: every real year file is registered and audits clean; 22 fault cases fail it (bare numbers, todo with a value, missing or non-GOV.UK source, bad date, wrong value kind, unknown or missing leaf), plus a future date and a legislation.gov.uk source. Only tests import the fixtures, and the build fails if the marker reaches `dist/`.
+    - [x] 7 Tax data screen (`#/tax-data`, `TaxDataPage.tsx`): each year with its badge and count, each group as a disclosure with "Not yet verified (0 of n verified)", "x of n verified. Some not yet verified" or "All n verified" (icon and words, not colour alone); each verified leaf shows its value, "Verified <date>" and a "Source: GOV.UK" link (`target="_blank" rel="noopener noreferrer"`). Empty state for no years. Linked from About, Settings and the Help topic.
+    - [x] 8 `VerifiedBadge`: "<year> tax year · Not yet verified" or "· Last verified <date>" (the most recent check, once every value is verified); a link to Tax data, or plain on the Tax data screen.
+    - [x] 9 Settings: real tax-year choice ("2026 to 2027 (not yet verified)"), a hint that unverified years show no results, and a "See tax data" link. Settings record schema 2 with `taxYear`; schema 1 migrates on read through the new `upgradeRecord` hook in `src/lib/storage.ts`. Reset covers the tax year.
+    - [x] 10 Menu footnote "Changes are saved in this browser."; Help topics updated (tax data topic rewritten; Quick start, Scenarios and saving, Troubleshooting adjusted).
+    - [x] URL-scan question answered (below); no allowlist change.
+    - [x] Checked in Chromium (Playwright and axe-core 4.10, scratch script, not committed): 267 checks at 360, 768 and 1280 px in light and dark, plus reduced motion at 360. Tax data deep link, title focus, ten groups all unverified, keyboard-opened disclosure, focus trap, Esc to About, then Help, then close; About link and back arrow; focus back on the menu button; Settings option, schema 2 saved, link to Tax data; Help topic link; menu footnote; 44 px targets; no horizontal scroll; only owned keys; no external requests; no console errors; reduced-motion sheet animation 0 s; a schema 1 record migrating in the real app. axe found 0 violations on Tax data (closed and open), About, Settings and the tax data Help topic in every combination, after one fix (below).
+  - **URL-scan finding:** `scripts/checks/externalUrls.ts` scans every URL in every text file in `dist/`, JavaScript strings included. `https://www.gov.uk/...` and `https://gov.uk/...` pass anywhere except a fetch context; all other hosts fail, including `www.legislation.gov.uk` and `assets.publishing.service.gov.uk`; no `INERT_URLS` entry concerns gov.uk. So GOV.UK sources need **no new allowlist entry**, and the scan is unchanged. The narrowest rule is enforced on the config side instead (a minified bundle can't show where a string came from): `isSourceUrl` accepts only `https://www.gov.uk/` pages without credentials, port or quote-like characters; the `SourceUrl` type and the audit test enforce it; sources render only from verified leaves as plain anchors. Fixture tests prove a verified leaf and its anchor pass the scan and legislation.gov.uk fails. **Owner decision pending:** allowing legislation.gov.uk would need an exact `https://www.legislation.gov.uk/` prefix rule (`.js` only), mirrored in `isSourceUrl`. Not done.
+  - Differences from the brief:
+    - `Sourced<T>` uses `status: 'todo'` instead of the `TODO_VERIFY` marker in `PLAN.md`; the audit rejects a leftover `TODO_VERIFY`.
+    - Bands are one sourced list per region, so the schema assumes no number of bands. The NI, HICBC and childcare groups hold only what the brief names (annual amounts; HICBC as the two thresholds); 1a may reshape them once the sources are read.
+    - The fixtures' `fakeYear` uses a small `mapLeaves` helper exported from `sourced.ts`.
+    - `fromPounds` is strict (no commas or `£`); input parsing is for session D's `CurrencyInput`. `roundToPounds` and `toPence` were added beyond the listed API.
+    - Tax data sits under About in the back stack. Help Markdown gained `sheet:` links (`sheet:tax-data`, `settings`, `about`, `whats-new`) so the Help topic can link to it.
+    - The tax-year choice is a one-option `Choice` (same component as region and amounts).
+    - **Fix outside the brief:** axe flagged `landmark-complementary-is-top-level` on Help topics with a `>` tip (an `<aside>` inside the dialog). Tips now render as `<p role="note">`. Session B's axe run likely used a topic without a tip.
+    - One red test was wrong (`percent("0")` expected 0 / 1; the rule is n / 100); corrected in the green commit.
+  - Not verified: a real phone, Safari and Firefox, a screen reader, the deployed URL, Windows high contrast; verified leaves (values, links and dates) rendered only in happy-dom tests, since no real config has one; rounding modes for tax steps (by design, 1a).
+  - Next (session D): versioned scenarios (`{ id, calculatorId, taxYear, name, inputs, createdAt, schemaVersion }`) with save, load, rename, delete with Undo, duplicate, JSON export and validated import with preview; backup and restore and clear all data in Settings; shared inputs (`CurrencyInput` parsing typed amounts into `Money`, `PercentInput` into a `Ratio`, and the rest) and result components; the token-aware `Chart` with table fallback (use `formatGBPCompact` for axes); the Hello calculator, which should call `requireVerified` and show the refusal state, with `VerifiedBadge`. When export exists, restore the menu footnote's "Export to keep a copy" and the Help wording. New storage keys must pass the storage-key guard and go in `docs/privacy.md`. Owner: decide on legislation.gov.uk sources before 1a.
+  - Docs updated: `PHASE-BRIEF.md`, `PLAN.md`, `CHANGELOG.md` (0.3.0), `CLAUDE.md` (Sourced shape, `requireVerified`, money rule, tax-source rule), new `docs/money.md` and `docs/verification-log.md`, `docs/privacy.md` (settings schema 2, migration hook, rollback, tax-source URLs), `docs/README.md`, `src/lib/README.md`, `src/config/tax/README.md`, `content/help/README.md`, the Help topics. `docs/design-tokens.md` unchanged: no token added.
+
+## Archive: slice 0 progress log
+
+Slice 0 Foundation, Done (0.2.0, PR #2, 17 October 2026). The owner ran the session B manual checklist on the deployed site and it passed. Kept as written at the time.
 
 - **17 October 2026, session 1 (recon), run at the start of build session A.** No recon report existed when build session A started (the log was empty and there were no PRs), so the owner chose "recon, then build" in the same session. Inspected `kishore510/chalkline` at `093e8d1` (0.31.0) and `kishore510/stickyard` (0.43.0).
   1. **Stack (Chalkline).** Vite 8 + React 19 + TypeScript 7 (`strict`, `noUncheckedIndexedAccess`, `verbatimModuleSyntax`, `@/` alias). Tailwind CSS 4 via `@tailwindcss/vite`, with shadcn-style primitives (`class-variance-authority`, `clsx`, `tailwind-merge`) and `lucide-react` icons. Zustand for state, Zod for schemas. Vitest 4 (node by default; `happy-dom` per file for component tests). Node pinned in `.nvmrc` (20.20.2). **No ESLint and no Prettier** in Chalkline or Stickyard: verification is `tsc --noEmit`, `vitest run` and `vite build`.
@@ -148,35 +167,3 @@ Add one entry per session: date, what was done, what differs from the brief, wha
     6. Bookmark `#/help/troubleshooting`, open it from the bookmark, and close: you land on the home page.
   - Next: the owner runs the checklist on the deployed site, then sets slice 0 to Done in `PLAN.md` (0.2.0, the PR number, the date). Then slice 0.5 (core plumbing): money type, `Sourced<T>` tax config with the registry, which unlocks the Settings tax-year default (replace the `data-stub="tax-year"` placeholder in `src/sheets/SettingsPage.tsx`), versioned scenarios with export and import (the Scenarios menu item, the menu footnote and the "Scenarios and saving" Help topic then describe something real), backup and restore in Settings, and the shared input and result components. New storage keys from 0.5 must pass the storage-key guard.
   - Docs updated: `PHASE-BRIEF.md`, `PLAN.md`, `CHANGELOG.md` (0.2.0), `CLAUDE.md` (state stores, build docs guard, storage-key guard, allowlist pinning, chrome text rule), `docs/privacy.md` (four keys, records, migrations, allowlist), `docs/design-tokens.md` (six chrome tokens), `docs/README.md`, `content/help/README.md`, `src/lib/README.md`.
-
-## Claude Code prompt: session 1 (recon)
-
-```
-Read CLAUDE.md and PHASE-BRIEF.md in the Sumyard repo (create the repo
-folder and these two files first if they don't exist yet; the owner will
-supply them).
-
-This is a recon session. Do not write or change any code (docs only,
-as below).
-
-Inspect the Chalkline repo (and Stickyard where it helps) and report:
-1. Framework, build tool, language, CSS approach, test runner.
-2. Design tokens: where they live, the full list (colour, type, spacing,
-   radii, shadows, motion), and how light/dark is applied.
-3. Theme toggle: implementation, persistence, and how the flash of the
-   wrong theme is avoided.
-4. Font loading: self-hosted or not, which fonts.
-5. GitHub Pages deploy workflow and base-path handling.
-6. Lint, format, CI setup.
-7. App-chrome components: main menu, Help panel (search, Quick start,
-   topics, More), What's new (from the changelog), About (version, build,
-   storage used, Copy details, privacy, credits), Settings, toast with
-   Undo, panel stack and focus handling. For each: lift as is,
-   generalise, or drop (diagram-specific), with file paths.
-
-Then recommend the stack for Sumyard (default: mirror Chalkline) and list
-any reason to differ. Keep the report short and structured. Do not start
-building. At the end, follow the session close-out checklist in
-CLAUDE.md: record the report in the PHASE-BRIEF.md progress log and
-update PLAN.md (Last updated, slice 0 status).
-```
