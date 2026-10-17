@@ -1,6 +1,6 @@
 # PHASE-BRIEF: Slice 1a Optimiser: config and engine
 
-Status: In progress. Session E is done (0.5.0, PR #5, merged and deployed): the config step is finished and logged. Session F is done (0.6.0, internal: the core tax engine for take-home pay without pension): the owner spot-checked the verified values and answered the engine questions as modelling decisions (`docs/modelling-decisions.md`). Session G (pensions, adjusted net income, HICBC, annual allowance, childcare check, `optimise()`) is next. Slice 1a runs as two build sessions: **E** (verify and populate the 2026-27 tax config, docs only around it, no engine code, 0.5.0) and **F** (the pure engine, tests first, after the owner answers session E's open questions). Rewritten at the start of every slice. Roadmap and status live in `PLAN.md`. Slice 0.5 is Done (0.4.0, PR #4, 17 October 2026); its progress log is archived at the end of this file, above slice 0's.
+Status: In progress. Session E is done (0.5.0, PR #5, merged and deployed): the config step is finished and logged. Session F is done (0.6.0, internal: the core tax engine for take-home pay without pension): the owner spot-checked the verified values and answered the engine questions as modelling decisions (`docs/modelling-decisions.md`). Session G is split into G1 (pensions, adjusted net income, HICBC; 0.7.0, internal) and G2 (annual allowance, carry forward, childcare check, `optimise()`; 0.8.0). G1 is in progress. Slice 1a runs as two build sessions: **E** (verify and populate the 2026-27 tax config, docs only around it, no engine code, 0.5.0) and **F** (the pure engine, tests first, after the owner answers session E's open questions). Rewritten at the start of every slice. Roadmap and status live in `PLAN.md`. Slice 0.5 is Done (0.4.0, PR #4, 17 October 2026); its progress log is archived at the end of this file, above slice 0's.
 
 ## Docs rule
 
@@ -56,6 +56,28 @@ Published gov.uk examples that concern these functions (not those marked "do not
 ### Out of scope
 
 Session G's work (pension methods, adjusted net income, HICBC, annual allowance, childcare check, `optimise()`); the UI, the registry and the Tax data screen; any tax value change.
+
+## Session G, split into G1 and G2
+
+Session G is split in two. **G1** (0.7.0, internal): pension contributions, adjusted net income and the High Income Child Benefit Charge, with `takeHome` extended. **G2** (0.8.0): `annualAllowanceCheck`, carry forward, the childcare check and `optimise()` with its sweep.
+
+### Session G1: pensions, adjusted net income, HICBC (0.7.0)
+
+Pre-check (17 October 2026): PR #6 merged; its Pages deploy (run 39062754954) succeeded.
+
+Owner decisions for G1 (recorded in `docs/modelling-decisions.md`): G4 resolved as a `ModellingPolicy` field for Child Benefit weeks, defaulting to `src/lib/periods.ts`, listed in the assumptions (a GOV.UK page that states the count wins); taper rounding stays `'exact'` by default; G2 (the ANI step order) and O2 (the student loan base per pension method) are GOV.UK lookups, not owner choices, and stop and stay OPEN if GOV.UK is silent or conflicts.
+
+Scope: pure functions in `src/calculators/optimiser/`, no UI, registry entry or new dependency; every figure through `requireVerified`, a typed refusal otherwise.
+
+1. `pensionContribution`: salary sacrifice (NI-able pay, taxable pay and ANI), net pay (taxable pay and ANI; NI unaffected), relief at source (net contribution grossed up at `reliefAtSourceRate`, basic rate band extended, higher-rate relief through ANI). Each effect checked on GOV.UK first and logged.
+2. `adjustedNetIncome`, shared by the taper, HICBC and later the childcare check; `incomeTax`'s taper input becomes ANI.
+3. The student loan base under each pension method, per the lookup.
+4. `hicbc(ani, children, config, policy)`: partial band, full clawback, claimed or opted out, whole steps (G1), weeks from the policy.
+5. `takeHome` with pension and Child Benefit inputs; the breakdown shows tax, NI, loan, pension and HICBC; assumptions gain the method, weeks and rounding.
+
+Tests first (red, then green): published GOV.UK examples, properties, edge cases, the reference implementation extended independently, the literal guard, mutation spot-checks.
+
+Out of scope: the annual allowance, carry forward, childcare, `optimise()` (G2, 0.8.0); any UI; any tax value change; any year other than 2026-27.
 
 ## Progress log
 
