@@ -21,11 +21,20 @@ afterEach(() => {
   host.remove()
 })
 
-describe('MainMenu footnote', () => {
-  it('says only that changes are saved in this browser (export arrives with scenarios)', () => {
+describe('MainMenu', () => {
+  it('footnote says changes are saved here, and to export a copy (export exists now)', () => {
     act(() => host.querySelector('button')!.click())
     const footnote = host.querySelector('[role="menu"]')!.parentElement!.querySelector('p')!
-    expect(footnote.textContent).toBe('Changes are saved in this browser.')
-    expect(host.textContent).not.toMatch(/export/i)
+    expect(footnote.textContent).toBe('Changes are saved in this browser. Export to keep a copy.')
+  })
+
+  it('Scenarios is enabled and opens the Scenarios sheet', () => {
+    history.replaceState(null, '', '/')
+    act(() => host.querySelector('button')!.click())
+    const item = [...host.querySelectorAll('[role="menuitem"]')].find((el) => el.textContent?.includes('Scenarios'))!
+    expect(item.getAttribute('aria-disabled')).toBeNull()
+    expect(item.textContent).not.toMatch(/Coming soon/)
+    act(() => (item as HTMLElement).click())
+    expect(location.hash).toBe('#/scenarios')
   })
 })

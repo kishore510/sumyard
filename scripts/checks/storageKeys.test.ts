@@ -82,12 +82,13 @@ describe('this repo', () => {
     expect(checkStorageKeys({ files: readSourceFiles(ROOT), owned: STORAGE_KEYS, privacyDoc })).toEqual([])
   })
 
-  it('owns exactly the keys agreed for 0.2.0', () => {
+  it('owns exactly the keys agreed (0.2.0, plus scenarios in 0.4.0)', () => {
     expect(Object.fromEntries(Object.entries(STORAGE_KEYS).map(([name, { key }]) => [name, key]))).toEqual({
       theme: 'sumyard:v1:theme',
       settings: 'sumyard:v1:settings',
       lastSeenVersion: 'sumyard:v1:last-seen-version',
       acknowledged: 'sumyard:v1:acknowledged',
+      scenarios: 'sumyard:v1:scenarios',
     })
   })
 

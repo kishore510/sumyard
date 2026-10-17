@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import { STORAGE_KEYS } from '@/lib/storageKeys'
-import { createSettingsStore, DEFAULT_SETTINGS, parseSettings, resetToDefaults, type Settings, serializeSettings } from './settings'
+import {
+  createSettingsStore,
+  DEFAULT_SETTINGS,
+  parseSettings,
+  readSettingsValue,
+  resetToDefaults,
+  type Settings,
+  serializeSettings,
+} from './settings'
 
 const LATEST = '2026-27'
 
@@ -193,5 +201,30 @@ describe('resetToDefaults', () => {
     const t = setup()
     resetToDefaults(t.settings, t.themeStore)
     expect(resetToDefaults(t.settings, t.themeStore)).toBeNull()
+  })
+})
+
+describe('readSettingsValue (restoring a backup)', () => {
+  const years = { ids: ['2026-27'], latest: '2026-27' }
+
+  it('accepts valid settings, building a fresh object', () => {
+    const raw = { region: 'scotland', amounts: 'pence', taxYear: '2026-27', extra: 1 }
+    const result = readSettingsValue(raw, years)
+    expect(result).toEqual({ ok: true, settings: { region: 'scotland', amounts: 'pence', taxYear: '2026-27' }, notes: [] })
+  })
+
+  it('rejects an unknown region or amount style, or a non-object', () => {
+    expect(readSettingsValue({ region: 'wales', amounts: 'pence', taxYear: '2026-27' }, years).ok).toBe(false)
+    expect(readSettingsValue({ region: 'ruk', amounts: 'pennies', taxYear: '2026-27' }, years).ok).toBe(false)
+    expect(readSettingsValue('ruk', years).ok).toBe(false)
+  })
+
+  it('swaps a tax year this version doesn’t have for the latest, with a note', () => {
+    const result = readSettingsValue({ region: 'ruk', amounts: 'pounds', taxYear: '2031-32' }, years)
+    expect(result).toEqual({
+      ok: true,
+      settings: { region: 'ruk', amounts: 'pounds', taxYear: '2026-27' },
+      notes: ['The backup’s default tax year, 2031 to 2032, isn’t in this version, so it is set to 2026 to 2027.'],
+    })
   })
 })

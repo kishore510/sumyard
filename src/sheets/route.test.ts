@@ -11,6 +11,9 @@ describe('parseHash', () => {
     ['#/about', { kind: 'about' }],
     ['#/settings', { kind: 'settings' }],
     ['#/tax-data', { kind: 'tax-data' }],
+    ['#/scenarios', { kind: 'scenarios' }],
+    ['#/import', { kind: 'import' }],
+    ['#/restore', { kind: 'restore' }],
   ])('%s', (hash, route) => {
     expect(parseHash(hash)).toEqual(route)
   })
@@ -29,6 +32,9 @@ describe('parseHash', () => {
     '#/taxdata',
     '#//help',
     'help',
+    '#/c/hello',
+    '#/c/hello/compare',
+    '#/scenarios/x',
   ])('no sheet for %j', (hash) => {
     expect(parseHash(hash)).toBeNull()
   })
@@ -42,6 +48,9 @@ describe('formatHash and parentOf', () => {
     { kind: 'about' },
     { kind: 'settings' },
     { kind: 'tax-data' },
+    { kind: 'scenarios' },
+    { kind: 'import' },
+    { kind: 'restore' },
   ]
 
   it.each(routes)('round-trips %o', (route) => {
@@ -54,6 +63,12 @@ describe('formatHash and parentOf', () => {
     expect(parentOf({ kind: 'about' })).toEqual({ kind: 'help' })
     expect(parentOf({ kind: 'help' })).toBeNull()
     expect(parentOf({ kind: 'settings' })).toBeNull()
+  })
+
+  it('puts Import under Scenarios and Restore under Settings; Scenarios has no parent', () => {
+    expect(parentOf({ kind: 'import' })).toEqual({ kind: 'scenarios' })
+    expect(parentOf({ kind: 'restore' })).toEqual({ kind: 'settings' })
+    expect(parentOf({ kind: 'scenarios' })).toBeNull()
   })
 
   it('puts Tax data under About (About links to it; so will each calculator’s verified badge)', () => {
@@ -209,6 +224,58 @@ describe('createSheetNavigator', () => {
     expect(t.nav.current()).toEqual({ kind: 'help' })
     t.nav.escape()
     expect(t.nav.current()).toBeNull()
+  })
+
+  it('remembers the page a sheet opened over, through every sheet in the stack', () => {
+    const t = fakeWindow('#/c/hello')
+    t.nav.open({ kind: 'help' })
+    expect(t.nav.page()).toBe('#/c/hello')
+    t.nav.open({ kind: 'about' })
+    t.nav.open({ kind: 'tax-data' })
+    expect(t.nav.page()).toBe('#/c/hello')
+    t.nav.back()
+    expect(t.nav.page()).toBe('#/c/hello')
+  })
+
+  it('close returns to the calculator page the sheet opened over, not home', () => {
+    const t = fakeWindow('#/c/hello')
+    t.nav.open({ kind: 'settings' })
+    t.nav.close()
+    expect(t.win.location.hash).toBe('#/c/hello')
+    expect(t.nav.current()).toBeNull()
+  })
+
+  it('a deep-linked sheet has home underneath', () => {
+    const t = fakeWindow('#/settings')
+    expect(t.nav.page()).toBe('')
+    t.nav.close()
+    expect(t.win.location.hash).toBe('')
+  })
+
+  it('close can go on to another page (opening a scenario from the Scenarios sheet)', () => {
+    const t = fakeWindow('')
+    t.nav.open({ kind: 'scenarios' })
+    t.nav.close('#/c/hello')
+    expect(t.win.location.hash).toBe('#/c/hello')
+    expect(t.entries()).toEqual(['', '#/c/hello'])
+    t.win.history.back()
+    expect(t.win.location.hash).toBe('')
+  })
+
+  it('close to another page from a deep-linked sheet replaces it', () => {
+    const t = fakeWindow('#/scenarios')
+    t.nav.close('#/c/hello')
+    expect(t.entries()).toEqual(['#/c/hello'])
+  })
+
+  it('close to the page already underneath adds no entry', () => {
+    const t = fakeWindow('#/c/hello')
+    t.nav.open({ kind: 'scenarios' })
+    t.nav.close('#/c/hello')
+    // Back in history to the page entry; the browser keeps the sheet as a forward entry.
+    expect(t.entries()).toEqual(['#/c/hello', '#/scenarios'])
+    expect(t.win.location.hash).toBe('#/c/hello')
+    expect(t.at()).toBe(0)
   })
 
   it('an unknown hash shows no sheet', () => {

@@ -58,11 +58,10 @@ describe('content/help', () => {
     expect(linksIn(topicById('tax-data-and-last-verified')!.blocks)).toContain('sheet:tax-data')
   })
 
-  it('describes saving as it is: no export until it exists', () => {
-    for (const topic of HELP_TOPICS) {
-      const text = JSON.stringify(topic.blocks)
-      expect(text, topic.id).not.toMatch(/Export to keep a copy/i)
-    }
+  it('describes saving as it is now: scenarios, export, import, backup and restore exist', () => {
+    const text = JSON.stringify(topicById('scenarios-and-saving')!.blocks)
+    for (const word of [/export/i, /import/i, /backup/i, /restore/i, /compare/i, /undo/i]) expect(text).toMatch(word)
+    for (const topic of HELP_TOPICS) expect(JSON.stringify(topic.blocks), topic.id).not.toMatch(/not built yet|Coming soon/i)
   })
 
   it('states no money amounts or percentages (tax figures belong in config, not Help)', () => {
