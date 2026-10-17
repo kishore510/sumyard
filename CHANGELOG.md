@@ -4,6 +4,25 @@ All notable changes to Sumyard are listed here, newest first. The format follows
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-10-17
+
+### Added
+- **Calculators on the home page**, each with its own page and address. The first is the **Hello calculator**, a placeholder that shows how calculators will work: inputs, results, a chart, assumptions and scenarios. It uses no tax figures and goes when the first real calculator arrives.
+- **Scenarios:** save a calculator’s inputs under a name, then load, rename, duplicate or delete them (with **Undo**). A calculator page shows which scenario is open and whether it has **unsaved changes**. **Save as new** keeps the original. Only the inputs are kept; results are always worked out again.
+- **Scenarios** in the menu lists every saved scenario, grouped by calculator.
+- **Compare** two or three scenarios of one calculator side by side, with the change from the first for each input and result.
+- **Export and import:** save scenarios to a file, and import them again with a preview first. The preview shows what the file holds, what can’t be used and why, and names that match yours. Choose **Add** or **Replace**.
+- **Backup and restore** in Settings: one file with your scenarios, settings and theme. Restoring shows a preview, offers to export your current data first, and replaces it only when you confirm.
+- **Clear all data** in Settings removes everything Sumyard keeps in this browser, after asking. It can’t be undone.
+- **Charts** with a text summary and a **Show the data as a table** option, in both themes.
+- When a result needs tax figures that aren’t verified yet, the page says which ones and shows no result, with a link to Tax data.
+
+### Changed
+- The menu says “Changes are saved in this browser. Export to keep a copy.” again.
+- Closing Help, Settings or another panel opened over a calculator returns you to that calculator.
+- Help: Scenarios and saving, Quick start, Troubleshooting and the tax data topic describe scenarios, compare, export, import, backup and restore.
+- If the browser won’t save scenarios (storage blocked or full), Sumyard keeps them until you close it and suggests exporting.
+
 ## [0.3.0] - 2026-10-17
 
 ### Added

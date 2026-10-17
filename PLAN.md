@@ -1,6 +1,6 @@
 # Phase plan: Sumyard
 
-Last updated: 17 October 2026 (slice 0.5 session C: money, tax config skeleton and Tax data screen, 0.3.0; session D next)
+Last updated: 17 October 2026 (slice 0.5 session D: scenarios, export and import, backup and restore, shared components, chart, Hello calculator, 0.4.0; slice 0.5 waits on the owner's checks of the deployed site)
 
 Draft roadmap. When a slice starts, rewrite its prompt against the real code (see the skeleton in PHASE-BRIEF.md). Do not treat these notes as final prompts.
 
@@ -108,7 +108,16 @@ Status values: Not started, In progress, Done (version, PR, date).
 - **Follow-up.** Slice 0.5 replaces the Settings tax-year stub and makes the Scenarios menu item, its Help topic and the menu's "Export" footnote real.
 
 ### 0.5 Core plumbing
-- **Progress (17 October 2026).** Runs as two sessions. **Session C done (0.3.0):** money type and formatting, `Sourced<T>` tax-config pipeline with the registry and a `2026-27` skeleton (every leaf unverified, no figure), Tax data screen, verified badge, Settings tax-year default with a settings migration, menu footnote trimmed. **Session D next:** scenarios with export and import, shared inputs and result components, token-aware chart, backup and restore, the Hello calculator. Details in the `PHASE-BRIEF.md` progress log.
+- **Progress (17 October 2026).** Runs as two sessions. **Session C done (0.3.0):** money type and formatting, `Sourced<T>` tax-config pipeline with the registry and a `2026-27` skeleton (every leaf unverified, no figure), Tax data screen, verified badge, Settings tax-year default with a settings migration, menu footnote trimmed. **Session D done (0.4.0):** calculator registry and pages at `#/c/<id>`, scenarios under `sumyard:v1:scenarios` (save, update, save as new, load, rename, duplicate, delete with Undo, unsaved-changes indicator), export and import with a preview (Add or Replace), backup and restore and clear all data in Settings, compare page, shared inputs and result components, hand-rolled SVG chart, Hello calculator placeholder. Lighthouse mobile recorded in `docs/performance.md`. Details in the `PHASE-BRIEF.md` progress log.
+- **Status: In progress, not Done.** Every acceptance item that can be checked before merge passes (tests, Chromium checks at 360, 768 and 1280 px in both themes, axe, Lighthouse). The gap: the owner's manual checks on the deployed site (real phone, Safari, VoiceOver, a real file picker for import and restore on mobile), listed in `PHASE-BRIEF.md`. Set Done (0.4.0, the PR, the date) once they pass, as for slice 0.
+- **Session D decisions:**
+  - **Sheets over a calculator page:** each sheet history entry remembers the page underneath (`page` in the entry's state), so the page stays put behind the sheet and Close, Esc or Back land on it. A deep-linked sheet closes to home. Sheet routes are unchanged; `#/scenarios`, `#/import` (under Scenarios) and `#/restore` (under Settings) are new.
+  - **Compare is a page** (`#/c/<id>/compare`) for the width; on a phone the table scrolls sideways with the row labels sticky. The selection lasts for the visit (not in the URL).
+  - **Chart: hand-rolled SVG** (open question closed): lines, bars, reference lines, markers, labelled axes, token colours through Tailwind `fill-*`/`stroke-*` classes, a text summary and a data-table fallback. It does not animate. Geometry constants (height, padding) live in the component, not as tokens.
+  - **Scenario shape** follows the session D prompt: `{ id, calculatorId, taxYear, name, inputs, inputsVersion, createdAt, updatedAt }`; the schema version is on the stored record, not on each scenario (session C's handover had `schemaVersion` per scenario).
+  - **Rollback safety:** stored scenarios this version can't use (another calculator, newer inputs) are kept and written back; a record it can't read (not JSON, a newer schema, hostile keys) is never written over until a restore or clear all data.
+  - **Additions to session C's API (no change to existing functions):** `compareRatio`, `subtractRatio` in `money.ts`; `formatAmountInput`, `formatGBPDelta`, `formatPercentPointDelta` in `format.ts`; `removeKey` in `storage.ts`.
+- **Rollback (0.4.0 to 0.3.0):** safe. 0.3.0 ignores `sumyard:v1:scenarios`, which stays in the browser; no other key changed.
 - **Money decision:** integer pence as a branded `number` (safe-integer range, about £90 trillion), with exact integer `Ratio`s for rates and `mulRound` in BigInt with explicit `nearest` (halves away from zero), `down` (floor) and `up` (ceiling) modes. No decimal library. The mode each tax step needs is to be verified in 1a (`docs/money.md` has the table).
 - **URL-scan outcome:** the scan already allows `https://www.gov.uk/` and `https://gov.uk/` URLs inside JavaScript strings (not where fetched), and rejects every other host, legislation.gov.uk included. No allowlist entry was added and the scan is unchanged. Config sources are held to the narrower `https://www.gov.uk/` rule by `isSourceUrl` and the config audit test, and rendered only as plain `noopener noreferrer` links. Fixture tests prove it; the build fails if fake fixtures reach `dist/`. Allowing legislation.gov.uk is an open question for the owner.
 - **What changed from these notes (session C):**
@@ -186,7 +195,6 @@ Engine (pure functions, tests first: red commit, then green).
 ## Open questions
 
 - Tax-config sources beyond www.gov.uk: allow `https://www.legislation.gov.uk/` (exact prefix, `.js` only) if a value is only published there? Widens the URL allowlist, so the owner decides.
-- Chart library vs hand-rolled SVG (bundle size, token theming, accessibility).
 - URL-hash state sharing (a shareable link of inputs, local only): in or out.
 - Coverage target for pure calculator code.
 - Sumyard name and domain availability.
@@ -206,4 +214,7 @@ Engine (pure functions, tests first: red commit, then green).
 - Spreadsheet (CSV) export of a calculator's tables.
 - Phone-specific polish if the first phone audit shows gaps.
 - A Sumyard logo and favicon (the header uses a text wordmark; the favicon is empty).
+- Remember the compare selection across visits (it lasts for the visit now).
+- A "Discard changes" action on a loaded scenario (today: load it again).
+- Chart tooltips on hover or tap (values are in the summary and the data table now).
 - Add Zustand and Zod if a later slice's state or import validation outgrows the small store and hand-written checks.
