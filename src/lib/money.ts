@@ -210,26 +210,39 @@ export interface ExactPence {
   readonly denominator: bigint
 }
 
-export function exact(_amount: Money): ExactPence {
-  throw new MoneyError('exact: not implemented')
+function reduced(numerator: bigint, denominator: bigint): ExactPence {
+  if (denominator <= 0n) throw new MoneyError('exact pence: the denominator must be above zero')
+  const divisor = gcd(numerator, denominator) || 1n
+  return numerator === 0n ? { numerator: 0n, denominator: 1n } : { numerator: numerator / divisor, denominator: denominator / divisor }
 }
 
-export function exactMul(_amount: ExactPence, _factor: Ratio): ExactPence {
-  throw new MoneyError('exactMul: not implemented')
+/** A Money as exact pence. */
+export function exact(amount: Money): ExactPence {
+  return { numerator: BigInt(assertMoney(amount, 'exact')), denominator: 1n }
 }
 
-export function exactAdd(_a: ExactPence, _b: ExactPence): ExactPence {
-  throw new MoneyError('exactAdd: not implemented')
+/** amount × factor, exactly. */
+export function exactMul(amount: ExactPence, factor: Ratio): ExactPence {
+  const [n, d] = ratioParts(factor, 'exactMul')
+  return reduced(amount.numerator * n, amount.denominator * d)
 }
 
-export function exactSubtract(_a: ExactPence, _b: ExactPence): ExactPence {
-  throw new MoneyError('exactSubtract: not implemented')
+export function exactAdd(a: ExactPence, b: ExactPence): ExactPence {
+  return reduced(a.numerator * b.denominator + b.numerator * a.denominator, a.denominator * b.denominator)
 }
 
-export function compareExact(_a: ExactPence, _b: ExactPence): -1 | 0 | 1 {
-  throw new MoneyError('compareExact: not implemented')
+export function exactSubtract(a: ExactPence, b: ExactPence): ExactPence {
+  return reduced(a.numerator * b.denominator - b.numerator * a.denominator, a.denominator * b.denominator)
 }
 
-export function roundExact(_amount: ExactPence, _mode: RoundingMode): Money {
-  throw new MoneyError('roundExact: not implemented')
+export function compareExact(a: ExactPence, b: ExactPence): -1 | 0 | 1 {
+  const left = a.numerator * b.denominator
+  const right = b.numerator * a.denominator
+  return left < right ? -1 : left > right ? 1 : 0
+}
+
+/** Exact pence rounded to a whole penny by `mode`: the one rounding at output. Throws past the safe range. */
+export function roundExact(amount: ExactPence, mode: RoundingMode): Money {
+  if (amount.denominator <= 0n) throw new MoneyError('roundExact: the denominator must be above zero')
+  return fromBigInt(divideRound(amount.numerator, amount.denominator, mode), 'roundExact')
 }
