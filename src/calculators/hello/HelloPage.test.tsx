@@ -1,11 +1,15 @@
 // @vitest-environment happy-dom
 import { act } from 'react'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { getTaxYear } from '@/config/tax/index'
+import { requireVerified } from '@/config/tax/sourced'
+import { formatIsoDate } from '@/lib/format'
 import { STORAGE_KEYS } from '@/lib/storageKeys'
 import { scenarioStore } from '@/scenarios/index'
 import { byText, click, mount, type } from '@/test/dom'
 import { toasts } from '@/toast/toasts'
 import { sessionFor } from '../session'
+import { HELLO_TAX_PATHS } from './calc'
 import { helloCalculator } from './definition'
 import HelloPage from './HelloPage'
 
@@ -39,14 +43,18 @@ describe('Hello calculator page', () => {
     expect(view.host.textContent).toMatch(/not financial advice/)
   })
 
-  it('shows the refusal (and no results) when tax data is needed and unverified', () => {
+  it('shows the tax year’s dates from the real config when they are verified (the refusal is in HelloPage.refusal.test.tsx)', () => {
+    const year = getTaxYear('2026-27')!
+    const dates = requireVerified(year, HELLO_TAX_PATHS)
     click($('#hello-dates'))
-    expect($('[data-refusal]')).not.toBeNull()
-    expect($('[data-refusal]')!.textContent).toContain('Tax year dates')
-    expect($('[data-refusal] a[href="#/tax-data"]')).not.toBeNull()
-    expect(byText(view.host, 'h2', 'Results')).toBeUndefined()
-    expect($('[data-chart]')).toBeNull()
-    expect($('details#assumptions')).not.toBeNull()
+    if (!dates.ok) {
+      expect($('[data-refusal]')).not.toBeNull()
+      return
+    }
+    expect($('[data-refusal]')).toBeNull()
+    expect(view.host.textContent).toContain(
+      `${formatIsoDate(dates.values['period.start'])} to ${formatIsoDate(dates.values['period.end'])}`,
+    )
   })
 
   it('shows no results while an input is invalid, and disables Save', () => {

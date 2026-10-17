@@ -18,7 +18,7 @@ Checked by Claude in slice 1a session E, from pages fetched on 17 October 2026. 
 
 | Group | Verified | Todo |
 |---|---|---|
-| period | 0 | 2 |
+| period | 2 | 0 |
 | personal-allowance | 0 | 3 |
 | income-tax-ruk | 0 | 1 |
 | income-tax-scotland | 0 | 1 |
@@ -28,7 +28,7 @@ Checked by Claude in slice 1a session E, from pages fetched on 17 October 2026. 
 | pension | 0 | 8 |
 | child-benefit | 0 | 5 |
 | childcare | 0 | 2 |
-| **All** | **0** | **38** |
+| **All** | **2** | **36** |
 
 ### OPEN questions
 
@@ -48,8 +48,8 @@ Questions about how a published figure is applied. None of them blocks a value f
 
 | Group | Path | Value | Page title | URL | Read on | Quote | Second source | Status | Notes |
 |---|---|---|---|---|---|---|---|---|---|
-| period | `period.start` | — | — | — | — | — | — | todo | Not yet checked in session E. |
-| period | `period.end` | — | — | — | — | — | — | todo | Not yet checked in session E. |
+| period | `period.start` | 6 April 2026 | Income Tax rates and Personal Allowances | https://www.gov.uk/income-tax-rates | 2026-10-17 | "The current tax year is from 6 April 2026 to 5 April 2027." | Rates and thresholds for employers 2026 to 2027 (HMRC, last updated 1 September 2026), https://www.gov.uk/guidance/rates-and-thresholds-for-employers-2026-to-2027: "Unless otherwise stated, the following figures apply from 6 April 2026 to 5 April 2027." | verified |  |
+| period | `period.end` | 5 April 2027 | Income Tax rates and Personal Allowances | https://www.gov.uk/income-tax-rates | 2026-10-17 | "The current tax year is from 6 April 2026 to 5 April 2027." | Rates and thresholds for employers 2026 to 2027 (HMRC, last updated 1 September 2026), https://www.gov.uk/guidance/rates-and-thresholds-for-employers-2026-to-2027: same sentence. | verified |  |
 | personal-allowance | `incomeTax.personalAllowance` | — | — | — | — | — | — | todo | Not yet checked in session E. |
 | personal-allowance | `incomeTax.taperStart` | — | — | — | — | — | — | todo | Not yet checked in session E. |
 | personal-allowance | `incomeTax.taperRate` | — | — | — | — | — | — | todo | Not yet checked in session E. |
