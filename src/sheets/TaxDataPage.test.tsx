@@ -101,6 +101,8 @@ describe('Tax data screen states (fake years)', () => {
     expect(link.getAttribute('aria-label')).toMatch(/Personal allowance.*GOV\.UK.*new tab/)
     expect(field('2098-99', 'incomeTax.taperRate').textContent).toMatch(/\d%/)
     expect(field('2098-99', 'incomeTax.bands.rUK').textContent).toContain('Fake band B')
+    expect(field('2098-99', 'incomeTax.bands.rUK').textContent).toMatch(/Fake band A: \S+ from .*Fake band B: \S+ above /)
+    expect(field('2098-99', 'incomeTax.bands.rUK').textContent).toContain('On income after allowances')
     expect(field('2098-99', 'period.start').textContent).toContain('1 January 2098')
     for (const g of TAX_GROUPS) expect(group('2098-99', g.id).dataset.status).toBe('all')
     expect(year('2098-99')!.textContent).toContain('Last verified 2 January 2098')
