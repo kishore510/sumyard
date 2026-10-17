@@ -27,8 +27,8 @@ Checked by Claude in slice 1a session E, from pages fetched on 17 October 2026. 
 | student-loans | 10 | 0 |
 | pension | 8 | 0 |
 | child-benefit | 5 | 0 |
-| childcare | 0 | 2 |
-| **All** | **36** | **2** |
+| childcare | 2 | 0 |
+| **All** | **38** | **0** |
 
 ### OPEN questions
 
@@ -84,8 +84,8 @@ Questions about how a published figure is applied. None of them blocks a value f
 | child-benefit | `childBenefit.hicbc.threshold` | £60,000 | Child Benefit tax calculator (start page) | https://www.gov.uk/child-benefit-tax-calculator | 2026-10-17 | "over £60,000 for the tax year 2024 to 2025 up to tax year 2026 to 2027" | High Income Child Benefit Charge, https://www.gov.uk/child-benefit-tax-charge: "over £60,000 for tax years starting from 2024 to 2025". Also PAYE14015: Coding: adjustments to collect tax: high income child benefit charge (HMRC PAYE Manual), https://www.gov.uk/hmrc-internal-manuals/paye-manual/paye14015 and Personal Allowances: adjusted net income (last updated 30 May 2025), https://www.gov.uk/guidance/adjusted-net-income ("adjusted net income above £60,000"). | verified | Measured on adjusted net income; if both partners are over, the higher earner pays. |
 | child-benefit | `childBenefit.hicbc.fullChargeAt` | £80,000 | PAYE14015: Coding: adjustments to collect tax: high income child benefit charge (HMRC PAYE Manual) | https://www.gov.uk/hmrc-internal-manuals/paye-manual/paye14015 | 2026-10-17 | "For tax years from 2024 to 2025 and onwards ... Equal to the full Child Benefit award, for income above £80,000" | High Income Child Benefit Charge, https://www.gov.uk/child-benefit-tax-charge: "If you earn over £80,000 you’ll pay it all back." | verified | Also implied by Child Benefit: What you'll get, https://www.gov.uk/child-benefit/what-youll-get: "an individual income of £20,000 or more above the threshold". |
 | child-benefit | `childBenefit.hicbc.incomePerPercent` | £200 | High Income Child Benefit Charge | https://www.gov.uk/child-benefit-tax-charge | 2026-10-17 | "You’ll pay back 1% of your Child Benefit for every £200 you earn over £60,000." | PAYE14015: Coding: adjustments to collect tax: high income child benefit charge (HMRC PAYE Manual), https://www.gov.uk/hmrc-internal-manuals/paye-manual/paye14015: "For tax years from 2024 to 2025 and onwards ... One per cent of the full Child Benefit award, for each £200 of income which falls between £60,000 and £80,000". | verified | SCHEMA CHANGE (new leaf). Whether a part of £200 counts, and how the charge is rounded: OPEN O4. |
-| childcare | `childcare.taxFreeChildcare.incomeLimit` | — | — | — | — | — | — | todo | Not yet checked in session E. |
-| childcare | `childcare.thirtyHours.incomeLimit` | — | — | — | — | — | — | todo | Not yet checked in session E. |
+| childcare | `childcare.taxFreeChildcare.incomeLimit` | £100,000 | Tax-Free Childcare: Check if you're eligible | https://www.gov.uk/tax-free-childcare/check-if-youre-eligible | 2026-10-17 | "you or your partner’s expected adjusted net income (including any foreign income) is over £100,000 for the current tax year" | None found: the same guide's printable version repeats it. | verified | Single source. The page says "the current tax year", read on 17 October 2026 (in 2026 to 2027); its minimum-income figures match the 2026 to 2027 National Living Wage on the employers page, which supports that the page is current. Expected ANI, each partner separately. Minimum earnings and other conditions not stored: OPEN O7. |
+| childcare | `childcare.thirtyHours.incomeLimit` | £100,000 | Free Childcare for Working Parents: Check if you're eligible | https://www.gov.uk/free-childcare-if-working/check-youre-eligible | 2026-10-17 | "you or your partner’s expected adjusted net income (including any foreign income) is over £100,000 for the current tax year" | Same page, fostering section: "your ‘adjusted net income’ is under £100,000" (not independent). | verified | Single source; "current tax year" as for Tax-Free Childcare. England only ("you must live in England"); Scotland, Wales and Northern Ireland have different schemes, not modelled. OPEN O7. |
 
 ### Published but not stored
 

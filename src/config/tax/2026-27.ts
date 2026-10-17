@@ -1,7 +1,7 @@
 import type { IsoDate } from '@/lib/isoDate'
 import { fromPounds, percent, ratio, ZERO } from '@/lib/money'
 import type { TaxBand, TaxYearConfig } from './schema'
-import { type SourceUrl, TODO, type Verified } from './sourced'
+import type { SourceUrl, Verified } from './sourced'
 
 /*
  * 2026-27, verified in slice 1a session E. Every verified value below was
@@ -31,6 +31,8 @@ const CHILD_BENEFIT_RATES: SourceUrl =
 const CHILD_BENEFIT_TAX_CALCULATOR: SourceUrl = 'https://www.gov.uk/child-benefit-tax-calculator'
 const HICBC_PAYE_MANUAL: SourceUrl = 'https://www.gov.uk/hmrc-internal-manuals/paye-manual/paye14015'
 const HICBC_GUIDE: SourceUrl = 'https://www.gov.uk/child-benefit-tax-charge'
+const TAX_FREE_CHILDCARE: SourceUrl = 'https://www.gov.uk/tax-free-childcare/check-if-youre-eligible'
+const FREE_CHILDCARE_FOR_WORKING_PARENTS: SourceUrl = 'https://www.gov.uk/free-childcare-if-working/check-youre-eligible'
 const HMRC_NI_RATES: SourceUrl =
   'https://www.gov.uk/government/publications/rates-and-allowances-national-insurance-contributions/rates-and-allowances-national-insurance-contributions'
 
@@ -109,8 +111,8 @@ export const taxYear: TaxYearConfig = {
     },
   },
   childcare: {
-    taxFreeChildcare: { incomeLimit: TODO },
-    thirtyHours: { incomeLimit: TODO },
+    taxFreeChildcare: { incomeLimit: read(fromPounds(100_000), TAX_FREE_CHILDCARE) },
+    thirtyHours: { incomeLimit: read(fromPounds(100_000), FREE_CHILDCARE_FOR_WORKING_PARENTS) },
   },
   savingsAndDividends: { reserved: true },
 }
