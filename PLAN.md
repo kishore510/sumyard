@@ -1,6 +1,6 @@
 # Phase plan: Sumyard
 
-Last updated: 17 October 2026 (slice 0: recon done, session A built: scaffold, tokens, theme, CI guards, 0.1.0)
+Last updated: 17 October 2026 (slice 0: session B built the app chrome, 0.2.0; awaiting the owner's phone check before Done)
 
 Draft roadmap. When a slice starts, rewrite its prompt against the real code (see the skeleton in PHASE-BRIEF.md). Do not treat these notes as final prompts.
 
@@ -96,14 +96,15 @@ Status values: Not started, In progress, Done (version, PR, date).
 - Toast with Undo, consistent empty, error and loading states, footer disclaimer, first-run acknowledgement stored locally.
 - Accessibility baseline: WCAG AA contrast in both themes, visible focus rings, 44 px touch targets, `prefers-reduced-motion` respected.
 
-- **Progress (17 October 2026).** Recon and build session A done; 0.1.0 is the first version. Built: scaffold, tokens, fonts, theme with pre-paint script, placeholder home, CI and Pages workflows, and guards for docs drift, external URLs and the pre-paint theme. Session B (app chrome) is next. Details are in the `PHASE-BRIEF.md` progress log.
+- **Progress (17 October 2026).** Recon and build session A done (0.1.0: scaffold, tokens, fonts, theme with pre-paint script, CI and Pages workflows, guards for docs drift, external URLs and the pre-paint theme). Build session B done (0.2.0): menu, hash-routed sheet stack, Help, What's new, About, Settings, toast with Undo, shared states, footer disclaimer, first-run notice, storage-key guard, docs guard in the build, tighter URL allowlist. The acceptance criteria that can be checked before merge pass in local Chromium checks; the slice stays In progress until the deployed site is checked on a real phone. Details are in the `PHASE-BRIEF.md` progress log.
 - **What changed from these notes:**
   - Lint and format use Biome, not ESLint and Prettier (Chalkline has neither, and typescript-eslint does not support TypeScript 7).
   - The URL allowlist also holds exact inert strings that are never fetched: XML namespaces and React's error-link prefix inside React DOM, and Tailwind's licence comment.
   - Tokens gained a raw-palette layer (`--sy-palette-*`), using Chalkline's values.
   - Session A was split from the shell work, so slice 0 runs as recon, session A and session B.
-- **Rollback.** Nothing to migrate: the only storage key is `sumyard:v1:theme`, and losing it only resets the theme to System.
-- **Follow-up.** Pages must be set to "GitHub Actions" in the repo settings before the first deploy. Session B decides how credits avoid external URLs.
+  - Session B: no Zustand or Zod (a small `useSyncExternalStore` store instead); `lastSeenVersion` is stored as `sumyard:v1:last-seen-version`; What's new is parsed at build time and injected, not bundled raw; the tax-year default is a labelled stub until 0.5; sheet parents are fixed (Help over topics, What's new and About).
+- **Rollback.** Safe to roll back to 0.1.0: it reads only `sumyard:v1:theme` and ignores the three keys 0.2.0 adds (`settings`, `last-seen-version`, `acknowledged`). Losing any of them only resets a default or shows a marker or notice again.
+- **Follow-up.** Owner: run the phone checklist in `PHASE-BRIEF.md` on the deployed site, then set slice 0 to Done (0.2.0, PR, date). Slice 0.5 replaces the Settings tax-year stub and makes the Scenarios menu item, its Help topic and the menu's "Export" footnote real.
 
 ### 0.5 Core plumbing
 - Money: decide first between integer pence and a decimal library. Document rounding rules per calculation. `lib/money` and `lib/format` with tests.
@@ -172,7 +173,6 @@ Engine (pure functions, tests first: red commit, then green).
 
 ## Open questions
 
-- Credits in About (session B): name and licence only, or links to package homepages (which would widen the build-scan allowlist beyond gov.uk)? Default: name and licence only.
 - Money type: integer pence vs a decimal library (decide at the start of 0.5).
 - Chart library vs hand-rolled SVG (bundle size, token theming, accessibility).
 - URL-hash state sharing (a shareable link of inputs, local only): in or out.
@@ -193,3 +193,5 @@ Engine (pure functions, tests first: red commit, then green).
 - Welsh rate variations beyond what the config supports.
 - Spreadsheet (CSV) export of a calculator's tables.
 - Phone-specific polish if the first phone audit shows gaps.
+- A Sumyard logo and favicon (the header uses a text wordmark; the favicon is empty).
+- Add Zustand and Zod if a later slice's state or import validation outgrows the small store and hand-written checks.

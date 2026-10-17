@@ -13,7 +13,8 @@ Decided in the slice 0 recon (see `PHASE-BRIEF.md` progress log): mirror Chalkli
 - Vitest (node; `// @vitest-environment happy-dom` per file for components). No browser-automation dependency.
 - Biome for lint and format (`biome.json`). **Differs from Chalkline**, which has neither: typescript-eslint does not support TypeScript 7.
 - GitHub Pages via `.github/workflows/deploy.yml` on push to `main`; `VITE_BASE=/<repo>/`. `ci.yml` on other branches and PRs.
-- Commands: `npm run dev`, `build` (typecheck, `vite build`, then `vitest.build.config.ts` scans `dist/`), `test`, `lint`, `format`, `typecheck`. Run `test`, `lint` and `typecheck` before every commit.
+- State: small stores on `useSyncExternalStore` (`src/lib/store.ts`); no Zustand or Zod yet. Add them only when a slice needs them.
+- Commands: `npm run dev`, `build` (typecheck; `vite build`, which fails if `PLAN.md`, `CHANGELOG.md` and `package.json` drift; then `vitest.build.config.ts` scans `dist/`), `test`, `lint`, `format`, `typecheck`. Run `test`, `lint` and `typecheck` before every commit.
 - Version bumps: `npm version <x.y.z> --no-git-tag-version`, so the lockfile matches.
 
 ## Architecture rules
@@ -36,8 +37,9 @@ Decided in the slice 0 recon (see `PHASE-BRIEF.md` progress log): mirror Chalkli
 ## Privacy and data
 
 - No backend, accounts, analytics, tracking or network requests. Fonts are self-hosted. CI scans the build for external URLs.
-- All data stays on the device. localStorage keys are namespaced `sumyard:v1:...`, carry a schema version, and are listed in `src/lib/storageKeys.ts`, `docs/privacy.md` and About > Privacy. Imported JSON is untrusted: validate it.
-- The build scan allows plain https gov.uk links and the exact inert strings in `scripts/checks/externalUrls.ts` (`INERT_URLS`). Adding an entry there is a privacy decision; flag it in the PR.
+- All data stays on the device. localStorage keys are namespaced `sumyard:v1:...`, carry a schema version, and are listed in `src/lib/storageKeys.ts`, `docs/privacy.md` and About > Privacy; a test fails if code and these lists disagree. Imported JSON is untrusted: validate it.
+- The build scan allows plain https gov.uk links and the exact inert strings in `scripts/checks/externalUrls.ts` (`INERT_URLS`, each pinned to a file type; stale entries fail the build). Adding an entry there is a privacy decision; flag it in the PR.
+- App chrome text: Help (`content/help/*.md`) and What's new (`CHANGELOG.md`) describe only what exists, or mark it as coming.
 - Any new storage key needs a migration plan and an update to the privacy text.
 
 ## Design rules

@@ -1,6 +1,6 @@
 # PHASE-BRIEF: Slice 0 Foundation
 
-Status: In progress. Session 1 (recon) and build session A are done; build session B (app chrome) is next. Rewritten at the start of every slice. Roadmap and status live in `PLAN.md`.
+Status: In progress. Session 1 (recon), build session A and build session B (app chrome, 0.2.0) are done. What is left is the owner's check of the deployed site on a real phone (see session B's entry), then the slice 0 row moves to Done. Rewritten at the start of every slice. Roadmap and status live in `PLAN.md`.
 
 ## Docs rule
 
@@ -113,6 +113,41 @@ Add one entry per session: date, what was done, what differs from the brief, wha
     - Copy back from Chalkline any chrome sizes needed (sheet heights, help and settings widths, toast duration, badge dot).
     - Run the 360 / 768 / 1280 check on the deployed URL from a real phone.
   - Docs updated: `PHASE-BRIEF.md`, `PLAN.md`, `CHANGELOG.md`, `CLAUDE.md`, and the new `docs/design-tokens.md`, `docs/privacy.md` and `docs/README.md`.
+
+- **17 October 2026, build session B (app chrome). Version 0.2.0.**
+  - Done (tests first: red `821e663`, green `ad458b6`):
+    - [x] Header with the menu button and the existing theme toggle. Main menu (from Chalkline's FileMenu): Settings, Help and what's new (with a **New** marker while this version is unseen), About Sumyard, and Scenarios as a disabled item marked "Coming soon". Footnote "Changes are saved in this browser. Export to keep a copy." Arrow keys, Home, End, Esc and Tab follow the WAI-ARIA menu-button pattern.
+    - [x] Sheets: one hash-routed panel stack (`src/sheets/route.ts`): `#/help`, `#/help/<topic>`, `#/whats-new`, `#/about`, `#/settings`. Bottom sheet on phones, side panel from `md` (768 px). Back arrow when there is a parent, title and close. Browser Back, the back arrow and Esc step back or close. Focus is trapped (Chalkline's `trapFocus`), the app behind is `inert`, the title takes focus on each page, and focus returns to the opener (or the menu button after a deep link). Deep links open the right page. Pages load lazily, with a loading state.
+    - [x] Help from `content/help/*.md` (front matter: title, order, summary): Quick start, Scenarios and saving, How tax data and "last verified" work, Troubleshooting. Text describes only what exists or marks it as coming; a test rejects money amounts and percentages. A More section links to What's new, Settings and About. No search.
+    - [x] What's new from `CHANGELOG.md`, parsed at build time (Chalkline's parser) and injected as data: version, date, "This version" badge, Added / Changed / Fixed. "New" marker until opened, under `sumyard:v1:last-seen-version`. The docs guard now also requires What's new to parse the changelog, and `vite build` runs it, so a top version that differs from `package.json` fails the build (checked by bumping the version locally).
+    - [x] About: version, build (short SHA), built time, storage used (only `sumyard:` keys), Copy details (version, build, browser), privacy statement with every storage key, disclaimer, and credits from `scripts/build/credits.ts` (name, version, licence; no URLs).
+    - [x] Settings: theme (the toggle's store), region default (rest of UK / Scotland), whole pounds or pence, under `sumyard:v1:settings` with a schema version. Tax year is a labelled placeholder with a code comment pointing at slice 0.5. "Reset settings to defaults" (theme too) shows a toast with Undo.
+    - [x] Toast with Undo: one store (`src/toast/toastStore.ts`), auto-dismiss after `--sy-toast-duration`, paused while hovered or focused, one polite live region outside the app root. On the page it floats at the bottom under the menu; with a sheet open it is the sheet's footer strip, so it covers nothing and Undo is inside the focus trap.
+    - [x] Shared empty, error and loading states (`src/components/states.tsx`), used for Help with no topics, an unknown topic, What's new with no releases, a sheet page that throws, and the sheet loading.
+    - [x] Footer disclaimer on the page, and a first-run "Before you start" notice under the top bar (not a dialog). "Got it" stores `sumyard:v1:acknowledged`.
+    - [x] Storage-key guard (`scripts/checks/storageKeys.ts`): keys used in code (literals and `STORAGE_KEYS.x`), `src/lib/storageKeys.ts`, `docs/privacy.md` and About > Privacy must agree. It also fails on keys outside `sumyard:v1:`, and on sessionStorage, IndexedDB or cookies.
+    - [x] URL allowlist tightened, not widened: each `INERT_URLS` entry is pinned to `.js` or `.css`, and the build fails if an entry is no longer in `dist/`. No entry added. Documented in `docs/privacy.md`.
+    - [x] Checked in Chromium (Playwright, scratch script, not committed) at 360, 768 and 1280 px in light and dark, 289 checks, all passing: no horizontal scroll; bottom sheet versus side panel geometry; menu inside the viewport; focus trap, Esc, back arrow, browser Back and focus restore; deep link; every visible control at least 44 × 44; toast announced, inside the sheet without overlapping content, never covering menu items, auto-dismissing, and Undo restoring settings and theme; first-run notice persisting; only the four owned keys written; no external requests; no console errors. axe-core 4.10 (WCAG 2.0/2.1 A and AA, plus best practice) found 0 violations on the home page, menu, Help, a topic, What's new, About and Settings in every combination. Under reduced motion the sheet animation is 0 s.
+  - Differences from the brief and prompt:
+    - **No Zustand or Zod.** Stores are a small `useSyncExternalStore` helper (`src/lib/store.ts`), the pattern `useTheme` already used. No new runtime dependency, so credits and the URL allowlist are unchanged.
+    - **`lastSeenVersion` is stored as `sumyard:v1:last-seen-version`**: the existing key-format test allows only lower-case kebab-case. The code name stays `lastSeenVersion`.
+    - **Sheet parents are fixed:** topics, What's new and About sit under Help, and Settings has no parent. A deep link therefore has the same back arrow as a page reached by tapping.
+    - **What's new is injected, not bundled raw:** `CHANGELOG.md`'s intro links to keepachangelog.com, which the URL scan would reject. Only the parsed releases reach the build.
+    - **"Reset settings to defaults" also resets the theme to System**, so Undo restores both.
+    - **The sheet body is a focusable, labelled region** so pages without controls can be scrolled by keyboard (axe `scrollable-region-focusable`). Biome's `noNoninteractiveTabindex` is suppressed there with that reason.
+    - **Safe-area helpers became Tailwind `@utility` classes**, so `md:` variants work on them. Added an empty inline favicon (`data:,`) to stop a 404 for `/favicon.ico` (there is still no logo).
+    - Six chrome tokens copied back from Chalkline (listed in `docs/design-tokens.md`). None invented.
+    - The menu footnote says "Export to keep a copy" as the prompt specified, though export arrives with scenarios in 0.5; the Help topic says export is coming.
+  - Not verified: a real phone, Safari and Firefox, a screen reader, the deployed URL (needs merge), and Windows high-contrast mode.
+  - Owner's manual checklist (phone, Safari, screen reader):
+    1. On the phone, open the live URL in Safari (and Chrome on Android if you have one). The first-run notice shows; "Got it" hides it and it stays hidden after a reload.
+    2. Menu > Help and what's new: the sheet slides up from the bottom, the page shows above it, and it scrolls without the page behind moving. Open What's new, use the back arrow, then swipe or press Back: the sheet steps back, then closes.
+    3. Settings > Dark, then Reset settings to defaults: the Undo strip appears at the foot of the sheet and does not hide anything; Undo brings Dark back.
+    4. Rotate the phone and try with large text (iOS Text Size at its largest): nothing is cut off, and the top-bar buttons still fit.
+    5. VoiceOver (iOS or macOS): the menu button reads "Menu, new: what's changed", the sheet reads as a dialog with its title, and the reset toast is announced.
+    6. Bookmark `#/help/troubleshooting`, open it from the bookmark, and close: you land on the home page.
+  - Next: the owner runs the checklist on the deployed site, then sets slice 0 to Done in `PLAN.md` (0.2.0, the PR number, the date). Then slice 0.5 (core plumbing): money type, `Sourced<T>` tax config with the registry, which unlocks the Settings tax-year default (replace the `data-stub="tax-year"` placeholder in `src/sheets/SettingsPage.tsx`), versioned scenarios with export and import (the Scenarios menu item, the menu footnote and the "Scenarios and saving" Help topic then describe something real), backup and restore in Settings, and the shared input and result components. New storage keys from 0.5 must pass the storage-key guard.
+  - Docs updated: `PHASE-BRIEF.md`, `PLAN.md`, `CHANGELOG.md` (0.2.0), `CLAUDE.md` (state stores, build docs guard, storage-key guard, allowlist pinning, chrome text rule), `docs/privacy.md` (four keys, records, migrations, allowlist), `docs/design-tokens.md` (six chrome tokens), `docs/README.md`, `content/help/README.md`, `src/lib/README.md`.
 
 ## Claude Code prompt: session 1 (recon)
 
