@@ -1,0 +1,212 @@
+/*
+ * Sumyard design tokens: the ONLY place colours, radii, spacing, type sizes,
+ * shadows and motion values are defined. Everything else references these,
+ * usually through the Tailwind utilities mapped in the @theme blocks below.
+ *
+ * Adapted from Chalkline's src/styles/tokens.css (0.31.0): the same values,
+ * with the diagram-only tokens dropped and two changes, both listed in
+ * docs/design-tokens.md:
+ *   - a raw palette (--sy-palette-*) holds every colour value once;
+ *   - the semantic layer (--sy-bg, --sy-text, ...) only points at the palette,
+ *     and the light and dark blocks swap nothing but that semantic layer.
+ *
+ * Palette colours are plain hex (6 digits, or 8 for translucent) so
+ * src/styles/tokens.test.ts can parse them and check contrast.
+ */
+
+/* ── Raw palette (theme-independent; never used directly outside this file) ── */
+:root {
+  /* Paper: the light theme's backgrounds and lines. */
+  --sy-palette-white: #ffffff;
+  --sy-palette-paper-100: #f4f3ef;
+  --sy-palette-paper-200: #efeee9;
+  --sy-palette-paper-300: #dcd9d0;
+
+  /* Slate: light-theme text and the dark theme's blackboard. */
+  --sy-palette-chalk: #ebede6;
+  --sy-palette-slate-200: #a5afb3;
+  --sy-palette-slate-300: #81888d;
+  --sy-palette-slate-400: #6f7e86;
+  --sy-palette-slate-500: #5a6368;
+  --sy-palette-slate-700: #334047;
+  --sy-palette-slate-750: #28333a;
+  --sy-palette-slate-800: #1f282d;
+  --sy-palette-slate-850: #1d2327;
+  --sy-palette-slate-900: #12181b;
+
+  /* Blue: the accent. */
+  --sy-palette-blue-200: #9dd0ee;
+  --sy-palette-blue-300: #7cc0e6;
+  --sy-palette-blue-600: #1f6aa5;
+  --sy-palette-blue-700: #185686;
+  --sy-palette-blue-950: #0d1a22;
+
+  /* Red: danger. */
+  --sy-palette-red-300: #f2877d;
+  --sy-palette-red-700: #b3261e;
+  --sy-palette-red-950: #1a0b09;
+
+  /* Translucent: subtle fills, shadows and overlays (suffix is the alpha in %). */
+  --sy-palette-blue-600-a12: #1f6aa51f;
+  --sy-palette-blue-300-a15: #7cc0e626;
+  --sy-palette-slate-850-a10: #1d23271a;
+  --sy-palette-slate-850-a16: #1d232729;
+  --sy-palette-slate-850-a40: #1d232766;
+  --sy-palette-black-a35: #00000059;
+  --sy-palette-black-a50: #00000080;
+  --sy-palette-black-a60: #00000099;
+}
+
+/* ── Semantic layer, light: clean paper ─────────────────────────────── */
+:root,
+[data-theme='light'] {
+  color-scheme: light;
+
+  --sy-bg: var(--sy-palette-paper-100);
+  --sy-surface: var(--sy-palette-white);
+  --sy-surface-muted: var(--sy-palette-paper-200);
+  --sy-border: var(--sy-palette-paper-300);
+  --sy-border-strong: var(--sy-palette-slate-300);
+
+  --sy-text: var(--sy-palette-slate-850);
+  --sy-text-muted: var(--sy-palette-slate-500);
+
+  --sy-accent: var(--sy-palette-blue-600);
+  --sy-accent-hover: var(--sy-palette-blue-700);
+  --sy-accent-subtle: var(--sy-palette-blue-600-a12);
+  --sy-on-accent: var(--sy-palette-white);
+  --sy-focus: var(--sy-palette-blue-600);
+
+  --sy-danger: var(--sy-palette-red-700);
+  --sy-on-danger: var(--sy-palette-white);
+
+  --sy-shadow-color: var(--sy-palette-slate-850-a10);
+  --sy-shadow-color-strong: var(--sy-palette-slate-850-a16);
+  --sy-overlay: var(--sy-palette-slate-850-a40);
+}
+
+/* ── Semantic layer, dark: slate blackboard with chalk ──────────────── */
+[data-theme='dark'] {
+  color-scheme: dark;
+
+  --sy-bg: var(--sy-palette-slate-900);
+  --sy-surface: var(--sy-palette-slate-800);
+  --sy-surface-muted: var(--sy-palette-slate-750);
+  --sy-border: var(--sy-palette-slate-700);
+  --sy-border-strong: var(--sy-palette-slate-400);
+
+  --sy-text: var(--sy-palette-chalk);
+  --sy-text-muted: var(--sy-palette-slate-200);
+
+  --sy-accent: var(--sy-palette-blue-300);
+  --sy-accent-hover: var(--sy-palette-blue-200);
+  --sy-accent-subtle: var(--sy-palette-blue-300-a15);
+  --sy-on-accent: var(--sy-palette-blue-950);
+  --sy-focus: var(--sy-palette-blue-300);
+
+  --sy-danger: var(--sy-palette-red-300);
+  --sy-on-danger: var(--sy-palette-red-950);
+
+  --sy-shadow-color: var(--sy-palette-black-a35);
+  --sy-shadow-color-strong: var(--sy-palette-black-a50);
+  --sy-overlay: var(--sy-palette-black-a60);
+}
+
+/* ── Theme-independent tokens ───────────────────────────────────────── */
+:root {
+  /* Touch and focus */
+  --sy-touch-target: 44px;
+  --sy-focus-ring-width: 2px;
+  --sy-focus-ring-offset: 2px;
+
+  /* Motion */
+  --sy-duration-fast: 120ms;
+  --sy-duration-base: 200ms;
+  --sy-duration-slow: 400ms;
+  --sy-ease: cubic-bezier(0.2, 0, 0, 1);
+
+  /* Layout */
+  --sy-header-height: 56px;
+  /* Top bar controls: fixed in px so text zoom (200%) can't push them past a 360px screen. */
+  --sy-toolbar-gap: 4px;
+  --sy-gutter: 16px;
+  --sy-content-max: 1200px;
+}
+
+/* Reduce motion: every animation length is 0. */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --sy-duration-fast: 0ms;
+    --sy-duration-base: 0ms;
+    --sy-duration-slow: 0ms;
+  }
+}
+
+/* ── Tailwind mapping: only token-backed utilities exist ────────────── */
+@theme inline {
+  --color-*: initial;
+  --color-bg: var(--sy-bg);
+  --color-surface: var(--sy-surface);
+  --color-surface-muted: var(--sy-surface-muted);
+  --color-border: var(--sy-border);
+  --color-border-strong: var(--sy-border-strong);
+  --color-text: var(--sy-text);
+  --color-text-muted: var(--sy-text-muted);
+  --color-accent: var(--sy-accent);
+  --color-accent-hover: var(--sy-accent-hover);
+  --color-accent-subtle: var(--sy-accent-subtle);
+  --color-on-accent: var(--sy-on-accent);
+  --color-focus: var(--sy-focus);
+  --color-danger: var(--sy-danger);
+  --color-on-danger: var(--sy-on-danger);
+  --color-overlay: var(--sy-overlay);
+  --color-transparent: transparent;
+  --color-current: currentColor;
+
+  --shadow-*: initial;
+  --shadow-sm: 0 1px 2px var(--sy-shadow-color);
+  --shadow-md: 0 2px 8px var(--sy-shadow-color), 0 1px 2px var(--sy-shadow-color);
+  --shadow-lg: 0 12px 32px var(--sy-shadow-color-strong), 0 2px 6px var(--sy-shadow-color);
+
+  --spacing-touch: var(--sy-touch-target);
+  --spacing-header: var(--sy-header-height);
+  --container-content: var(--sy-content-max);
+
+  --ease-standard: var(--sy-ease);
+  --default-transition-duration: var(--sy-duration-fast);
+  --default-transition-timing-function: var(--sy-ease);
+}
+
+@theme {
+  --font-*: initial;
+  --font-sans: 'Inter Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+
+  --text-*: initial;
+  --text-xs: 0.75rem;
+  --text-xs--line-height: 1rem;
+  --text-sm: 0.875rem;
+  --text-sm--line-height: 1.25rem;
+  --text-base: 1rem;
+  --text-base--line-height: 1.5rem;
+  --text-lg: 1.125rem;
+  --text-lg--line-height: 1.75rem;
+  --text-xl: 1.25rem;
+  --text-xl--line-height: 1.75rem;
+  --text-2xl: 1.5rem;
+  --text-2xl--line-height: 2rem;
+
+  --radius-*: initial;
+  --radius-sm: 8px;
+  --radius-md: 10px;
+  --radius-lg: 12px;
+  --radius-full: 9999px;
+
+  --spacing: 0.25rem;
+
+  --breakpoint-*: initial;
+  --breakpoint-sm: 40rem;
+  --breakpoint-md: 48rem;
+  --breakpoint-lg: 64rem;
+  --breakpoint-xl: 80rem;
+}

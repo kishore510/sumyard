@@ -6,11 +6,15 @@ Keep this file short. Area detail goes in `docs/`. Current work is in `PHASE-BRI
 
 ## Stack
 
-To be confirmed by the slice 0 recon. Default: mirror Chalkline (framework, build tool, language, CSS approach, test runner, deploy workflow). Record the decision here once made, with the reason for any difference.
+Decided in the slice 0 recon (see `PHASE-BRIEF.md` progress log): mirror Chalkline, at Chalkline's versions.
 
-- Language: TypeScript, strict.
-- Tests: Vitest (or Chalkline's runner if different).
-- Commands: `npm run dev`, `build`, `test`, `lint`, `typecheck`. Run `test`, `lint` and `typecheck` before every commit.
+- Vite 8, React 19, TypeScript 7 strict (`noUncheckedIndexedAccess`, `verbatimModuleSyntax`, `@/` = `src/`). Node pinned in `.nvmrc`.
+- Tailwind CSS 4 over one tokens file, `src/styles/tokens.css` (raw palette, semantic layer, `@theme` mapping; see `docs/design-tokens.md`). `class-variance-authority`, `clsx`, `tailwind-merge`, Lucide icons. Inter self-hosted via `@fontsource-variable/inter`.
+- Vitest (node; `// @vitest-environment happy-dom` per file for components). No browser-automation dependency.
+- Biome for lint and format (`biome.json`). **Differs from Chalkline**, which has neither: typescript-eslint does not support TypeScript 7.
+- GitHub Pages via `.github/workflows/deploy.yml` on push to `main`; `VITE_BASE=/<repo>/`. `ci.yml` on other branches and PRs.
+- Commands: `npm run dev`, `build` (typecheck, `vite build`, then `vitest.build.config.ts` scans `dist/`), `test`, `lint`, `format`, `typecheck`. Run `test`, `lint` and `typecheck` before every commit.
+- Version bumps: `npm version <x.y.z> --no-git-tag-version`, so the lockfile matches.
 
 ## Architecture rules
 
@@ -32,7 +36,8 @@ To be confirmed by the slice 0 recon. Default: mirror Chalkline (framework, buil
 ## Privacy and data
 
 - No backend, accounts, analytics, tracking or network requests. Fonts are self-hosted. CI scans the build for external URLs.
-- All data stays on the device. localStorage keys are namespaced `sumyard:v1:...`, carry a schema version, and are listed in About > Privacy. Imported JSON is untrusted: validate it.
+- All data stays on the device. localStorage keys are namespaced `sumyard:v1:...`, carry a schema version, and are listed in `src/lib/storageKeys.ts`, `docs/privacy.md` and About > Privacy. Imported JSON is untrusted: validate it.
+- The build scan allows plain https gov.uk links and the exact inert strings in `scripts/checks/externalUrls.ts` (`INERT_URLS`). Adding an entry there is a privacy decision; flag it in the PR.
 - Any new storage key needs a migration plan and an update to the privacy text.
 
 ## Design rules

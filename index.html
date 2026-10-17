@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <script>
+      // sumyard:pre-paint-theme. Applies the theme before first paint so there is no flash of the wrong theme.
+      // Mirrors storedPreference and resolveTheme in src/lib/theme.ts; src/lib/theme.test.ts runs this script to keep them in step.
+      ;(() => {
+        let pref = 'system'
+        try {
+          const record = JSON.parse(localStorage.getItem('sumyard:v1:theme'))
+          if (record && record.schemaVersion === 1 && (record.theme === 'light' || record.theme === 'dark')) pref = record.theme
+        } catch {}
+        const dark = pref === 'dark' || (pref === 'system' && !!window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches)
+        document.documentElement.dataset.theme = dark ? 'dark' : 'light'
+      })()
+    </script>
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="description" content="Sumyard: personal UK finance calculators. Illustrative, not financial advice." />
+    <title>Sumyard</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

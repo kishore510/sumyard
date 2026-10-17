@@ -1,6 +1,6 @@
 # Phase plan: Sumyard
 
-Last updated: 17 October 2026 (Phase 0 trimmed to two slices; nothing built yet)
+Last updated: 17 October 2026 (slice 0: recon done, session A built: scaffold, tokens, theme, CI guards, 0.1.0)
 
 Draft roadmap. When a slice starts, rewrite its prompt against the real code (see the skeleton in PHASE-BRIEF.md). Do not treat these notes as final prompts.
 
@@ -12,7 +12,7 @@ Status values: Not started, In progress, Done (version, PR, date).
 
 | Slice | Scope | Status |
 |---|---|---|
-| 0 Foundation | Recon of Chalkline and Stickyard (stack, tokens, theme toggle, chrome inventory). Repo, TypeScript strict, lint, tests, CI, GitHub Pages deploy, `CLAUDE.md`, `PHASE-BRIEF.md`, `CHANGELOG.md`. Tokens from Chalkline, light / dark / system theme, app shell (top bar, menu, Help / What's new / About / Settings sheets), toasts with Undo, disclaimer footer. Web only | Not started |
+| 0 Foundation | Recon of Chalkline and Stickyard (stack, tokens, theme toggle, chrome inventory). Repo, TypeScript strict, lint, tests, CI, GitHub Pages deploy, `CLAUDE.md`, `PHASE-BRIEF.md`, `CHANGELOG.md`. Tokens from Chalkline, light / dark / system theme, app shell (top bar, menu, Help / What's new / About / Settings sheets), toasts with Undo, disclaimer footer. Web only | In progress |
 | 0.5 Core plumbing | Money type and formatting, `Sourced<T>` tax config pipeline with a skeleton `2026-27`, Tax data screen, versioned scenario storage with JSON export and import, shared inputs and result components, token-aware chart, backup and restore, a "Hello calculator" placeholder that exercises all of it | Not started |
 | 1a Optimiser: config and engine | Verify and populate `2026-27` from gov.uk/HMRC, verification log, worked examples; then the pure engine (income tax with taper, NI, student loan, three pension methods, HICBC, annual allowance, `optimise()`). Tests first. No UI | Not started |
 | 1b Optimiser: UI | The £100k+ page: inputs, current vs optimised take-home, marginal-rate and take-home-vs-contribution charts, cost of £1 more pension, warnings, scenario compare, assumptions, Help topic | Not started |
@@ -96,6 +96,15 @@ Status values: Not started, In progress, Done (version, PR, date).
 - Toast with Undo, consistent empty, error and loading states, footer disclaimer, first-run acknowledgement stored locally.
 - Accessibility baseline: WCAG AA contrast in both themes, visible focus rings, 44 px touch targets, `prefers-reduced-motion` respected.
 
+- **Progress (17 October 2026).** Recon and build session A done; 0.1.0 is the first version. Built: scaffold, tokens, fonts, theme with pre-paint script, placeholder home, CI and Pages workflows, and guards for docs drift, external URLs and the pre-paint theme. Session B (app chrome) is next. Details are in the `PHASE-BRIEF.md` progress log.
+- **What changed from these notes:**
+  - Lint and format use Biome, not ESLint and Prettier (Chalkline has neither, and typescript-eslint does not support TypeScript 7).
+  - The URL allowlist also holds exact inert strings that are never fetched: XML namespaces and React's error-link prefix inside React DOM, and Tailwind's licence comment.
+  - Tokens gained a raw-palette layer (`--sy-palette-*`), using Chalkline's values.
+  - Session A was split from the shell work, so slice 0 runs as recon, session A and session B.
+- **Rollback.** Nothing to migrate: the only storage key is `sumyard:v1:theme`, and losing it only resets the theme to System.
+- **Follow-up.** Pages must be set to "GitHub Actions" in the repo settings before the first deploy. Session B decides how credits avoid external URLs.
+
 ### 0.5 Core plumbing
 - Money: decide first between integer pence and a decimal library. Document rounding rules per calculation. `lib/money` and `lib/format` with tests.
 - Tax config: typed `TaxYearConfig` covering income tax (rUK and Scotland), personal allowance and taper, NI (employee and employer), student loan plans and postgraduate, pension limits (annual allowance, taper, carry forward, MPAA), HICBC thresholds and Child Benefit rates, childcare eligibility thresholds. Every leaf is `Sourced<T>`: `{ value, sourceUrl, verifiedOn }`; a test fails the build if either is missing. Registry with `getTaxYear(id)` and `latestTaxYear()`. `2026-27.ts` is a skeleton with every value `TODO_VERIFY`; a calculator that touches one refuses to show results.
@@ -163,7 +172,7 @@ Engine (pure functions, tests first: red commit, then green).
 
 ## Open questions
 
-- Framework and stack: mirror Chalkline unless justified otherwise (decided in slice 0 recon).
+- Credits in About (session B): name and licence only, or links to package homepages (which would widen the build-scan allowlist beyond gov.uk)? Default: name and licence only.
 - Money type: integer pence vs a decimal library (decide at the start of 0.5).
 - Chart library vs hand-rolled SVG (bundle size, token theming, accessibility).
 - URL-hash state sharing (a shareable link of inputs, local only): in or out.
