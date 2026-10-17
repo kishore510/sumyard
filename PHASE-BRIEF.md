@@ -83,6 +83,10 @@ Out of scope: the annual allowance, carry forward, childcare, `optimise()` (G2, 
 
 Next. Pure functions in `src/calculators/optimiser/`, tests first, no UI.
 
+Pre-check (17 October 2026): PR #7 merged; its Pages deploy (run 39076987400) succeeded. Names and signatures confirmed in the code: `pensionContribution(pension, grossPay, config)`, `adjustedNetIncome(grossPay, pension, config)`, `hicbc(ani, children, config, policy)`, `takeHome(inputs, config, policy)`, `ModellingPolicy { taperRounding, childBenefitWeeks }`, `TaxInputs { grossPay, region, studentLoans, pension?, childBenefit? }`, `ExactPence` in `money.ts`. They match the prompt.
+
+Owner decisions for G2 (recorded in `docs/modelling-decisions.md`, G4 update and G7 to G14): Child Benefit weeks stays a policy field (one more GOV.UK search); `optimise()` returns candidate points, never a single best; warnings, never silent clamping; the annual allowance charge only if GOV.UK states the mechanics and the config holds the figures.
+
 1. `annualAllowanceCheck`: the annual allowance, the taper (threshold income and adjusted income, the reduction rounded down to a pound as PTM057100 states, the minimum), the MPAA; warnings, not silent clamping. Read on GOV.UK first how threshold income and adjusted income treat each pension method (PTM057200's AA-4 adds net pay contributions back for adjusted income) and log it.
 2. Carry forward over `pension.carryForward.yearsBack` years, from an input of unused allowance (only 2026-27 is modelled).
 3. The childcare income-limit cliff (G3) on `adjustedNetIncome`, with the minimum earnings condition and the England-only scope listed as assumptions.
