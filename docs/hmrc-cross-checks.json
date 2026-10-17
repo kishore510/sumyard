@@ -1,0 +1,1235 @@
+{
+  "about": "HMRC cross-check cases for the core tax engine (src/calculators/optimiser). Inputs are derived from the verified 2026-27 config (crossCheckCases in src/calculators/optimiser/fixtures/crossChecks.ts); crossChecks.test.ts fails if they drift. Expected results are null until the owner fills them from HMRC's own online calculators. Never fill them from the engine or from memory.",
+  "howToFill": "For a case, enter what HMRC's calculator shows for the tax year as pounds strings (\"12345.67\"): incomeTax, nationalInsurance (employee, annual), studentLoan (annual) and takeHome. Leave a field null if the calculator does not show it. Add hmrcSource (the www.gov.uk page of the calculator) and checkedOn (YYYY-MM-DD). A case with every field null runs as a todo. tolerancePence is the largest difference accepted (HMRC calculators may show whole pounds); change it only with a note in docs/worked-examples.md.",
+  "taxYear": "2026-27",
+  "policy": {
+    "taperRounding": "exact"
+  },
+  "tolerancePence": 0,
+  "cases": [
+    {
+      "id": "2026-27-rUK-taper-start-minus-1-no-loan",
+      "description": "England, Wales and Northern Ireland, taper start less £1 (£99999.00), no student loan",
+      "inputs": {
+        "grossPay": "99999.00",
+        "region": "rUK",
+        "studentLoans": []
+      },
+      "expected": {
+        "incomeTax": null,
+        "nationalInsurance": null,
+        "studentLoan": null,
+        "takeHome": null
+      },
+      "hmrcSource": null,
+      "checkedOn": null
+    },
+    {
+      "id": "2026-27-rUK-taper-start-minus-1-plan1",
+      "description": "England, Wales and Northern Ireland, taper start less £1 (£99999.00), student loan plan1",
+      "inputs": {
+        "grossPay": "99999.00",
+        "region": "rUK",
+        "studentLoans": ["plan1"]
+      },
+      "expected": {
+        "incomeTax": null,
+        "nationalInsurance": null,
+        "studentLoan": null,
+        "takeHome": null
+      },
+      "hmrcSource": null,
+      "checkedOn": null
+    },
+    {
+      "id": "2026-27-rUK-taper-start-minus-1-plan2",
+      "description": "England, Wales and Northern Ireland, taper start less £1 (£99999.00), student loan plan2",
+      "inputs": {
+        "grossPay": "99999.00",
+        "region": "rUK",
+        "studentLoans": ["plan2"]
+      },
+      "expected": {
+        "incomeTax": null,
+        "nationalInsurance": null,
+        "studentLoan": null,
+        "takeHome": null
+      },
+      "hmrcSource": null,
+      "checkedOn": null
+    },
+    {
+      "id": "2026-27-rUK-taper-start-minus-1-plan4",
+      "description": "England, Wales and Northern Ireland, taper start less £1 (£99999.00), student loan plan4",
+      "inputs": {
+        "grossPay": "99999.00",
+        "region": "rUK",
+        "studentLoans": ["plan4"]
+      },
+      "expected": {
+        "incomeTax": null,
+        "nationalInsurance": null,
+        "studentLoan": null,
+        "takeHome": null
+      },
+      "hmrcSource": null,
+      "checkedOn": null
+    },
+    {
+      "id": "2026-27-rUK-taper-start-minus-1-plan5",
+      "description": "England, Wales and Northern Ireland, taper start less £1 (£99999.00), student loan plan5",
+      "inputs": {
+        "grossPay": "99999.00",
+        "region": "rUK",
+        "studentLoans": ["plan5"]
+      },
+      "expected": {
+        "incomeTax": null,
+        "nationalInsurance": null,
+        "studentLoan": null,
+        "takeHome": null
+      },
+      "hmrcSource": null,
+      "checkedOn": null
+    },
+    {
+      "id": "2026-27-rUK-taper-start-minus-1-postgraduate",
+      "description": "England, Wales and Northern Ireland, taper start less £1 (£99999.00), student loan postgraduate",
+      "inputs": {
+        "grossPay": "99999.00",
+        "region": "rUK",
+        "studentLoans": ["postgraduate"]
+      },
+      "expected": {
+        "incomeTax": null,
+        "nationalInsurance": null,
+        "studentLoan": null,
+        "takeHome": null
+      },
+      "hmrcSource": null,
+      "checkedOn": null
+    },
+    {
+      "id": "2026-27-rUK-taper-start-no-loan",
+      "description": "England, Wales and Northern Ireland, at the taper start (£100000.00), no student loan",
+      "inputs": {
+        "grossPay": "100000.00",
+        "region": "rUK",
+        "studentLoans": []
+      },
+      "expected": {
+        "incomeTax": null,
+        "nationalInsurance": null,
+        "studentLoan": null,
+        "takeHome": null
+      },
+      "hmrcSource": null,
+      "checkedOn": null
+    },
+    {
+      "id": "2026-27-rUK-taper-start-plan1",
+      "description": "England, Wales and Northern Ireland, at the taper start (£100000.00), student loan plan1",
+      "inputs": {
+        "grossPay": "100000.00",
+        "region": "rUK",
+        "studentLoans": ["plan1"]
+      },
+      "expected": {
+        "incomeTax": null,
+        "nationalInsurance": null,
+        "studentLoan": null,
+        "takeHome": null
+      },
+      "hmrcSource": null,
+      "checkedOn": null
+    },
+    {
+      "id": "2026-27-rUK-taper-start-plan2",
+      "description": "England, Wales and Northern Ireland, at the taper start (£100000.00), student loan plan2",
+      "inputs": {
+        "grossPay": "100000.00",
+        "region": "rUK",
+        "studentLoans": ["plan2"]
+      },
+      "expected": {
+        "incomeTax": null,
+        "nationalInsurance": null,
+        "studentLoan": null,
+        "takeHome": null
+      },
+      "hmrcSource": null,
+      "checkedOn": null
+    },
+    {
+      "id": "2026-27-rUK-taper-start-plan4",
+      "description": "England, Wales and Northern Ireland, at the taper start (£100000.00), student loan plan4",
+      "inputs": {
+        "grossPay": "100000.00",
+        "region": "rUK",
+        "studentLoans": ["plan4"]
+      },
+      "expected": {
+        "incomeTax": null,
+        "nationalInsurance": null,
+        "studentLoan": null,
+        "takeHome": null
+      },
+      "hmrcSource": null,
+      "checkedOn": null
+    },
+    {
+      "id": "2026-27-rUK-taper-start-plan5",
+      "description": "England, Wales and Northern Ireland, at the taper start (£100000.00), student loan plan5",
+      "inputs": {
+        "grossPay": "100000.00",
+        "region": "rUK",
+        "studentLoans": ["plan5"]
+      },
+      "expected": {
+        "incomeTax": null,
+        "nationalInsurance": null,
+        "studentLoan": null,
+        "takeHome": null
+      },
+      "hmrcSource": null,
+      "checkedOn": null
+    },
+    {
+      "id": "2026-27-rUK-taper-start-postgraduate",
+      "description": "England, Wales and Northern Ireland, at the taper start (£100000.00), student loan postgraduate",
+      "inputs": {
+        "grossPay": "100000.00",
+        "region": "rUK",
+        "studentLoans": ["postgraduate"]
+      },
+      "expected": {
+        "incomeTax": null,
+        "nationalInsurance": null,
+        "studentLoan": null,
+        "takeHome": null
+      },
+      "hmrcSource": null,
+      "checkedOn": null
+    },
+    {
+      "id": "2026-27-rUK-taper-start-plus-1-no-loan",
+      "description": "England, Wales and Northern Ireland, taper start plus £1 (£100001.00), no student loan",
+      "inputs": {
+        "grossPay": "100001.00",
+        "region": "rUK",
+        "studentLoans": []
+      },
+      "expected": {
+        "incomeTax": null,
+        "nationalInsurance": null,
+        "studentLoan": null,
+        "takeHome": null
+      },
+      "hmrcSource": null,
+      "checkedOn": null
+    },
+    {
+      "id": "2026-27-rUK-taper-start-plus-1-plan1",
+      "description": "England, Wales and Northern Ireland, taper start plus £1 (£100001.00), student loan plan1",
+      "inputs": {
+        "grossPay": "100001.00",
+        "region": "rUK",
+        "studentLoans": ["plan1"]
+      },
+      "expected": {
+        "incomeTax": null,
+        "nationalInsurance": null,
+        "studentLoan": null,
+        "takeHome": null
+      },
+      "hmrcSource": null,
+      "checkedOn": null
+    },
+    {
+      "id": "2026-27-rUK-taper-start-plus-1-plan2",
+      "description": "England, Wales and Northern Ireland, taper start plus £1 (£100001.00), student loan plan2",
+      "inputs": {
+        "grossPay": "100001.00",
+        "region": "rUK",
+        "studentLoans": ["plan2"]
+      },
+      "expected": {
+        "incomeTax": null,
+        "nationalInsurance": null,
+        "studentLoan": null,
+        "takeHome": null
+      },
+      "hmrcSource": null,
+      "checkedOn": null
+    },
+    {
+      "id": "2026-27-rUK-taper-start-plus-1-plan4",
+      "description": "England, Wales and Northern Ireland, taper start plus £1 (£100001.00), student loan plan4",
+      "inputs": {
+        "grossPay": "100001.00",
+        "region": "rUK",
+        "studentLoans": ["plan4"]
+      },
+      "expected": {
+        "incomeTax": null,
+        "nationalInsurance": null,
+        "studentLoan": null,
+        "takeHome": null
+      },
+      "hmrcSource": null,
+      "checkedOn": null
+    },
+    {
+      "id": "2026-27-rUK-taper-start-plus-1-plan5",
+      "description": "England, Wales and Northern Ireland, taper start plus £1 (£100001.00), student loan plan5",
+      "inputs": {
+        "grossPay": "100001.00",
+        "region": "rUK",
+        "studentLoans": ["plan5"]
+      },
+      "expected": {
+        "incomeTax": null,
+        "nationalInsurance": null,
+        "studentLoan": null,
+        "takeHome": null
+      },
+      "hmrcSource": null,
+      "checkedOn": null
+    },
+    {
+      "id": "2026-27-rUK-taper-start-plus-1-postgraduate",
+      "description": "England, Wales and Northern Ireland, taper start plus £1 (£100001.00), student loan postgraduate",
+      "inputs": {
+        "grossPay": "100001.00",
+        "region": "rUK",
+        "studentLoans": ["postgraduate"]
+      },
+      "expected": {
+        "incomeTax": null,
+        "nationalInsurance": null,
+        "studentLoan": null,
+        "takeHome": null
+      },
+      "hmrcSource": null,
+      "checkedOn": null
+    },
+    {
+      "id": "2026-27-rUK-taper-midpoint-no-loan",
+      "description": "England, Wales and Northern Ireland, midpoint of the taper zone (£112570.00), no student loan",
+      "inputs": {
+        "grossPay": "112570.00",
+        "region": "rUK",
+        "studentLoans": []
+      },
+      "expected": {
+        "incomeTax": null,
+        "nationalInsurance": null,
+        "studentLoan": null,
+        "takeHome": null
+      },
+      "hmrcSource": null,
+      "checkedOn": null
+    },
+    {
+      "id": "2026-27-rUK-taper-midpoint-plan1",
+      "description": "England, Wales and Northern Ireland, midpoint of the taper zone (£112570.00), student loan plan1",
+      "inputs": {
+        "grossPay": "112570.00",
+        "region": "rUK",
+        "studentLoans": ["plan1"]
+      },
+      "expected": {
+        "incomeTax": null,
+        "nationalInsurance": null,
+        "studentLoan": null,
+        "takeHome": null
+      },
+      "hmrcSource": null,
+      "checkedOn": null
+    },
+    {
+      "id": "2026-27-rUK-taper-midpoint-plan2",
+      "description": "England, Wales and Northern Ireland, midpoint of the taper zone (£112570.00), student loan plan2",
+      "inputs": {
+        "grossPay": "112570.00",
+        "region": "rUK",
+        "studentLoans": ["plan2"]
+      },
+      "expected": {
+        "incomeTax": null,
+        "nationalInsurance": null,
+        "studentLoan": null,
+        "takeHome": null
+      },
+      "hmrcSource": null,
+      "checkedOn": null
+    },
+    {
+      "id": "2026-27-rUK-taper-midpoint-plan4",
+      "description": "England, Wales and Northern Ireland, midpoint of the taper zone (£112570.00), student loan plan4",
+      "inputs": {
+        "grossPay": "112570.00",
+        "region": "rUK",
+        "studentLoans": ["plan4"]
+      },
+      "expected": {
+        "incomeTax": null,
+        "nationalInsurance": null,
+        "studentLoan": null,
+        "takeHome": null
+      },
+      "hmrcSource": null,
+      "checkedOn": null
+    },
+    {
+      "id": "2026-27-rUK-taper-midpoint-plan5",
+      "description": "England, Wales and Northern Ireland, midpoint of the taper zone (£112570.00), student loan plan5",
+      "inputs": {
+        "grossPay": "112570.00",
+        "region": "rUK",
+        "studentLoans": ["plan5"]
+      },
+      "expected": {
+        "incomeTax": null,
+        "nationalInsurance": null,
+        "studentLoan": null,
+        "takeHome": null
+      },
+      "hmrcSource": null,
+      "checkedOn": null
+    },
+    {
+      "id": "2026-27-rUK-taper-midpoint-postgraduate",
+      "description": "England, Wales and Northern Ireland, midpoint of the taper zone (£112570.00), student loan postgraduate",
+      "inputs": {
+        "grossPay": "112570.00",
+        "region": "rUK",
+        "studentLoans": ["postgraduate"]
+      },
+      "expected": {
+        "incomeTax": null,
+        "nationalInsurance": null,
+        "studentLoan": null,
+        "takeHome": null
+      },
+      "hmrcSource": null,
+      "checkedOn": null
+    },
+    {
+      "id": "2026-27-rUK-taper-zero-point-no-loan",
+      "description": "England, Wales and Northern Ireland, where the allowance reaches zero (£125140.00), no student loan",
+      "inputs": {
+        "grossPay": "125140.00",
+        "region": "rUK",
+        "studentLoans": []
+      },
+      "expected": {
+        "incomeTax": null,
+        "nationalInsurance": null,
+        "studentLoan": null,
+        "takeHome": null
+      },
+      "hmrcSource": null,
+      "checkedOn": null
+    },
+    {
+      "id": "2026-27-rUK-taper-zero-point-plan1",
+      "description": "England, Wales and Northern Ireland, where the allowance reaches zero (£125140.00), student loan plan1",
+      "inputs": {
+        "grossPay": "125140.00",
+        "region": "rUK",
+        "studentLoans": ["plan1"]
+      },
+      "expected": {
+        "incomeTax": null,
+        "nationalInsurance": null,
+        "studentLoan": null,
+        "takeHome": null
+      },
+      "hmrcSource": null,
+      "checkedOn": null
+    },
+    {
+      "id": "2026-27-rUK-taper-zero-point-plan2",
+      "description": "England, Wales and Northern Ireland, where the allowance reaches zero (£125140.00), student loan plan2",
+      "inputs": {
+        "grossPay": "125140.00",
+        "region": "rUK",
+        "studentLoans": ["plan2"]
+      },
+      "expected": {
+        "incomeTax": null,
+        "nationalInsurance": null,
+        "studentLoan": null,
+        "takeHome": null
+      },
+      "hmrcSource": null,
+      "checkedOn": null
+    },
+    {
+      "id": "2026-27-rUK-taper-zero-point-plan4",
+      "description": "England, Wales and Northern Ireland, where the allowance reaches zero (£125140.00), student loan plan4",
+      "inputs": {
+        "grossPay": "125140.00",
+        "region": "rUK",
+        "studentLoans": ["plan4"]
+      },
+      "expected": {
+        "incomeTax": null,
+        "nationalInsurance": null,
+        "studentLoan": null,
+        "takeHome": null
+      },
+      "hmrcSource": null,
+      "checkedOn": null
+    },
+    {
+      "id": "2026-27-rUK-taper-zero-point-plan5",
+      "description": "England, Wales and Northern Ireland, where the allowance reaches zero (£125140.00), student loan plan5",
+      "inputs": {
+        "grossPay": "125140.00",
+        "region": "rUK",
+        "studentLoans": ["plan5"]
+      },
+      "expected": {
+        "incomeTax": null,
+        "nationalInsurance": null,
+        "studentLoan": null,
+        "takeHome": null
+      },
+      "hmrcSource": null,
+      "checkedOn": null
+    },
+    {
+      "id": "2026-27-rUK-taper-zero-point-postgraduate",
+      "description": "England, Wales and Northern Ireland, where the allowance reaches zero (£125140.00), student loan postgraduate",
+      "inputs": {
+        "grossPay": "125140.00",
+        "region": "rUK",
+        "studentLoans": ["postgraduate"]
+      },
+      "expected": {
+        "incomeTax": null,
+        "nationalInsurance": null,
+        "studentLoan": null,
+        "takeHome": null
+      },
+      "hmrcSource": null,
+      "checkedOn": null
+    },
+    {
+      "id": "2026-27-rUK-zero-point-plus-10000-no-loan",
+      "description": "England, Wales and Northern Ireland, £10,000 above the zero point (£135140.00), no student loan",
+      "inputs": {
+        "grossPay": "135140.00",
+        "region": "rUK",
+        "studentLoans": []
+      },
+      "expected": {
+        "incomeTax": null,
+        "nationalInsurance": null,
+        "studentLoan": null,
+        "takeHome": null
+      },
+      "hmrcSource": null,
+      "checkedOn": null
+    },
+    {
+      "id": "2026-27-rUK-zero-point-plus-10000-plan1",
+      "description": "England, Wales and Northern Ireland, £10,000 above the zero point (£135140.00), student loan plan1",
+      "inputs": {
+        "grossPay": "135140.00",
+        "region": "rUK",
+        "studentLoans": ["plan1"]
+      },
+      "expected": {
+        "incomeTax": null,
+        "nationalInsurance": null,
+        "studentLoan": null,
+        "takeHome": null
+      },
+      "hmrcSource": null,
+      "checkedOn": null
+    },
+    {
+      "id": "2026-27-rUK-zero-point-plus-10000-plan2",
+      "description": "England, Wales and Northern Ireland, £10,000 above the zero point (£135140.00), student loan plan2",
+      "inputs": {
+        "grossPay": "135140.00",
+        "region": "rUK",
+        "studentLoans": ["plan2"]
+      },
+      "expected": {
+        "incomeTax": null,
+        "nationalInsurance": null,
+        "studentLoan": null,
+        "takeHome": null
+      },
+      "hmrcSource": null,
+      "checkedOn": null
+    },
+    {
+      "id": "2026-27-rUK-zero-point-plus-10000-plan4",
+      "description": "England, Wales and Northern Ireland, £10,000 above the zero point (£135140.00), student loan plan4",
+      "inputs": {
+        "grossPay": "135140.00",
+        "region": "rUK",
+        "studentLoans": ["plan4"]
+      },
+      "expected": {
+        "incomeTax": null,
+        "nationalInsurance": null,
+        "studentLoan": null,
+        "takeHome": null
+      },
+      "hmrcSource": null,
+      "checkedOn": null
+    },
+    {
+      "id": "2026-27-rUK-zero-point-plus-10000-plan5",
+      "description": "England, Wales and Northern Ireland, £10,000 above the zero point (£135140.00), student loan plan5",
+      "inputs": {
+        "grossPay": "135140.00",
+        "region": "rUK",
+        "studentLoans": ["plan5"]
+      },
+      "expected": {
+        "incomeTax": null,
+        "nationalInsurance": null,
+        "studentLoan": null,
+        "takeHome": null
+      },
+      "hmrcSource": null,
+      "checkedOn": null
+    },
+    {
+      "id": "2026-27-rUK-zero-point-plus-10000-postgraduate",
+      "description": "England, Wales and Northern Ireland, £10,000 above the zero point (£135140.00), student loan postgraduate",
+      "inputs": {
+        "grossPay": "135140.00",
+        "region": "rUK",
+        "studentLoans": ["postgraduate"]
+      },
+      "expected": {
+        "incomeTax": null,
+        "nationalInsurance": null,
+        "studentLoan": null,
+        "takeHome": null
+      },
+      "hmrcSource": null,
+      "checkedOn": null
+    },
+    {
+      "id": "2026-27-scotland-taper-start-minus-1-no-loan",
+      "description": "Scotland, taper start less £1 (£99999.00), no student loan",
+      "inputs": {
+        "grossPay": "99999.00",
+        "region": "scotland",
+        "studentLoans": []
+      },
+      "expected": {
+        "incomeTax": null,
+        "nationalInsurance": null,
+        "studentLoan": null,
+        "takeHome": null
+      },
+      "hmrcSource": null,
+      "checkedOn": null
+    },
+    {
+      "id": "2026-27-scotland-taper-start-minus-1-plan1",
+      "description": "Scotland, taper start less £1 (£99999.00), student loan plan1",
+      "inputs": {
+        "grossPay": "99999.00",
+        "region": "scotland",
+        "studentLoans": ["plan1"]
+      },
+      "expected": {
+        "incomeTax": null,
+        "nationalInsurance": null,
+        "studentLoan": null,
+        "takeHome": null
+      },
+      "hmrcSource": null,
+      "checkedOn": null
+    },
+    {
+      "id": "2026-27-scotland-taper-start-minus-1-plan2",
+      "description": "Scotland, taper start less £1 (£99999.00), student loan plan2",
+      "inputs": {
+        "grossPay": "99999.00",
+        "region": "scotland",
+        "studentLoans": ["plan2"]
+      },
+      "expected": {
+        "incomeTax": null,
+        "nationalInsurance": null,
+        "studentLoan": null,
+        "takeHome": null
+      },
+      "hmrcSource": null,
+      "checkedOn": null
+    },
+    {
+      "id": "2026-27-scotland-taper-start-minus-1-plan4",
+      "description": "Scotland, taper start less £1 (£99999.00), student loan plan4",
+      "inputs": {
+        "grossPay": "99999.00",
+        "region": "scotland",
+        "studentLoans": ["plan4"]
+      },
+      "expected": {
+        "incomeTax": null,
+        "nationalInsurance": null,
+        "studentLoan": null,
+        "takeHome": null
+      },
+      "hmrcSource": null,
+      "checkedOn": null
+    },
+    {
+      "id": "2026-27-scotland-taper-start-minus-1-plan5",
+      "description": "Scotland, taper start less £1 (£99999.00), student loan plan5",
+      "inputs": {
+        "grossPay": "99999.00",
+        "region": "scotland",
+        "studentLoans": ["plan5"]
+      },
+      "expected": {
+        "incomeTax": null,
+        "nationalInsurance": null,
+        "studentLoan": null,
+        "takeHome": null
+      },
+      "hmrcSource": null,
+      "checkedOn": null
+    },
+    {
+      "id": "2026-27-scotland-taper-start-minus-1-postgraduate",
+      "description": "Scotland, taper start less £1 (£99999.00), student loan postgraduate",
+      "inputs": {
+        "grossPay": "99999.00",
+        "region": "scotland",
+        "studentLoans": ["postgraduate"]
+      },
+      "expected": {
+        "incomeTax": null,
+        "nationalInsurance": null,
+        "studentLoan": null,
+        "takeHome": null
+      },
+      "hmrcSource": null,
+      "checkedOn": null
+    },
+    {
+      "id": "2026-27-scotland-taper-start-no-loan",
+      "description": "Scotland, at the taper start (£100000.00), no student loan",
+      "inputs": {
+        "grossPay": "100000.00",
+        "region": "scotland",
+        "studentLoans": []
+      },
+      "expected": {
+        "incomeTax": null,
+        "nationalInsurance": null,
+        "studentLoan": null,
+        "takeHome": null
+      },
+      "hmrcSource": null,
+      "checkedOn": null
+    },
+    {
+      "id": "2026-27-scotland-taper-start-plan1",
+      "description": "Scotland, at the taper start (£100000.00), student loan plan1",
+      "inputs": {
+        "grossPay": "100000.00",
+        "region": "scotland",
+        "studentLoans": ["plan1"]
+      },
+      "expected": {
+        "incomeTax": null,
+        "nationalInsurance": null,
+        "studentLoan": null,
+        "takeHome": null
+      },
+      "hmrcSource": null,
+      "checkedOn": null
+    },
+    {
+      "id": "2026-27-scotland-taper-start-plan2",
+      "description": "Scotland, at the taper start (£100000.00), student loan plan2",
+      "inputs": {
+        "grossPay": "100000.00",
+        "region": "scotland",
+        "studentLoans": ["plan2"]
+      },
+      "expected": {
+        "incomeTax": null,
+        "nationalInsurance": null,
+        "studentLoan": null,
+        "takeHome": null
+      },
+      "hmrcSource": null,
+      "checkedOn": null
+    },
+    {
+      "id": "2026-27-scotland-taper-start-plan4",
+      "description": "Scotland, at the taper start (£100000.00), student loan plan4",
+      "inputs": {
+        "grossPay": "100000.00",
+        "region": "scotland",
+        "studentLoans": ["plan4"]
+      },
+      "expected": {
+        "incomeTax": null,
+        "nationalInsurance": null,
+        "studentLoan": null,
+        "takeHome": null
+      },
+      "hmrcSource": null,
+      "checkedOn": null
+    },
+    {
+      "id": "2026-27-scotland-taper-start-plan5",
+      "description": "Scotland, at the taper start (£100000.00), student loan plan5",
+      "inputs": {
+        "grossPay": "100000.00",
+        "region": "scotland",
+        "studentLoans": ["plan5"]
+      },
+      "expected": {
+        "incomeTax": null,
+        "nationalInsurance": null,
+        "studentLoan": null,
+        "takeHome": null
+      },
+      "hmrcSource": null,
+      "checkedOn": null
+    },
+    {
+      "id": "2026-27-scotland-taper-start-postgraduate",
+      "description": "Scotland, at the taper start (£100000.00), student loan postgraduate",
+      "inputs": {
+        "grossPay": "100000.00",
+        "region": "scotland",
+        "studentLoans": ["postgraduate"]
+      },
+      "expected": {
+        "incomeTax": null,
+        "nationalInsurance": null,
+        "studentLoan": null,
+        "takeHome": null
+      },
+      "hmrcSource": null,
+      "checkedOn": null
+    },
+    {
+      "id": "2026-27-scotland-taper-start-plus-1-no-loan",
+      "description": "Scotland, taper start plus £1 (£100001.00), no student loan",
+      "inputs": {
+        "grossPay": "100001.00",
+        "region": "scotland",
+        "studentLoans": []
+      },
+      "expected": {
+        "incomeTax": null,
+        "nationalInsurance": null,
+        "studentLoan": null,
+        "takeHome": null
+      },
+      "hmrcSource": null,
+      "checkedOn": null
+    },
+    {
+      "id": "2026-27-scotland-taper-start-plus-1-plan1",
+      "description": "Scotland, taper start plus £1 (£100001.00), student loan plan1",
+      "inputs": {
+        "grossPay": "100001.00",
+        "region": "scotland",
+        "studentLoans": ["plan1"]
+      },
+      "expected": {
+        "incomeTax": null,
+        "nationalInsurance": null,
+        "studentLoan": null,
+        "takeHome": null
+      },
+      "hmrcSource": null,
+      "checkedOn": null
+    },
+    {
+      "id": "2026-27-scotland-taper-start-plus-1-plan2",
+      "description": "Scotland, taper start plus £1 (£100001.00), student loan plan2",
+      "inputs": {
+        "grossPay": "100001.00",
+        "region": "scotland",
+        "studentLoans": ["plan2"]
+      },
+      "expected": {
+        "incomeTax": null,
+        "nationalInsurance": null,
+        "studentLoan": null,
+        "takeHome": null
+      },
+      "hmrcSource": null,
+      "checkedOn": null
+    },
+    {
+      "id": "2026-27-scotland-taper-start-plus-1-plan4",
+      "description": "Scotland, taper start plus £1 (£100001.00), student loan plan4",
+      "inputs": {
+        "grossPay": "100001.00",
+        "region": "scotland",
+        "studentLoans": ["plan4"]
+      },
+      "expected": {
+        "incomeTax": null,
+        "nationalInsurance": null,
+        "studentLoan": null,
+        "takeHome": null
+      },
+      "hmrcSource": null,
+      "checkedOn": null
+    },
+    {
+      "id": "2026-27-scotland-taper-start-plus-1-plan5",
+      "description": "Scotland, taper start plus £1 (£100001.00), student loan plan5",
+      "inputs": {
+        "grossPay": "100001.00",
+        "region": "scotland",
+        "studentLoans": ["plan5"]
+      },
+      "expected": {
+        "incomeTax": null,
+        "nationalInsurance": null,
+        "studentLoan": null,
+        "takeHome": null
+      },
+      "hmrcSource": null,
+      "checkedOn": null
+    },
+    {
+      "id": "2026-27-scotland-taper-start-plus-1-postgraduate",
+      "description": "Scotland, taper start plus £1 (£100001.00), student loan postgraduate",
+      "inputs": {
+        "grossPay": "100001.00",
+        "region": "scotland",
+        "studentLoans": ["postgraduate"]
+      },
+      "expected": {
+        "incomeTax": null,
+        "nationalInsurance": null,
+        "studentLoan": null,
+        "takeHome": null
+      },
+      "hmrcSource": null,
+      "checkedOn": null
+    },
+    {
+      "id": "2026-27-scotland-taper-midpoint-no-loan",
+      "description": "Scotland, midpoint of the taper zone (£112570.00), no student loan",
+      "inputs": {
+        "grossPay": "112570.00",
+        "region": "scotland",
+        "studentLoans": []
+      },
+      "expected": {
+        "incomeTax": null,
+        "nationalInsurance": null,
+        "studentLoan": null,
+        "takeHome": null
+      },
+      "hmrcSource": null,
+      "checkedOn": null
+    },
+    {
+      "id": "2026-27-scotland-taper-midpoint-plan1",
+      "description": "Scotland, midpoint of the taper zone (£112570.00), student loan plan1",
+      "inputs": {
+        "grossPay": "112570.00",
+        "region": "scotland",
+        "studentLoans": ["plan1"]
+      },
+      "expected": {
+        "incomeTax": null,
+        "nationalInsurance": null,
+        "studentLoan": null,
+        "takeHome": null
+      },
+      "hmrcSource": null,
+      "checkedOn": null
+    },
+    {
+      "id": "2026-27-scotland-taper-midpoint-plan2",
+      "description": "Scotland, midpoint of the taper zone (£112570.00), student loan plan2",
+      "inputs": {
+        "grossPay": "112570.00",
+        "region": "scotland",
+        "studentLoans": ["plan2"]
+      },
+      "expected": {
+        "incomeTax": null,
+        "nationalInsurance": null,
+        "studentLoan": null,
+        "takeHome": null
+      },
+      "hmrcSource": null,
+      "checkedOn": null
+    },
+    {
+      "id": "2026-27-scotland-taper-midpoint-plan4",
+      "description": "Scotland, midpoint of the taper zone (£112570.00), student loan plan4",
+      "inputs": {
+        "grossPay": "112570.00",
+        "region": "scotland",
+        "studentLoans": ["plan4"]
+      },
+      "expected": {
+        "incomeTax": null,
+        "nationalInsurance": null,
+        "studentLoan": null,
+        "takeHome": null
+      },
+      "hmrcSource": null,
+      "checkedOn": null
+    },
+    {
+      "id": "2026-27-scotland-taper-midpoint-plan5",
+      "description": "Scotland, midpoint of the taper zone (£112570.00), student loan plan5",
+      "inputs": {
+        "grossPay": "112570.00",
+        "region": "scotland",
+        "studentLoans": ["plan5"]
+      },
+      "expected": {
+        "incomeTax": null,
+        "nationalInsurance": null,
+        "studentLoan": null,
+        "takeHome": null
+      },
+      "hmrcSource": null,
+      "checkedOn": null
+    },
+    {
+      "id": "2026-27-scotland-taper-midpoint-postgraduate",
+      "description": "Scotland, midpoint of the taper zone (£112570.00), student loan postgraduate",
+      "inputs": {
+        "grossPay": "112570.00",
+        "region": "scotland",
+        "studentLoans": ["postgraduate"]
+      },
+      "expected": {
+        "incomeTax": null,
+        "nationalInsurance": null,
+        "studentLoan": null,
+        "takeHome": null
+      },
+      "hmrcSource": null,
+      "checkedOn": null
+    },
+    {
+      "id": "2026-27-scotland-taper-zero-point-no-loan",
+      "description": "Scotland, where the allowance reaches zero (£125140.00), no student loan",
+      "inputs": {
+        "grossPay": "125140.00",
+        "region": "scotland",
+        "studentLoans": []
+      },
+      "expected": {
+        "incomeTax": null,
+        "nationalInsurance": null,
+        "studentLoan": null,
+        "takeHome": null
+      },
+      "hmrcSource": null,
+      "checkedOn": null
+    },
+    {
+      "id": "2026-27-scotland-taper-zero-point-plan1",
+      "description": "Scotland, where the allowance reaches zero (£125140.00), student loan plan1",
+      "inputs": {
+        "grossPay": "125140.00",
+        "region": "scotland",
+        "studentLoans": ["plan1"]
+      },
+      "expected": {
+        "incomeTax": null,
+        "nationalInsurance": null,
+        "studentLoan": null,
+        "takeHome": null
+      },
+      "hmrcSource": null,
+      "checkedOn": null
+    },
+    {
+      "id": "2026-27-scotland-taper-zero-point-plan2",
+      "description": "Scotland, where the allowance reaches zero (£125140.00), student loan plan2",
+      "inputs": {
+        "grossPay": "125140.00",
+        "region": "scotland",
+        "studentLoans": ["plan2"]
+      },
+      "expected": {
+        "incomeTax": null,
+        "nationalInsurance": null,
+        "studentLoan": null,
+        "takeHome": null
+      },
+      "hmrcSource": null,
+      "checkedOn": null
+    },
+    {
+      "id": "2026-27-scotland-taper-zero-point-plan4",
+      "description": "Scotland, where the allowance reaches zero (£125140.00), student loan plan4",
+      "inputs": {
+        "grossPay": "125140.00",
+        "region": "scotland",
+        "studentLoans": ["plan4"]
+      },
+      "expected": {
+        "incomeTax": null,
+        "nationalInsurance": null,
+        "studentLoan": null,
+        "takeHome": null
+      },
+      "hmrcSource": null,
+      "checkedOn": null
+    },
+    {
+      "id": "2026-27-scotland-taper-zero-point-plan5",
+      "description": "Scotland, where the allowance reaches zero (£125140.00), student loan plan5",
+      "inputs": {
+        "grossPay": "125140.00",
+        "region": "scotland",
+        "studentLoans": ["plan5"]
+      },
+      "expected": {
+        "incomeTax": null,
+        "nationalInsurance": null,
+        "studentLoan": null,
+        "takeHome": null
+      },
+      "hmrcSource": null,
+      "checkedOn": null
+    },
+    {
+      "id": "2026-27-scotland-taper-zero-point-postgraduate",
+      "description": "Scotland, where the allowance reaches zero (£125140.00), student loan postgraduate",
+      "inputs": {
+        "grossPay": "125140.00",
+        "region": "scotland",
+        "studentLoans": ["postgraduate"]
+      },
+      "expected": {
+        "incomeTax": null,
+        "nationalInsurance": null,
+        "studentLoan": null,
+        "takeHome": null
+      },
+      "hmrcSource": null,
+      "checkedOn": null
+    },
+    {
+      "id": "2026-27-scotland-zero-point-plus-10000-no-loan",
+      "description": "Scotland, £10,000 above the zero point (£135140.00), no student loan",
+      "inputs": {
+        "grossPay": "135140.00",
+        "region": "scotland",
+        "studentLoans": []
+      },
+      "expected": {
+        "incomeTax": null,
+        "nationalInsurance": null,
+        "studentLoan": null,
+        "takeHome": null
+      },
+      "hmrcSource": null,
+      "checkedOn": null
+    },
+    {
+      "id": "2026-27-scotland-zero-point-plus-10000-plan1",
+      "description": "Scotland, £10,000 above the zero point (£135140.00), student loan plan1",
+      "inputs": {
+        "grossPay": "135140.00",
+        "region": "scotland",
+        "studentLoans": ["plan1"]
+      },
+      "expected": {
+        "incomeTax": null,
+        "nationalInsurance": null,
+        "studentLoan": null,
+        "takeHome": null
+      },
+      "hmrcSource": null,
+      "checkedOn": null
+    },
+    {
+      "id": "2026-27-scotland-zero-point-plus-10000-plan2",
+      "description": "Scotland, £10,000 above the zero point (£135140.00), student loan plan2",
+      "inputs": {
+        "grossPay": "135140.00",
+        "region": "scotland",
+        "studentLoans": ["plan2"]
+      },
+      "expected": {
+        "incomeTax": null,
+        "nationalInsurance": null,
+        "studentLoan": null,
+        "takeHome": null
+      },
+      "hmrcSource": null,
+      "checkedOn": null
+    },
+    {
+      "id": "2026-27-scotland-zero-point-plus-10000-plan4",
+      "description": "Scotland, £10,000 above the zero point (£135140.00), student loan plan4",
+      "inputs": {
+        "grossPay": "135140.00",
+        "region": "scotland",
+        "studentLoans": ["plan4"]
+      },
+      "expected": {
+        "incomeTax": null,
+        "nationalInsurance": null,
+        "studentLoan": null,
+        "takeHome": null
+      },
+      "hmrcSource": null,
+      "checkedOn": null
+    },
+    {
+      "id": "2026-27-scotland-zero-point-plus-10000-plan5",
+      "description": "Scotland, £10,000 above the zero point (£135140.00), student loan plan5",
+      "inputs": {
+        "grossPay": "135140.00",
+        "region": "scotland",
+        "studentLoans": ["plan5"]
+      },
+      "expected": {
+        "incomeTax": null,
+        "nationalInsurance": null,
+        "studentLoan": null,
+        "takeHome": null
+      },
+      "hmrcSource": null,
+      "checkedOn": null
+    },
+    {
+      "id": "2026-27-scotland-zero-point-plus-10000-postgraduate",
+      "description": "Scotland, £10,000 above the zero point (£135140.00), student loan postgraduate",
+      "inputs": {
+        "grossPay": "135140.00",
+        "region": "scotland",
+        "studentLoans": ["postgraduate"]
+      },
+      "expected": {
+        "incomeTax": null,
+        "nationalInsurance": null,
+        "studentLoan": null,
+        "takeHome": null
+      },
+      "hmrcSource": null,
+      "checkedOn": null
+    }
+  ]
+}

@@ -198,3 +198,38 @@ export function subtractRatio(a: Ratio, b: Ratio): Ratio {
     throw new MoneyError('subtractRatio: the result is past the safe range')
   return ratio(Number(numerator), Number(denominator))
 }
+
+/**
+ * An exact amount of pence as a fraction: numerator / denominator, in BigInt,
+ * denominator above zero, in lowest terms. For a rule that leaves part of a
+ * penny before the one rounding at output (docs/money.md, "Rounding per
+ * calculation"). It becomes Money only through roundExact.
+ */
+export interface ExactPence {
+  readonly numerator: bigint
+  readonly denominator: bigint
+}
+
+export function exact(_amount: Money): ExactPence {
+  throw new MoneyError('exact: not implemented')
+}
+
+export function exactMul(_amount: ExactPence, _factor: Ratio): ExactPence {
+  throw new MoneyError('exactMul: not implemented')
+}
+
+export function exactAdd(_a: ExactPence, _b: ExactPence): ExactPence {
+  throw new MoneyError('exactAdd: not implemented')
+}
+
+export function exactSubtract(_a: ExactPence, _b: ExactPence): ExactPence {
+  throw new MoneyError('exactSubtract: not implemented')
+}
+
+export function compareExact(_a: ExactPence, _b: ExactPence): -1 | 0 | 1 {
+  throw new MoneyError('compareExact: not implemented')
+}
+
+export function roundExact(_amount: ExactPence, _mode: RoundingMode): Money {
+  throw new MoneyError('roundExact: not implemented')
+}
