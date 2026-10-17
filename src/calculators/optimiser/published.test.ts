@@ -2,9 +2,29 @@ import { describe, expect, it } from 'vitest'
 import { taxYear } from '@/config/tax/2026-27'
 import type { TaxYearConfig } from '@/config/tax/schema'
 import { mapLeaves, type Refusal, type Sourced, type SourceUrl } from '@/config/tax/sourced'
-import { add, fromPence, fromPounds, mulRound, percent, ratio, subtract, subtractRatio } from '@/lib/money'
-import { adjustedNetIncome, employeeNI, hicbc, incomeTax, pensionContribution, personalAllowance, studentLoan } from './calc'
-import { DEFAULT_POLICY, type PensionInput, REGIONS, type StudentLoanPlanId, TAPER_ROUNDINGS } from './types'
+import { add, fromPence, fromPounds, mulRound, percent, ratio, subtract, subtractRatio, ZERO } from '@/lib/money'
+import { MONTHS_PER_YEAR } from '@/lib/periods'
+import {
+  adjustedNetIncome,
+  annualAllowanceCharge,
+  annualAllowanceCheck,
+  childcareCheck,
+  employeeNI,
+  hicbc,
+  incomeTax,
+  pensionContribution,
+  personalAllowance,
+  studentLoan,
+} from './calc'
+import {
+  DEFAULT_POLICY,
+  type PensionInput,
+  type PensionSavingsInput,
+  REGIONS,
+  type StudentLoanPlanId,
+  TAPER_ROUNDINGS,
+  type TaxInputs,
+} from './types'
 
 /*
  * Published GOV.UK examples, mirrored as tests (docs/worked-examples.md). Each
@@ -233,5 +253,156 @@ describe(`HICBC-3, the High Income Child Benefit Charge guide: ${HICBC_GUIDE}`, 
     const all = ok(hicbc(add(fromPounds(80_000), fromPence(1)), one, taxYear, DEFAULT_POLICY))
     expect(all.percentCharged).toBe(100)
     expect(all.charge).toBe(all.childBenefit)
+  })
+})
+
+/* Session G2: the annual allowance, carry forward, the charge, Child Benefit for the year and childcare. */
+
+const CARRY_FORWARD_MANUAL: SourceUrl = 'https://www.gov.uk/hmrc-internal-manuals/pensions-tax-manual/ptm055100'
+const CHARGE_MANUAL: SourceUrl = 'https://www.gov.uk/hmrc-internal-manuals/pensions-tax-manual/ptm056110'
+const CHARGE_EXAMPLES: SourceUrl = 'https://www.gov.uk/hmrc-internal-manuals/pensions-tax-manual/ptm056130'
+const CHILD_BENEFIT_PRESS_RELEASE: SourceUrl =
+  'https://www.gov.uk/government/news/millions-of-families-in-line-for-child-benefit-rate-increase'
+const TAX_FREE_CHILDCARE: SourceUrl = 'https://www.gov.uk/tax-free-childcare/check-if-youre-eligible'
+const NO_SAVINGS: PensionSavingsInput = { employerContribution: ZERO, carryForward: [], moneyPurchaseAnnualAllowance: false }
+const employment = (grossPay: ReturnType<typeof fromPounds>, pension?: PensionInput): TaxInputs => ({
+  grossPay,
+  region: 'rUK',
+  studentLoans: [],
+  ...(pension ? { pension } : {}),
+})
+
+describe(`AA-1 to AA-3, simple tapered annual allowance examples: ${TAPERED_ALLOWANCE_EXAMPLES}`, () => {
+  // "The standard annual allowance is £40,000"; "The tapered annual allowance applies if threshold income is more than
+  // £110,000 and adjusted income is more than £150,000"; "The tapered annual allowance cannot be less than £10,000."
+  const example = withExampleFigures(TAPERED_ALLOWANCE_EXAMPLES, {
+    'pension.annualAllowance': fromPounds(40_000),
+    'pension.taper.thresholdIncome': fromPounds(110_000),
+    'pension.taper.adjustedIncome': fromPounds(150_000),
+    'pension.taper.minimumAllowance': fromPounds(10_000),
+  })
+  const allowance = (adjusted: string | number) =>
+    ok(annualAllowanceCheck(employment(fromPounds(adjusted)), NO_SAVINGS, example, DEFAULT_POLICY)).allowance
+
+  it('AA-1: adjusted income £160,000: "a reduced annual allowance of £35,000"', () => {
+    expect(allowance(160_000)).toBe(fromPounds(35_000))
+  })
+  it('AA-2: adjusted income £215,000: "a reduced annual allowance of £10,000" (it "would have been reduced to £7,500")', () => {
+    expect(allowance(215_000)).toBe(fromPounds(10_000))
+  })
+  it('AA-3: adjusted income £177,979: "One half of £27,979 is £13989.50 ... rounded down ... £13,989"; "£26,011"', () => {
+    const r = ok(annualAllowanceCheck(employment(fromPounds(177_979)), NO_SAVINGS, example, DEFAULT_POLICY))
+    expect(r.taperReduction).toBe(fromPounds(13_989))
+    expect(r.allowance).toBe(fromPounds(26_011))
+  })
+})
+
+describe(`AA-4, Jon's threshold income and adjusted income (employment-only steps): ${TAPERED_ALLOWANCE_EXAMPLES}`, () => {
+  // Jon's net income is "£144,500" (employment, self-employment, savings and dividends). Each step is mirrored on its
+  // own, with the published net income standing in as employment pay; the engine takes one pension method at a time.
+  it('AA-4a: "Each month Jon actually pays £360 ... a gross contribution of £450 per month ... £5,400"; "threshold income is £139,100"', () => {
+    const yearly = mulRound(fromPounds(360), ratio(MONTHS_PER_YEAR, 1), 'nearest')
+    const r = ok(annualAllowanceCheck(employment(fromPounds(144_500), ras(yearly)), NO_SAVINGS, taxYear, DEFAULT_POLICY))
+    expect(r.counted.employee).toBe(fromPounds(5_400))
+    expect(r.thresholdIncome).toBe(fromPounds(139_100))
+  })
+  it('AA-4b: net pay "£14,000" added back: "£144,500 + £14,000 = £158,500"', () => {
+    const r = ok(
+      annualAllowanceCheck(
+        employment(fromPounds(158_500), { method: 'netPay', contribution: fromPounds(14_000) }),
+        NO_SAVINGS,
+        taxYear,
+        DEFAULT_POLICY,
+      ),
+    )
+    expect(r.thresholdIncome).toBe(fromPounds(144_500))
+    expect(r.adjustedIncome).toBe(fromPounds(158_500))
+  })
+})
+
+describe(`CF-1, carry forward example 9 (Sybille, 2014-15): ${CARRY_FORWARD_MANUAL}`, () => {
+  // "total pension input amount of £65,000"; "The annual allowance for 2014-15 is £40,000"; unused "2013-14 - £15,000",
+  // "2012-13 - £20,000", "2011-12 - £27,000"; "available annual allowance of £102,000"; "used up the £40,000 annual
+  // allowance for the current tax year and £25,000 worth of the unused annual allowance from three years ago";
+  // "she still has £2,000 unused annual allowance from three years ago".
+  const example = withExampleFigures(CARRY_FORWARD_MANUAL, {
+    'pension.annualAllowance': fromPounds(40_000),
+    'pension.carryForward.yearsBack': 3,
+  })
+  it('uses the current year first, then the earliest year', () => {
+    const r = ok(
+      annualAllowanceCheck(
+        employment(ZERO),
+        {
+          ...NO_SAVINGS,
+          employerContribution: fromPounds(65_000),
+          carryForward: [
+            { yearsAgo: 1, amount: fromPounds(15_000) },
+            { yearsAgo: 2, amount: fromPounds(20_000) },
+            { yearsAgo: 3, amount: fromPounds(27_000) },
+          ],
+        },
+        example,
+        DEFAULT_POLICY,
+      ),
+    )
+    expect(r.allowanceAvailable).toBe(fromPounds(102_000))
+    expect(r.excess).toBe(ZERO)
+    expect(r.carryForward).toEqual([
+      { yearsAgo: 3, available: fromPounds(27_000), used: fromPounds(25_000), left: fromPounds(2_000) },
+      { yearsAgo: 2, available: fromPounds(20_000), used: ZERO, left: fromPounds(20_000) },
+      { yearsAgo: 1, available: fromPounds(15_000), used: ZERO, left: fromPounds(15_000) },
+    ])
+  })
+})
+
+describe('AAC-1 to AAC-3, the annual allowance charge', () => {
+  const bands = (higher: number, additional: number) => [
+    { name: 'Basic rate', from: ZERO, rate: percent('20') },
+    { name: 'Higher rate', from: fromPounds(higher), rate: percent('40') },
+    { name: 'Additional rate', from: fromPounds(additional), rate: percent('45') },
+  ]
+
+  it(`AAC-1 (Frances, ${CHARGE_MANUAL}): excess "£30,000", reduced net income "£140,000", limits "£40,000" and "£150,000": "£13,000"`, () => {
+    // "£20,000 @ 45 per cent = £9,000"; "£10,000 @ 40 per cent = £4,000"; "£0 @ 20 per cent = £0".
+    const example = withExampleFigures(CHARGE_MANUAL, { 'incomeTax.bands.rUK': bands(40_000, 150_000) })
+    const r = ok(annualAllowanceCharge(fromPounds(30_000), fromPounds(140_000), 'rUK', example))
+    expect(r.bands.map((b) => b.charge)).toEqual([ZERO, fromPounds(4_000), fromPounds(9_000)])
+    expect(r.total).toBe(fromPounds(13_000))
+  })
+
+  // "Assume for the purposes of these examples that the normal basic rate limit is £37,400 and the normal higher rate limit is £150,000."
+  const example = withExampleFigures(CHARGE_EXAMPLES, { 'incomeTax.bands.rUK': bands(37_400, 150_000) })
+
+  it(`AAC-2 (Siva, ${CHARGE_EXAMPLES}): limits raised to "£38,400 and £151,000", reduced net income "£112,275": "£6,000"`, () => {
+    // The Gift Aid donation's gross value of £1,000 raises both limits; the engine takes it as the extension.
+    const r = ok(annualAllowanceCharge(fromPounds(15_000), fromPounds(112_275), 'rUK', example, fromPounds(1_000)))
+    expect(r.total).toBe(fromPounds(6_000))
+  })
+
+  it(`AAC-3 (Alan, ${CHARGE_EXAMPLES}): limits "£78,400" and "£191,000", reduced net income "£152,275": "£6,000"`, () => {
+    // "The £40,000 pension contribution and £1,000 Gift Aid donation increases Alan’s basic rate limit and higher rate limit."
+    const r = ok(annualAllowanceCharge(fromPounds(15_000), fromPounds(152_275), 'rUK', example, fromPounds(41_000)))
+    expect(r.total).toBe(fromPounds(6_000))
+  })
+})
+
+describe(`CB-1, Child Benefit for 2026 to 2027: ${CHILD_BENEFIT_PRESS_RELEASE}`, () => {
+  // "From 6 April, claimants will receive £27.05 per week - or £1,406.60 a year - for the eldest or only child and £17.90
+  // per week - or £930.80 a year - for each additional child" (HMRC, 31 March 2026). Decision G4: the default weeks.
+  it('the default policy gives the published annual amounts', () => {
+    const year = (children: number) => ok(hicbc(ZERO, { children, payments: 'claimed' }, taxYear, DEFAULT_POLICY)).entitlement
+    expect(year(1)).toBe(fromPounds('1406.60'))
+    expect(year(2)).toBe(add(fromPounds('1406.60'), fromPounds('930.80')))
+  })
+})
+
+describe(`CC-3, childcare: ${TAX_FREE_CHILDCARE}`, () => {
+  // "You cannot claim if ... you or your partner’s expected adjusted net income ... is over £100,000 for the current tax year."
+  it('eligible on income at £100,000, not a penny over', () => {
+    const at = ok(childcareCheck(fromPounds(100_000), undefined, taxYear)).schemes[0]!
+    const over = ok(childcareCheck(add(fromPounds(100_000), fromPence(1)), undefined, taxYear)).schemes[0]!
+    expect(at.eligibleOnIncome).toBe(true)
+    expect(over.eligibleOnIncome).toBe(false)
   })
 })

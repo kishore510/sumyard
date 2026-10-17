@@ -27,17 +27,24 @@ import {
 import { MONTHS_PER_YEAR, WEEKS_PER_YEAR } from '@/lib/periods'
 import {
   type AdjustedNetIncomeResult,
+  type AnnualAllowanceChargeResult,
+  type AnnualAllowanceResult,
   type BandSlice,
   CHILD_BENEFIT_PAYMENTS,
   type ChildBenefitInput,
+  type ChildcareResult,
   type EmployeeNIResult,
   type HicbcResult,
   type IncomeTaxResult,
   type ModellingPolicy,
   type NiSlice,
+  type OptimiseOptions,
+  type OptimiseResult,
+  type OptimiserInputs,
   PENSION_METHODS,
   type PensionInput,
   type PensionResult,
+  type PensionSavingsInput,
   type PeriodView,
   type PersonalAllowanceResult,
   REGIONS,
@@ -49,6 +56,7 @@ import {
   TAPER_ROUNDINGS,
   type TakeHomeResult,
   type TaxInputs,
+  type ThresholdContributionsResult,
 } from './types'
 
 /*
@@ -696,4 +704,61 @@ export function takeHome(inputs: TaxInputs, config: TaxYearConfig, policy: Model
     weekly: view('weekly', 'Weekly: each annual figure divided by the weeks in a year, to the nearest penny', annual, WEEKS_PER_YEAR),
     assumptions: assumptions(inputs, plans, policy),
   }
+}
+
+/* Session G2: the annual allowance, carry forward, the childcare check and optimise() (decisions G7 to G14). */
+
+const notYet = (name: string): never => {
+  throw new Error(`${name} is not implemented yet`)
+}
+
+/**
+ * The annual allowance charge on an excess (PTM056110): the excess is added
+ * on top of reduced net income (taxable income after allowances) and taxed at
+ * the rates of the bands it falls in, with every band above the basic rate
+ * band moved up by any relief at source extension (PTM056120). A part below
+ * the basic rate band is charged at the basic rate.
+ */
+export function annualAllowanceCharge(
+  _excess: Money,
+  _reducedNetIncome: Money,
+  _region: Region,
+  _config: TaxYearConfig,
+  _basicRateBandExtension: Money = ZERO,
+): AnnualAllowanceChargeResult | Refusal {
+  return notYet('annualAllowanceCharge')
+}
+
+/** The annual allowance for the year: taper, carry forward, MPAA, what is counted, headroom, excess, the charge and warnings. */
+export function annualAllowanceCheck(
+  _inputs: TaxInputs,
+  _savings: PensionSavingsInput,
+  _config: TaxYearConfig,
+  _policy: ModellingPolicy,
+): AnnualAllowanceResult | Refusal {
+  return notYet('annualAllowanceCheck')
+}
+
+/** Eligibility on income for each childcare scheme in the config: a cliff at the limit (G12). */
+export function childcareCheck(_grossPay: Money, _pension: PensionInput | undefined, _config: TaxYearConfig): ChildcareResult | Refusal {
+  return notYet('childcareCheck')
+}
+
+/** The smallest contribution that brings each income measure to each threshold, in exact pence (G14). */
+export function thresholdContributions(
+  _inputs: OptimiserInputs,
+  _config: TaxYearConfig,
+  _policy: ModellingPolicy,
+): ThresholdContributionsResult | Refusal {
+  return notYet('thresholdContributions')
+}
+
+/** Candidate contributions: a sweep plus the threshold points, each with take-home, pension, costs, rates and warnings (G13). */
+export function optimise(
+  _inputs: OptimiserInputs,
+  _config: TaxYearConfig,
+  _policy: ModellingPolicy,
+  _options?: OptimiseOptions,
+): OptimiseResult | Refusal {
+  return notYet('optimise')
 }

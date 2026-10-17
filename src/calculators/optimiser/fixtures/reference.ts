@@ -9,7 +9,16 @@
 import type { TaxBand, TaxYearConfig } from '@/config/tax/schema'
 import { requireVerified } from '@/config/tax/sourced'
 import type { Money, Ratio } from '@/lib/money'
-import type { ChildBenefitInput, ModellingPolicy, PensionInput, Region, StudentLoanPlanId, TaxInputs } from '../types'
+import type {
+  ChildBenefitInput,
+  ModellingPolicy,
+  PensionInput,
+  PensionSavingsInput,
+  Region,
+  StudentLoanPlanId,
+  TaxInputs,
+  ThresholdId,
+} from '../types'
 
 export const REFERENCE_PATHS = [
   'incomeTax.personalAllowance',
@@ -37,6 +46,15 @@ export const REFERENCE_PATHS = [
   'childBenefit.hicbc.threshold',
   'childBenefit.hicbc.fullChargeAt',
   'childBenefit.hicbc.incomePerPercent',
+  'pension.annualAllowance',
+  'pension.taper.thresholdIncome',
+  'pension.taper.adjustedIncome',
+  'pension.taper.minimumAllowance',
+  'pension.taper.reductionRate',
+  'pension.carryForward.yearsBack',
+  'pension.moneyPurchaseAnnualAllowance',
+  'childcare.taxFreeChildcare.incomeLimit',
+  'childcare.thirtyHours.incomeLimit',
 ] as const
 
 /** Every value the engine reads, straight from the config (throws if one is unverified). */
@@ -73,6 +91,19 @@ export function configValues(config: TaxYearConfig) {
       threshold: v['childBenefit.hicbc.threshold'],
       fullChargeAt: v['childBenefit.hicbc.fullChargeAt'],
       incomePerPercent: v['childBenefit.hicbc.incomePerPercent'],
+    },
+    annualAllowance: {
+      standard: v['pension.annualAllowance'],
+      thresholdIncomeLimit: v['pension.taper.thresholdIncome'],
+      adjustedIncomeLimit: v['pension.taper.adjustedIncome'],
+      minimum: v['pension.taper.minimumAllowance'],
+      reductionRate: v['pension.taper.reductionRate'],
+      yearsBack: v['pension.carryForward.yearsBack'],
+      moneyPurchase: v['pension.moneyPurchaseAnnualAllowance'],
+    },
+    childcare: {
+      taxFreeChildcare: v['childcare.taxFreeChildcare.incomeLimit'],
+      thirtyHours: v['childcare.thirtyHours.incomeLimit'],
     },
   }
 }
@@ -311,3 +342,187 @@ export function referenceTakeHome(inputs: TaxInputs, config: TaxYearConfig, poli
 /** For tests: a fraction rounded to the nearest penny, and pence as a fraction. */
 export const nearestPence = (x: Frac): Money => nearest(x) as Money
 export const fracOf = (pence: number): Frac => whole(pence)
+
+/* Session G2: the annual allowance, carry forward, MPAA, the charge, childcare and threshold contributions, written a second way. */
+
+/** Threshold income (PTM057100): net income (taxable pay), plus salary sacrificed, less the gross relief at source contribution. */
+export function referenceThresholdIncome(grossPay: Money, pension: PensionInput | undefined, config: TaxYearConfig): Frac {
+  const p = referencePension(grossPay, pension, config)
+  if (pension?.method === 'salarySacrifice') return plus(p.taxablePay, whole(pension.contribution))
+  if (pension?.method === 'reliefAtSource') return sub(p.taxablePay, p.pot)
+  return p.taxablePay
+}
+
+/** What the pot gets from the employee, in whole pence (the gross amount to the nearest penny). */
+const potPence = (grossPay: Money, pension: PensionInput | undefined, config: TaxYearConfig) =>
+  nearest(referencePension(grossPay, pension, config).pot)
+
+/** Adjusted income (PTM057100): net income + net pay contributions + total pension input − member contributions. */
+export function referenceAdjustedIncome(
+  grossPay: Money,
+  pension: PensionInput | undefined,
+  employer: Money,
+  config: TaxYearConfig,
+): number {
+  const p = referencePension(grossPay, pension, config)
+  const netIncome = nearest(p.taxablePay)
+  const netPay = pension?.method === 'netPay' ? pension.contribution : 0
+  const member = pension && pension.method !== 'salarySacrifice' ? potPence(grossPay, pension, config) : 0
+  const employerAll = employer + (pension?.method === 'salarySacrifice' ? pension.contribution : 0)
+  const totalInput = member + employerAll
+  return netIncome + netPay + (totalInput - member)
+}
+
+export interface ReferenceAllowance {
+  readonly thresholdIncome: Frac
+  readonly adjustedIncome: number
+  readonly tapered: boolean
+  readonly allowance: number
+  readonly carryForward: readonly { yearsAgo: number; available: number; used: number; left: number }[]
+  readonly route: 'standard' | 'moneyPurchase'
+  readonly available: number
+  readonly employee: number
+  readonly employer: number
+  readonly counted: number
+  readonly headroom: number
+  readonly excess: number
+}
+
+/** The annual allowance position by PTM057100, PTM055100 and the MPAA guidance, money purchase savings only. */
+export function referenceAnnualAllowance(inputs: TaxInputs, savings: PensionSavingsInput, config: TaxYearConfig): ReferenceAllowance {
+  const aa = configValues(config).annualAllowance
+  const thresholdIncome = referenceThresholdIncome(inputs.grossPay, inputs.pension, config)
+  const adjustedIncome = referenceAdjustedIncome(inputs.grossPay, inputs.pension, savings.employerContribution, config)
+  const tapered = less(whole(aa.thresholdIncomeLimit), thresholdIncome) && adjustedIncome > aa.adjustedIncomeLimit
+  let allowance: number = aa.standard
+  if (tapered) {
+    const reduction = floorPounds(times(whole(adjustedIncome - aa.adjustedIncomeLimit), aa.reductionRate))
+    allowance = Math.max(aa.minimum, aa.standard - reduction)
+  }
+  const sacrificed = inputs.pension?.method === 'salarySacrifice' ? inputs.pension.contribution : 0
+  const employee = inputs.pension && inputs.pension.method !== 'salarySacrifice' ? potPence(inputs.grossPay, inputs.pension, config) : 0
+  const employer = savings.employerContribution + sacrificed
+  const counted = employee + employer
+  const years = savings.carryForward.filter((y) => y.yearsAgo <= aa.yearsBack).sort((a, b) => b.yearsAgo - a.yearsAgo)
+  const defaultAvailable = allowance + years.reduce((sum, y) => sum + y.amount, 0)
+  const route = savings.moneyPurchaseAnnualAllowance && aa.moneyPurchase < defaultAvailable ? 'moneyPurchase' : 'standard'
+  let needed = route === 'standard' ? Math.max(0, counted - allowance) : 0
+  const carryForward = years.map((y) => {
+    const used = Math.min(y.amount, needed)
+    needed -= used
+    return { yearsAgo: y.yearsAgo, available: y.amount as number, used, left: y.amount - used }
+  })
+  const available = route === 'moneyPurchase' ? aa.moneyPurchase : defaultAvailable
+  return {
+    thresholdIncome,
+    adjustedIncome,
+    tapered,
+    allowance,
+    carryForward,
+    route,
+    available,
+    employee,
+    employer,
+    counted,
+    headroom: Math.max(0, available - counted),
+    excess: Math.max(0, counted - available),
+  }
+}
+
+/** The charge (PTM056110): the excess stacked on taxable income through the bands, nothing below the basic rate. Each slice to the nearest penny. */
+export function referenceAllowanceCharge(
+  excess: number,
+  taxable: Frac,
+  extension: Frac,
+  region: Region,
+  config: TaxYearConfig,
+): { slices: number[]; total: number } {
+  const values = configValues(config)
+  const bands = values.bands[region]
+  const basic = bands.findIndex((band) => sameRate(band.rate, values.reliefAtSourceRate))
+  const starts = bands.map((band, i) => (i > basic ? plus(whole(band.from), extension) : whole(band.from)))
+  const top = plus(taxable, whole(excess))
+  const slices = bands.map((_band, i) => {
+    const lo = less(starts[i]!, taxable) ? taxable : starts[i]!
+    const next = starts[i + 1]
+    const hi = next && less(next, top) ? next : top
+    const inBand = less(lo, hi) ? sub(hi, lo) : NONE
+    const rate = bands[Math.max(i, basic)]!.rate
+    return nearest(times(inBand, rate))
+  })
+  return { slices, total: slices.reduce((a, b) => a + b, 0) }
+}
+
+/** Exact taxable income and the band extension for take-home inputs, for the charge. */
+export function referenceTaxable(inputs: TaxInputs, config: TaxYearConfig, policy: ModellingPolicy): { taxable: Frac; extension: Frac } {
+  const p = referencePension(inputs.grossPay, inputs.pension, config)
+  return { taxable: referenceExactTax(p.taxablePay, p.ani, p.extension, inputs.region, config, policy).taxable, extension: p.extension }
+}
+
+/** Eligible on income: adjusted net income not over the limit. */
+export const referenceChildcareEligible = (ani: Frac, limit: Money) => !less(whole(limit), ani)
+
+/** Each threshold's exact value and the measure it applies to, from the config. */
+export function referenceThresholds(config: TaxYearConfig): Record<ThresholdId, { limit: Frac; measure: 'ani' | 'threshold' }> {
+  const v = configValues(config)
+  const zero: Frac = plus(whole(v.taperStart), [big(v.personalAllowance) * big(v.taperRate.denominator), big(v.taperRate.numerator)])
+  return {
+    personalAllowanceTaperStart: { limit: whole(v.taperStart), measure: 'ani' },
+    personalAllowanceTaperEnd: { limit: zero, measure: 'ani' },
+    hicbcThreshold: { limit: whole(v.childBenefit.threshold), measure: 'ani' },
+    hicbcFullCharge: { limit: whole(v.childBenefit.fullChargeAt), measure: 'ani' },
+    taxFreeChildcareLimit: { limit: whole(v.childcare.taxFreeChildcare), measure: 'ani' },
+    thirtyHoursLimit: { limit: whole(v.childcare.thirtyHours), measure: 'ani' },
+    annualAllowanceThresholdIncome: { limit: whole(v.annualAllowance.thresholdIncomeLimit), measure: 'threshold' },
+  }
+}
+
+/** The largest contribution whose gross amount is not over gross pay, found by searching whole pence. */
+export function referenceMaximumContribution(grossPay: Money, method: PensionInput['method'], config: TaxYearConfig): number {
+  let lo = 0
+  let hi = grossPay as number
+  while (lo < hi) {
+    const mid = Math.ceil((lo + hi) / 2)
+    const pot = referencePension(grossPay, { method, contribution: mid as Money }, config).pot
+    if (less(whole(grossPay), pot)) hi = mid - 1
+    else lo = mid
+  }
+  return lo
+}
+
+/**
+ * The smallest contribution (whole pence) at which the measure is at or under
+ * the limit, by searching whole pence over the reference's own measure: an
+ * independent check on the engine's closed form. Null if even the largest
+ * contribution leaves it over.
+ */
+export function referenceThresholdContribution(
+  grossPay: Money,
+  method: PensionInput['method'],
+  limit: Frac,
+  measure: 'ani' | 'threshold',
+  config: TaxYearConfig,
+): number | null {
+  const at = (c: number): Frac => {
+    const pension = { method, contribution: c as Money }
+    return measure === 'ani' ? referencePension(grossPay, pension, config).ani : referenceThresholdIncome(grossPay, pension, config)
+  }
+  const max = referenceMaximumContribution(grossPay, method, config)
+  if (less(limit, at(max))) return null
+  let lo = 0
+  let hi = max
+  while (lo < hi) {
+    const mid = Math.floor((lo + hi) / 2)
+    if (less(limit, at(mid))) lo = mid + 1
+    else hi = mid
+  }
+  return lo
+}
+
+/** The measure at a contribution, as a fraction, for tests. */
+export function referenceMeasure(grossPay: Money, pension: PensionInput, measure: 'ani' | 'threshold', config: TaxYearConfig): Frac {
+  return measure === 'ani' ? referencePension(grossPay, pension, config).ani : referenceThresholdIncome(grossPay, pension, config)
+}
+
+/** True if a is under b. */
+export const lessFrac = less

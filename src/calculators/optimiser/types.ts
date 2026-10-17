@@ -295,3 +295,247 @@ export interface TakeHomeResult {
 
 /** The engine's band list type, re-exported for tests and callers. */
 export type { TaxBand }
+
+/* Session G2: the annual allowance, carry forward, the childcare check and optimise(). Decisions G7 to G14. */
+
+/** Unused annual allowance from an earlier tax year, as the person states it (not config). */
+export interface UnusedAllowance {
+  /** How many tax years before this one: one for the year just gone, and so on. A whole number of one or more. */
+  readonly yearsAgo: number
+  /** Allowance that year's pension savings did not use, zero or more. */
+  readonly amount: Money
+}
+
+/** Pension savings beyond the employee's own contribution, for the annual allowance. All money purchase (defined contribution). */
+export interface PensionSavingsInput {
+  /** Employer contributions for the year other than a salary sacrifice (which counts on its own), zero or more. */
+  readonly employerContribution: Money
+  /** Unused allowance from earlier years; empty for none. One entry per year at most. */
+  readonly carryForward: readonly UnusedAllowance[]
+  /** The money purchase annual allowance applies for the whole year (pension flexibly accessed in an earlier tax year). */
+  readonly moneyPurchaseAnnualAllowance: boolean
+}
+
+/** A warning on a result: a code for the UI and a plain-language message with no figures. */
+export interface EngineWarning {
+  readonly code:
+    | 'overAllowance'
+    | 'overMoneyPurchaseAllowance'
+    | 'tapered'
+    | 'carryForwardUsed'
+    | 'carryForwardOutOfTime'
+    | 'childcareOverLimit'
+  readonly message: string
+}
+
+/** One earlier year's unused allowance, and how much of it this year uses (earliest year first). */
+export interface CarryForwardUse {
+  readonly yearsAgo: number
+  readonly available: Money
+  readonly used: Money
+  readonly left: Money
+}
+
+/** One band's share of the annual allowance charge. */
+export interface ChargeSlice {
+  readonly name: string
+  /** The rate charged: the band's rate, or the basic rate for a band below the basic rate band. */
+  readonly rate: Ratio
+  /** Excess pension savings falling in the band, to the nearest penny. */
+  readonly excess: Money
+  /** The charge on it, to the nearest penny. */
+  readonly charge: Money
+}
+
+export interface AnnualAllowanceChargeResult {
+  readonly ok: true
+  readonly taxYear: TaxYearId
+  readonly region: Region
+  /** Pension savings over the available allowance. */
+  readonly excess: Money
+  /** Taxable income after allowances ('reduced net income') the excess is added to, to the nearest penny. */
+  readonly reducedNetIncome: Money
+  /** One entry per configured band, in order. */
+  readonly bands: readonly ChargeSlice[]
+  /** The sum of the bands' charge. */
+  readonly total: Money
+}
+
+export interface AnnualAllowanceResult {
+  readonly ok: true
+  readonly taxYear: TaxYearId
+  /** Net income + salary sacrificed − gross relief at source contributions (G7), to the nearest penny. */
+  readonly thresholdIncome: Money
+  /** Net income + net pay contributions + employer contributions (G7). */
+  readonly adjustedIncome: Money
+  /** Whether the taper applies: both measures over their limits. */
+  readonly tapered: boolean
+  readonly standardAllowance: Money
+  /** Allowance lost to the taper, rounded down to a pound, limited by the minimum. */
+  readonly taperReduction: Money
+  /** This year's allowance after any taper. */
+  readonly allowance: Money
+  /** Earlier years' unused allowance within the look-back, earliest first, with what this year uses. */
+  readonly carryForward: readonly CarryForwardUse[]
+  readonly carryForwardUsed: Money
+  /** The money purchase annual allowance if it applies, otherwise null. */
+  readonly moneyPurchaseAnnualAllowance: Money | null
+  /** Which limit binds: the annual allowance with carry forward ('standard'), or the MPAA ('moneyPurchase'). */
+  readonly route: 'standard' | 'moneyPurchase'
+  /** The binding limit: the allowance plus carry forward, or the MPAA if lower. */
+  readonly allowanceAvailable: Money
+  /** Pension savings counted: the gross employee contribution, the salary sacrificed and other employer contributions. */
+  readonly counted: { readonly employee: Money; readonly employer: Money; readonly total: Money }
+  /** What is left of the available allowance; nothing if over. */
+  readonly headroom: Money
+  /** Pension savings over the available allowance; nothing if under. */
+  readonly excess: Money
+  /** The annual allowance charge on the excess (G11). */
+  readonly charge: AnnualAllowanceChargeResult
+  readonly warnings: readonly EngineWarning[]
+  readonly assumptions: readonly string[]
+}
+
+export type ChildcareScheme = 'taxFreeChildcare' | 'thirtyHours'
+
+export const CHILDCARE_SCHEMES = ['taxFreeChildcare', 'thirtyHours'] as const satisfies readonly ChildcareScheme[]
+
+export interface ChildcareSchemeResult {
+  readonly scheme: ChildcareScheme
+  readonly incomeLimit: Money
+  /** Eligible on income alone: adjusted net income at or under the limit. Other conditions are not checked. */
+  readonly eligibleOnIncome: boolean
+  /** How far adjusted net income is under the limit (nothing if over), to the nearest penny down. */
+  readonly headroom: Money
+  /** How far adjusted net income is over the limit (nothing if not), to the nearest penny up. */
+  readonly over: Money
+}
+
+export interface ChildcareResult {
+  readonly ok: true
+  readonly taxYear: TaxYearId
+  readonly adjustedNetIncome: Money
+  /** Always true: the limit is a cliff, the whole support is lost a penny over it (G12). */
+  readonly cliff: true
+  readonly schemes: readonly ChildcareSchemeResult[]
+  readonly warnings: readonly EngineWarning[]
+  readonly assumptions: readonly string[]
+}
+
+/** The optimiser's inputs: take-home inputs with the current pension, plus savings for the annual allowance. */
+export interface OptimiserInputs extends TaxInputs {
+  /** The method to sweep and the current contribution (zero for none). */
+  readonly pension: PensionInput
+  readonly savings: PensionSavingsInput
+  /** Include the childcare limits as thresholds and check eligibility at each point. */
+  readonly checkChildcare: boolean
+}
+
+export interface OptimiseOptions {
+  /** Distance between sweep points, in pence, above zero. */
+  readonly step: Money
+  /** The most sweep points allowed; a step too small for the range throws rather than run long. */
+  readonly maxPoints: number
+}
+
+export type ThresholdId =
+  | 'personalAllowanceTaperStart'
+  | 'personalAllowanceTaperEnd'
+  | 'hicbcThreshold'
+  | 'hicbcFullCharge'
+  | 'taxFreeChildcareLimit'
+  | 'thirtyHoursLimit'
+  | 'annualAllowanceThresholdIncome'
+
+export interface ThresholdContribution {
+  readonly threshold: ThresholdId
+  readonly measure: 'adjustedNetIncome' | 'thresholdIncome'
+  /** The threshold, to the nearest penny (the solver uses the exact figure). */
+  readonly limit: Money
+  /**
+   * - `alreadyMet`: the measure is at or under the limit at the current contribution.
+   * - `reachable`: a larger contribution brings it there.
+   * - `unreachable`: see `reason`.
+   */
+  readonly status: 'alreadyMet' | 'reachable' | 'unreachable'
+  /** Why it is unreachable: the gross amount would exceed gross pay, savings would exceed the allowance, or the method does not lower the measure. */
+  readonly reason: 'overGrossPay' | 'overAllowance' | 'notLoweredByMethod' | null
+  /** The smallest total contribution that brings the measure to the limit or under; null if the method cannot. */
+  readonly contribution: Money | null
+  /** That contribution less the current one (nothing if already met); null if the method cannot. */
+  readonly extra: Money | null
+  /** The measure at that contribution, to the nearest penny; null if the method cannot. */
+  readonly measureAt: Money | null
+}
+
+export interface ThresholdContributionsResult {
+  readonly ok: true
+  readonly taxYear: TaxYearId
+  readonly method: PensionMethod
+  readonly currentContribution: Money
+  readonly thresholds: readonly ThresholdContribution[]
+}
+
+export type PointReason =
+  | { readonly kind: 'sweep' }
+  | { readonly kind: 'current' }
+  | { readonly kind: 'maximum' }
+  | { readonly kind: 'threshold'; readonly threshold: ThresholdId }
+
+export interface OptimiserPoint {
+  readonly contribution: Money
+  /** The contribution less the current one; negative below it. */
+  readonly extra: Money
+  readonly reasons: readonly PointReason[]
+  /** Annual take-home pay. */
+  readonly takeHome: Money
+  readonly childBenefit: Money
+  readonly takeHomeIncludingChildBenefit: Money
+  readonly annualAllowanceCharge: Money
+  /** Take-home with Child Benefit, less the annual allowance charge. */
+  readonly spendable: Money
+  /** Into the pension for the year: out of pay (a salary sacrifice counts here), other employer contributions, the provider's relief. */
+  readonly pension: { readonly employee: Money; readonly employer: Money; readonly relief: Money; readonly total: Money }
+  readonly adjustedNetIncome: Money
+  readonly thresholdIncome: Money
+  /** Spendable given up per pound of extra pension, against no contribution; null at no contribution. */
+  readonly netCostPerPound: Ratio | null
+  /** Share of each extra pound into the pension since the previous point that did not come out of spendable income; null at the first point. */
+  readonly marginalRate: Ratio | null
+  readonly annualAllowance: {
+    readonly tapered: boolean
+    readonly allowanceAvailable: Money
+    readonly counted: Money
+    readonly headroom: Money
+    readonly excess: Money
+  }
+  /** Childcare eligibility on income, if asked; empty otherwise. */
+  readonly childcare: readonly { readonly scheme: ChildcareScheme; readonly eligibleOnIncome: boolean }[]
+  readonly warnings: readonly EngineWarning[]
+}
+
+export type CliffKind = 'hicbcStep' | 'childcareLimit' | 'annualAllowanceTaper' | 'studentLoanWholePounds'
+
+/** A jump in the curve between two neighbouring points. */
+export interface Cliff {
+  readonly kind: CliffKind
+  /** The contributions of the two points it lies between. */
+  readonly from: Money
+  readonly to: Money
+}
+
+export interface OptimiseResult {
+  readonly ok: true
+  readonly taxYear: TaxYearId
+  readonly estimate: true
+  readonly method: PensionMethod
+  readonly currentContribution: Money
+  /** The largest contribution the engine models: its gross amount equals gross pay. */
+  readonly maximumContribution: Money
+  readonly step: Money
+  /** Every candidate, in order of contribution; no point is called the best. */
+  readonly points: readonly OptimiserPoint[]
+  readonly thresholds: readonly ThresholdContribution[]
+  readonly cliffs: readonly Cliff[]
+  readonly assumptions: readonly string[]
+}
