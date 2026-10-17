@@ -14,7 +14,6 @@ import { scenarioStore } from '@/scenarios/index'
 import type { Scenario } from '@/scenarios/scenario'
 import { scenariosFor } from '@/scenarios/store'
 import { type AmountStyle, settingsStore } from '@/settings/settings'
-import { DISCLAIMER } from '@/sheets/parts'
 import { formatPage } from './route'
 
 /*
@@ -100,6 +99,9 @@ function CompareTable({ calculator, picked }: { calculator: CalculatorDefinition
 
   return (
     <div className="flex flex-col gap-3">
+      <p id={captionId} className="text-sm font-semibold text-text">
+        {picked.length} scenarios side by side. Changes are from {picked[0]?.name}, the baseline.
+      </p>
       <section
         aria-labelledby={captionId}
         // biome-ignore lint/a11y/noNoninteractiveTabindex: a scrollable region must be keyboard-focusable (axe scrollable-region-focusable).
@@ -107,8 +109,8 @@ function CompareTable({ calculator, picked }: { calculator: CalculatorDefinition
         className="overflow-x-auto rounded-lg border border-border bg-surface shadow-sm"
       >
         <table className="w-full min-w-max border-collapse text-sm">
-          <caption id={captionId} className="px-3 py-2 text-left text-sm font-semibold text-text">
-            {picked.length} scenarios side by side. Changes are from {picked[0]?.name}.
+          <caption className="sr-only">
+            {picked.length} scenarios side by side. Changes are from {picked[0]?.name}, the baseline.
           </caption>
           <thead>
             <tr className="border-t border-border">
@@ -281,10 +283,6 @@ export function ComparePage({ calculatorId }: { calculatorId: string }) {
           )}
         </>
       )}
-
-      <p className="text-sm text-text-muted">
-        <strong className="font-semibold text-text">Illustrative only, not financial advice.</strong> {DISCLAIMER}
-      </p>
     </div>
   )
 }

@@ -58,7 +58,9 @@ export default function HelloPage() {
           {helloCalculator.name}
         </h1>
         <p className="text-text-muted">{helloCalculator.summary}</p>
-        <VerifiedBadge config={config} />
+        <div className="flex">
+          <VerifiedBadge config={config} />
+        </div>
       </div>
 
       <ScenarioBar calculator={helloCalculator} session={session} />
@@ -190,13 +192,11 @@ export default function HelloPage() {
               `Results show ${amounts === 'pence' ? 'pounds and pence' : 'whole pounds'}, as set in Settings.`,
               'The tax year matters only when “Show the tax year’s dates” is on, and that needs verified tax data.',
             ]}
-          />
+          >
+            <p className="text-text-muted">Illustrative only, not financial advice. {DISCLAIMER}</p>
+          </AssumptionsPanel>
         </div>
       </div>
-
-      <p className="text-sm text-text-muted">
-        <strong className="font-semibold text-text">Illustrative only, not financial advice.</strong> {DISCLAIMER}
-      </p>
     </div>
   )
 }
