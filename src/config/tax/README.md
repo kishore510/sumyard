@@ -6,7 +6,8 @@ The only place tax rules live (see `CLAUDE.md` > Architecture and Accuracy rules
 - `sourced.ts`: `Sourced<T>` (`{ status: 'todo' }` or `{ status: 'verified', value, sourceUrl, verifiedOn }`), `isSourceUrl`, `isVerified`, `requireVerified`, and the counts behind the Tax data screen and the verified badge.
 - `audit.ts`: `auditTaxYear`, the check behind the repo-level test (`configs.test.ts`).
 - `index.ts`: the registry: `getTaxYear(id)`, `latestTaxYear()`, `listTaxYears()`, `taxYearLabel(id)`.
-- `<yyyy-yy>.ts`: one file per tax year, exporting `taxYear`. `2026-27.ts` is a skeleton: every leaf is `TODO` until slice 1a verifies it.
+- `<yyyy-yy>.ts`: one file per tax year, exporting `taxYear`. `2026-27.ts` was verified in slice 1a session E: every leaf is read from a GOV.UK page, with the line it came from in `docs/verification-log.md`.
+- `verification.test.ts`: every verified leaf cites a www.gov.uk page and a date not in the future, and the log's Values table matches the config (one row per value, same status, URL, date and per-group count).
 - `fixtures/`: **fake** years for tests only. Never imported by the app, never copied into a real file.
 
 Adding or changing a value: look it up on GOV.UK or HMRC, set the leaf to `{ status: 'verified', value, sourceUrl, verifiedOn }` (amounts with `fromPounds`, rates with `percent` or `ratio` from `src/lib/money.ts`), and log it in `docs/verification-log.md`. Sources must be `https://www.gov.uk/` pages; any other site needs an owner decision on the build's URL allowlist first (`docs/privacy.md`). Each change to tax values is its own PR.

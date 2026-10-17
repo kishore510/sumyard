@@ -1,6 +1,6 @@
 # PHASE-BRIEF: Slice 1a Optimiser: config and engine
 
-Status: In progress. Slice 1a runs as two build sessions: **E** (verify and populate the 2026-27 tax config, docs only around it, no engine code, 0.5.0) and **F** (the pure engine, tests first, after the owner answers session E's open questions). Rewritten at the start of every slice. Roadmap and status live in `PLAN.md`. Slice 0.5 is Done (0.4.0, PR #4, 17 October 2026); its progress log is archived at the end of this file, above slice 0's.
+Status: In progress. Session E is done (0.5.0): the config step is finished and logged; session F waits on the owner's answers to the OPEN questions. Slice 1a runs as two build sessions: **E** (verify and populate the 2026-27 tax config, docs only around it, no engine code, 0.5.0) and **F** (the pure engine, tests first, after the owner answers session E's open questions). Rewritten at the start of every slice. Roadmap and status live in `PLAN.md`. Slice 0.5 is Done (0.4.0, PR #4, 17 October 2026); its progress log is archived at the end of this file, above slice 0's.
 
 ## Docs rule
 
@@ -40,7 +40,27 @@ Starts after the owner answers session E's OPEN questions (`docs/verification-lo
 
 Add one entry per session: date, what was done, what differs from the brief, what the next session should pick up, and which docs were updated.
 
-<!-- session E entry goes here -->
+- **17 October 2026, build session E (verify and populate the 2026-27 config). Version 0.5.0.**
+  - Pre-check: PR #4 merged; its Pages deploy (run 39053101048) succeeded; the owner confirmed the session D checklist, so slice 0.5 is Done (0.4.0, PR #4). www.gov.uk pages fetch from the build environment (raw HTML read directly, not through a summariser). PDFs on assets.publishing.service.gov.uk are refused by the environment's proxy (403).
+  - Done (tests first: red `e8b7d9a`, green `6ab603f`; then one commit per group):
+    - [x] Every group verified: tax year dates 2/2, personal allowance and taper 3/3, rUK bands 1/1, Scottish bands 1/1, employee NI 4/4, employer NI 2/2, student loans 10/10, pensions 8/8, Child Benefit and HICBC 5/5, childcare 2/2. **38 of 38 verified; nothing left todo.** Each value has a row in `docs/verification-log.md` (page title, URL, date read, the line it came from, second source, notes).
+    - [x] Tax year checked on every page. Values come from pages that name 2026 to 2027 except: the relief-at-source rate (the GOV.UK guide states no year; resting on PTM044220 and the HMRC rates page), the taper reduction rate (PTM057100, "2023-24 onwards"), and the two childcare limits ("the current tax year", one page each). All listed for the owner's spot-check.
+    - [x] Two sources wherever two GOV.UK pages give the value; no conflicts. One printing difference logged: HMRC's rates page shows the top band as "Over £125,141" where three other pages say over or above £125,140.
+    - [x] OPEN questions O1 to O9 at the top of the log (NI per period or annual; student loan pay figure; band boundaries; HICBC partial £200 and rounding; taper rounding; income tax rounding; childcare conditions; Child Benefit weeks; higher-rate relief and ANI order).
+    - [x] Salary sacrifice change (NICs on more than £2,000 a year from 6 April 2029): logged as informational, not modelled. Budget check: no Budget after Budget 2025 on GOV.UK; Budget 2025's 2026 to 2027 figures match; Royal Assent of Finance Bill 2025-26 not confirmed on GOV.UK.
+    - [x] `docs/money.md`: rounding stated for NI (NIM11002), student loan deductions (SL3 2026 to 2027) and the annual allowance taper (PTM057100); not stated for income tax, the personal allowance taper, annual student loan repayments, HICBC and the relief-at-source gross-up. No mode chosen.
+    - [x] `docs/worked-examples.md`: 23 published examples, tagged by year and whether to mirror; two inconsistent as published (PAYE14015's HICBC example, the student loan cap example). No published numeric example for the personal allowance taper.
+    - [x] Tests: `verification.test.ts` (verified leaves cite www.gov.uk and a past date; the log's Values table matches the config, per row and per group); a guard against figures in year-file comments; Tax data, Settings, badge and Hello tests follow the config's real state, with the Hello refusal moved to a fake registry.
+    - [x] Tax data in Chromium at 360 and 1280 px, light and dark: no horizontal scroll or overflow, 44 px source links, axe 0 violations, no external requests. Fixed: bands now read "20% above £…" on income after allowances.
+  - Differences from the brief and prompt:
+    - **Schema change:** two new leaves, `pension.reliefAtSourceRate` and `childBenefit.hicbc.incomePerPercent`, so the engine never hardcodes either. No `note` field was added: no value needed a non-GOV.UK source.
+    - The skeleton-only tests in `configs.test.ts` were replaced (they asserted every leaf todo). The other sourcing guards are unchanged. The year-file glob in `configs.test.ts` no longer picks up the test files beside it, which had run `sourced.test.ts` and `index.test.ts` twice (977 tests now against 1,010 at 0.4.0: `configs.test.ts` alone ran 72 with the duplicates and runs 33 now; no test was removed apart from the two skeleton ones).
+    - The log's Values table has the prompt's columns; "Checked by" is a line above the table.
+    - A separate formatting commit (`b9b4798`) fixed a line-length issue in the schema commit.
+    - Nothing was taken from memory: figures in search queries were used only to find pages, and every value was read on the page cited.
+  - Not verified: anything behind assets.publishing.service.gov.uk (CA38, CA44, tax tables); legislation; Royal Assent of Finance Bill 2025-26; whether a 2026 Budget is scheduled; 768 px and real devices.
+  - Next (session F): the owner answers O1 to O9 and spot-checks the riskiest values (Scottish bands, the taper, student loan thresholds, HICBC, the annual allowance taper) and agrees rounding modes; then the pure engine, tests first, mirroring the agreed worked examples. Remove the Hello calculator when the first real calculator ships.
+  - Docs updated: `PHASE-BRIEF.md`, `PLAN.md`, `CHANGELOG.md` (0.5.0), `CLAUDE.md` (verification test), `docs/verification-log.md`, `docs/money.md`, new `docs/worked-examples.md`, `docs/performance.md`, `docs/README.md`, `src/config/tax/README.md`, `src/calculators/hello/README.md`, Help topics (tax data, Troubleshooting).
 
 ## Archive: slice 0.5 progress log
 

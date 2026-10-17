@@ -31,7 +31,7 @@ The marker is remembered in this browser. If storage is blocked, it shows again 
 
 ## Tax data says “Not yet verified”, or a calculator shows no results
 
-That is expected in this version: no tax figure has been checked yet, so none is used, and anything that needs one shows a “not verified” notice instead of results. See [How tax data and “last verified” work](help:tax-data-and-last-verified).
+Every 2026 to 2027 figure has been checked, so you should not see this for that year. If you do, a figure the page needs has not been checked (for example after a Budget change, or for a tax year added later), and the page shows a “not verified” notice instead of results rather than guess. See [How tax data and “last verified” work](help:tax-data-and-last-verified).
 
 ## The page looks out of date
 

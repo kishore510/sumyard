@@ -10,8 +10,8 @@
 
 - No tax logic and no tax figure. The default amount and percentage are arbitrary demonstration values.
 - Amount: whole pence, from zero to one thousand million pounds. Percentage: -100 to 100, at most two decimals, stored as canonical text and read as an exact Ratio. Steps: 2 to 10. These limits keep every step inside the safe-integer range.
-- "Show the tax year's dates" asks `requireVerified` for `period.start` and `period.end`. On the skeleton 2026-27 config they are unverified, so the page shows the refusal notice instead of results. That is the intended demonstration.
+- "Show the tax year's dates" asks `requireVerified` for `period.start` and `period.end`. Since slice 1a session E they are verified in 2026-27, so the page shows the dates; with an unverified year it shows the refusal notice instead of results (tested with a fake year in `HelloPage.refusal.test.tsx`).
 
 ## Edge cases (each tested in `calc.test.ts`)
 
-Rounding modes (nearest, down, up) at a half penny; a negative percentage (halves away from zero for nearest); the largest amount at the largest percentage stays safe; the refusal on the skeleton; dates shown for a fake verified year; every invalid input field.
+Rounding modes (nearest, down, up) at a half penny; a negative percentage (halves away from zero for nearest); the largest amount at the largest percentage stays safe; the refusal on a fake unverified year; dates shown for a fake verified year; every invalid input field.
