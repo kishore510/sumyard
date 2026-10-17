@@ -261,7 +261,11 @@ export const TAX_GROUPS: readonly TaxGroup[] = [
       { path: 'childBenefit.weeklyRates.additionalChild', label: 'Weekly rate: each additional child', kind: 'money' },
       { path: 'childBenefit.hicbc.threshold', label: 'Charge starts above adjusted net income of', kind: 'money' },
       { path: 'childBenefit.hicbc.fullChargeAt', label: 'Charge equals the benefit above adjusted net income of', kind: 'money' },
-      { path: 'childBenefit.hicbc.incomePerPercent', label: 'Charge: income over the threshold per percentage point of the benefit', kind: 'money' },
+      {
+        path: 'childBenefit.hicbc.incomePerPercent',
+        label: 'Charge: income over the threshold per percentage point of the benefit',
+        kind: 'money',
+      },
     ],
   },
   {
@@ -269,7 +273,11 @@ export const TAX_GROUPS: readonly TaxGroup[] = [
     title: 'Childcare support',
     fields: [
       { path: 'childcare.taxFreeChildcare.incomeLimit', label: 'Tax-Free Childcare: income limit', kind: 'money' },
-      { path: 'childcare.thirtyHours.incomeLimit', label: 'Free Childcare for Working Parents (30 hours, England): income limit', kind: 'money' },
+      {
+        path: 'childcare.thirtyHours.incomeLimit',
+        label: 'Free Childcare for Working Parents (30 hours, England): income limit',
+        kind: 'money',
+      },
     ],
   },
 ]
