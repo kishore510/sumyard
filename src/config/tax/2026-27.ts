@@ -22,6 +22,10 @@ const INCOME_TAX_RATES: SourceUrl = 'https://www.gov.uk/income-tax-rates'
 const HMRC_INCOME_TAX_RATES: SourceUrl =
   'https://www.gov.uk/government/publications/rates-and-allowances-income-tax/income-tax-rates-and-allowances-current-and-past'
 const EMPLOYER_RATES: SourceUrl = 'https://www.gov.uk/guidance/rates-and-thresholds-for-employers-2026-to-2027'
+const PENSION_RATES: SourceUrl = 'https://www.gov.uk/government/publications/rates-and-allowances-pension-schemes/pension-schemes-rates'
+const TAPERED_ALLOWANCE_MANUAL: SourceUrl = 'https://www.gov.uk/hmrc-internal-manuals/pensions-tax-manual/ptm057100'
+const CARRY_FORWARD: SourceUrl = 'https://www.gov.uk/guidance/pension-administrators-check-your-members-annual-allowance'
+const PENSION_TAX_RELIEF: SourceUrl = 'https://www.gov.uk/tax-on-your-private-pension/pension-tax-relief'
 const HMRC_NI_RATES: SourceUrl =
   'https://www.gov.uk/government/publications/rates-and-allowances-national-insurance-contributions/rates-and-allowances-national-insurance-contributions'
 
@@ -77,11 +81,16 @@ export const taxYear: TaxYearConfig = {
     postgraduate: { threshold: read(fromPounds(21_000), EMPLOYER_RATES), rate: read(percent('6'), EMPLOYER_RATES) },
   },
   pension: {
-    annualAllowance: TODO,
-    taper: { thresholdIncome: TODO, adjustedIncome: TODO, minimumAllowance: TODO, reductionRate: TODO },
-    carryForward: { yearsBack: TODO },
-    moneyPurchaseAnnualAllowance: TODO,
-    reliefAtSourceRate: TODO,
+    annualAllowance: read(fromPounds(60_000), PENSION_RATES),
+    taper: {
+      thresholdIncome: read(fromPounds(200_000), PENSION_RATES),
+      adjustedIncome: read(fromPounds(260_000), PENSION_RATES),
+      minimumAllowance: read(fromPounds(10_000), PENSION_RATES),
+      reductionRate: read(ratio(1, 2), TAPERED_ALLOWANCE_MANUAL),
+    },
+    carryForward: { yearsBack: read(3, CARRY_FORWARD) },
+    moneyPurchaseAnnualAllowance: read(fromPounds(10_000), PENSION_RATES),
+    reliefAtSourceRate: read(percent('20'), PENSION_TAX_RELIEF),
   },
   childBenefit: {
     weeklyRates: { eldestOrOnly: TODO, additionalChild: TODO },
