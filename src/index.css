@@ -1,0 +1,53 @@
+@import 'tailwindcss';
+@import '@fontsource-variable/inter';
+@import './styles/tokens.css';
+
+@layer base {
+  html,
+  body,
+  #root {
+    min-height: 100dvh;
+  }
+
+  body {
+    background-color: var(--sy-bg);
+    color: var(--sy-text);
+    font-family: var(--font-sans);
+    font-synthesis: none;
+    -webkit-font-smoothing: antialiased;
+    -webkit-tap-highlight-color: transparent;
+    text-rendering: optimizeLegibility;
+  }
+
+  :focus-visible {
+    outline: var(--sy-focus-ring-width) solid var(--sy-focus);
+    outline-offset: var(--sy-focus-ring-offset);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      /* biome-ignore lint/complexity/noImportantStyles: reduced motion must beat every component transition (as Chalkline). */
+      transition-duration: 0s !important;
+      /* biome-ignore lint/complexity/noImportantStyles: as above. */
+      animation-duration: 0s !important;
+    }
+  }
+}
+
+@layer components {
+  /* Side padding that respects notches and rounded corners. */
+  .sy-safe-x {
+    padding-left: max(var(--sy-gutter), env(safe-area-inset-left));
+    padding-right: max(var(--sy-gutter), env(safe-area-inset-right));
+  }
+
+  .sy-safe-top {
+    padding-top: env(safe-area-inset-top);
+  }
+
+  .sy-safe-bottom {
+    padding-bottom: max(var(--sy-gutter), env(safe-area-inset-bottom));
+  }
+}
