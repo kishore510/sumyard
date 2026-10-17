@@ -1,6 +1,6 @@
 # PHASE-BRIEF: Slice 1a Optimiser: config and engine
 
-Status: In progress. Session E is done (0.5.0): the config step is finished and logged; session F waits on the owner's answers to the OPEN questions. Slice 1a runs as two build sessions: **E** (verify and populate the 2026-27 tax config, docs only around it, no engine code, 0.5.0) and **F** (the pure engine, tests first, after the owner answers session E's open questions). Rewritten at the start of every slice. Roadmap and status live in `PLAN.md`. Slice 0.5 is Done (0.4.0, PR #4, 17 October 2026); its progress log is archived at the end of this file, above slice 0's.
+Status: In progress. Session E is done (0.5.0, PR #5, merged and deployed): the config step is finished and logged; session F waits on the owner's answers to the OPEN questions. Slice 1a runs as two build sessions: **E** (verify and populate the 2026-27 tax config, docs only around it, no engine code, 0.5.0) and **F** (the pure engine, tests first, after the owner answers session E's open questions). Rewritten at the start of every slice. Roadmap and status live in `PLAN.md`. Slice 0.5 is Done (0.4.0, PR #4, 17 October 2026); its progress log is archived at the end of this file, above slice 0's.
 
 ## Docs rule
 
@@ -40,7 +40,7 @@ Starts after the owner answers session E's OPEN questions (`docs/verification-lo
 
 Add one entry per session: date, what was done, what differs from the brief, what the next session should pick up, and which docs were updated.
 
-- **17 October 2026, build session E (verify and populate the 2026-27 config). Version 0.5.0.**
+- **17 October 2026, build session E (verify and populate the 2026-27 config). Version 0.5.0, PR #5.**
   - Pre-check: PR #4 merged; its Pages deploy (run 39053101048) succeeded; the owner confirmed the session D checklist, so slice 0.5 is Done (0.4.0, PR #4). www.gov.uk pages fetch from the build environment (raw HTML read directly, not through a summariser). PDFs on assets.publishing.service.gov.uk are refused by the environment's proxy (403).
   - Done (tests first: red `e8b7d9a`, green `6ab603f`; then one commit per group):
     - [x] Every group verified: tax year dates 2/2, personal allowance and taper 3/3, rUK bands 1/1, Scottish bands 1/1, employee NI 4/4, employer NI 2/2, student loans 10/10, pensions 8/8, Child Benefit and HICBC 5/5, childcare 2/2. **38 of 38 verified; nothing left todo.** Each value has a row in `docs/verification-log.md` (page title, URL, date read, the line it came from, second source, notes).
