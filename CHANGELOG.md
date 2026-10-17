@@ -4,6 +4,11 @@ All notable changes to Sumyard are listed here, newest first. The format follows
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-10-17
+
+### Added
+- **Internal only: the core tax engine.** Nothing you can see in the app has changed. This release adds the behind-the-scenes calculations a later release will use for take-home pay: income tax (with the Personal Allowance taper on higher incomes, for England, Wales and Northern Ireland or for Scotland), employee National Insurance and student loan repayments, all from the verified 2026 to 2027 figures. They are tested against examples GOV.UK publishes. No calculator uses them yet, and pensions, the Child Benefit charge and childcare checks come later.
+
 ## [0.5.0] - 2026-10-17
 
 ### Added
