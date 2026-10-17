@@ -17,16 +17,33 @@ export interface Finding {
 }
 
 /**
- * Exact strings that look like URLs but are never fetched or shown as links.
- * Each needs a reason. Adding one is a privacy decision: say so in the PR.
+ * Exact strings that look like URLs but are never fetched or shown as links,
+ * each allowed only in the kind of file it comes from. Each needs a reason.
+ * Adding one is a privacy decision: say so in the PR. The build check fails
+ * on an entry the build no longer contains, so the list can only shrink.
  */
-export const INERT_URLS: Readonly<Record<string, string>> = {
-  'http://www.w3.org/2000/svg': 'SVG namespace identifier used by React DOM to create elements; never fetched.',
-  'http://www.w3.org/1999/xlink': 'XLink namespace identifier used by React DOM for SVG attributes; never fetched.',
-  'http://www.w3.org/1998/Math/MathML': 'MathML namespace identifier used by React DOM; never fetched.',
-  'http://www.w3.org/XML/1998/namespace': 'XML namespace identifier used by React DOM for xml:* attributes; never fetched.',
-  'https://react.dev/errors/': "Prefix of the link React's production build puts in error messages (console only); never fetched.",
-  'https://tailwindcss.com': "Tailwind CSS's licence comment at the top of the stylesheet (kept for the MIT licence); never fetched.",
+export const INERT_URLS: Readonly<Record<string, { reason: string; fileType: '.js' | '.css' }>> = {
+  'http://www.w3.org/2000/svg': {
+    fileType: '.js',
+    reason: 'SVG namespace identifier used by React DOM to create elements; never fetched.',
+  },
+  'http://www.w3.org/1999/xlink': {
+    fileType: '.js',
+    reason: 'XLink namespace identifier used by React DOM for SVG attributes; never fetched.',
+  },
+  'http://www.w3.org/1998/Math/MathML': { fileType: '.js', reason: 'MathML namespace identifier used by React DOM; never fetched.' },
+  'http://www.w3.org/XML/1998/namespace': {
+    fileType: '.js',
+    reason: 'XML namespace identifier used by React DOM for xml:* attributes; never fetched.',
+  },
+  'https://react.dev/errors/': {
+    fileType: '.js',
+    reason: "Prefix of the link React's production build puts in error messages (console only); never fetched.",
+  },
+  'https://tailwindcss.com': {
+    fileType: '.css',
+    reason: "Tailwind CSS's licence comment at the top of the stylesheet (kept for the MIT licence); never fetched.",
+  },
 }
 
 const TEXT_FILES = new Set(['.html', '.js', '.mjs', '.css', '.svg', '.json', '.webmanifest', '.txt', '.xml', '.map'])
@@ -61,14 +78,21 @@ export function scanText(file: string, text: string): Finding[] {
       findings.push({ file, url, reason: 'External URL in a place the browser fetches it' })
       continue
     }
-    if (GOV_UK.test(url) || url in INERT_URLS) continue
+    if (GOV_UK.test(url) || INERT_URLS[url]?.fileType === extname(file)) continue
     findings.push({ file, url, reason: 'External URL not on the allowlist (plain https gov.uk links only)' })
   }
   return findings
 }
 
+/** Every text file under `dir`, as full paths. */
+export function textFiles(dir: string): string[] {
+  return statSync(dir).isDirectory()
+    ? readdirSync(dir).flatMap((name) => textFiles(join(dir, name)))
+    : TEXT_FILES.has(extname(dir))
+      ? [dir]
+      : []
+}
+
 export function scanDir(dir: string): Finding[] {
-  const walk = (path: string): string[] =>
-    statSync(path).isDirectory() ? readdirSync(path).flatMap((name) => walk(join(path, name))) : TEXT_FILES.has(extname(path)) ? [path] : []
-  return walk(dir).flatMap((path) => scanText(relative(dir, path), readFileSync(path, 'utf8')))
+  return textFiles(dir).flatMap((path) => scanText(relative(dir, path), readFileSync(path, 'utf8')))
 }

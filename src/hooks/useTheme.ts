@@ -70,6 +70,9 @@ export function useTheme() {
   return { preference, theme, set, cycle }
 }
 
+/** The theme preference outside React (Settings > Reset to defaults and its Undo). Same store as the toggle. */
+export const themeStore = { get: getPreference, set: setPreference }
+
 /** Tests only: forget the in-memory preference so the next read comes from storage. */
 export function resetThemeForTests() {
   current = undefined

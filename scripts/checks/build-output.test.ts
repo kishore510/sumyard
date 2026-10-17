@@ -33,7 +33,7 @@ describe('built output', () => {
       .map((p) => readFileSync(p, 'utf8'))
       .join('\n')
     const version = JSON.parse(readFileSync(join(DIST, '..', 'package.json'), 'utf8')).version
-    expect(js).toContain(`"${version}"`)
+    expect(js).toMatch(new RegExp(`["'\`]${version.replaceAll('.', '\\.')}["'\`]`))
     expect(js).not.toContain('keepachangelog.com')
   })
 

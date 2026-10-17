@@ -12,7 +12,15 @@
  *   a released version no newer than package.json and the date is no later
  *   than "Last updated".
  * - Once a version is released, at least one slice is In progress or Done.
+ * - What's new can read CHANGELOG.md with the app's own parser
+ *   (src/help/changelog.ts): every section is Added, Changed or Fixed, and
+ *   every release lists something.
+ *
+ * vite.config.ts runs assertDocs on every build, so drift fails the build as
+ * well as the tests.
  */
+
+import { parseChangelog } from '../../src/help/changelog'
 
 export interface DocsInput {
   plan: string
@@ -149,5 +157,29 @@ export function checkDocs({ plan, changelog, packageJson, packageLock }: DocsInp
     problems.push(`PLAN.md: ${top.version} is released but no slice is In progress or Done`)
   }
 
+  problems.push(...whatsNewProblems(changelog))
   return problems
+}
+
+const SECTIONS = ['Added', 'Changed', 'Fixed']
+
+function whatsNewProblems(changelog: string): string[] {
+  const releases = parseChangelog(changelog)
+  if (!releases) return ['CHANGELOG.md: What’s new cannot read it (only headings, ### sections and - items, as Keep a Changelog)']
+  const problems: string[] = []
+  for (const release of releases) {
+    for (const section of release.sections) {
+      if (!SECTIONS.includes(section.title))
+        problems.push(`CHANGELOG.md [${release.version}]: "### ${section.title}" should be Added, Changed or Fixed`)
+    }
+    if (release.version !== 'Unreleased' && release.sections.length === 0)
+      problems.push(`CHANGELOG.md [${release.version}] lists no changes`)
+  }
+  return problems
+}
+
+/** Throws with every problem (used by the build). */
+export function assertDocs(input: DocsInput): void {
+  const problems = checkDocs(input)
+  if (problems.length > 0) throw new Error(`Docs are out of step:\n- ${problems.join('\n- ')}`)
 }
