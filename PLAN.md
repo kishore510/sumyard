@@ -1,6 +1,6 @@
 # Phase plan: Sumyard
 
-Last updated: 17 October 2026 (slice 0.5 session D: scenarios, export and import, backup and restore, shared components, chart, Hello calculator, 0.4.0; slice 0.5 waits on the owner's checks of the deployed site)
+Last updated: 17 October 2026 (slice 0.5 Done; slice 1a session E: 2026-27 tax config verified, 38 of 38 values, with nine OPEN questions for the engine, 0.5.0, PR #5)
 
 Draft roadmap. When a slice starts, rewrite its prompt against the real code (see the skeleton in PHASE-BRIEF.md). Do not treat these notes as final prompts.
 
@@ -13,8 +13,8 @@ Status values: Not started, In progress, Done (version, PR, date).
 | Slice | Scope | Status |
 |---|---|---|
 | 0 Foundation | Recon of Chalkline and Stickyard (stack, tokens, theme toggle, chrome inventory). Repo, TypeScript strict, lint, tests, CI, GitHub Pages deploy, `CLAUDE.md`, `PHASE-BRIEF.md`, `CHANGELOG.md`. Tokens from Chalkline, light / dark / system theme, app shell (top bar, menu, Help / What's new / About / Settings sheets), toasts with Undo, disclaimer footer. Web only | Done (0.2.0, PR #2, 17 October 2026) |
-| 0.5 Core plumbing | Money type and formatting, `Sourced<T>` tax config pipeline with a skeleton `2026-27`, Tax data screen, versioned scenario storage with JSON export and import, shared inputs and result components, token-aware chart, backup and restore, a "Hello calculator" placeholder that exercises all of it | In progress |
-| 1a Optimiser: config and engine | Verify and populate `2026-27` from gov.uk/HMRC, verification log, worked examples; then the pure engine (income tax with taper, NI, student loan, three pension methods, HICBC, annual allowance, `optimise()`). Tests first. No UI | Not started |
+| 0.5 Core plumbing | Money type and formatting, `Sourced<T>` tax config pipeline with a skeleton `2026-27`, Tax data screen, versioned scenario storage with JSON export and import, shared inputs and result components, token-aware chart, backup and restore, a "Hello calculator" placeholder that exercises all of it | Done (0.4.0, PR #4, 17 October 2026) |
+| 1a Optimiser: config and engine | Verify and populate `2026-27` from gov.uk/HMRC, verification log, worked examples; then the pure engine (income tax with taper, NI, student loan, three pension methods, HICBC, annual allowance, `optimise()`). Tests first. No UI | In progress |
 | 1b Optimiser: UI | The £100k+ page: inputs, current vs optimised take-home, marginal-rate and take-home-vs-contribution charts, cost of £1 more pension, warnings, scenario compare, assumptions, Help topic | Not started |
 | 2 Compound interest | Regular contributions, frequency and timing, compounding, inflation-adjusted view, fee drag, yearly table and chart | Not started |
 | 3 Car decision | Keep vs PCP vs HP vs loan: finance cost, depreciation, fuel/energy, insurance, tax, maintenance, residual value | Not started |
@@ -109,7 +109,7 @@ Status values: Not started, In progress, Done (version, PR, date).
 
 ### 0.5 Core plumbing
 - **Progress (17 October 2026).** Runs as two sessions. **Session C done (0.3.0):** money type and formatting, `Sourced<T>` tax-config pipeline with the registry and a `2026-27` skeleton (every leaf unverified, no figure), Tax data screen, verified badge, Settings tax-year default with a settings migration, menu footnote trimmed. **Session D done (0.4.0):** calculator registry and pages at `#/c/<id>`, scenarios under `sumyard:v1:scenarios` (save, update, save as new, load, rename, duplicate, delete with Undo, unsaved-changes indicator), export and import with a preview (Add or Replace), backup and restore and clear all data in Settings, compare page, shared inputs and result components, hand-rolled SVG chart, Hello calculator placeholder. Lighthouse mobile recorded in `docs/performance.md`. Details in the `PHASE-BRIEF.md` progress log.
-- **Status: In progress, not Done.** Every acceptance item that can be checked before merge passes (tests, Chromium checks at 360, 768 and 1280 px in both themes, axe, Lighthouse). The gap: the owner's manual checks on the deployed site (real phone, Safari, VoiceOver, a real file picker for import and restore on mobile), listed in `PHASE-BRIEF.md`. Set Done (0.4.0, the PR, the date) once they pass, as for slice 0.
+- **Done (17 October 2026).** PR #4 merged and deployed (Pages run 39053101048); the owner confirmed the manual checks on the deployed site (real phone, Safari, VoiceOver, a real file picker) at the start of slice 1a session E.
 - **Session D decisions:**
   - **Sheets over a calculator page:** each sheet history entry remembers the page underneath (`page` in the entry's state), so the page stays put behind the sheet and Close, Esc or Back land on it. A deep-linked sheet closes to home. Sheet routes are unchanged; `#/scenarios`, `#/import` (under Scenarios) and `#/restore` (under Settings) are new.
   - **Compare is a page** (`#/c/<id>/compare`) for the width; on a phone the table scrolls sideways with the row labels sticky. The selection lasts for the visit (not in the URL).
@@ -140,6 +140,18 @@ Status values: Not started, In progress, Done (version, PR, date).
 
 ### 1a Optimiser: config and engine
 Gate: the config step must be finished and logged before any engine code is written.
+
+- **Progress (17 October 2026).** Runs as two sessions. **Session E done (0.5.0, PR #5, merged and deployed 17 October 2026): config step done.** All 38 values in `2026-27.ts` verified from www.gov.uk pages read on 17 October 2026, one commit per group, each logged in `docs/verification-log.md` with the line it came from and a second source where one exists. Counts: tax year dates 2/2, personal allowance and taper 3/3, rUK bands 1/1, Scottish bands 1/1, employee NI 4/4, employer NI 2/2, student loans 10/10, pensions 8/8, Child Benefit and HICBC 5/5, childcare 2/2. Nothing left `todo`. Rounding guidance in `docs/money.md` (stated for NI, student loan deductions and the annual allowance taper; not stated for the rest). 23 published worked examples in `docs/worked-examples.md`. **Session F (engine) not started**: it waits on the owner's answers to the log's OPEN questions O1 to O9.
+- **What changed from these notes (session E):**
+  - Schema change: two new leaves, `pension.reliefAtSourceRate` and `childBenefit.hicbc.incomePerPercent`, so the engine never hardcodes the relief-at-source rate or the HICBC step. No `note` field was needed: every value is on www.gov.uk.
+  - Bands are stored as income after allowances (as HMRC's tables state them), each rate applying above its `from` (the previous band's published upper limit). NI thresholds are the annual figures; weekly and monthly ones are logged, not stored (O1).
+  - The personal allowance zero point is stated on GOV.UK but not stored; the engine works it out.
+  - Childcare limits rest on one page each, worded "the current tax year"; the riskiest values are listed in PR #5 for the owner's spot-check.
+  - The salary sacrifice NICs cap (from 6 April 2029) is logged as informational, not modelled. Budget check: no Budget after Budget 2025 on GOV.UK on 17 October 2026; Royal Assent of Finance Bill 2025-26 not confirmed on GOV.UK.
+  - HMRC PDFs on assets.publishing.service.gov.uk (CA38, CA44, tax tables) could not be fetched from the build environment.
+  - The Tax data screen shows bands as "20% above £…" on income after allowances.
+- **Rollback (0.5.0 to 0.4.0):** safe. No storage key or record changed; 0.4.0 shows the year as not verified again.
+- **Follow-up for session F:** answers to O1 to O9; the rounding modes to use (`docs/money.md`); which worked examples to mirror; then the engine, tests first.
 
 Config. All values must be looked up on gov.uk/HMRC and entered with source URL and date. Do not rely on memory or on this document.
 - Personal allowance, taper start, taper rate, and the income at which it reaches zero.
@@ -194,7 +206,8 @@ Engine (pure functions, tests first: red commit, then green).
 
 ## Open questions
 
-- Tax-config sources beyond www.gov.uk: allow `https://www.legislation.gov.uk/` (exact prefix, `.js` only) if a value is only published there? Widens the URL allowlist, so the owner decides.
+- Tax-config sources beyond www.gov.uk: allow `https://www.legislation.gov.uk/` (exact prefix, `.js` only) if a value is only published there? Widens the URL allowlist, so the owner decides. Not needed for 2026-27 (session E found every value on www.gov.uk).
+- Slice 1a engine questions O1 to O9 (`docs/verification-log.md`): NI per period or annual; the student loan pay figure; band boundaries; HICBC partial £200 and rounding; taper rounding; income tax rounding; childcare minimum earnings; Child Benefit weeks; higher-rate relief and ANI order.
 - URL-hash state sharing (a shareable link of inputs, local only): in or out.
 - Coverage target for pure calculator code.
 - Sumyard name and domain availability.
@@ -218,3 +231,5 @@ Engine (pure functions, tests first: red commit, then green).
 - A "Discard changes" action on a loaded scenario (today: load it again).
 - Chart tooltips on hover or tap (values are in the summary and the data table now).
 - Add Zustand and Zod if a later slice's state or import validation outgrows the small store and hand-written checks.
+- A later tax year that includes April 2029: model the salary sacrifice NICs cap (logged as informational in session E).
+- Show the source page's title next to "Source: GOV.UK" on Tax data, so identical link texts are told apart by sight (they differ only in their accessible names today).

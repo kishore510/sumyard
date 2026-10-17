@@ -15,9 +15,15 @@ import type { Reserved, Sourced, Verified } from './sourced'
  *   otherwise (Child Benefit is weekly). Whether a calculator needs annual or
  *   per-period figures (NI, student loans) is checked in 1a.
  * - Rates are exact Ratios, never floats.
- * - Income tax bands are a list, so no number of bands is assumed. Each band
- *   starts at `from` (taxable income, after allowances) and runs to the next
- *   band's `from`; the last has no upper limit.
+ * - Income tax bands are a list, so no number of bands is assumed. Amounts are
+ *   income after allowances, as HMRC's rates tables state them. A band's rate
+ *   applies to income above its `from`, which is the previous band's published
+ *   upper limit (zero for the first band), up to the next band's `from`; the
+ *   last has no upper limit. Sources print the next band as starting one pound
+ *   higher (whole pounds); see docs/verification-log.md.
+ * - National Insurance thresholds are the annual figures HMRC publishes for
+ *   employers; payroll applies weekly or monthly ones (an open question for
+ *   the engine, logged in docs/verification-log.md).
  */
 
 /** A tax year's id, as its file name: "2026-27". */
@@ -26,7 +32,7 @@ export type TaxYearId = `${number}-${number}`
 export interface TaxBand {
   /** The band's name as the source gives it. */
   readonly name: string
-  /** Taxable income at which the band starts. */
+  /** Income after allowances above which the band's rate applies. */
   readonly from: Money
   readonly rate: Ratio
 }
@@ -94,18 +100,22 @@ export interface TaxYearConfig {
       readonly yearsBack: Sourced<number>
     }
     readonly moneyPurchaseAnnualAllowance: Sourced<Money>
+    /** Relief at source: the rate at which the provider claims relief on a contribution and adds it to the pot. */
+    readonly reliefAtSourceRate: Sourced<Ratio>
   }
   readonly childBenefit: {
     readonly weeklyRates: {
       readonly eldestOrOnly: Sourced<Money>
       readonly additionalChild: Sourced<Money>
     }
-    /** High Income Child Benefit Charge. 1a checks whether the charge between the two follows from them or needs a step field. */
+    /** High Income Child Benefit Charge. */
     readonly hicbc: {
-      /** Adjusted net income at which the charge starts. */
+      /** Adjusted net income above which the charge starts. */
       readonly threshold: Sourced<Money>
-      /** Adjusted net income at which the charge equals the Child Benefit. */
+      /** Adjusted net income above which the charge equals the Child Benefit. */
       readonly fullChargeAt: Sourced<Money>
+      /** Income over the threshold for each percentage point of the Child Benefit charged, as GOV.UK states the rule. */
+      readonly incomePerPercent: Sourced<Money>
     }
   }
   readonly childcare: {
@@ -186,7 +196,7 @@ export const TAX_GROUPS: readonly TaxGroup[] = [
     title: 'Personal allowance and taper',
     fields: [
       { path: 'incomeTax.personalAllowance', label: 'Personal allowance', kind: 'money' },
-      { path: 'incomeTax.taperStart', label: 'Taper starts at adjusted net income of', kind: 'money' },
+      { path: 'incomeTax.taperStart', label: 'Taper starts above adjusted net income of', kind: 'money' },
       { path: 'incomeTax.taperRate', label: 'Allowance lost per pound over the taper start', kind: 'ratio' },
     ],
   },
@@ -240,6 +250,7 @@ export const TAX_GROUPS: readonly TaxGroup[] = [
       { path: 'pension.taper.reductionRate', label: 'Taper: allowance lost per pound over', kind: 'ratio' },
       { path: 'pension.carryForward.yearsBack', label: 'Carry forward: earlier tax years', kind: 'count' },
       { path: 'pension.moneyPurchaseAnnualAllowance', label: 'Money purchase annual allowance (MPAA)', kind: 'money' },
+      { path: 'pension.reliefAtSourceRate', label: 'Relief at source: rate the provider claims and adds', kind: 'ratio' },
     ],
   },
   {
@@ -248,8 +259,13 @@ export const TAX_GROUPS: readonly TaxGroup[] = [
     fields: [
       { path: 'childBenefit.weeklyRates.eldestOrOnly', label: 'Weekly rate: eldest or only child', kind: 'money' },
       { path: 'childBenefit.weeklyRates.additionalChild', label: 'Weekly rate: each additional child', kind: 'money' },
-      { path: 'childBenefit.hicbc.threshold', label: 'Charge starts at adjusted net income of', kind: 'money' },
-      { path: 'childBenefit.hicbc.fullChargeAt', label: 'Charge equals the benefit at adjusted net income of', kind: 'money' },
+      { path: 'childBenefit.hicbc.threshold', label: 'Charge starts above adjusted net income of', kind: 'money' },
+      { path: 'childBenefit.hicbc.fullChargeAt', label: 'Charge equals the benefit above adjusted net income of', kind: 'money' },
+      {
+        path: 'childBenefit.hicbc.incomePerPercent',
+        label: 'Charge: income over the threshold per percentage point of the benefit',
+        kind: 'money',
+      },
     ],
   },
   {
@@ -257,7 +273,11 @@ export const TAX_GROUPS: readonly TaxGroup[] = [
     title: 'Childcare support',
     fields: [
       { path: 'childcare.taxFreeChildcare.incomeLimit', label: 'Tax-Free Childcare: income limit', kind: 'money' },
-      { path: 'childcare.thirtyHours.incomeLimit', label: '30 hours free childcare: income limit', kind: 'money' },
+      {
+        path: 'childcare.thirtyHours.incomeLimit',
+        label: 'Free Childcare for Working Parents (30 hours, England): income limit',
+        kind: 'money',
+      },
     ],
   },
 ]

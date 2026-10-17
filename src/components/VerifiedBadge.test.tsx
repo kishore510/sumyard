@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { FAKE_PARTIAL_YEAR, FAKE_TODO_YEAR, FAKE_VERIFIED_YEAR } from '@/config/tax/fixtures/fakeTaxYears'
 import { latestTaxYear } from '@/config/tax/index'
 import type { TaxYearConfig } from '@/config/tax/schema'
+import { yearStatus } from '@/config/tax/sourced'
 import { VerifiedBadge } from './VerifiedBadge'
 
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
@@ -27,11 +28,11 @@ afterEach(() => {
 const render = (config: TaxYearConfig, linked?: boolean) => act(() => root.render(<VerifiedBadge config={config} linked={linked} />))
 
 describe('VerifiedBadge', () => {
-  it('shows the tax year and "Not yet verified" for the skeleton', () => {
+  it('shows the real latest year with the label its verified values call for', () => {
     render(latestTaxYear())
     expect(host.textContent).toContain('2026 to 2027')
-    expect(host.textContent).toContain('Not yet verified')
-    expect(host.textContent).not.toMatch(/Last verified/)
+    const { complete } = yearStatus(latestTaxYear())
+    expect(host.textContent).toMatch(complete ? /Last verified/ : /Not yet verified/)
   })
 
   it('shows "Not yet verified" while any group is unverified', () => {

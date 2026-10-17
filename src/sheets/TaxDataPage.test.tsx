@@ -3,7 +3,9 @@ import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { FAKE_PARTIAL_YEAR, FAKE_TODO_YEAR, FAKE_VERIFIED_YEAR } from '@/config/tax/fixtures/fakeTaxYears'
+import { getTaxYear } from '@/config/tax/index'
 import { TAX_FIELDS, TAX_GROUPS, type TaxYearConfig } from '@/config/tax/schema'
+import { groupStatus, isVerified, leafAt, type Sourced } from '@/config/tax/sourced'
 import { TaxDataPage } from './TaxDataPage'
 
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
@@ -27,21 +29,40 @@ const year = (id: string) => host.querySelector<HTMLElement>(`[data-tax-year="${
 const group = (yearId: string, groupId: string) => year(yearId)!.querySelector<HTMLElement>(`[data-tax-group="${groupId}"]`)!
 const field = (yearId: string, path: string) => year(yearId)!.querySelector<HTMLElement>(`[data-tax-field="${path}"]`)!
 
-describe('Tax data screen, real registry (the 2026-27 skeleton)', () => {
-  it('lists the 2026 to 2027 year with every group flagged as not yet verified, which is correct for the skeleton', () => {
+describe('Tax data screen, real registry', () => {
+  it('lists the 2026 to 2027 year with each group flagged by how many of its values are verified', () => {
     render()
-    const skeleton = year('2026-27')
-    expect(skeleton).not.toBeNull()
-    expect(skeleton!.textContent).toContain('2026 to 2027')
+    const real = getTaxYear('2026-27')!
+    const el = year('2026-27')
+    expect(el).not.toBeNull()
+    expect(el!.textContent).toContain('2026 to 2027')
     for (const g of TAX_GROUPS) {
-      const el = group('2026-27', g.id)
-      expect(el.dataset.status, g.id).toBe('none')
-      expect(el.textContent).toContain(g.title)
-      expect(el.textContent).toContain(`0 of ${g.fields.length} verified`)
-      expect(el.textContent).toMatch(/Not yet verified/)
+      const status = groupStatus(real, g)
+      const groupEl = group('2026-27', g.id)
+      expect(groupEl.dataset.status, g.id).toBe(status.complete ? 'all' : status.verified > 0 ? 'some' : 'none')
+      expect(groupEl.textContent).toContain(g.title)
+      if (!status.complete) expect(groupEl.textContent).toMatch(/Not yet verified/)
     }
-    expect(skeleton!.querySelectorAll('[data-tax-field][data-verified="false"]')).toHaveLength(TAX_FIELDS.length)
-    expect(skeleton!.querySelector('a[href^="http"]')).toBeNull()
+    const verified = TAX_FIELDS.filter((f) => isVerified(leafAt(real, f.path) as Sourced<unknown>))
+    expect(el!.querySelectorAll('[data-tax-field][data-verified="true"]')).toHaveLength(verified.length)
+    expect(el!.querySelectorAll('[data-tax-field][data-verified="false"]')).toHaveLength(TAX_FIELDS.length - verified.length)
+  })
+
+  it('links each verified value only to its www.gov.uk source, opened in a new tab', () => {
+    render()
+    const real = getTaxYear('2026-27')!
+    for (const f of TAX_FIELDS) {
+      const l = leafAt(real, f.path) as Sourced<unknown>
+      const links = [...field('2026-27', f.path).querySelectorAll('a')]
+      if (!isVerified(l)) {
+        expect(links, f.path).toHaveLength(0)
+        continue
+      }
+      expect(links, f.path).toHaveLength(1)
+      expect(links[0]!.getAttribute('href'), f.path).toBe(l.sourceUrl)
+      expect(links[0]!.getAttribute('target')).toBe('_blank')
+      expect(links[0]!.getAttribute('rel')).toBe('noopener noreferrer')
+    }
   })
 
   it('says why: calculators show no results while a value they need is unverified', () => {
@@ -80,6 +101,8 @@ describe('Tax data screen states (fake years)', () => {
     expect(link.getAttribute('aria-label')).toMatch(/Personal allowance.*GOV\.UK.*new tab/)
     expect(field('2098-99', 'incomeTax.taperRate').textContent).toMatch(/\d%/)
     expect(field('2098-99', 'incomeTax.bands.rUK').textContent).toContain('Fake band B')
+    expect(field('2098-99', 'incomeTax.bands.rUK').textContent).toMatch(/Fake band A: \S+ from .*Fake band B: \S+ above /)
+    expect(field('2098-99', 'incomeTax.bands.rUK').textContent).toContain('On income after allowances')
     expect(field('2098-99', 'period.start').textContent).toContain('1 January 2098')
     for (const g of TAX_GROUPS) expect(group('2098-99', g.id).dataset.status).toBe('all')
     expect(year('2098-99')!.textContent).toContain('Last verified 2 January 2098')

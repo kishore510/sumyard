@@ -15,8 +15,8 @@ import { DISCLAIMER } from './parts'
  * many of its values are verified, and for each verified value its figure,
  * its GOV.UK source (a plain link, opened in a new tab, never fetched) and the
  * date it was checked. Unverified groups are flagged in words and with an
- * icon, not by colour alone. For the 2026-27 skeleton everything is
- * unverified, which is correct until slice 1a.
+ * icon, not by colour alone. Bands read as the config stores them: each
+ * rate applies to income after allowances above its starting amount.
  */
 
 const KIND = new Map<string, FieldKind>(TAX_FIELDS.map((f) => [f.path, f.kind]))
@@ -33,13 +33,16 @@ function Value({ kind, value }: { kind: FieldKind | undefined; value: unknown })
       return <>{String(value)}</>
     case 'bands':
       return (
-        <ul className="flex flex-col gap-0.5">
-          {(value as readonly TaxBand[]).map((band) => (
-            <li key={band.name}>
-              {band.name}: from {formatGBP(band.from, 'pence')} at {formatPercent(band.rate, 4)}
-            </li>
-          ))}
-        </ul>
+        <>
+          <ul className="flex flex-col gap-0.5">
+            {(value as readonly TaxBand[]).map((band, i) => (
+              <li key={band.name}>
+                {band.name}: {formatPercent(band.rate, 4)} {i === 0 ? 'from' : 'above'} {formatGBP(band.from, 'pence')}
+              </li>
+            ))}
+          </ul>
+          <span className="block text-xs font-normal text-text-muted">On income after allowances, up to the next band.</span>
+        </>
       )
     default:
       return null

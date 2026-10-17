@@ -4,6 +4,21 @@ All notable changes to Sumyard are listed here, newest first. The format follows
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-10-17
+
+### Added
+- **2026 to 2027 tax figures, checked against GOV.UK.** All 38 figures Sumyard holds for the year are now verified: the tax year’s dates; the Personal Allowance and its taper for higher incomes; income tax bands and rates for England, Wales and Northern Ireland and for Scotland; employee and employer National Insurance (standard employee, category A); student loan plans 1, 2, 4 and 5 and the postgraduate loan; pension limits (annual allowance, its taper, carry forward, the money purchase annual allowance) and the relief-at-source rate; Child Benefit and the High Income Child Benefit Charge; and the Tax-Free Childcare and 30 hours free childcare income limits. Each shows its value, a link to the GOV.UK page it came from and the date it was checked, on the **Tax data** page.
+- Two figures new to Tax data: the rate a relief-at-source pension provider adds, and the income per percentage point of the High Income Child Benefit Charge.
+
+### Changed
+- The tax year label now reads **2026 to 2027 tax year · Last verified 17 October 2026**, and Settings no longer marks 2026 to 2027 as not verified.
+- Tax data shows each income tax band as its rate above the amount where it starts, on income after allowances.
+- The Hello calculator’s “Show the tax year’s dates” now shows the dates instead of a “not verified” notice.
+- Help: the tax data topic and Troubleshooting describe verified figures.
+- **Not yet verified:** every 2026 to 2027 figure Sumyard holds is verified, but some details of **how** figures are applied are still open, for example whether National Insurance is worked out per month or per year, and how the Child Benefit charge rounds. The calculators that need them will settle each one, against GOV.UK, before they show results.
+- **Not covered:** other National Insurance categories, savings and dividend income, other years, and the change to salary sacrifice from April 2029 (noted, not modelled).
+- There are still no real calculators; they come in later releases.
+
 ## [0.4.0] - 2026-10-17
 
 ### Added

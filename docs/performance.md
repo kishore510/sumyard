@@ -21,3 +21,9 @@ A Playwright and axe-core 4.10 script (scratch, not committed) ran 305 checks in
 Also checked: no horizontal page scroll, 44 px targets, the chart fits the screen and uses token colours, title focus on page change, Esc from a sheet returns to the calculator page, export file name and envelope, delete then Undo, import of an untrusted name rendered as text, unknown calculators skipped, the old-tax-year warning, About counting the scenarios key, only owned storage keys, no external requests and no console errors.
 
 Not checked: a real phone, Safari, Firefox, a screen reader, the deployed site, a real file picker on mobile.
+
+## Browser checks (slice 1a session E, 0.5.0)
+
+The same scratch Playwright and axe-core 4.10 setup, against `vite preview`, on the Tax data sheet with real verified 2026-27 values and every group open, at 360 and 1280 px in light and dark. In every combination: 38 of 38 values verified, the badge reads "Last verified 17 October 2026", ten groups "All n verified", no horizontal page scroll, nothing wider than the sheet (long labels such as the childcare and HICBC ones wrap), every "Source: GOV.UK" link at least 44 px tall, no external requests, no console errors, and axe found no violations. One wording fix came out of it: bands now read "20% above £3,967.00" with "On income after allowances", not "from £3,967.00 at 20%".
+
+Not checked: 768 px, a real phone, Safari, Firefox, a screen reader, the deployed site.

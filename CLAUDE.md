@@ -57,7 +57,7 @@ Decided in the slice 0 recon (see `PHASE-BRIEF.md` progress log): mirror Chalkli
 - Tests first for calculator and config work: a red commit, then a green one.
 - One fresh session per part, at most per slice. Hand over through the PR description (what was done, what differs from the brief, what is next).
 - Docs are part of the work. Every build session ends by updating the docs, before the final commit; a session is not done until the close-out checklist below is complete. A docs test fails CI if `PLAN.md`, `CHANGELOG.md` and `package.json` drift apart.
-- Each change to tax values is its own PR, with the source for every changed value in `docs/verification-log.md`.
+- Each change to tax values is its own PR, with the source for every changed value in `docs/verification-log.md`; `src/config/tax/verification.test.ts` fails if the log's Values table and the config disagree.
 - Be concise and technical. Say what you changed and what you did not verify.
 
 ## Session close-out checklist (every build session, no exceptions)
