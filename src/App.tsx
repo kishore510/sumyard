@@ -1,25 +1,85 @@
-import { useEffect } from 'react'
+import { Suspense, useEffect, useRef } from 'react'
+import { CALCULATORS } from '@/calculators/index'
+import { CALCULATOR_PAGES } from '@/calculators/pages'
 import { FirstRunBanner } from '@/components/FirstRunBanner'
 import { Footer } from '@/components/Footer'
+import { ErrorBoundary, ErrorState, LoadingState } from '@/components/states'
 import { TopBar } from '@/components/TopBar'
 import { STORAGE_KEYS } from '@/lib/storageKeys'
+import { ComparePage } from '@/pages/ComparePage'
+import { HomePage, NotFoundPage } from '@/pages/HomePage'
+import type { PageRoute } from '@/pages/route'
+import { scenarioStore } from '@/scenarios/index'
 import { settingsStore } from '@/settings/settings'
-import { useSheetRoute } from '@/sheets/navigation'
+import { useLocation } from '@/sheets/navigation'
 import { Sheet } from '@/sheets/Sheet'
 import { ToastAnnouncer, ToastView } from '@/toast/Toast'
 
-/** The app shell: top bar, first-run notice, the (placeholder) home page, footer, sheets and toasts. */
-export function App() {
-  const route = useSheetRoute()
+/*
+ * The app shell: top bar, first-run notice, the page (home, a calculator at
+ * #/c/<id>, or its compare view), footer, sheets and toasts. A sheet opens
+ * over the page, which stays put underneath (src/sheets/route.ts).
+ */
 
-  // Settings changed in another tab.
+/** Set when the page changed and its title should take focus once it has loaded. */
+let titleFocusPending = false
+
+function focusTitle(): boolean {
+  const title = document.getElementById('main-title')
+  title?.focus()
+  return !!title
+}
+
+/** Rendered after a lazily loaded page, so its title can take focus when it arrives. */
+function PageLoaded() {
+  useEffect(() => {
+    if (titleFocusPending) titleFocusPending = !focusTitle()
+  }, [])
+  return null
+}
+
+function Page({ route }: { route: PageRoute }) {
+  if (route.kind === 'home') return <HomePage />
+  if (route.kind === 'not-found' || !CALCULATORS.get(route.id)) return <NotFoundPage />
+  if (route.kind === 'compare') return <ComparePage calculatorId={route.id} />
+  const Calculator = CALCULATOR_PAGES[route.id]
+  if (!Calculator) return <NotFoundPage />
+  return (
+    <ErrorBoundary
+      key={route.id}
+      fallback={
+        <ErrorState title="This calculator couldn’t be shown">Reload Sumyard. If it keeps happening, report it from About.</ErrorState>
+      }
+    >
+      <Suspense fallback={<LoadingState />}>
+        <Calculator />
+        <PageLoaded />
+      </Suspense>
+    </ErrorBoundary>
+  )
+}
+
+export function App() {
+  const { sheet, page, pageHash } = useLocation()
+  const firstPage = useRef(pageHash)
+
+  // Settings or scenarios changed in another tab.
   useEffect(() => {
     const onStorage = (e: StorageEvent) => {
       if (e.key === null || e.key === STORAGE_KEYS.settings.key) settingsStore.reload()
+      if (e.key === null || e.key === STORAGE_KEYS.scenarios.key) scenarioStore.reload()
     }
     window.addEventListener('storage', onStorage)
     return () => window.removeEventListener('storage', onStorage)
   }, [])
+
+  // A new page: back to the top, and focus its title so screen readers announce it (not on first load).
+  useEffect(() => {
+    if (pageHash === firstPage.current) return
+    firstPage.current = pageHash
+    window.scrollTo?.({ top: 0 })
+    titleFocusPending = !focusTitle()
+  }, [pageHash])
 
   return (
     <>
@@ -27,34 +87,12 @@ export function App() {
         <TopBar />
         <FirstRunBanner />
         <main className="sy-safe-x mx-auto flex w-full max-w-content flex-1 flex-col py-10">
-          <div className="flex max-w-prose flex-col gap-6">
-            <div className="flex flex-col gap-2">
-              <h1 id="main-title" tabIndex={-1} className="text-2xl font-semibold tracking-tight outline-none">
-                Sumyard
-              </h1>
-              <p className="text-lg text-text-muted">Personal UK finance calculators in one clean, ad-free place.</p>
-            </div>
-
-            <section
-              aria-labelledby="coming-title"
-              className="flex flex-col gap-2 rounded-lg border border-border bg-surface p-5 shadow-sm"
-            >
-              <h2 id="coming-title" className="text-base font-semibold">
-                Calculators coming
-              </h2>
-              <p className="text-sm text-text-muted">
-                There is nothing to calculate yet. This version sets up the app: its look, light and dark themes, Help, Settings and About.
-                The calculators arrive in later releases.
-              </p>
-            </section>
-
-            <p className="text-sm text-text-muted">Everything you enter stays on this device. Sumyard has no accounts, tracking or ads.</p>
-          </div>
+          <Page route={page} />
         </main>
         <Footer />
-        <ToastView layer="app" active={route === null} />
+        <ToastView layer="app" active={sheet === null} />
       </div>
-      {route && <Sheet route={route} />}
+      {sheet && <Sheet route={sheet} />}
       <ToastAnnouncer />
     </>
   )

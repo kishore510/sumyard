@@ -138,11 +138,11 @@ export function MainMenu() {
               About Sumyard
             </Item>
             <hr className="my-1 h-px border-0 bg-border" />
-            <Item icon={<FolderOpen />} disabled hint="Coming soon">
+            <Item icon={<FolderOpen />} onSelect={go({ kind: 'scenarios' })}>
               Scenarios
             </Item>
           </div>
-          <p className="px-3 pt-1 pb-2 text-xs text-text-muted">Changes are saved in this browser.</p>
+          <p className="px-3 pt-1 pb-2 text-xs text-text-muted">Changes are saved in this browser. Export to keep a copy.</p>
         </Panel>
       )}
     </div>

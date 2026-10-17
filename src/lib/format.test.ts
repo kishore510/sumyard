@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { formatGBP, formatGBPCompact, formatIsoDate, formatPercent } from './format'
+import {
+  formatAmountInput,
+  formatGBP,
+  formatGBPCompact,
+  formatGBPDelta,
+  formatIsoDate,
+  formatPercent,
+  formatPercentPointDelta,
+} from './format'
 import { fromPence, ratio } from './money'
 
 /* Made-up amounts and rates; none is a tax figure. */
@@ -104,5 +112,37 @@ describe('formatIsoDate', () => {
 
   it('shows an invalid date as such rather than guessing', () => {
     expect(formatIsoDate('2099-02-30' as never)).toBe('invalid date')
+  })
+})
+
+describe('formatAmountInput (what an amount field shows)', () => {
+  it.each<[number, string]>([
+    [0, '0'],
+    [100, '1'],
+    [123_400, '1,234'],
+    [123_456, '1,234.56'],
+    [123_450, '1,234.50'],
+    [5, '0.05'],
+    [-500, '-5'],
+    [-123_456, '-1,234.56'],
+  ])('%d pence shows as %s', (pence, text) => {
+    expect(formatAmountInput(p(pence))).toBe(text)
+  })
+})
+
+describe('deltas', () => {
+  it('formatGBPDelta signs every non-zero difference', () => {
+    expect(formatGBPDelta(p(1234), 'pence')).toBe('+£12.34')
+    expect(formatGBPDelta(p(-1234), 'pence')).toBe('-£12.34')
+    expect(formatGBPDelta(p(0), 'pence')).toBe('£0.00')
+    expect(formatGBPDelta(p(1234), 'pounds')).toBe('+£12')
+    // Rounds to £0 in whole pounds: no sign.
+    expect(formatGBPDelta(p(-40), 'pounds')).toBe('£0')
+  })
+
+  it('formatPercentPointDelta says percentage points', () => {
+    expect(formatPercentPointDelta(ratio(25, 1000))).toBe('+2.5 percentage points')
+    expect(formatPercentPointDelta(ratio(-1, 100))).toBe('-1 percentage point')
+    expect(formatPercentPointDelta(ratio(0, 1))).toBe('No change')
   })
 })

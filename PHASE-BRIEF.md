@@ -1,6 +1,6 @@
 # PHASE-BRIEF: Slice 0.5 Core plumbing
 
-Status: In progress. Session C (money and tax config, 0.3.0) is done; session D is next. Slice 0.5 runs as two build sessions: **C** (money and tax config, 0.3.0) and **D** (scenarios, shared components, chart, backup and restore). Rewritten at the start of every slice. Roadmap and status live in `PLAN.md`. Slice 0 is Done (0.2.0, PR #2); its progress log is archived at the end of this file.
+Status: In progress. Sessions C (0.3.0) and D (0.4.0) are done; the slice waits on the owner's manual checks of the deployed site (session D log below), then goes to Done. Slice 0.5 runs as two build sessions: **C** (money and tax config, 0.3.0) and **D** (scenarios, shared components, chart, backup and restore). Rewritten at the start of every slice. Roadmap and status live in `PLAN.md`. Slice 0 is Done (0.2.0, PR #2); its progress log is archived at the end of this file.
 
 ## Docs rule
 
@@ -42,13 +42,65 @@ Tests first (red, then green) for money, format, schema guards, registry, the se
 - The Tax data screen shows everything as unverified; Settings offers 2026 to 2027 labelled not yet verified.
 - Lint, typecheck, test and build green; 0.3.0 with a changelog entry; docs updated.
 
-## Session D: scenarios, shared components, chart, backup and restore
+## Session D: scenarios, shared components, chart, backup and restore (0.4.0)
 
-Not started. Scope comes from `PLAN.md` slice 0.5 notes and session C's handover in the progress log below.
+Scope (from the session D prompt): calculator registry; pages at `#/c/<id>` with a decision on sheets over a page; scenarios under one key `sumyard:v1:scenarios` with hand-written validation and limits; save, update, save as new, load, rename, duplicate, delete with Undo and an unsaved-changes indicator; export (`sumyard-scenarios-YYYY-MM-DD.json`) and import with a preview (Add or Replace); backup, restore and clear all data in Settings; compare for 2 or 3 scenarios; shared inputs (`CurrencyInput`, `PercentInput`, `NumberInput`, `Select`, `Toggle`, `Segmented`) and results (`ResultCard`, `StatRow`, `AssumptionsPanel`, `ScenarioBar`, `RefusalNotice`, `VerifiedBadge`); a hand-rolled SVG chart; the Hello calculator; the Scenarios menu item, menu footnote and Help topics; Lighthouse recorded. Out of scope: any real calculator or tax figure, URL-scan changes, tour, shortcuts, Help search, service worker, URL-hash state.
+
+### Acceptance
+
+- Tests first (red `b3d4d53`, green `fcc5a23`) for the scenario store and migration, import validation, backup and restore, input parsing, chart scales and the registry. Done.
+- No real tax figure, rate, threshold, allowance or date anywhere. Done (Hello's defaults are arbitrary demo values).
+- No new dependency, no network request, no allowlist change. Done.
+- WCAG AA, focus, reduced motion; new surfaces checked at 360, 768 and 1280 px in both themes with axe. Done in Chromium.
+- 0.4.0 with a changelog entry; lint, typecheck, test and build green; docs updated. Done.
+- Owner's manual checks on the deployed site (below). **Open**: slice 0.5 goes to Done after these.
 
 ## Progress log
 
 Add one entry per session: date, what was done, what differs from the brief, what the next session should pick up, and which docs were updated.
+
+- **17 October 2026, build session D (scenarios, shared components, chart, backup and restore). Version 0.4.0.**
+  - Pre-check: PR #3 merged; its Pages deploy (run 39034251400) succeeded. No conflict with this log, except that the prompt's scenario shape replaces session C's suggested per-scenario `schemaVersion` (see differences).
+  - Done (tests first: red `b3d4d53`, green `fcc5a23`, then `5e0998e` for layout fixes found in the browser):
+    - [x] 1 Registry (`src/calculators/registry.ts`, app list in `index.ts`, pages in `pages.tsx`): `{ id, name, summary, placeholder?, inputsVersion, defaultInputs, validateInputs, migrateInputs, summarise }`; `readInputs` migrates and validates; unknown calculators and newer inputs are refused with a message.
+    - [x] 2 Routing: `#/c/<id>` and `#/c/<id>/compare` (`src/pages/route.ts`); the home page lists registered calculators. **Sheets over a page:** each sheet history entry records the page underneath, so the page stays rendered behind the sheet and Close, Esc and Back land on it; a deep-linked sheet closes to home. `close(to)` opens another page after closing (Scenarios > Open). New sheets: `#/scenarios`, `#/import` (parent Scenarios), `#/restore` (parent Settings). Title focus on page change.
+    - [x] 3 Storage (`src/scenarios/store.ts`, `scenario.ts`): one versioned record; fresh objects; `__proto__`, `constructor` and `prototype` refused (`src/lib/validate.ts`); caps: 80-character names, 200 scenarios, 20,000 characters of inputs, 1,000,000 characters stored. Storage blocked or full: kept in memory, `persist: 'failed'`, a notice with Export. Key in the guard, `docs/privacy.md` and About; storage used includes it.
+    - [x] 4 Operations: save, save changes, save as new, start new, load, rename, duplicate, delete with Undo (`src/scenarios/actions.ts`); "Unsaved changes" / "Saved" / "Not saved yet"; a scenario for a tax year not in the registry loads with a visible warning and uses the default year.
+    - [x] 5 Export and import (`exchange.ts`): the envelope, file name from the local date; file input only; preview with counts, names (text only), skipped with reasons, duplicates in the file, conflicts (same id or same name); Add (new ids, exact duplicates skipped) or Replace (with an export offered first).
+    - [x] 6 Backup and restore (`backup.ts`, Settings): kind `backup` with scenarios, settings, theme and acknowledgement, not `lastSeenVersion`; restore validates, previews, offers an export, then replaces; clear all data with a confirmation, an export prompt and "can’t be undone". The acknowledgement moved to `src/settings/acknowledged.ts` so restore and clear can set it.
+    - [x] 7 Compare: a page; 2 or 3 scenarios; inputs and results with deltas from the first (money via `formatGBPDelta`, rates in percentage points, counts, text Same/Different); on 360 px the table scrolls sideways with sticky row labels; refused results say so.
+    - [x] 8 Inputs (`src/components/inputs/`): parsing in `src/lib/parse.ts` (empty, negative, Unicode minus, commas, £, too many decimals, leading zeros, safe-integer guard, min/max); labels, hints and errors tied with `aria-describedby`; 44 px.
+    - [x] 9 Results: `ResultCard`, `StatRow`, `AssumptionsPanel`, `ScenarioBar` (with `ScenarioList` and `StorageNotice`), `RefusalNotice`, plus `InlineNotice` in `states.tsx`.
+    - [x] 10 Chart (`src/components/Chart/`): lines, bars, reference lines, markers, labelled axes, token colours, re-render on theme change, title and summary for screen readers, data table, from 280 px wide, no animation. Tests for ticks, empty and single-point data, negatives and large ranges.
+    - [x] 11 Hello calculator (`src/calculators/hello/`): amount × percentage with `mulRound`, a series of up to 10 steps, labelled as a placeholder; "Show the tax year’s dates" calls `requireVerified` and shows the refusal on the skeleton.
+    - [x] 12 Menu Scenarios enabled; footnote restored; Help topics rewritten.
+    - [x] 13 Lighthouse mobile (12.8.2, scratch install): 99 / 100 / 100 / 91 on home and Hello; the SEO miss is `robots.txt` under `vite preview` only. Recorded in `docs/performance.md`.
+    - [x] Chromium checks (Playwright and axe-core 4.10, scratch script): 305 checks, all passing, at 360, 768 and 1280 px in light and dark, plus storage full, clear all data and reduced motion. axe found 0 violations on every new surface (`docs/performance.md` lists them).
+  - Differences from the brief and prompt:
+    - Scenario shape is the prompt's (`inputsVersion`, `updatedAt`, schema version on the record), not session C's handover (`schemaVersion` per scenario).
+    - Scenarios this version can't use are **kept and written back**, not dropped, and a record it can't read is **never written over** ("blocked") until restore or clear. Not in the prompt; it makes rollback safe.
+    - Import refuses a whole file for hostile keys, a wrong kind or a newer export version; a bad scenario inside a good file is skipped with a reason. A backup chosen for Import (or the reverse) is refused with a pointer to the right place.
+    - Replace (import) keeps the scenarios this version can't show; restore and clear remove them (the restore preview says how many).
+    - Hello's inputs include a tax-year select, a reference-line toggle, a chart-style segmented control and the tax-year-dates toggle, so every shared input is exercised. The series has 2 to 10 steps (default 10).
+    - The page-level disclaimer sits in the assumptions panel; the footer shows it on every page.
+    - Additions to session C files, no change to existing functions: `compareRatio`, `subtractRatio` (money), `formatAmountInput`, `formatGBPDelta`, `formatPercentPointDelta` (format), `removeKey` (storage), `readSettingsValue` (settings), `clearSeen` (What's new).
+    - Chart geometry (height 240, padding) is constants in the component, not tokens. No token added.
+  - Not verified: a real phone, Safari, Firefox, a screen reader, the deployed site, a real file picker on mobile, Windows high contrast, very large imports on a slow phone.
+  - Owner's manual checklist (deployed site):
+    1. On a phone (Safari, and Chrome on Android if you have one), open the Hello calculator from the home page. Type `£1,234.56` into Amount: no error. Type `1.234`: the error shows under the box.
+    2. Save a scenario, change the percentage ("Unsaved changes" shows), Save changes. Save as new. Delete one and press Undo.
+    3. Export: the file `sumyard-scenarios-<date>.json` downloads. Delete a scenario, then Import the file with the phone's file picker: the preview lists it; choose Add.
+    4. Compare two scenarios: the table scrolls sideways and the row names stay in view.
+    5. Settings > Export a backup, change the theme, Restore from a backup: the preview shows, then your theme comes back.
+    6. Turn on "Show the tax year’s dates": the "not verified" notice replaces the results; its link opens Tax data, and closing returns to the calculator.
+    7. VoiceOver: the chart reads its title and summary; an input error is read with the field; the Delete toast says Undo is available.
+  - Next: the owner runs the checklist, then sets slice 0.5 to Done (0.4.0, the PR number, the date). Then **slice 1a** (config and engine): verify and fill `2026-27` from GOV.UK and HMRC with sources in `docs/verification-log.md`, collect worked examples, fill the rounding table in `docs/money.md`, then the pure engine, tests first. Notes for 1a and 1b:
+    - A new calculator is a registry entry (`src/calculators/<name>/definition.ts`: defaults, `validateInputs` building a fresh object, `migrateInputs`, `summarise`), a page in `pages.tsx`, and `requireVerified` inside `calc.ts`; build the page from the shared components (see the Hello page).
+    - Money inputs are `Money` (pence); percentages are stored as canonical text and read with `percentRatio`.
+    - Bump a calculator's `inputsVersion` and handle the old shape in `migrateInputs` whenever its inputs change after release.
+    - Remove the Hello calculator (its folder, the registry entry, the page entry, Help mentions) when the first real calculator ships. Its scenarios are then kept but hidden (rollback-safe), not shown.
+    - Owner decision still open: legislation.gov.uk sources.
+  - Docs updated: `PHASE-BRIEF.md`, `PLAN.md`, `CHANGELOG.md` (0.4.0), `CLAUDE.md` (registry, scenarios, shared components, untrusted JSON rule), `docs/privacy.md` (new key, files, migration and rollback), new `docs/performance.md`, `docs/README.md`, `src/lib/README.md`, `src/calculators/README.md`, new `src/calculators/hello/README.md`, the Help topics, About > Privacy text. `docs/design-tokens.md` unchanged: no token added.
 
 - **17 October 2026, build session C (money and tax config). Version 0.3.0.**
   - Pre-check: PR #2 merged, Pages deploy for it succeeded; the owner confirmed the session B manual checklist, so slice 0 is Done (0.2.0, PR #2, 17 October 2026).

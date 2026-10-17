@@ -1,4 +1,4 @@
-import { latestTaxYear, listTaxYears } from '@/config/tax/index'
+import { latestTaxYear, listTaxYears, taxYearLabel } from '@/config/tax/index'
 import type { TaxYearId } from '@/config/tax/schema'
 import { appStorage, type KeyValueStore, type Migration, readKey, upgradeRecord, writeKey } from '@/lib/storage'
 import { STORAGE_KEYS } from '@/lib/storageKeys'
@@ -60,6 +60,29 @@ export function parseSettings(text: string | null, years: TaxYearChoices = REGIS
     amounts: pick(AMOUNT_STYLES, record.amounts, defaults.amounts),
     taxYear: pick(years.ids as readonly TaxYearId[], record.taxYear, defaults.taxYear),
   }
+}
+
+/**
+ * Settings from a backup file (untrusted): a region and amount style it
+ * knows, or a refusal; a tax year this version doesn't have becomes the
+ * latest one, with a note saying so. Builds a fresh object.
+ */
+export function readSettingsValue(
+  raw: unknown,
+  years: TaxYearChoices = REGISTRY_YEARS,
+): { ok: true; settings: Settings; notes: string[] } | { ok: false; error: string } {
+  if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) return { ok: false, error: 'not a settings record' }
+  const record = raw as Record<string, unknown>
+  if (!REGIONS.includes(record.region as Region)) return { ok: false, error: 'region' }
+  if (!AMOUNT_STYLES.includes(record.amounts as AmountStyle)) return { ok: false, error: 'amounts' }
+  const notes: string[] = []
+  let taxYear = record.taxYear as TaxYearId
+  if (!years.ids.includes(taxYear)) {
+    const shown = typeof record.taxYear === 'string' && /^\d{4}-\d{2}$/.test(record.taxYear) ? taxYearLabel(record.taxYear) : 'missing'
+    taxYear = years.latest as TaxYearId
+    notes.push(`The backup’s default tax year, ${shown}, isn’t in this version, so it is set to ${taxYearLabel(taxYear)}.`)
+  }
+  return { ok: true, settings: { region: record.region as Region, amounts: record.amounts as AmountStyle, taxYear }, notes }
 }
 
 export function serializeSettings(settings: Settings): string {

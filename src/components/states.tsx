@@ -1,5 +1,6 @@
-import { AlertTriangle, Inbox, LoaderCircle } from 'lucide-react'
+import { AlertTriangle, Inbox, Info, LoaderCircle } from 'lucide-react'
 import { Component, type ErrorInfo, type ReactNode } from 'react'
+import { cn } from '@/lib/utils'
 
 /*
  * Shared empty, error and loading states (generalised from Chalkline's
@@ -56,6 +57,47 @@ export function LoadingState({ label = 'Loading' }: { label?: string }) {
     <div role="status" className="flex items-center justify-center gap-2 px-6 py-10 text-sm text-text-muted">
       <LoaderCircle aria-hidden="true" className="size-5 animate-spin motion-reduce:animate-none" />
       <span>{label}…</span>
+    </div>
+  )
+}
+
+/**
+ * A notice inside a page: something to know (info), something that needs
+ * attention (warning), or something that went wrong (error). Icon and words,
+ * never colour alone. Not a live region: changes are announced by toasts.
+ */
+export function InlineNotice({
+  tone = 'info',
+  title,
+  children,
+  action,
+  className,
+}: {
+  tone?: 'info' | 'warning' | 'error'
+  title?: string
+  children: ReactNode
+  action?: ReactNode
+  className?: string
+}) {
+  const Icon = tone === 'info' ? Info : AlertTriangle
+  return (
+    <div
+      data-tone={tone}
+      className={cn(
+        'flex gap-3 rounded-md border p-3 text-sm text-text',
+        tone === 'info' ? 'border-border bg-surface-muted' : 'border-border-strong bg-surface',
+        className,
+      )}
+    >
+      <Icon
+        aria-hidden="true"
+        className={cn('mt-0.5 size-5 shrink-0', tone === 'error' ? 'text-danger' : tone === 'warning' ? 'text-text' : 'text-text-muted')}
+      />
+      <div className="flex min-w-0 flex-1 flex-col gap-2">
+        {title && <p className="font-semibold">{title}</p>}
+        <div className="flex flex-col gap-1">{children}</div>
+        {action && <div className="flex flex-wrap gap-2">{action}</div>}
+      </div>
     </div>
   )
 }

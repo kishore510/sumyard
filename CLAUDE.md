@@ -20,12 +20,13 @@ Decided in the slice 0 recon (see `PHASE-BRIEF.md` progress log): mirror Chalkli
 ## Architecture rules
 
 - Each calculator is a pure function in `src/calculators/<name>/calc.ts`. No UI, storage, date-now or network imports. Inputs and tax config in, results out. Unit-tested.
+- Each calculator registers in `src/calculators/index.ts` (`definition.ts`: defaults, hand-written `validateInputs`, `migrateInputs`, `summarise`; see `registry.ts`) and its page in `pages.tsx` (route `#/c/<id>`). Bump `inputsVersion` and migrate when its inputs change. The Hello calculator is a placeholder: remove it when the first real calculator ships.
 - Tax rules (bands, allowances, NI, student loan thresholds, pension limits, HICBC, childcare limits) live only in `src/config/tax/<year>.ts`. Never hardcode a rate, threshold or allowance in logic, UI, tests or help text. After a Budget, the change is one config file.
 - Every config leaf is `Sourced<T>`: `{ status: 'todo' }` or `{ status: 'verified', value, sourceUrl, verifiedOn }`, with `sourceUrl` an `https://www.gov.uk/` page and `verifiedOn` `YYYY-MM-DD`. A malformed leaf is a type error and fails `src/config/tax/configs.test.ts`, as does any value outside a leaf. Fake configs live only in `src/config/tax/fixtures/` and only tests import them.
 - Calculators get tax values only through `requireVerified(config, paths)` (`src/config/tax/sourced.ts`). On a refusal (any path unverified) they show no results, and say which values are unverified.
 - Money is integer pence (`Money` in `src/lib/money.ts`). No float arithmetic on amounts outside `money.ts`: rates are exact `Ratio`s (`percent`, `ratio`), and products go through `mulRound` with an explicit rounding mode. Never assume a tax step's rounding: `docs/money.md` lists each step's mode once slice 1a verifies it. Display through `src/lib/format.ts`.
-- Shared components live in `src/components/`: inputs, result cards, assumptions panel, verified badge, scenario bar, chart wrapper. Build a calculator page from these; do not make one-off copies.
-- Scenarios store inputs only. Results are always recomputed.
+- Shared components live in `src/components/`: inputs (`inputs/`, parsing in `src/lib/parse.ts`), `ResultCard`/`StatRow`, `AssumptionsPanel`, `VerifiedBadge`, `RefusalNotice`, `ScenarioBar`, `Chart/` (hand-rolled SVG, token colours, table fallback). Build a calculator page from these; do not make one-off copies.
+- Scenarios store inputs only. Results are always recomputed. They live in `src/scenarios/` (store, export and import, backup); never write over a stored record the app can't read.
 - Every calculator page shows its assumptions and a "last verified" tax-year label, and the illustrative-not-advice disclaimer.
 
 ## Accuracy rules (most important)
@@ -38,7 +39,7 @@ Decided in the slice 0 recon (see `PHASE-BRIEF.md` progress log): mirror Chalkli
 ## Privacy and data
 
 - No backend, accounts, analytics, tracking or network requests. Fonts are self-hosted. CI scans the build for external URLs.
-- All data stays on the device. localStorage keys are namespaced `sumyard:v1:...`, carry a schema version, and are listed in `src/lib/storageKeys.ts`, `docs/privacy.md` and About > Privacy; a test fails if code and these lists disagree. Imported JSON is untrusted: validate it.
+- All data stays on the device. localStorage keys are namespaced `sumyard:v1:...`, carry a schema version, and are listed in `src/lib/storageKeys.ts`, `docs/privacy.md` and About > Privacy; a test fails if code and these lists disagree. Imported JSON is untrusted: check it with `src/lib/validate.ts` (no `__proto__`, `constructor` or `prototype` keys, size and depth limits), build fresh objects, render it only as text, and preview before writing.
 - The build scan allows plain https gov.uk links and the exact inert strings in `scripts/checks/externalUrls.ts` (`INERT_URLS`, each pinned to a file type; stale entries fail the build). Adding an entry there is a privacy decision; flag it in the PR. Tax-config sources are `https://www.gov.uk/` pages only (they pass the scan as is); another host, such as legislation.gov.uk, needs the owner's decision first.
 - App chrome text: Help (`content/help/*.md`) and What's new (`CHANGELOG.md`) describe only what exists, or mark it as coming.
 - Any new storage key needs a migration plan and an update to the privacy text.

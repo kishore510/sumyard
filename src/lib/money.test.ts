@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   add,
   compare,
+  compareRatio,
   fromPence,
   fromPounds,
   MoneyError,
@@ -13,6 +14,7 @@ import {
   ratio,
   roundToPounds,
   subtract,
+  subtractRatio,
   toPence,
   ZERO,
 } from './money'
@@ -266,5 +268,23 @@ describe('roundToPounds', () => {
 
   it('throws when rounding up would pass the safe-integer edge', () => {
     expect(() => roundToPounds(p(MAX), 'up')).toThrow(MoneyError)
+  })
+})
+
+describe('ratio comparison and difference (added in session D for inputs and compare deltas)', () => {
+  it('compareRatio is exact', () => {
+    expect(compareRatio(ratio(1, 3), ratio(333, 1000))).toBe(1)
+    expect(compareRatio(ratio(-1, 2), ratio(1, 2))).toBe(-1)
+    expect(compareRatio(ratio(2, 4), ratio(1, 2))).toBe(0)
+  })
+
+  it('subtractRatio is exact and reduced', () => {
+    expect(subtractRatio(ratio(75, 1000), ratio(5, 100))).toEqual(ratio(1, 40))
+    expect(subtractRatio(ratio(1, 2), ratio(1, 2))).toEqual(ratio(0, 1))
+    expect(subtractRatio(ratio(1, 3), ratio(1, 2))).toEqual(ratio(-1, 6))
+  })
+
+  it('subtractRatio throws past the safe range', () => {
+    expect(() => subtractRatio(ratio(1, 9_007_199_254_740_881), ratio(1, 9_007_199_254_740_847))).toThrow(MoneyError)
   })
 })
