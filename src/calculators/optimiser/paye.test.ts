@@ -289,6 +289,53 @@ describe('payeEstimate (B11, B13)', () => {
     }
   })
 
+  it('PAYE taxes the same pay as the year’s income tax: benefits in kind included, as payrolled (B17)', () => {
+    const grossPay = fromPounds(100_000)
+    const sacrificed = fromPounds(4_000)
+    const sacrificedForBenefit = fromPounds(1_500)
+    const employerPaid = fromPounds(1_200)
+    const inputs: TaxInputs = {
+      grossPay,
+      region: 'rUK',
+      studentLoans: [],
+      pension: { method: 'salarySacrifice', contribution: sacrificed },
+      benefits: [
+        { value: sacrificedForBenefit, taken: sacrificedForBenefit, payment: 'beforeTax' },
+        { value: employerPaid, taken: ZERO, payment: 'beforeTax' },
+      ],
+    }
+    const result = home(inputs)
+    const code = `${standard - 100}T`
+    const estimate = done(payeEstimate(code, result, config)) as PayeEstimate
+    // Gross, less sacrificed pension and sacrificed benefit cash, plus the full taxable value of the benefits.
+    const expected = add(subtract(subtract(grossPay, sacrificed), sacrificedForBenefit), add(sacrificedForBenefit, employerPaid))
+    expect(result.incomeTax.taxablePay).toBe(expected)
+    expect(result.payrollPay).toBe(expected)
+    expect(estimate.paye.pay).toBe(result.incomeTax.taxablePay)
+    expect(estimate.paye.total).toBe(referencePaye(code, result.incomeTax.taxablePay, config).total)
+  })
+
+  it('PAYE’s pay is the year’s taxable pay for every pension method and benefit mix', () => {
+    for (let i = 0; i < 100; i++) {
+      const grossPay = fromPence(Math.floor(random() * v.taperStart * 2) + 1)
+      const benefits = [
+        { value: fromPence(Math.floor(random() * 300_000)), taken: fromPence(Math.floor(random() * 100_000)), payment: 'beforeTax' as const },
+        { value: fromPence(Math.floor(random() * 300_000)), taken: fromPence(Math.floor(random() * 100_000)), payment: 'afterTax' as const },
+      ]
+      const inputs: TaxInputs = {
+        grossPay: add(grossPay, fromPounds(1_000)),
+        region: pick(['rUK', 'scotland'] as const),
+        studentLoans: [],
+        pension: { method: pick(PENSION_METHODS), contribution: fromPence(Math.floor((grossPay as number) * random() * 0.2)) },
+        taxableBenefits: fromPence(Math.floor(random() * 200_000)),
+        benefits,
+      }
+      const result = home(inputs)
+      const estimate = done(payeEstimate(`${standard}L`, result, config)) as PayeEstimate
+      expect(estimate.paye.pay, JSON.stringify(inputs)).toBe(result.incomeTax.taxablePay)
+    }
+  })
+
   it('the difference is the estimate less the liability’s income tax', () => {
     for (let i = 0; i < 100; i++) {
       const inputs: TaxInputs = {
