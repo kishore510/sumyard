@@ -179,14 +179,15 @@ describe('takeHome with benefit items', () => {
     expect(r.inputs.benefits).not.toBe(benefits)
   })
 
-  it('salary given up comes off NI-able pay, the student loan base and payroll pay; the benefit is taxed on the greater amount', () => {
+  it('salary given up comes off NI-able pay and the student loan base; the benefit is taxed on the greater amount, in PAYE’s pay too', () => {
     const value = fromPounds(400)
     const taken = fromPounds(1_000)
     const without = home(base({ studentLoans: ['plan2'] }))
     const r = home(base({ studentLoans: ['plan2'], benefits: [item(value, taken, 'beforeTax')] }))
     expect(r.nationalInsurance.niablePay).toBe(subtract(without.nationalInsurance.niablePay, taken))
     expect(r.studentLoan.pay).toBe(r.nationalInsurance.niablePay)
-    expect(r.payrollPay).toBe(subtract(without.payrollPay, taken))
+    // PAYE's pay is taxable pay (B17): the salary given up out, the greater amount back in.
+    expect(r.payrollPay).toBe(without.payrollPay)
     // Taxed on the salary given up (the greater), which it also took out of taxable pay: tax unchanged.
     expect(r.incomeTax.taxablePay).toBe(without.incomeTax.taxablePay)
     expect(r.annual.incomeTax).toBe(without.annual.incomeTax)
@@ -207,14 +208,14 @@ describe('takeHome with benefit items', () => {
     expect(r.adjustedNetIncome.adjustedNetIncome).toBe(add(without.adjustedNetIncome.adjustedNetIncome, subtract(value, taken)))
   })
 
-  it('after tax: NI, the student loan and payroll pay unchanged; take-home falls by the contribution less the tax saved', () => {
+  it('after tax: NI and the student loan unchanged; taxable pay and PAYE’s pay fall by the contribution; take-home falls by the contribution less the tax saved', () => {
     const value = fromPounds(1_200)
     const taken = fromPounds(300)
     const employerPaid = home(base({ studentLoans: ['plan1'], benefits: [item(value, ZERO, 'afterTax')] }))
     const r = home(base({ studentLoans: ['plan1'], benefits: [item(value, taken, 'afterTax')] }))
     expect(r.annual.nationalInsurance).toBe(employerPaid.annual.nationalInsurance)
     expect(r.annual.studentLoan).toBe(employerPaid.annual.studentLoan)
-    expect(r.payrollPay).toBe(employerPaid.payrollPay)
+    expect(r.payrollPay).toBe(subtract(employerPaid.payrollPay, taken))
     expect(r.incomeTax.taxablePay).toBe(subtract(employerPaid.incomeTax.taxablePay, taken))
     expect(r.annual.net).toBe(employerPaid.annual.net - taken + (employerPaid.annual.incomeTax - r.annual.incomeTax))
   })
@@ -256,12 +257,14 @@ describe('takeHome with benefit items', () => {
 
 describe('properties (B10)', () => {
   const add1 = (inputs: TaxInputs, extra: BenefitInput): TaxInputs => ({ ...inputs, benefits: [...(inputs.benefits ?? []), extra] })
+  /** Cash pay left after salary given up and the gross pension contribution: the most another item can take. */
+  const room = (r: TakeHomeResult): Money =>
+    subtract(subtract(r.annual.gross, r.benefits.salaryGivenUp), r.pension?.grossContribution ?? ZERO)
 
   it('salary sacrifice never raises NI or the student loan', () => {
     for (const inputs of CASES) {
       const before = home(inputs)
-      const room = subtract(before.payrollPay, inputs.pension?.method === 'reliefAtSource' ? before.pension!.grossContribution : ZERO)
-      const taken = fromPence(Math.floor((room as number) * random()))
+      const taken = fromPence(Math.floor((room(before) as number) * random()))
       const after = home(add1(inputs, item(pence(v.personalAllowance), taken, 'beforeTax')))
       expect(after.annual.nationalInsurance).toBeLessThanOrEqual(before.annual.nationalInsurance)
       expect(after.annual.studentLoan).toBeLessThanOrEqual(before.annual.studentLoan)
@@ -273,7 +276,7 @@ describe('properties (B10)', () => {
       const before = home(inputs)
       for (const payment of BENEFIT_PAYMENTS) {
         const taken =
-          payment === 'beforeTax' ? fromPence(Math.floor((before.payrollPay as number) * random() * 0.2)) : pence(v.personalAllowance)
+          payment === 'beforeTax' ? fromPence(Math.floor((room(before) as number) * random() * 0.2)) : pence(v.personalAllowance)
         const after = home(add1(inputs, item(pence(v.personalAllowance), taken, payment)))
         expect(after.annual.incomeTax, payment).toBeGreaterThanOrEqual(before.annual.incomeTax)
       }
@@ -361,7 +364,7 @@ describe('edge cases (B10)', () => {
     }
     expect(
       home(base({ grossPay, pension: { method: 'netPay', contribution: half }, benefits: [item(ZERO, half, 'beforeTax')] })).payrollPay,
-    ).toBe(ZERO)
+    ).toBe(half)
   })
 
   it('negative, fractional and unknown inputs are rejected', () => {

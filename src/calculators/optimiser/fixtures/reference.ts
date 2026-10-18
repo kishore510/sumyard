@@ -401,8 +401,8 @@ export function referenceTakeHome(inputs: TaxInputs, config: TaxYearConfig, poli
   // Post-tax deductions (decision B2) come off net pay and nothing else.
   const deductions = inputs.postTaxDeductions ?? 0
   const net = inputs.grossPay - sacrificed - tax - ni - loan - pension - charge - deductions - after
-  // Pay PAYE taxes: cash pay less salary sacrificed or net pay contributions (B13); benefits are not in it.
-  const payrollPay = inputs.pension && inputs.pension.method !== 'reliefAtSource' ? cash - inputs.pension.contribution : cash
+  // Pay PAYE taxes (B17): cash pay less salary sacrificed or net pay contributions, plus the benefits' taxable value.
+  const payrollPay = (inputs.pension && inputs.pension.method !== 'reliefAtSource' ? cash - inputs.pension.contribution : cash) + benefits
   return {
     tax,
     ni,

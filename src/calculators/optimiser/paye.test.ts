@@ -269,7 +269,7 @@ describe('paye (B13)', () => {
 })
 
 describe('payeEstimate (B11, B13)', () => {
-  it('uses payroll pay: salary given up and net pay contributions out, relief at source and benefits in kind not', () => {
+  it('uses taxable pay: salary given up and net pay contributions out, relief at source not, benefits in kind in', () => {
     const grossPay = fromPounds(80_000)
     for (const method of PENSION_METHODS) {
       const inputs: TaxInputs = {
@@ -319,8 +319,16 @@ describe('payeEstimate (B11, B13)', () => {
     for (let i = 0; i < 100; i++) {
       const grossPay = fromPence(Math.floor(random() * v.taperStart * 2) + 1)
       const benefits = [
-        { value: fromPence(Math.floor(random() * 300_000)), taken: fromPence(Math.floor(random() * 100_000)), payment: 'beforeTax' as const },
-        { value: fromPence(Math.floor(random() * 300_000)), taken: fromPence(Math.floor(random() * 100_000)), payment: 'afterTax' as const },
+        {
+          value: fromPence(Math.floor(random() * 300_000)),
+          taken: fromPence(Math.floor(random() * 100_000)),
+          payment: 'beforeTax' as const,
+        },
+        {
+          value: fromPence(Math.floor(random() * 300_000)),
+          taken: fromPence(Math.floor(random() * 100_000)),
+          payment: 'afterTax' as const,
+        },
       ]
       const inputs: TaxInputs = {
         grossPay: add(grossPay, fromPounds(1_000)),
@@ -352,14 +360,15 @@ describe('payeEstimate (B11, B13)', () => {
     }
   })
 
-  it('a benefit in kind with the code it would bring keeps PAYE close to the liability', () => {
-    // HMRC takes a benefit off the allowance in the code (What your tax code means): number less benefit ÷ code unit.
+  it('a payrolled benefit with the code left alone keeps PAYE close to the liability; a code that also takes it off counts it twice', () => {
+    // B17: the estimate treats benefits as payrolled. A benefit not payrolled is taken off the allowance in the code
+    // instead (What your tax code means), so entering both counts it twice and PAYE runs above the liability.
     const benefit = (v.codeUnit * 150) as Money
     const result = home({ grossPay: fromPounds(40_000), region: 'rUK', studentLoans: [], taxableBenefits: benefit })
-    const estimate = done(payeEstimate(`${standard - 150}L`, result, config)) as PayeEstimate
+    const estimate = done(payeEstimate(`${standard}L`, result, config)) as PayeEstimate
     expect(Math.abs(estimate.difference)).toBeLessThanOrEqual(v.bands.rUK.length)
-    const ignored = done(payeEstimate(`${standard}L`, result, config)) as PayeEstimate
-    expect(ignored.difference).toBeLessThan(0)
+    const twice = done(payeEstimate(`${standard - 150}L`, result, config)) as PayeEstimate
+    expect(twice.difference).toBeGreaterThan(0)
   })
 
   it('passes a code that is not modelled through, without an estimate', () => {

@@ -334,8 +334,8 @@ export interface TakeHomeResult {
   /** Benefit items summed (nothing in each without them). */
   readonly benefits: BenefitTotals
   /**
-   * Pay through payroll that PAYE taxes: gross pay less salary given up (for pension or benefits) and net pay contributions.
-   * Benefits in kind are not in it (decision B13).
+   * Pay PAYE taxes: the year's taxable pay (gross pay less salary given up, for pension or benefits, and net pay
+   * contributions, plus the taxable value of benefits in kind, as if payrolled). Decision B17.
    */
   readonly payrollPay: Money
   readonly annual: PeriodView

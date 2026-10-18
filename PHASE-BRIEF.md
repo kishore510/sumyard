@@ -57,6 +57,13 @@ What 1b-ii picks up, on the same page and inputs (version 3 since 0.11.0; add a 
 
 Add one entry per session: date, what was done, what differs from the brief, what the next session should pick up, and which docs were updated.
 
+- **18 October 2026, fix 0.11.1 (benefits in kind in the PAYE estimate's pay). User-visible.**
+  - Bug: for an owner's case with a salary sacrifice pension and benefit items (part sacrificed), `paye()` received taxable pay without the benefits (`payrollPay`, B13), while the annual income tax used taxable pay with them; the estimate ran below the liability by the benefits at the higher rate.
+  - Done: [x] red test (`paye.test.ts`: PAYE's pay equals `incomeTax.taxablePay`, gross less sacrificed pension and sacrificed benefit cash plus the benefits' full taxable value, with a code; and a 100-case property across pension methods and benefit mixes); [x] green: `payrollPay` is `effect.taxablePay`; reference fixture, `sacrifice.test.ts` (payroll pay expectations and the cash room two properties use) and the double-counting code test updated; [x] decision B17; assumptions and Help text; [x] `test`, `lint`, `typecheck`, `build` pass.
+  - Not verified: GOV.UK's payrolling benefits guidance (not read in this fix); whether a given employer payrolls each benefit; Tables A and B to D still unread (O10, O11); the owner's payslip beyond the one taxable pay figure (manual, B15).
+  - Next: session 1b-ii (above).
+  - Docs updated: `PHASE-BRIEF.md`, `PLAN.md`, `CHANGELOG.md` (0.11.1), `docs/modelling-decisions.md` (B17, B13 marked), `src/calculators/optimiser/README.md`, Help (`take-home-pay`). `CLAUDE.md` unchanged. No config value or storage key touched.
+
 - **18 October 2026, build part 0.11.0 (benefits through salary sacrifice, tax code and PAYE estimate, monthly breakdown). Version 0.11.0, user-visible.**
   - Pre-check: PR #11 merged; its Pages deploy (run 39104318284) succeeded. Names and signatures confirmed in the code: `TaxInputs` (`taxableBenefits`, `postTaxDeductions` as single annual figures), `takeHome(inputs, config, policy)`, the page's `ListItem` lists (`taxableBenefits`, `postTaxDeductions`), inputs version 2, `MONTHS_PER_YEAR`, `inputLimits.ts`. They match the prompt, except that the tax code needed a config value (below).
   - Done (decisions and lookups `101cba2`; config red `1cce4b8`, green `214769a`; engine red `2f0f54a`, green `c9b141f`; page red `6456262`, green `fd6a165`; then the close-out):

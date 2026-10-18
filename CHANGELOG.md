@@ -4,6 +4,11 @@ All notable changes to Sumyard are listed here, newest first. The format follows
 
 ## [Unreleased]
 
+## [0.11.1] - 2026-10-18
+
+### Fixed
+- **PAYE estimate with benefits in kind.** The estimate now taxes the same pay as the year's tax, benefits included (as if your employer payrolls them), so it no longer comes out too low.
+
 ## [0.11.0] - 2026-10-18
 
 ### Added

@@ -134,7 +134,7 @@ function assumptions(code: TaxCode): string[] {
     'PAYE estimate: level monthly pay for the whole tax year from this one job, on the cumulative basis: each month gets its share of the tax-free pay and of each band, set against pay so far.',
     'Tax-free pay is the code’s number times the amount per unit in the tax data, as GOV.UK’s guidance states. Payroll uses HMRC’s tables, which Sumyard has not read, so payslips can differ by pennies or more.',
     'Rounding: tax so far is rounded to the nearest penny each month, and each month’s tax is the change. Payroll rounding is not modelled.',
-    'PAYE taxes pay through payroll: pay after any salary sacrifice and net pay pension contributions. Benefits in kind count only through the code, and so do relief at source above the basic rate and the High Income Child Benefit Charge.',
+    'PAYE taxes the year’s taxable pay: pay after any salary sacrifice and net pay pension contributions, plus the taxable value of benefits in kind, spread evenly as if the employer payrolls them. If your benefits are not payrolled, your code takes them off your tax-free pay instead and this estimate counts them twice. Relief at source above the basic rate and the High Income Child Benefit Charge count only through the code.',
     'Only codes made of a number and a letter, with S or C in front, are modelled; K, BR, D, NT, emergency and no-allowance codes are not.',
     ...(code.regime === 'wales'
       ? ['A code with C in front uses the England, Wales and Northern Ireland bands: GOV.UK gives the same Welsh rates for this tax year.']
@@ -208,7 +208,7 @@ export function paye(text: string, pay: Money, config: TaxYearConfig): PayeResul
 }
 
 /**
- * The PAYE estimate for a take-home result's payroll pay, beside the year's
+ * The PAYE estimate for a take-home result's taxable pay, beside the year's
  * liability (its income tax, the headline figure) and the difference: the
  * estimate less the liability.
  */
