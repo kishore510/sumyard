@@ -20,7 +20,7 @@ Decided in the slice 0 recon (see `PHASE-BRIEF.md` progress log): mirror Chalkli
 ## Architecture rules
 
 - Each calculator is a pure function in `src/calculators/<name>/calc.ts`. No UI, storage, date-now or network imports. Inputs and tax config in, results out. Unit-tested.
-- Each calculator registers in `src/calculators/index.ts` (`definition.ts`: defaults, hand-written `validateInputs`, `migrateInputs`, `summarise`; see `registry.ts`) and its page in `pages.tsx` (route `#/c/<id>`). Bump `inputsVersion` and migrate when its inputs change. The Hello calculator is a placeholder: remove it when the first real calculator ships.
+- Each calculator registers in `src/calculators/index.ts` (`definition.ts`: defaults, hand-written `validateInputs`, `migrateInputs`, `summarise`; see `registry.ts`) and its page in `pages.tsx` (route `#/c/<id>`). Bump `inputsVersion` and migrate when its inputs change. Settings defaults (region) reach fresh inputs through the optional `applySettings`.
 - Tax rules (bands, allowances, NI, student loan thresholds, pension limits, HICBC, childcare limits) live only in `src/config/tax/<year>.ts`. Never hardcode a rate, threshold or allowance in logic, UI, tests or help text. After a Budget, the change is one config file.
 - Every config leaf is `Sourced<T>`: `{ status: 'todo' }` or `{ status: 'verified', value, sourceUrl, verifiedOn }`, with `sourceUrl` an `https://www.gov.uk/` page and `verifiedOn` `YYYY-MM-DD`. A malformed leaf is a type error and fails `src/config/tax/configs.test.ts`, as does any value outside a leaf. Fake configs live only in `src/config/tax/fixtures/` and only tests import them.
 - Calculators get tax values only through `requireVerified(config, paths)` (`src/config/tax/sourced.ts`). On a refusal (any path unverified) they show no results, and say which values are unverified.
@@ -65,7 +65,7 @@ Decided in the slice 0 recon (see `PHASE-BRIEF.md` progress log): mirror Chalkli
 
 1. `PHASE-BRIEF.md`: tick off what was done, record anything that differs from the brief, and write what the next session should pick up.
 2. `PLAN.md`: update the slice's status row (Not started, In progress, Done with version, PR and date), the "Last updated" line, and the slice notes (what changed from the prompt, rollback or follow-up notes). Move new ideas to the Backlog and new unknowns to Open questions.
-3. `CHANGELOG.md`: add a user-facing entry under `[Unreleased]` for anything a user can see or rely on; cut a version heading (and bump `package.json`) when a part is merged. Internal-only sessions need no changelog entry but still need steps 1 and 2.
+3. `CHANGELOG.md`: add a user-facing entry under `[Unreleased]` for anything a user can see or rely on; cut a version heading (and bump `package.json`) when a part is merged. Internal-only sessions need no changelog entry but still need steps 1 and 2. An internal entry is at most two sentences, with no open questions (those go in `PLAN.md`); user-visible entries stay short too.
 4. `CLAUDE.md`: update only if a rule, command, stack decision or convention changed. Keep it short.
 5. Tax and calculator docs: `docs/verification-log.md` for every config value touched, `docs/worked-examples.md` for new cross-checks, and the calculator's `README` (assumptions, sources, edge cases) and Help topic if behaviour changed.
 6. In-app text: About > Privacy if a storage key was added or changed; credits regenerate from dependencies.

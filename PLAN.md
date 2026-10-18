@@ -1,6 +1,6 @@
 # Phase plan: Sumyard
 
-Last updated: 17 October 2026 (slice 1a session G2: annual allowance, carry forward, the charge, childcare, `optimise()`, internal, 0.8.0; the engine is complete; slice 1a stays In progress until the owner agrees it is Done; slice 1b next)
+Last updated: 18 October 2026 (slice 1b session 1b-i: the first usable calculator, take-home pay with taxable benefits and post-tax deductions, 0.9.0; slice 1a Done with the HMRC cross-checks pending; slice 1b In progress, 1b-ii next)
 
 Draft roadmap. When a slice starts, rewrite its prompt against the real code (see the skeleton in PHASE-BRIEF.md). Do not treat these notes as final prompts.
 
@@ -14,8 +14,8 @@ Status values: Not started, In progress, Done (version, PR, date).
 |---|---|---|
 | 0 Foundation | Recon of Chalkline and Stickyard (stack, tokens, theme toggle, chrome inventory). Repo, TypeScript strict, lint, tests, CI, GitHub Pages deploy, `CLAUDE.md`, `PHASE-BRIEF.md`, `CHANGELOG.md`. Tokens from Chalkline, light / dark / system theme, app shell (top bar, menu, Help / What's new / About / Settings sheets), toasts with Undo, disclaimer footer. Web only | Done (0.2.0, PR #2, 17 October 2026) |
 | 0.5 Core plumbing | Money type and formatting, `Sourced<T>` tax config pipeline with a skeleton `2026-27`, Tax data screen, versioned scenario storage with JSON export and import, shared inputs and result components, token-aware chart, backup and restore, a "Hello calculator" placeholder that exercises all of it | Done (0.4.0, PR #4, 17 October 2026) |
-| 1a Optimiser: config and engine | Verify and populate `2026-27` from gov.uk/HMRC, verification log, worked examples; then the pure engine (income tax with taper, NI, student loan, three pension methods, HICBC, annual allowance, `optimise()`). Tests first. No UI | In progress |
-| 1b Optimiser: UI | The £100k+ page: inputs, current vs optimised take-home, marginal-rate and take-home-vs-contribution charts, cost of £1 more pension, warnings, scenario compare, assumptions, Help topic | Not started |
+| 1a Optimiser: config and engine | Verify and populate `2026-27` from gov.uk/HMRC, verification log, worked examples; then the pure engine (income tax with taper, NI, student loan, three pension methods, HICBC, annual allowance, `optimise()`). Tests first. No UI | Done (0.8.0, PR #8, 17 October 2026) |
+| 1b Optimiser: UI | The £100k+ page: inputs, current vs optimised take-home, marginal-rate and take-home-vs-contribution charts, cost of £1 more pension, warnings, scenario compare, assumptions, Help topic | In progress |
 | 2 Compound interest | Regular contributions, frequency and timing, compounding, inflation-adjusted view, fee drag, yearly table and chart | Not started |
 | 3 Car decision | Keep vs PCP vs HP vs loan: finance cost, depreciation, fuel/energy, insurance, tax, maintenance, residual value | Not started |
 | Later | Calculators below, no slot yet | Parked |
@@ -24,7 +24,7 @@ Status values: Not started, In progress, Done (version, PR, date).
 
 | Calculator | Notes | Status |
 |---|---|---|
-| Take-home pay | Reuses the 1b engine; likely the first to pick up | Not started |
+| Take-home pay | Shipped as the first part of 1b (session 1b-i, 0.9.0) at `#/c/optimiser`; 1b-ii adds the optimiser to the same page | In progress |
 | Mortgage overpayment | Check daily vs monthly interest handling per lender | Not started |
 | Loan / APR | Verify the APR definition against official guidance | Not started |
 | ISA vs pension vs mortgage | Builds on 1b and the overpayment calculator | Not started |
@@ -220,6 +220,16 @@ Engine (pure functions, tests first: red commit, then green).
 - Worked examples encoded as tests with source links. Coverage target for `calculators/` set in `PHASE-BRIEF.md`.
 
 ### 1b Optimiser: UI
+
+- **Progress (18 October 2026).** Runs as two sessions. **Session 1b-i done (0.9.0, user-visible):** the engine gains taxable benefits in kind and post-tax deductions (owner decisions B1 to B5, GOV.UK lookups in `docs/verification-log.md`, "Session 1b-i lookups"); the take-home page at `#/c/optimiser` (inputs, take-home for the year, month and week, a breakdown that adds up, warnings, refusal, assumptions, scenarios, Help topic); the Hello placeholder removed (its stored scenarios kept but hidden). **Session 1b-ii next:** `optimise()` on the page (take-home against contribution chart with cliffs and threshold markers, cost of £1 more pension, thresholds in words, the annual allowance and childcare panels, current against a chosen contribution in compare).
+- **What changed from these notes (1b-i):**
+  - The page is titled "Take-home pay" for now; it keeps the id `optimiser` so 1b-ii adds the sweep to the same page and scenarios carry over (inputs version 1).
+  - Two inputs not in these notes: taxable benefits in kind (taxable pay and ANI only; Class 1A, so not NI or student loan) and post-tax deductions (take-home only). No tax code input.
+  - The employer saving on salary sacrifice, the minimum-wage floor and the Class 1A amount are not shown: the config has no Class 1A rate and the owner put employer-side figures out of scope. The assumptions say so.
+  - Input bounds live in `src/lib/inputLimits.ts`, so the literal guard also covers `definition.ts`.
+  - The registry gains an optional `applySettings` (the Settings region on a fresh start).
+- **Rollback:** revert the 0.9.0 PR. Stored scenarios for `optimiser` would then be kept but hidden, as Hello's are now; no storage key changed.
+- **Follow-up for 1b-ii:** the owner confirms the benefit value from an annual statement (built as entered); the payslip check; whether a benefit taken through salary sacrifice (the salary amount rule) or a benefit that attracts Class 1 needs its own input.
 - Single page: inputs collapsible on mobile, a sticky results summary, charts below.
 - Outputs: take-home (annual, monthly, weekly) for current vs optimised; breakdown of income tax, NI, student loan, pension, HICBC; effective marginal rate by income (taper zone highlighted); take-home vs pension contribution curve with the optimum and threshold markers; "cost of £1 more pension" table; employer saving on salary sacrifice shown separately and labelled employer-side; warnings panel (annual allowance, tapered allowance, minimum-wage floor on sacrifice, eligibility cliffs).
 - Scenario compare: current vs optimised vs user-defined.
@@ -240,13 +250,14 @@ Engine (pure functions, tests first: red commit, then green).
 - Tax-config sources beyond www.gov.uk: allow `https://www.legislation.gov.uk/` (exact prefix, `.js` only) if a value is only published there? Widens the URL allowlist, so the owner decides. Not needed for 2026-27 (session E found every value on www.gov.uk).
 - Slice 1a engine questions: O1 to O9 answered by the owner's decisions and sessions G1 and G2's GOV.UK lookups (`docs/modelling-decisions.md`). **Child Benefit weeks (O8, G4):** HMRC's press release of 31 March 2026 gives the 2026 to 2027 yearly amounts, each 52 times the weekly rate, matching the default; PAYE130030's method could still be read as 53 for the charge. The owner confirms or sets another count.
 - Relief at source as a band extension (G2): now stated on GOV.UK (PTM056120, found in G2).
-- Slice 1a Done: the engine is complete (G2); the owner agrees before the status row says Done.
+- Slice 1a is Done (marked in 1b-i at the owner's request); the 72 HMRC cross-checks in `docs/hmrc-cross-checks.json` are still pending.
+- Taxable benefits in kind: the owner has not yet confirmed the value from an annual statement (decision B1); a payslip check over the year will show any mismatch.
 - The alternative annual allowance for 2023-24 onwards: PTM056510 says £30,000, the MPAA guidance and Pension schemes rates say £50,000. Not used (money purchase savings only); matters only if defined benefit savings are modelled.
 - HMRC cross-checks: 72 cases in `docs/hmrc-cross-checks.json` wait for the owner's figures from HMRC's calculators.
 - URL-hash state sharing (a shareable link of inputs, local only): in or out.
 - Coverage target for pure calculator code.
 - Sumyard name and domain availability.
-- Which calculator after Phase 1: the likely candidates are take-home pay (reuses the 1b engine) and compound interest.
+- Which calculator after Phase 1: take-home pay now ships with 1b; compound interest is the likely next.
 
 ## Backlog (no slot yet)
 
@@ -258,6 +269,7 @@ Engine (pure functions, tests first: red commit, then green).
 - A sensitivity view (what if salary, bonus or contribution moves by 5 or 10 percent).
 - Self-employed and dividend income in the optimiser.
 - Multi-year projections across a tax-year change.
+- Benefits in kind beyond a single net value: a benefit through salary sacrifice (the salary amount rule), benefits that attract Class 1, and the employer's Class 1A shown as an employer-side figure (needs a config leaf and the owner's decision).
 - Welsh rate variations beyond what the config supports.
 - Spreadsheet (CSV) export of a calculator's tables.
 - Phone-specific polish if the first phone audit shows gaps.

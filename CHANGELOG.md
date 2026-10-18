@@ -4,6 +4,15 @@ All notable changes to Sumyard are listed here, newest first. The format follows
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-10-18
+
+### Added
+- **Take-home pay, the first real calculator.** Enter your salary, bonus, pension (salary sacrifice, net pay or relief at source), student loans and children to see your take-home pay for the 2026 to 2027 tax year, by year, month and week, with a breakdown of income tax, National Insurance, student loan, pension, the Child Benefit charge and deductions. Scenarios save, load and compare as before. The pension optimiser comes next.
+- **Taxable benefits in kind and post-tax deductions.** Benefits such as employer-paid medical cover are taxed but not paid in cash; deductions such as medical cover you pay for come off take-home only. See Help, “Take-home pay”.
+
+### Changed
+- The Hello placeholder calculator is gone. Any scenarios saved for it are kept in this browser but not shown.
+
 ## [0.8.0] - 2026-10-17
 
 ### Added

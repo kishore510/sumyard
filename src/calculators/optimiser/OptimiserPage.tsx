@@ -54,13 +54,15 @@ const METHOD_HINTS: Record<OptimiserPageInputs['pensionMethod'], string> = {
 /** Assumptions the page adds to the engine's: what this page does and doesn't model. No figures except the policy's week count. */
 const PAGE_ASSUMPTIONS = [
   `Child Benefit is counted for ${DEFAULT_POLICY.childBenefitWeeks} weeks of the year (the modelling policy), for every child entered.`,
-  'Personal allowance taper: the reduction is worked out exactly, with nothing rounded until the result.',
   'Pension is counted as contributions only: what goes in this year. Growth, the annual allowance and tax on withdrawals are not shown here yet.',
   'Taxable benefits in kind are taken as entered: they are not checked against your employer’s annual statement of benefits or your tax code.',
   'No tax code: tax is worked out on the year’s figures. PAYE through your tax code can take slightly different amounts each payday.',
   'Take-home leaves out costs the employer pays: Class 1A National Insurance on benefits, employer National Insurance and the employer’s pension contribution.',
   'Flexible-benefit cash is entered as salary.',
 ]
+
+/** The engine lists the taper rounding with its results; without results the page says it. */
+const TAPER_ASSUMPTION = 'Personal allowance taper: the reduction is worked out exactly, with nothing rounded until the result.'
 
 const sameAmount = (a: Money, b: Money) => compare(a, b) === 0
 
@@ -204,7 +206,7 @@ export default function OptimiserPage() {
             <Results result={result} inputs={inputs} gbp={gbp} />
           )}
 
-          <AssumptionsPanel items={[...(result?.ok ? result.assumptions : []), ...PAGE_ASSUMPTIONS]}>
+          <AssumptionsPanel items={[...(result?.ok ? result.assumptions : [TAPER_ASSUMPTION]), ...PAGE_ASSUMPTIONS]}>
             <p className="text-text-muted">Illustrative only, not financial advice. {DISCLAIMER}</p>
           </AssumptionsPanel>
         </div>
