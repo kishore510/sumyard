@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { parseStoredScenarios, serializeScenarios } from '@/scenarios/store'
 import { echo, tally } from './fixtures/fakeCalculators'
 import { CALCULATORS } from './index'
 import { createCalculatorRegistry, defineCalculator } from './registry'
@@ -74,10 +75,27 @@ describe('readInputs', () => {
 })
 
 describe('the app registry', () => {
-  it('has the Hello placeholder, labelled as one', () => {
-    const hello = CALCULATORS.get('hello')
-    expect(hello?.name).toBe('Hello calculator')
-    expect(hello?.placeholder).toBe('Placeholder: removed when the first real calculator ships')
+  it('has the optimiser, the first real calculator; the Hello placeholder is gone (removed in 1b-i)', () => {
+    expect(CALCULATORS.list().map((c) => c.id)).toEqual(['optimiser'])
+    expect(CALCULATORS.get('optimiser')?.placeholder).toBeUndefined()
+    expect(CALCULATORS.get('hello')).toBeUndefined()
+  })
+
+  it('keeps a stored Hello scenario, unread and hidden, and writes it back untouched', () => {
+    const hello = {
+      id: 'h1',
+      calculatorId: 'hello',
+      taxYear: '2026-27',
+      name: 'Old placeholder',
+      inputs: { amount: 100_000, percent: '3' },
+      inputsVersion: 1,
+      createdAt: '2026-10-17T10:00:00.000Z',
+      updatedAt: '2026-10-17T10:00:00.000Z',
+    }
+    const parsed = parseStoredScenarios(JSON.stringify({ schemaVersion: 1, scenarios: [hello] }), CALCULATORS)
+    expect(parsed.scenarios).toEqual([])
+    expect(parsed.preserved).toEqual([hello])
+    expect(JSON.parse(serializeScenarios({ scenarios: [] }, parsed.preserved)).scenarios).toEqual([hello])
   })
 
   it('every calculator’s defaults pass its own validation', () => {

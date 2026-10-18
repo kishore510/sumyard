@@ -7,13 +7,13 @@ describe('parsePage', () => {
     ['#', { kind: 'home' }],
     ['#/', { kind: 'home' }],
     ['#main', { kind: 'home' }],
-    ['#/c/hello', { kind: 'calculator', id: 'hello' }],
-    ['#/c/hello/', { kind: 'calculator', id: 'hello' }],
-    ['#/c/hello/compare', { kind: 'compare', id: 'hello' }],
+    ['#/c/optimiser', { kind: 'calculator', id: 'optimiser' }],
+    ['#/c/optimiser/', { kind: 'calculator', id: 'optimiser' }],
+    ['#/c/optimiser/compare', { kind: 'compare', id: 'optimiser' }],
     ['#/c/take-home-pay', { kind: 'calculator', id: 'take-home-pay' }],
     ['#/c/', { kind: 'not-found' }],
-    ['#/c/Hello', { kind: 'not-found' }],
-    ['#/c/hello/edit', { kind: 'not-found' }],
+    ['#/c/Optimiser', { kind: 'not-found' }],
+    ['#/c/optimiser/edit', { kind: 'not-found' }],
     ['#/c/__proto__', { kind: 'not-found' }],
   ])('%j is %o', (hash, route) => {
     expect(parsePage(hash)).toEqual(route)
@@ -23,7 +23,7 @@ describe('parsePage', () => {
     for (const hash of ['#/help', '#/settings', '#/help/quick-start', '#/scenarios']) expect(parsePage(hash), hash).toBeNull()
   })
 
-  it.each<PageRoute>([{ kind: 'home' }, { kind: 'calculator', id: 'hello' }, { kind: 'compare', id: 'hello' }])(
+  it.each<PageRoute>([{ kind: 'home' }, { kind: 'calculator', id: 'optimiser' }, { kind: 'compare', id: 'optimiser' }])(
     'round-trips %o',
     (route) => {
       expect(parsePage(formatPage(route))).toEqual(route)
