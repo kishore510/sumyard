@@ -1,4 +1,6 @@
-import { type Money, ZERO } from '@/lib/money'
+import { add, compareRatio, type Money, mulRound, ratio, ZERO } from '@/lib/money'
+import { percentRatio } from '@/lib/parse'
+import { MONTHS_PER_YEAR } from '@/lib/periods'
 
 /*
  * How the take-home page's inputs become the single annual figures the
@@ -40,32 +42,30 @@ export interface ListItem {
   readonly period: ItemPeriod
 }
 
+const MONTHS = ratio(MONTHS_PER_YEAR, 1)
+
 /** The pensionable pay a percentage applies to, for the year (B6). */
 export function pensionablePay(salary: Money, bonus: Money, entry: PensionablePayEntry): Money {
-  void bonus
-  void entry
-  return salary // stub (red commit)
+  const base = entry.own ? entry.amount : salary
+  return entry.includeBonus ? add(base, bonus) : base
 }
 
 /** A contribution for the year: the amount, or the percentage of pensionable pay to the nearest penny (B6). */
 export function resolveContribution(entry: ContributionEntry, pensionable: Money): Money {
-  void pensionable
-  return entry.amount // stub (red commit)
+  return entry.mode === 'amount' ? entry.amount : mulRound(pensionable, percentRatio(entry.percentOfPay), 'nearest')
 }
 
 /** True when a percentage contribution is more than all of pensionable pay. */
 export function isAboveAllOfPay(entry: ContributionEntry): boolean {
-  void entry
-  return false // stub (red commit)
+  return entry.mode === 'percentOfPay' && compareRatio(percentRatio(entry.percentOfPay), ratio(1, 1)) > 0
 }
 
 /** An item's amount for the year: a monthly amount times the months in a year, exactly (B8). */
 export function annualAmount(item: ListItem): Money {
-  return item.amount // stub (red commit)
+  return item.period === 'month' ? mulRound(item.amount, MONTHS, 'nearest') : item.amount
 }
 
 /** A list's total for the year; nothing for an empty list (B7). */
 export function listTotal(items: readonly ListItem[]): Money {
-  void items
-  return ZERO // stub (red commit)
+  return items.reduce((sum, item) => add(sum, annualAmount(item)), ZERO)
 }

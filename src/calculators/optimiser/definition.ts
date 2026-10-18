@@ -326,7 +326,7 @@ const noContribution = (): ContributionEntry => ({ mode: 'amount', amount: ZERO,
  * per year; nothing becomes an empty list; pensionable pay starts as the
  * salary. Untrusted: hostile keys refuse it; the result is validated after.
  */
-export function migrateFromVersion1(from: number, old: unknown): unknown {
+function migrateFromVersion1(from: number, old: unknown): unknown {
   if (from !== 1) throw new Error(`The take-home calculator has no inputs version ${from} to migrate from`)
   if (!isRecord(old)) throw new Error('Version 1 inputs are not an object')
   const hostile = checkUntrustedJson(old)
@@ -384,9 +384,7 @@ export const optimiserCalculator: CalculatorDefinition<OptimiserPageInputs> = de
   }),
   applySettings: (inputs, settings) => ({ ...inputs, region: settings.region === 'scotland' ? 'scotland' : 'rUK' }),
   validateInputs: validate,
-  migrateInputs(from) {
-    throw new Error(`stub (red commit): no migration from inputs version ${from}`)
-  },
+  migrateInputs: migrateFromVersion1,
   summarise(inputs, config) {
     const result = calculateTakeHome(inputs, config)
     const resolved = resolveInputs(inputs)
