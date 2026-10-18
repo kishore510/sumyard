@@ -1,12 +1,21 @@
 import type { TaxYearConfig } from '@/config/tax/schema'
 import type { Refusal } from '@/config/tax/sourced'
-import { MAX_CHILDREN, MAX_INPUT_AMOUNT, MAX_ITEM_NAME_LENGTH, MAX_LIST_ITEMS, MAX_PERCENT_INPUT } from '@/lib/inputLimits'
+import {
+  MAX_CHILDREN,
+  MAX_INPUT_AMOUNT,
+  MAX_ITEM_NAME_LENGTH,
+  MAX_LIST_ITEMS,
+  MAX_PERCENT_INPUT,
+  MAX_TAX_CODE_LENGTH,
+} from '@/lib/inputLimits'
 import { add, compare, fromPence, type Money, ratio, ZERO } from '@/lib/money'
 import { isCanonicalPercent, percentRatio } from '@/lib/parse'
 import { checkUntrustedJson, cleanText, isRecord } from '@/lib/validate'
 import { type CalculatorDefinition, defineCalculator, type SummaryRow } from '../registry'
-import { EngineInputError, takeHome } from './calc'
+import { benefitTotals, EngineInputError, takeHome } from './calc'
 import {
+  annualBenefit,
+  type BenefitItem,
   CONTRIBUTION_MODES,
   type ContributionEntry,
   type ContributionMode,
@@ -19,10 +28,15 @@ import {
   pensionablePay,
   resolveContribution,
 } from './pageInputs'
+import { parseTaxCode, payeEstimate } from './paye'
 import {
+  BENEFIT_PAYMENTS,
+  type BenefitPayment,
   CHILD_BENEFIT_PAYMENTS,
   type ChildBenefitPayments,
   DEFAULT_POLICY,
+  type PayeEstimate,
+  type PayeNotModelled,
   PENSION_METHODS,
   type PensionMethod,
   REGIONS,
@@ -34,13 +48,13 @@ import {
 } from './types'
 
 /*
- * The optimiser page's registry entry (slice 1b; inputs version 2 since part
- * 1b-i.1): the inputs a scenario stores, their defaults, validation and
+ * The optimiser page's registry entry (slice 1b; the inputs version is one
+ * more than the migrations below): the inputs a scenario stores, their defaults, validation and
  * migration, how they map to the engine's TaxInputs, and the compare
  * summary. Take-home only for now; the pension sweep (optimise()) arrives in
  * 1b-ii. No tax figure here: every figure comes from the engine, which reads
  * the year's verified config. How percentages and item lists become annual
- * amounts is in ./pageInputs.ts.
+ * amounts is in ./pageInputs.ts; the PAYE estimate is ./paye.ts's.
  */
 
 /** What the page stores. Money is integer pence; amounts are for the year unless an item says per month. */
@@ -55,13 +69,15 @@ export interface OptimiserPageInputs {
   readonly employerContribution: ContributionEntry
   /** What a percentage contribution applies to (decision B6). */
   readonly pensionablePay: PensionablePayEntry
-  /** Taxable benefits in kind, itemised (B7). */
-  readonly taxableBenefits: readonly ListItem[]
+  /** Benefits in kind, itemised, with what is taken from pay for each (B7, B10). */
+  readonly taxableBenefits: readonly BenefitItem[]
   /** Post-tax deductions, itemised (B7). */
   readonly postTaxDeductions: readonly ListItem[]
   readonly studentLoans: readonly StudentLoanPlanId[]
   readonly children: number
   readonly childBenefit: ChildBenefitPayments
+  /** The tax code in its canonical form (parseTaxCode), or empty for none (B11). */
+  readonly taxCode: string
 }
 
 /** Input bounds that keep every sum a safe whole number of pence. Not tax figures. */
@@ -71,6 +87,7 @@ export const INPUT_LIMITS = {
   maxItems: MAX_LIST_ITEMS,
   maxNameLength: MAX_ITEM_NAME_LENGTH,
   maxPercent: MAX_PERCENT_INPUT,
+  maxTaxCodeLength: MAX_TAX_CODE_LENGTH,
 }
 
 const MONEY_FIELDS = ['salary', 'bonus'] as const
@@ -140,23 +157,51 @@ function pensionablePayEntry(raw: unknown): PensionablePayEntry | string {
 }
 
 /** A stored list, checked item by item and rebuilt (names tidied, text only); or the problem in words. */
-function listItems(raw: unknown, label: string): ListItem[] | string {
+function storedList<T>(
+  raw: unknown,
+  label: string,
+  shape: string,
+  read: (item: Record<string, unknown>) => Omit<T, 'name' | 'period'> | string,
+): (T & { name: string; period: ItemPeriod })[] | string {
   if (!Array.isArray(raw)) return `${label} must be a list of items.`
   if (raw.length > INPUT_LIMITS.maxItems) return `${label} can have at most ${INPUT_LIMITS.maxItems} items.`
-  const items: ListItem[] = []
+  const items: (T & { name: string; period: ItemPeriod })[] = []
   for (const item of raw) {
-    if (!isRecord(item)) return `${label}: an item is not a name, an amount and a period.`
+    if (!isRecord(item)) return `${label}: an item is not ${shape}.`
     if (typeof item.name !== 'string' || Array.from(item.name.trim()).length > INPUT_LIMITS.maxNameLength)
       return `${label}: an item’s name must be text of at most ${INPUT_LIMITS.maxNameLength} characters.`
-    if (!isAmount(item.amount)) return `${label}: an item’s amount must be whole pence from nothing up to the input limit.`
     if (!ITEM_PERIODS.includes(item.period as ItemPeriod)) return `${label}: an item must be per month or per year.`
-    items.push({
-      name: cleanText(item.name, INPUT_LIMITS.maxNameLength),
-      amount: fromPence(item.amount),
-      period: item.period as ItemPeriod,
+    const fields = read(item)
+    if (typeof fields === 'string') return `${label}: ${fields}`
+    items.push({ name: cleanText(item.name, INPUT_LIMITS.maxNameLength), period: item.period as ItemPeriod, ...fields } as T & {
+      name: string
+      period: ItemPeriod
     })
   }
   return items
+}
+
+const AMOUNT_RULE = 'whole pence from nothing up to the input limit'
+
+const listItems = (raw: unknown, label: string) =>
+  storedList<ListItem>(raw, label, 'a name, an amount and a period', (item) =>
+    isAmount(item.amount) ? { amount: fromPence(item.amount) } : `an item’s amount must be ${AMOUNT_RULE}.`,
+  )
+
+const benefitItems = (raw: unknown, label: string) =>
+  storedList<BenefitItem>(raw, label, 'a name, a value, an amount taken and how', (item) => {
+    if (!isAmount(item.value)) return `an item’s value must be ${AMOUNT_RULE}.`
+    if (!isAmount(item.taken)) return `the amount taken for an item must be ${AMOUNT_RULE}.`
+    if (!BENEFIT_PAYMENTS.includes(item.payment as BenefitPayment)) return 'an item must be taken before tax or after tax.'
+    return { value: fromPence(item.value), taken: fromPence(item.taken), payment: item.payment as BenefitPayment }
+  })
+
+/** A stored tax code: empty, or a code parseTaxCode recognises, in its canonical form (B12). */
+function isStoredTaxCode(raw: unknown): raw is string {
+  if (typeof raw !== 'string') return false
+  if (raw === '') return true
+  const parsed = parseTaxCode(raw)
+  return parsed.ok ? parsed.code.text === raw : parsed.reason === 'unsupported' && parsed.text === raw
 }
 
 function validate(raw: unknown): { ok: true; inputs: OptimiserPageInputs } | { ok: false; errors: string[] } {
@@ -170,7 +215,7 @@ function validate(raw: unknown): { ok: true; inputs: OptimiserPageInputs } | { o
   const employee = contributionEntry(raw.employeeContribution, MONEY_LABELS.employeeContribution)
   const employer = contributionEntry(raw.employerContribution, MONEY_LABELS.employerContribution)
   const pensionable = pensionablePayEntry(raw.pensionablePay)
-  const benefits = listItems(raw.taxableBenefits, MONEY_LABELS.taxableBenefits)
+  const benefits = benefitItems(raw.taxableBenefits, MONEY_LABELS.taxableBenefits)
   const deductions = listItems(raw.postTaxDeductions, MONEY_LABELS.postTaxDeductions)
   for (const checked of [employee, employer, pensionable, benefits, deductions]) if (typeof checked === 'string') errors.push(checked)
   if (!PENSION_METHODS.includes(raw.pensionMethod as PensionMethod)) errors.push('The pension method is not one Sumyard knows.')
@@ -186,6 +231,7 @@ function validate(raw: unknown): { ok: true; inputs: OptimiserPageInputs } | { o
     errors.push(`Children must be a whole number from 0 to ${INPUT_LIMITS.maxChildren}.`)
   if (!CHILD_BENEFIT_PAYMENTS.includes(raw.childBenefit as ChildBenefitPayments))
     errors.push('Child Benefit must be claimed or opted out of.')
+  if (!isStoredTaxCode(raw.taxCode)) errors.push('The tax code must be empty or a tax code Sumyard recognises.')
   if (
     errors.length > 0 ||
     typeof employee === 'string' ||
@@ -212,6 +258,7 @@ function validate(raw: unknown): { ok: true; inputs: OptimiserPageInputs } | { o
       studentLoans: STUDENT_LOAN_PLANS.filter((plan) => (plans as unknown[]).includes(plan)),
       children: children as number,
       childBenefit: raw.childBenefit as ChildBenefitPayments,
+      taxCode: raw.taxCode as string,
     },
   }
 }
@@ -221,17 +268,25 @@ export interface ResolvedInputs {
   readonly pensionablePay: Money
   readonly employeeContribution: Money
   readonly employerContribution: Money
+  /** The benefit items' taxable total for the year (B10). */
   readonly taxableBenefits: Money
+  /** Salary given up for benefits for the year. */
+  readonly benefitSacrifice: Money
+  /** Contributions to benefits from net pay for the year. */
+  readonly benefitPaidAfterTax: Money
   readonly postTaxDeductions: Money
 }
 
 export function resolveInputs(inputs: OptimiserPageInputs): ResolvedInputs {
   const pensionable = pensionablePay(inputs.salary, inputs.bonus, inputs.pensionablePay)
+  const benefits = benefitTotals(inputs.taxableBenefits.map(annualBenefit))
   return {
     pensionablePay: pensionable,
     employeeContribution: resolveContribution(inputs.employeeContribution, pensionable),
     employerContribution: resolveContribution(inputs.employerContribution, pensionable),
-    taxableBenefits: listTotal(inputs.taxableBenefits),
+    taxableBenefits: benefits.taxable,
+    benefitSacrifice: benefits.salaryGivenUp,
+    benefitPaidAfterTax: benefits.paidAfterTax,
     postTaxDeductions: listTotal(inputs.postTaxDeductions),
   }
 }
@@ -240,7 +295,10 @@ export function resolveInputs(inputs: OptimiserPageInputs): ResolvedInputs {
 export const usesPensionablePay = (inputs: OptimiserPageInputs) =>
   inputs.employeeContribution.mode === 'percentOfPay' || inputs.employerContribution.mode === 'percentOfPay'
 
-/** The engine's inputs: gross pay is salary plus bonus (flexible-benefit cash goes in salary, B3); a pension only with a contribution; Child Benefit only with children; each list as its annual total. */
+/**
+ * The engine's inputs: gross pay is salary plus bonus (flexible-benefit cash goes in salary, B3); a pension only with a
+ * contribution; Child Benefit only with children; each benefit item for the year (B10); deductions as their annual total.
+ */
 export function toTaxInputs(inputs: OptimiserPageInputs): TaxInputs {
   const resolved = resolveInputs(inputs)
   return {
@@ -251,24 +309,26 @@ export function toTaxInputs(inputs: OptimiserPageInputs): TaxInputs {
       ? { pension: { method: inputs.pensionMethod, contribution: resolved.employeeContribution } }
       : {}),
     ...(inputs.children > 0 ? { childBenefit: { children: inputs.children, payments: inputs.childBenefit } } : {}),
-    taxableBenefits: resolved.taxableBenefits,
+    benefits: inputs.taxableBenefits.map(annualBenefit),
     postTaxDeductions: resolved.postTaxDeductions,
   }
 }
 
 /** Something about the inputs worth saying, which still gives results. */
 export interface InputWarning {
-  readonly code: 'percentAboveAllOfPay' | 'itemWithoutAmount'
+  readonly code: 'percentAboveAllOfPay' | 'itemWithoutAmount' | 'taxCodeRegion'
   /** Stable within one set of inputs, for keys and tests. */
   readonly key: string
   readonly message: string
 }
 
 /** An item's name for messages: its own, or its place in the list. */
-export const itemLabel = (field: ListField, item: ListItem, index: number) =>
+export const itemLabel = (field: ListField, item: { readonly name: string }, index: number) =>
   item.name || `${ITEM_NOUNS[field].replace(/^./, (c) => c.toUpperCase())} ${index + 1}`
 
-/** Warnings on the inputs (never a cap): a percentage above all of pensionable pay; an item with no amount. */
+const CODE_REGIONS = { rUK: 'England, Wales or Northern Ireland', scotland: 'Scotland', wales: 'Wales' } as const
+
+/** Warnings on the inputs (never a cap): a percentage above all of pensionable pay; an item with no amount; a tax code for another part of the UK. */
 export function inputWarnings(inputs: OptimiserPageInputs): InputWarning[] {
   const warnings: InputWarning[] = []
   for (const field of CONTRIBUTION_FIELDS)
@@ -278,14 +338,26 @@ export function inputWarnings(inputs: OptimiserPageInputs): InputWarning[] {
         key: field,
         message: `The ${field === 'employeeContribution' ? 'employee' : 'employer'} contribution is more than all of your pensionable pay. Check the percentage.`,
       })
-  for (const field of LIST_FIELDS)
-    inputs[field].forEach((item, index) => {
-      if (compare(item.amount, ZERO) === 0)
-        warnings.push({
-          code: 'itemWithoutAmount',
-          key: `${field}-${index}`,
-          message: `“${itemLabel(field, item, index)}” in ${MONEY_LABELS[field].toLowerCase()} has no amount, so it adds nothing.`,
-        })
+  const empty = (field: ListField, item: { readonly name: string }, index: number) =>
+    warnings.push({
+      code: 'itemWithoutAmount',
+      key: `${field}-${index}`,
+      message: `“${itemLabel(field, item, index)}” in ${MONEY_LABELS[field].toLowerCase()} has no amount, so it adds nothing.`,
+    })
+  inputs.taxableBenefits.forEach((item, index) => {
+    if (compare(item.value, ZERO) === 0 && compare(item.taken, ZERO) === 0) empty('taxableBenefits', item, index)
+  })
+  inputs.postTaxDeductions.forEach((item, index) => {
+    if (compare(item.amount, ZERO) === 0) empty('postTaxDeductions', item, index)
+  })
+  const code = parseTaxCode(inputs.taxCode)
+  // A code's S or C prefix says which rates payroll uses; "Where you live" sets the year's tax (B12).
+  const fits = !code.ok || (code.code.regime === 'scotland') === (inputs.region === 'scotland')
+  if (!fits && code.ok)
+    warnings.push({
+      code: 'taxCodeRegion',
+      key: 'taxCode',
+      message: `Your tax code uses the rates for ${CODE_REGIONS[code.code.regime]}, but you chose ${REGION_LABELS[inputs.region]}. The PAYE estimate follows the code; the year’s tax follows where you live.`,
     })
   return warnings
 }
@@ -309,10 +381,19 @@ export function calculateTakeHome(inputs: OptimiserPageInputs, config: TaxYearCo
       return {
         ok: false,
         problem:
-          'The pension contribution is more than your pay (salary plus bonus). Sumyard doesn’t model relief on contributions above earnings.',
+          'The pension contribution, with any salary given up for benefits, is more than your pay (salary plus bonus). Sumyard doesn’t model relief on contributions above earnings, or giving up more than your pay.',
       }
     throw error
   }
+}
+
+/** The PAYE estimate for the page's tax code against a take-home result; null without a code (B11). */
+export function calculatePaye(
+  inputs: OptimiserPageInputs,
+  result: TakeHomeResult,
+  config: TaxYearConfig,
+): PayeEstimate | PayeNotModelled | Refusal | null {
+  return inputs.taxCode === '' ? null : payeEstimate(inputs.taxCode, result, config)
 }
 
 const money = (label: string, amount: Money): SummaryRow => ({ label, value: { kind: 'money', amount } })
@@ -321,13 +402,19 @@ const text = (label: string, value: string): SummaryRow => ({ label, value: { ki
 const noContribution = (): ContributionEntry => ({ mode: 'amount', amount: ZERO, percentOfPay: '0' })
 
 /**
+ * STUB (red commit): version 2 to 3 (decision B16).
+ */
+function migrateFromVersion2(old: unknown): unknown {
+  return old
+}
+
+/**
  * Version 1 to 2 (decision B9): each contribution becomes amount mode with
  * the same amount; a non-zero benefits or deductions amount becomes one item
  * per year; nothing becomes an empty list; pensionable pay starts as the
  * salary. Untrusted: hostile keys refuse it; the result is validated after.
  */
-function migrateFromVersion1(from: number, old: unknown): unknown {
-  if (from !== 1) throw new Error(`The take-home calculator has no inputs version ${from} to migrate from`)
+function migrateFromVersion1(old: unknown): unknown {
   if (!isRecord(old)) throw new Error('Version 1 inputs are not an object')
   const hostile = checkUntrustedJson(old)
   if (hostile) throw new Error(`Version 1 inputs are not safe to read: ${hostile}`)
@@ -349,8 +436,18 @@ function migrateFromVersion1(from: number, old: unknown): unknown {
   }
 }
 
+/** Each migration takes inputs from its version (its place in the list, from one) to the next: B9, then B16. */
+const MIGRATIONS = [migrateFromVersion1, migrateFromVersion2] as const
+
+/** Older inputs, one version at a time, up to the current one. */
+function migrate(from: number, old: unknown): unknown {
+  if (!Number.isSafeInteger(from) || from < 1 || from > MIGRATIONS.length)
+    throw new Error(`The take-home calculator has no inputs version ${from} to migrate from`)
+  return MIGRATIONS.slice(from - 1).reduce((inputs, step) => step(inputs), old)
+}
+
 /** Item names for compare, text only. */
-const itemNames = (field: ListField, items: readonly ListItem[]) =>
+const itemNames = (field: ListField, items: readonly { readonly name: string }[]) =>
   items.length === 0 ? 'None' : items.map((item, index) => itemLabel(field, item, index)).join(', ')
 
 /** How a contribution was entered, for compare: the mode, and the percentage when it counts. */
@@ -366,8 +463,8 @@ export const optimiserCalculator: CalculatorDefinition<OptimiserPageInputs> = de
   id: 'optimiser',
   name: 'Take-home pay',
   summary:
-    'Your take-home pay for the year, with pension, student loans, benefits in kind and Child Benefit. The pension optimiser is coming.',
-  inputsVersion: 2,
+    'Your take-home pay for the year, with pension, student loans, benefits in kind, Child Benefit and a PAYE estimate from your tax code. The pension optimiser is coming.',
+  inputsVersion: MIGRATIONS.length + 1,
   defaultInputs: () => ({
     region: 'rUK',
     salary: ZERO,
@@ -381,10 +478,11 @@ export const optimiserCalculator: CalculatorDefinition<OptimiserPageInputs> = de
     studentLoans: [],
     children: 0,
     childBenefit: 'claimed',
+    taxCode: '',
   }),
   applySettings: (inputs, settings) => ({ ...inputs, region: settings.region === 'scotland' ? 'scotland' : 'rUK' }),
   validateInputs: validate,
-  migrateInputs: migrateFromVersion1,
+  migrateInputs: migrate,
   summarise(inputs, config) {
     const result = calculateTakeHome(inputs, config)
     const resolved = resolveInputs(inputs)
@@ -397,16 +495,26 @@ export const optimiserCalculator: CalculatorDefinition<OptimiserPageInputs> = de
       ...contributionRows('employeeContribution', inputs.employeeContribution, resolved.employeeContribution),
       ...contributionRows('employerContribution', inputs.employerContribution, resolved.employerContribution),
       money(MONEY_LABELS.taxableBenefits, resolved.taxableBenefits),
+      money('Salary given up for benefits', resolved.benefitSacrifice),
+      money('Benefit payments after tax', resolved.benefitPaidAfterTax),
       text('Benefit items', itemNames('taxableBenefits', inputs.taxableBenefits)),
       money(MONEY_LABELS.postTaxDeductions, resolved.postTaxDeductions),
       text('Deduction items', itemNames('postTaxDeductions', inputs.postTaxDeductions)),
       text('Student loans', inputs.studentLoans.length === 0 ? 'None' : inputs.studentLoans.map((p) => PLAN_LABELS[p]).join(', ')),
       { label: 'Children', value: { kind: 'count', count: inputs.children } },
       ...(inputs.children > 0 ? [text('Child Benefit', PAYMENT_LABELS[inputs.childBenefit])] : []),
+      text('Tax code', inputs.taxCode === '' ? 'None' : inputs.taxCode),
     ]
     if (isInputProblem(result)) return { inputs: rows, results: { ok: true, rows: [text('Result', result.problem)] } }
     if (!result.ok) return { inputs: rows, results: result }
     const { annual } = result
+    const paye = calculatePaye(inputs, result, config)
+    const payeRows: SummaryRow[] =
+      paye === null
+        ? []
+        : paye.ok
+          ? [money('PAYE estimate (year)', paye.paye.total), money('PAYE less the year’s tax', paye.difference)]
+          : [text('PAYE estimate', 'reason' in paye ? 'Not modelled for this code' : 'Tax values not verified')]
     return {
       inputs: rows,
       results: {
@@ -416,13 +524,16 @@ export const optimiserCalculator: CalculatorDefinition<OptimiserPageInputs> = de
           money('Take-home (month)', result.monthly.net),
           money('Take-home (week)', result.weekly.net),
           money('Gross pay', annual.gross),
+          money('Salary given up for benefits', annual.benefitSacrifice),
           money('Income tax', annual.incomeTax),
           money('National Insurance', annual.nationalInsurance),
           money('Student loan', annual.studentLoan),
           money('Employee pension', annual.pension),
           money('Child Benefit charge', annual.hicbc),
+          money('Benefit payments after tax', annual.benefitPayments),
           money('Post-tax deductions', annual.postTaxDeductions),
           money('Child Benefit received', annual.childBenefit),
+          ...payeRows,
         ],
       },
     }

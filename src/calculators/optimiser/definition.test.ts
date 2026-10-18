@@ -7,6 +7,7 @@ import { MONTHS_PER_YEAR } from '@/lib/periods'
 import { CALCULATORS } from '../index'
 import { takeHome } from './calc'
 import {
+  calculatePaye,
   calculateTakeHome,
   INPUT_LIMITS,
   inputWarnings,
@@ -16,13 +17,16 @@ import {
   resolveInputs,
   toTaxInputs,
 } from './definition'
-import type { ContributionEntry, ListItem } from './pageInputs'
+import type { BenefitItem, ContributionEntry, ListItem } from './pageInputs'
+import { parseTaxCode } from './paye'
 import { DEFAULT_POLICY, type TakeHomeResult } from './types'
 
 /*
  * Session 1b-i: the optimiser page's registry entry (definition.ts). Inputs
  * are untrusted when they come from storage or an imported file, so
- * validateInputs checks every field and builds a fresh object.
+ * validateInputs checks every field and builds a fresh object. 0.11.0 moves
+ * the inputs to version 3: benefit items with what is taken from pay (B10)
+ * and the tax code (B11, B12), migrated from versions 1 and 2 (B16).
  */
 
 const defaults = () => optimiserCalculator.defaultInputs()
@@ -32,6 +36,38 @@ const amount = (pence: number): ContributionEntry => ({ mode: 'amount', amount: 
 const byPercent = (percentOfPay: string): ContributionEntry => ({ mode: 'percentOfPay', amount: ZERO, percentOfPay })
 const yearly = (pence: number, name = 'Item'): ListItem => ({ name, amount: fromPence(pence), period: 'year' })
 const monthly = (pence: number, name = 'Item'): ListItem => ({ name, amount: fromPence(pence), period: 'month' })
+/** A benefit item; nothing taken (employer-paid) unless given. */
+const benefit = (pence: number, name = 'Item', patch: Partial<BenefitItem> = {}): BenefitItem => ({
+  name,
+  period: 'year',
+  value: fromPence(pence),
+  taken: ZERO,
+  payment: 'beforeTax',
+  ...patch,
+})
+const benefitMonthly = (pence: number, name = 'Item', patch: Partial<BenefitItem> = {}) =>
+  benefit(pence, name, { period: 'month', ...patch })
+
+/** A version 2 scenario's inputs, as 0.10.0 stored them. */
+const version2 = (patch: Record<string, unknown> = {}) => {
+  const { taxCode: _none, ...rest } = optimiserCalculator.defaultInputs()
+  return {
+    ...rest,
+    salary: fromPounds(84_000),
+    bonus: fromPounds(6_000),
+    pensionMethod: 'salarySacrifice',
+    employeeContribution: { mode: 'percentOfPay', amount: 0, percentOfPay: '5' },
+    employerContribution: { mode: 'amount', amount: fromPounds(3_000), percentOfPay: '0' },
+    taxableBenefits: [
+      { name: 'Medical', amount: fromPounds(95), period: 'month' },
+      { name: 'Car', amount: fromPounds(4_200), period: 'year' },
+    ],
+    postTaxDeductions: [{ name: 'Dental', amount: fromPounds(12), period: 'month' }],
+    studentLoans: ['plan2', 'postgraduate'],
+    children: 2,
+    ...patch,
+  }
+}
 
 /** A version 1 scenario's inputs, as 0.9.0 stored them. */
 const version1 = (patch: Record<string, unknown> = {}) => ({
@@ -62,6 +98,12 @@ const version1TaxInputs = (v1: ReturnType<typeof version1>) => ({
   postTaxDeductions: fromPence(v1.postTaxDeductions as number),
 })
 
+/** What a person sees from a result: every period view, the warnings and the problem, if any. */
+const views = (result: ReturnType<typeof calculateTakeHome>) =>
+  result.ok
+    ? { annual: result.annual, monthly: result.monthly, weekly: result.weekly, warnings: result.warnings, ani: result.adjustedNetIncome }
+    : result
+
 const net = (result: ReturnType<typeof calculateTakeHome>) => {
   if (!result.ok) throw new Error('no result')
   return (result as TakeHomeResult).annual.net
@@ -80,13 +122,13 @@ function generator(seed: number) {
 }
 
 describe('optimiser definition', () => {
-  it('is registered as "optimiser" at inputs version 2, with no placeholder label', () => {
+  it('is registered as "optimiser" at inputs version 3, with no placeholder label', () => {
     expect(CALCULATORS.get('optimiser')).toBe(optimiserCalculator)
-    expect(optimiserCalculator.inputsVersion).toBe(2)
+    expect(optimiserCalculator.inputsVersion).toBe(3)
     expect(optimiserCalculator.placeholder).toBeUndefined()
   })
 
-  it('has valid defaults: rUK, every amount zero, contributions as amounts, pensionable pay the salary, empty lists', () => {
+  it('has valid defaults: rUK, every amount zero, contributions as amounts, pensionable pay the salary, empty lists, no tax code', () => {
     const d = defaults()
     expect(check(d)).toEqual({ ok: true, inputs: d })
     expect(d).toMatchObject({
@@ -101,6 +143,7 @@ describe('optimiser definition', () => {
       studentLoans: [],
       children: 0,
       childBenefit: 'claimed',
+      taxCode: '',
     })
   })
 
@@ -122,25 +165,32 @@ describe('optimiser definition', () => {
   it('builds fresh items and contributions, keeping only known fields and tidying names as text', () => {
     const raw = valid({
       employeeContribution: { ...byPercent('5'), extra: 1 },
-      taxableBenefits: [{ ...yearly(100, '  Medical\u0007 cover  '), extra: 'x' }],
+      taxableBenefits: [{ ...benefit(100, '  Medical\u0007 cover  ', { taken: fromPence(50), payment: 'afterTax' }), extra: 'x' }],
     })
     const result = check(raw)
     expect(result.ok).toBe(true)
     if (!result.ok) return
     expect(result.inputs.employeeContribution).toEqual(byPercent('5'))
     expect(result.inputs.employeeContribution).not.toBe(raw.employeeContribution)
-    expect(result.inputs.taxableBenefits).toEqual([yearly(100, 'Medical cover')])
+    expect(result.inputs.taxableBenefits).toEqual([benefit(100, 'Medical cover', { taken: fromPence(50), payment: 'afterTax' })])
     expect(result.inputs.taxableBenefits[0]).not.toBe((raw.taxableBenefits as unknown[])[0])
   })
 
   it('accepts a name of exactly the longest length and the most items', () => {
     const name = 'n'.repeat(INPUT_LIMITS.maxNameLength)
     const items = Array.from({ length: INPUT_LIMITS.maxItems }, () => monthly(1, name))
-    expect(check(valid({ taxableBenefits: items, postTaxDeductions: items })).ok).toBe(true)
+    const benefits = Array.from({ length: INPUT_LIMITS.maxItems }, () => benefitMonthly(1, name))
+    expect(check(valid({ taxableBenefits: benefits, postTaxDeductions: items })).ok).toBe(true)
   })
 
   it('rejects hostile keys inside items and contributions', () => {
-    expect(check({ ...valid(), taxableBenefits: [JSON.parse('{"__proto__": {}, "name": "x", "amount": 1, "period": "year"}')] }).ok).toBe(
+    expect(
+      check({
+        ...valid(),
+        taxableBenefits: [JSON.parse('{"__proto__": {}, "name": "x", "value": 1, "taken": 0, "payment": "afterTax", "period": "year"}')],
+      }).ok,
+    ).toBe(false)
+    expect(check({ ...valid(), postTaxDeductions: [JSON.parse('{"prototype": 1, "name": "x", "amount": 1, "period": "year"}')] }).ok).toBe(
       false,
     )
     expect(
@@ -174,13 +224,31 @@ describe('optimiser definition', () => {
     ['pensionablePay', { own: false, amount: 0 }],
     ['taxableBenefits', -1],
     ['taxableBenefits', 100],
-    ['taxableBenefits', [{ name: 'x', amount: -1, period: 'year' }]],
-    ['taxableBenefits', [{ name: 'x', amount: 1, period: 'week' }]],
-    ['taxableBenefits', [{ name: 'n'.repeat(INPUT_LIMITS.maxNameLength + 1), amount: 1, period: 'year' }]],
-    ['taxableBenefits', [{ name: 5, amount: 1, period: 'year' }]],
-    ['taxableBenefits', [{ amount: 1, period: 'year' }]],
+    ['taxableBenefits', [{ name: 'x', value: -1, taken: 0, payment: 'beforeTax', period: 'year' }]],
+    ['taxableBenefits', [{ name: 'x', value: 1, taken: -1, payment: 'beforeTax', period: 'year' }]],
+    ['taxableBenefits', [{ name: 'x', value: 1, taken: 0.5, payment: 'afterTax', period: 'year' }]],
+    ['taxableBenefits', [{ name: 'x', value: 1, taken: 0, payment: 'gross', period: 'year' }]],
+    ['taxableBenefits', [{ name: 'x', value: 1, taken: 0, period: 'year' }]],
+    ['taxableBenefits', [{ name: 'x', value: 1, payment: 'afterTax', period: 'year' }]],
+    ['taxableBenefits', [{ name: 'x', amount: 1, period: 'year' }]],
+    ['taxableBenefits', [{ name: 'x', value: 1, taken: 0, payment: 'afterTax', period: 'week' }]],
+    ['taxableBenefits', [{ name: 'n'.repeat(INPUT_LIMITS.maxNameLength + 1), value: 1, taken: 0, payment: 'afterTax', period: 'year' }]],
+    ['taxableBenefits', [{ name: 5, value: 1, taken: 0, payment: 'afterTax', period: 'year' }]],
+    ['taxableBenefits', [{ value: 1, taken: 0, payment: 'afterTax', period: 'year' }]],
     ['taxableBenefits', ['item']],
-    ['taxableBenefits', Array.from({ length: INPUT_LIMITS.maxItems + 1 }, () => ({ name: 'x', amount: 1, period: 'year' }))],
+    [
+      'taxableBenefits',
+      Array.from({ length: INPUT_LIMITS.maxItems + 1 }, () => ({ name: 'x', value: 1, taken: 0, payment: 'afterTax', period: 'year' })),
+    ],
+    ['taxCode', 5],
+    ['taxCode', null],
+    ['taxCode', 'XYZ'],
+    ['taxCode', '100l'],
+    ['taxCode', ' 100L'],
+    ['taxCode', '100LM1'],
+    ['taxCode', 'SNT'],
+    ['taxCode', '<b>100L</b>'],
+    ['taxCode', `${'1'.repeat(INPUT_LIMITS.maxTaxCodeLength)}L`],
     ['postTaxDeductions', [{ name: 'x', amount: Number.POSITIVE_INFINITY, period: 'month' }]],
     ['postTaxDeductions', [{ name: 'x', amount: 0.5, period: 'month' }]],
     ['postTaxDeductions', Array.from({ length: INPUT_LIMITS.maxItems + 1 }, () => ({ name: 'x', amount: 1, period: 'year' }))],
@@ -205,23 +273,32 @@ describe('optimiser definition', () => {
     expect(check(without).ok).toBe(false)
   })
 
-  it('refuses inputs saved by a newer version; reads version 2 as it is', () => {
-    expect(CALCULATORS.readInputs('optimiser', 3, defaults())).toMatchObject({ ok: false, reason: 'newer-inputs' })
-    expect(CALCULATORS.readInputs('optimiser', 2, defaults())).toMatchObject({ ok: true, migrated: false })
+  it('accepts an empty tax code, a supported one and one that is not modelled, each in its canonical form', () => {
+    for (const taxCode of ['', '100L', 'S100T', 'C1M', '99N', 'BR', 'SD2', 'K100', '0T', 'NT', '100L M1', 'C100L NONCUM'])
+      expect(check(valid({ taxCode })).ok, taxCode).toBe(true)
+  })
+
+  it('refuses inputs saved by a newer version; reads version 3 as it is', () => {
+    expect(CALCULATORS.readInputs('optimiser', 4, defaults())).toMatchObject({ ok: false, reason: 'newer-inputs' })
+    expect(CALCULATORS.readInputs('optimiser', 3, defaults())).toMatchObject({ ok: true, migrated: false })
     expect(() => optimiserCalculator.migrateInputs(0, {})).toThrow()
   })
 
-  it('a version 2 round trip through JSON gives the same inputs and the same take-home', () => {
+  it('a version 3 round trip through JSON gives the same inputs and the same take-home', () => {
     const inputs = valid({
       salary: fromPounds(58_000),
       bonus: fromPounds(3_000),
       employeeContribution: byPercent('6.25'),
       employerContribution: byPercent('3'),
       pensionablePay: { own: true, amount: fromPounds(55_000), includeBonus: true },
-      taxableBenefits: [monthly(4_567, 'Medical'), yearly(80_000, 'Car')],
+      taxableBenefits: [
+        benefitMonthly(4_567, 'Medical', { taken: fromPence(5_000), payment: 'beforeTax' }),
+        benefit(80_000, 'Car', { taken: fromPence(10_000), payment: 'afterTax' }),
+      ],
       postTaxDeductions: [monthly(1_299, 'Dental')],
+      taxCode: 'S100L',
     }) as OptimiserPageInputs
-    const read = CALCULATORS.readInputs('optimiser', 2, JSON.parse(JSON.stringify(inputs)))
+    const read = CALCULATORS.readInputs('optimiser', 3, JSON.parse(JSON.stringify(inputs)))
     expect(read).toEqual({ ok: true, inputs, migrated: false })
     expect(net(calculateTakeHome(read.ok ? (read.inputs as OptimiserPageInputs) : inputs, taxYear))).toBe(
       net(calculateTakeHome(inputs, taxYear)),
@@ -238,7 +315,8 @@ describe('migration from inputs version 1 (B9)', () => {
     expect(inputs.employeeContribution).toEqual(amount(fromPounds(3_100)))
     expect(inputs.employerContribution).toEqual(amount(fromPounds(2_000)))
     expect(inputs.pensionablePay).toEqual({ own: false, amount: ZERO, includeBonus: false })
-    expect(inputs.taxableBenefits).toEqual([yearly(fromPounds(1_234), MIGRATED_ITEM_NAMES.taxableBenefits)])
+    expect(inputs.taxableBenefits).toEqual([benefit(fromPounds(1_234), MIGRATED_ITEM_NAMES.taxableBenefits)])
+    expect(inputs.taxCode).toBe('')
     expect(inputs.postTaxDeductions).toEqual([yearly(fromPounds(321), MIGRATED_ITEM_NAMES.postTaxDeductions)])
     expect(MIGRATED_ITEM_NAMES).toEqual({ taxableBenefits: 'Benefits in kind', postTaxDeductions: 'Post-tax deductions' })
   })
@@ -271,7 +349,7 @@ describe('migration from inputs version 1 (B9)', () => {
     const read = CALCULATORS.readInputs('optimiser', 1, v1)
     if (!read.ok) throw new Error(read.message)
     const after = calculateTakeHome(read.inputs as OptimiserPageInputs, taxYear)
-    expect(after).toEqual(before)
+    expect(views(after)).toEqual(views(before))
   })
 
   it('gives identical results when the contribution is above pay (the same input problem)', () => {
@@ -302,7 +380,7 @@ describe('resolved amounts and warnings', () => {
       bonus: fromPounds(10_000),
       employeeContribution: byPercent('5'),
       employerContribution: amount(fromPounds(1_000)),
-      taxableBenefits: [monthly(fromPounds(50)), yearly(fromPounds(400))],
+      taxableBenefits: [benefitMonthly(fromPounds(50)), benefit(fromPounds(400))],
       postTaxDeductions: [],
     }) as OptimiserPageInputs
     expect(resolveInputs(inputs)).toEqual({
@@ -310,6 +388,8 @@ describe('resolved amounts and warnings', () => {
       employeeContribution: fromPounds(2_500),
       employerContribution: fromPounds(1_000),
       taxableBenefits: fromPounds(50 * MONTHS_PER_YEAR + 400),
+      benefitSacrifice: ZERO,
+      benefitPaidAfterTax: ZERO,
       postTaxDeductions: ZERO,
     })
     const withBonus = { ...inputs, pensionablePay: { ...inputs.pensionablePay, includeBonus: true } }
@@ -333,7 +413,7 @@ describe('resolved amounts and warnings', () => {
 
   it('warns on an item with no amount, by name or place, in either list', () => {
     const inputs = valid({
-      taxableBenefits: [yearly(100, 'Medical'), monthly(0, 'Gym')],
+      taxableBenefits: [benefit(100, 'Medical'), benefitMonthly(0, 'Gym'), benefit(0, 'Bike', { taken: fromPence(1) })],
       postTaxDeductions: [yearly(0, '')],
     }) as OptimiserPageInputs
     const warnings = inputWarnings(inputs)
@@ -349,12 +429,19 @@ describe('itemised lists against the single annual figure (B7)', () => {
     const random = generator(2_026)
     for (let run = 0; run < 150; run++) {
       const total = (count: number) => {
-        const items: ListItem[] = []
+        const items: (ListItem & BenefitItem)[] = []
         let sum = 0
         for (let i = 0; i < count; i++) {
           const pence = Math.floor(random() * 300_000)
           const period = random() < 0.5 ? 'month' : 'year'
-          items.push({ name: `Item ${i}`, amount: fromPence(pence), period })
+          items.push({
+            name: `Item ${i}`,
+            amount: fromPence(pence),
+            period,
+            value: fromPence(pence),
+            taken: ZERO,
+            payment: 'beforeTax' as const,
+          })
           sum += period === 'month' ? pence * MONTHS_PER_YEAR : pence
         }
         return { items, sum }
@@ -371,9 +458,13 @@ describe('itemised lists against the single annual figure (B7)', () => {
       const read = CALCULATORS.readInputs('optimiser', 1, v1)
       if (!read.ok) throw new Error(read.message)
       const single = read.inputs as OptimiserPageInputs
-      const itemised = { ...single, taxableBenefits: benefits.items, postTaxDeductions: deductions.items }
+      const itemised = {
+        ...single,
+        taxableBenefits: benefits.items.map(({ amount: _a, ...item }) => item),
+        postTaxDeductions: deductions.items.map(({ value: _v, taken: _t, payment: _p, ...item }) => item),
+      }
       expect(check(itemised).ok).toBe(true)
-      expect(calculateTakeHome(itemised, taxYear), `run ${run}`).toEqual(calculateTakeHome(single, taxYear))
+      expect(views(calculateTakeHome(itemised, taxYear)), `run ${run}`).toEqual(views(calculateTakeHome(single, taxYear)))
     }
   })
 
@@ -383,7 +474,7 @@ describe('itemised lists against the single annual figure (B7)', () => {
       bonus: fromPounds(5_000),
       pensionMethod: 'netPay',
       employeeContribution: amount(fromPounds(3_000)),
-      taxableBenefits: [monthly(fromPounds(100))],
+      taxableBenefits: [benefitMonthly(fromPounds(100), 'Medical', { taken: fromPounds(20), payment: 'afterTax' })],
       postTaxDeductions: [yearly(fromPounds(100)), yearly(fromPounds(200))],
       studentLoans: ['plan2'],
       children: 2,
@@ -395,7 +486,7 @@ describe('itemised lists against the single annual figure (B7)', () => {
       studentLoans: ['plan2'],
       pension: { method: 'netPay', contribution: fromPounds(3_000) },
       childBenefit: { children: 2, payments: 'optedOut' },
-      taxableBenefits: fromPounds(100 * MONTHS_PER_YEAR),
+      benefits: [{ value: fromPounds(100 * MONTHS_PER_YEAR), taken: fromPounds(20 * MONTHS_PER_YEAR), payment: 'afterTax' }],
       postTaxDeductions: fromPounds(300),
     })
     const bare = toTaxInputs(defaults())
@@ -436,7 +527,16 @@ describe('itemised lists against the single annual figure (B7)', () => {
       if (value?.kind !== 'money') throw new Error(`no money row ${label}`)
       return value.amount as number
     }
-    const deducted = ['Income tax', 'National Insurance', 'Student loan', 'Employee pension', 'Child Benefit charge', 'Post-tax deductions']
+    const deducted = [
+      'Salary given up for benefits',
+      'Income tax',
+      'National Insurance',
+      'Student loan',
+      'Employee pension',
+      'Child Benefit charge',
+      'Benefit payments after tax',
+      'Post-tax deductions',
+    ]
     expect(row('Gross pay') - deducted.reduce((sum, label) => sum + row(label), 0)).toBe(row('Take-home (year)'))
     const engine = takeHome(toTaxInputs(inputs), taxYear, DEFAULT_POLICY)
     expect(engine.ok && row('Take-home (month)')).toBe(engine.ok && engine.monthly.net)
@@ -457,7 +557,7 @@ describe('summarise: the resolved totals and how contributions were entered', ()
     const inputs = valid({
       salary: fromPounds(40_000),
       employeeContribution: byPercent('7.5'),
-      taxableBenefits: [yearly(fromPounds(600), 'Medical'), monthly(fromPounds(20), '')],
+      taxableBenefits: [benefit(fromPounds(600), 'Medical'), benefitMonthly(fromPounds(20), '')],
     }) as OptimiserPageInputs
     const rows = optimiserCalculator.summarise(inputs, taxYear).inputs
     const input = (label: string) => rows.find((r) => r.label === label)?.value
@@ -467,5 +567,134 @@ describe('summarise: the resolved totals and how contributions were entered', ()
     expect(input('Employee pension contribution')).toEqual({ kind: 'money', amount: fromPounds(3_000) })
     expect(input('Taxable benefits in kind')).toEqual({ kind: 'money', amount: fromPounds(600 + 20 * MONTHS_PER_YEAR) })
     expect(input('Benefit items')).toEqual({ kind: 'text', text: 'Medical, Benefit 2' })
+  })
+})
+
+describe('migration from inputs version 2 (B16)', () => {
+  it('turns each benefit item into its value with nothing taken; deductions stay as they were; no tax code', () => {
+    const read = CALCULATORS.readInputs('optimiser', 2, version2())
+    expect(read).toMatchObject({ ok: true, migrated: true })
+    if (!read.ok) return
+    const inputs = read.inputs as OptimiserPageInputs
+    expect(inputs.taxableBenefits).toEqual([benefitMonthly(fromPounds(95), 'Medical'), benefit(fromPounds(4_200), 'Car')])
+    expect(inputs.postTaxDeductions).toEqual([monthly(fromPounds(12), 'Dental')])
+    expect(inputs.taxCode).toBe('')
+    expect(inputs.employeeContribution).toEqual(byPercent('5'))
+  })
+
+  it.each([
+    ['the example', {}],
+    ['no benefits', { taxableBenefits: [] }],
+    ['Scotland, relief at source', { region: 'scotland', pensionMethod: 'reliefAtSource' }],
+    ['over the taper start', { salary: fromPounds(118_000) }],
+    ['an item of nothing', { taxableBenefits: [{ name: '', amount: 0, period: 'year' }] }],
+  ])('gives identical take-home before and after: %s', (_, patch) => {
+    const v2 = version2(patch)
+    // As 0.10.0 worked it out: each benefit item's annual amount, summed, as the single taxable figure.
+    const annual = (v2.taxableBenefits as { amount: number; period: string }[]).reduce(
+      (sum, i) => sum + (i.period === 'month' ? i.amount * MONTHS_PER_YEAR : i.amount),
+      0,
+    )
+    const read = CALCULATORS.readInputs('optimiser', 2, v2)
+    if (!read.ok) throw new Error(read.message)
+    const inputs = read.inputs as OptimiserPageInputs
+    const { benefits: _items, ...rest } = toTaxInputs(inputs)
+    const before = takeHome({ ...rest, taxableBenefits: fromPence(annual) }, taxYear, DEFAULT_POLICY)
+    expect(views(calculateTakeHome(inputs, taxYear))).toEqual(views(before))
+  })
+
+  it('refuses hostile or broken version 2 inputs rather than migrating them', () => {
+    expect(CALCULATORS.readInputs('optimiser', 2, JSON.parse('{"__proto__": {}, "region": "rUK"}'))).toMatchObject({ ok: false })
+    expect(CALCULATORS.readInputs('optimiser', 2, 'text')).toMatchObject({ ok: false, reason: 'migration-failed' })
+    expect(CALCULATORS.readInputs('optimiser', 2, version2({ taxableBenefits: 'x' }))).toMatchObject({ ok: false })
+    expect(
+      CALCULATORS.readInputs('optimiser', 2, version2({ taxableBenefits: [{ name: 'x', amount: -1, period: 'year' }] })),
+    ).toMatchObject({ ok: false, reason: 'invalid-inputs' })
+  })
+})
+
+describe('benefits taken from pay, and the tax code, on the page (B10 to B12)', () => {
+  it('resolves the taxable total, the salary given up and what is paid after tax, monthly times the months in a year', () => {
+    const inputs = valid({
+      salary: fromPounds(60_000),
+      taxableBenefits: [
+        benefitMonthly(fromPounds(40), 'Medical', { taken: fromPounds(50), payment: 'beforeTax' }),
+        benefit(fromPounds(1_000), 'Gym', { taken: fromPounds(300), payment: 'afterTax' }),
+      ],
+    }) as OptimiserPageInputs
+    expect(resolveInputs(inputs)).toMatchObject({
+      taxableBenefits: fromPounds(50 * MONTHS_PER_YEAR + 700),
+      benefitSacrifice: fromPounds(50 * MONTHS_PER_YEAR),
+      benefitPaidAfterTax: fromPounds(300),
+    })
+  })
+
+  it('salary given up above pay gives the input problem, naming it', () => {
+    const inputs = valid({
+      salary: fromPounds(10_000),
+      taxableBenefits: [benefit(0, 'Car', { taken: fromPounds(10_001) })],
+    }) as OptimiserPageInputs
+    expect(calculateTakeHome(inputs, taxYear)).toMatchObject({ ok: false, problem: expect.stringMatching(/salary given up/i) })
+  })
+
+  it('warns when the code’s prefix and where you live disagree, either way, and not when they agree', () => {
+    const warn = (region: string, taxCode: string) =>
+      inputWarnings(valid({ region, taxCode }) as OptimiserPageInputs).filter((w) => w.code === 'taxCodeRegion')
+    expect(warn('rUK', 'S100L')).toHaveLength(1)
+    expect(warn('scotland', '100L')).toHaveLength(1)
+    expect(warn('scotland', 'C100L')).toHaveLength(1)
+    expect(warn('scotland', 'S100L')).toHaveLength(0)
+    expect(warn('rUK', 'C100L')).toHaveLength(0)
+    expect(warn('rUK', '')).toHaveLength(0)
+    expect(warn('rUK', 'BR')).toHaveLength(0)
+    expect(warn('rUK', 'S100L')[0]!.message).not.toMatch(/\d/)
+  })
+
+  it('calculatePaye: nothing without a code, the estimate with a supported one, a notice otherwise', () => {
+    const inputs = valid({ salary: fromPounds(45_000) }) as OptimiserPageInputs
+    const result = calculateTakeHome(inputs, taxYear) as TakeHomeResult
+    expect(calculatePaye(inputs, result, taxYear)).toBeNull()
+    const supported = calculatePaye({ ...inputs, taxCode: '100L' }, result, taxYear)
+    expect(supported).toMatchObject({ ok: true, liability: result.annual.incomeTax })
+    expect(calculatePaye({ ...inputs, taxCode: 'K100' }, result, taxYear)).toMatchObject({ ok: false, reason: 'unsupported', kind: 'K' })
+  })
+
+  it('summarise: the new totals and the code as text; the PAYE estimate and difference with a supported code', () => {
+    const inputs = valid({
+      salary: fromPounds(52_000),
+      taxableBenefits: [
+        benefit(fromPounds(900), 'Medical', { taken: fromPounds(1_200) }),
+        benefit(fromPounds(500), 'Gym', { taken: fromPounds(100), payment: 'afterTax' }),
+      ],
+      taxCode: 'S100L',
+    }) as OptimiserPageInputs
+    const summary = optimiserCalculator.summarise(inputs, taxYear)
+    const input = (label: string) => summary.inputs.find((r) => r.label === label)?.value
+    expect(input('Salary given up for benefits')).toEqual({ kind: 'money', amount: fromPounds(1_200) })
+    expect(input('Benefit payments after tax')).toEqual({ kind: 'money', amount: fromPounds(100) })
+    expect(input('Tax code')).toEqual({ kind: 'text', text: 'S100L' })
+    if (!summary.results.ok) throw new Error('refused')
+    const result = (label: string) => (summary.results.ok ? summary.results.rows.find((r) => r.label === label)?.value : undefined)
+    const engine = calculateTakeHome(inputs, taxYear) as TakeHomeResult
+    const paye = calculatePaye(inputs, engine, taxYear)
+    if (!paye?.ok) throw new Error('no estimate')
+    expect(result('PAYE estimate (year)')).toEqual({ kind: 'money', amount: paye.paye.total })
+    expect(result('PAYE less the year’s tax')).toEqual({ kind: 'money', amount: paye.difference })
+    expect(result('Salary given up for benefits')).toEqual({ kind: 'money', amount: fromPounds(1_200) })
+    const none = optimiserCalculator.summarise({ ...inputs, taxCode: '' }, taxYear)
+    expect(none.inputs.find((r) => r.label === 'Tax code')?.value).toEqual({ kind: 'text', text: 'None' })
+    expect(none.results.ok && none.results.rows.some((r) => r.label.startsWith('PAYE'))).toBe(false)
+    const notModelled = optimiserCalculator.summarise({ ...inputs, taxCode: 'BR' }, taxYear)
+    expect(notModelled.results.ok && notModelled.results.rows.find((r) => r.label === 'PAYE estimate')?.value).toEqual({
+      kind: 'text',
+      text: 'Not modelled for this code',
+    })
+  })
+
+  it('every stored code is canonical: parseTaxCode gives it back unchanged', () => {
+    for (const taxCode of ['100L', 'S100T', 'C1M', 'BR', 'SD2', 'K100', '0T', 'NT', '100L M1']) {
+      const parsed = parseTaxCode(taxCode)
+      expect(parsed.ok ? parsed.code.text : parsed.reason === 'unsupported' ? parsed.text : null).toBe(taxCode)
+    }
   })
 })

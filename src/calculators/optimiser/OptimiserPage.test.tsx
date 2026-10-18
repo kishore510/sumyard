@@ -13,10 +13,12 @@ import { scenarioStore } from '@/scenarios/index'
 import { settingsStore } from '@/settings/settings'
 import { byText, click, mount, type } from '@/test/dom'
 import { sessionFor } from '../session'
+import { breakdown, DEDUCTION_ROWS } from './breakdown'
 import { takeHome } from './calc'
 import { INPUT_LIMITS, type OptimiserPageInputs, optimiserCalculator, toTaxInputs } from './definition'
 import OptimiserPage from './OptimiserPage'
-import { DEFAULT_POLICY, type TakeHomeResult } from './types'
+import { payeEstimate } from './paye'
+import { DEFAULT_POLICY, type PayeEstimate, type TakeHomeResult } from './types'
 
 /*
  * Session 1b-i: the optimiser page at #/c/optimiser (take-home only; no
@@ -59,14 +61,34 @@ type List = 'benefits' | 'deductions'
 /** The item boxes of a list, in order. */
 const items = (list: List) => [...view.host.querySelectorAll('[data-item]')].filter((el) => el.id.startsWith(`opt-${list}-`))
 
-/** Adds an item to a list through the page and fills it in; returns its element id. */
-function addItem(list: List, name: string, amount: string, period: 'month' | 'year' = 'year') {
+/**
+ * Adds an item to a list through the page and fills it in; returns its element id. For a benefit the amount is its
+ * value, with nothing taken from pay unless `taken` is given (and how).
+ */
+function addItem(
+  list: List,
+  name: string,
+  amount: string,
+  period: 'month' | 'year' = 'year',
+  taken?: { amount: string; payment: 'beforeTax' | 'afterTax' },
+) {
   click($(`#opt-${list}-add`))
   const item = items(list).at(-1)!
   type(box(`${item.id}-name`), name)
-  type(box(`${item.id}-amount`), amount)
+  type(box(`${item.id}-${list === 'benefits' ? 'value' : 'amount'}`), amount)
+  if (taken) {
+    type(box(`${item.id}-taken`), taken.amount)
+    click($(`input[name="${item.id}-payment"][value="${taken.payment}"]`))
+  }
   click($(`input[name="${item.id}-period"][value="${period}"]`))
   return item.id
+}
+
+/** The PAYE estimate the engine gives for the page's inputs and a code. */
+const estimate = (code: string): PayeEstimate => {
+  const result = payeEstimate(code, engine(), taxYear)
+  if (!result.ok) throw new Error('no estimate')
+  return result
 }
 
 const choose = (name: string, value: string) => click($(`input[name="${name}"][value="${value}"]`))
@@ -104,7 +126,8 @@ describe('Optimiser page', () => {
     type(box('opt-bonus'), '4,000')
     const result = engine()
     expect(row('Year')).toBe(money(result.annual.net))
-    expect(row('Month')).toBe(money(result.monthly.net))
+    // The month is the breakdown's monthly rows added up (B14).
+    expect(row('Month')).toBe(money(breakdown(result.annual, 'month').takeHome))
     expect(row('Week')).toBe(money(result.weekly.net))
     expect(view.host.textContent).toMatch(/divided evenly/)
     expect(view.host.textContent).toMatch(/payslips/i)
@@ -220,8 +243,10 @@ describe('Optimiser page', () => {
     const medical = addItem('benefits', 'Medical', '70', 'month')
     save('Mine')
     const stored = JSON.parse(localStorage.getItem(STORAGE_KEYS.scenarios.key)!)
-    expect(stored.scenarios[0]).toMatchObject({ calculatorId: 'optimiser', inputsVersion: 2 })
-    expect(stored.scenarios[0].inputs.taxableBenefits).toEqual([{ name: 'Medical', amount: fromPounds(70), period: 'month' }])
+    expect(stored.scenarios[0]).toMatchObject({ calculatorId: 'optimiser', inputsVersion: 3 })
+    expect(stored.scenarios[0].inputs.taxableBenefits).toEqual([
+      { name: 'Medical', period: 'month', value: fromPounds(70), taken: 0, payment: 'beforeTax' },
+    ])
     expect(Object.keys(stored.scenarios[0].inputs).sort()).toEqual(Object.keys(optimiserCalculator.defaultInputs()).sort())
     expect(JSON.stringify(stored)).not.toMatch(/incomeTax|"net"/)
     type(box('opt-salary'), '1')
@@ -229,7 +254,7 @@ describe('Optimiser page', () => {
     click($('button[aria-label="Load “Mine”"]'))
     expect(box('opt-salary').value).toBe('41,000')
     expect(box(`${items('benefits')[0]!.id}-name`).value).toBe('Medical')
-    expect(box(`${items('benefits')[0]!.id}-amount`).value).toBe('70')
+    expect(box(`${items('benefits')[0]!.id}-value`).value).toBe('70')
     expect(medical).toBeDefined()
   })
 
@@ -369,7 +394,7 @@ describe('Optimiser page: itemised benefits and deductions', () => {
     expect($(`#${medical}`)!.textContent).toContain(`${money(fromPounds(45 * MONTHS_PER_YEAR))} for the year`)
     expect(row('Taxable benefits in kind')).toBe(money(total))
     expect(row('Income tax')).toBe(money(engine().annual.incomeTax))
-    type(box(`${medical}-amount`), '50')
+    type(box(`${medical}-value`), '50')
     expect($('#opt-benefits-total')!.textContent).toContain(money(fromPounds(50 * MONTHS_PER_YEAR + 3_000)))
     choose(`${medical}-period`, 'year')
     expect($('#opt-benefits-total')!.textContent).toContain(money(fromPounds(3_050)))
@@ -400,7 +425,7 @@ describe('Optimiser page: itemised benefits and deductions', () => {
   it('removing an item with an invalid box clears the problem so results return', () => {
     type(box('opt-salary'), '30,000')
     const item = addItem('benefits', 'Car', '1')
-    type(box(`${item}-amount`), '1.234')
+    type(box(`${item}-value`), '1.234')
     expect(view.host.textContent).toMatch(/Fix the highlighted inputs/)
     click($(`#${item}-remove`))
     expect(byText(view.host, 'h2', 'Breakdown')).toBeDefined()
@@ -437,13 +462,13 @@ describe('Optimiser page: itemised benefits and deductions', () => {
 
   it('every list control is a native, labelled control reachable by keyboard', () => {
     const item = addItem('benefits', 'Medical', '10')
-    for (const id of [`${item}-name`, `${item}-amount`]) {
+    for (const id of [`${item}-name`, `${item}-value`, `${item}-taken`]) {
       const input = box(id)
       expect(input.tagName).toBe('INPUT')
       expect($(`label[for="${id}"]`)).not.toBeNull()
     }
-    const radios = view.host.querySelectorAll(`input[name="${item}-period"]`)
-    expect(radios).toHaveLength(2)
+    expect(view.host.querySelectorAll(`input[name="${item}-period"]`)).toHaveLength(2)
+    expect(view.host.querySelectorAll(`input[name="${item}-payment"]`)).toHaveLength(2)
     for (const el of [$(`#${item}-remove`), $('#opt-benefits-add')]) {
       expect(el!.tagName).toBe('BUTTON')
       expect(el!.getAttribute('tabindex')).toBeNull()
@@ -453,9 +478,200 @@ describe('Optimiser page: itemised benefits and deductions', () => {
   })
 })
 
+describe('Optimiser page: benefits taken from pay (B10)', () => {
+  it('a benefit for salary given up: its taxable amount and what is taken, the totals, a breakdown row, and a warning', () => {
+    type(box('opt-salary'), '48,000')
+    const before = engine()
+    const item = addItem('benefits', 'Medical', '500', 'year', { amount: '600', payment: 'beforeTax' })
+    const result = engine()
+    expect($(`#${item}`)!.textContent).toContain(`Taxable: ${money(fromPounds(600))} for the year`)
+    expect($(`#${item}`)!.textContent).toContain(`taken from pay: ${money(fromPounds(600))} before tax`)
+    expect($('#opt-benefits-total')!.textContent).toContain(`Salary given up: ${money(fromPounds(600))}`)
+    expect(row('Salary given up for benefits')).toBe(money(fromPounds(600)))
+    expect(row('National Insurance')).toBe(money(result.annual.nationalInsurance))
+    expect(result.annual.nationalInsurance).toBeLessThan(before.annual.nationalInsurance)
+    expect(row('Take-home')).toBe(money(result.annual.net))
+    expect($('[data-warning="benefitSalarySacrifice"]')).not.toBeNull()
+  })
+
+  it('a benefit paid for after tax: its own breakdown row, NI unchanged, take-home from the engine', () => {
+    type(box('opt-salary'), '48,000')
+    const before = engine()
+    const item = addItem('benefits', 'Gym', '50', 'month', { amount: '20', payment: 'afterTax' })
+    expect($(`#${item}`)!.textContent).toContain(`Taxable: ${money(fromPounds(30 * MONTHS_PER_YEAR))} for the year`)
+    expect(row('Benefit payments after tax')).toBe(money(fromPounds(20 * MONTHS_PER_YEAR)))
+    expect(row('National Insurance')).toBe(money(before.annual.nationalInsurance))
+    expect(row('Take-home')).toBe(money(engine().annual.net))
+    expect($('[data-warning="benefitSalarySacrifice"]')).toBeNull()
+    expect(row('Salary given up for benefits')).toBeUndefined()
+  })
+
+  it('salary given up above pay shows the input problem instead of results', () => {
+    type(box('opt-salary'), '10,000')
+    addItem('benefits', 'Car', '0', 'year', { amount: '12,000', payment: 'beforeTax' })
+    expect($('[data-input-problem]')!.textContent).toMatch(/salary given up/i)
+  })
+
+  it('loads a version 2 scenario with identical take-home: each item its value, nothing taken', () => {
+    type(box('opt-salary'), '64,000')
+    addItem('benefits', 'Medical', '80', 'month')
+    addItem('benefits', 'Car', '3,100')
+    addItem('deductions', 'Dental', '15', 'month')
+    const expected = engine().annual.net
+    save('Older')
+    const record = JSON.parse(localStorage.getItem(STORAGE_KEYS.scenarios.key)!)
+    const { taxCode: _none, ...v2 } = record.scenarios[0].inputs
+    v2.taxableBenefits = [
+      { name: 'Medical', amount: fromPounds(80), period: 'month' },
+      { name: 'Car', amount: fromPounds(3_100), period: 'year' },
+    ]
+    record.scenarios[0].inputsVersion = 2
+    record.scenarios[0].inputs = v2
+    localStorage.setItem(STORAGE_KEYS.scenarios.key, JSON.stringify(record))
+    act(() => scenarioStore.reload())
+    click(byText(view.host, 'button', 'New'))
+    expect(row('Take-home')).not.toBe(money(expected))
+    click($('button[aria-label="Load “Older”"]'))
+    expect(row('Take-home')).toBe(money(expected))
+    expect(box(`${items('benefits')[1]!.id}-value`).value).toBe('3,100')
+    expect(box(`${items('benefits')[1]!.id}-taken`).value).toBe('0')
+  })
+})
+
+describe('Optimiser page: tax code and PAYE estimate (B11 to B13)', () => {
+  it('no code: neither the PAYE card nor a notice', () => {
+    type(box('opt-salary'), '40,000')
+    expect($('[data-paye]')).toBeNull()
+    expect($('[data-paye-notice]')).toBeNull()
+  })
+
+  it('a supported code: the estimate, a month, the year’s tax and the difference, from the engine; stored in canonical form', () => {
+    type(box('opt-salary'), '56,000')
+    addItem('benefits', 'Medical', '1,200')
+    type(box('opt-tax-code'), ' 900 l ')
+    expect(session.get().inputs.taxCode).toBe('900L')
+    const e = estimate('900L')
+    const card = $('[data-paye]')!
+    expect(card.textContent).toContain(money(e.paye.total))
+    expect(card.textContent).toContain('900L')
+    expect(row('PAYE a month')).toBe(money(e.paye.months[0]!.tax))
+    expect(row('Income tax for the year')).toBe(money(e.liability))
+    expect(row('Income tax for the year')).toBe(row('Income tax'))
+    expect(row('Difference')).toBe(money(Math.abs(e.difference) as Money))
+    expect(card.textContent).toMatch(/tax code|Self Assessment/)
+    expect(card.textContent).not.toMatch(/\d\s*%/)
+    // The headline stays the year's liability.
+    expect(row('Year')).toBe(money(engine().annual.net))
+  })
+
+  it('a code that is not modelled: a notice saying why, and no estimate', () => {
+    type(box('opt-salary'), '40,000')
+    for (const [code, kind] of [
+      ['BR', 'BR'],
+      ['k100', 'K'],
+      ['SD1', 'D'],
+      ['0T', '0T'],
+      ['NT', 'NT'],
+      ['100L M1', 'emergency'],
+    ] as const) {
+      type(box('opt-tax-code'), code)
+      expect($(`[data-paye-notice="${kind}"]`), code).not.toBeNull()
+      expect($('[data-paye]'), code).toBeNull()
+      expect(byText(view.host, 'h2', 'Breakdown'), code).toBeDefined()
+    }
+  })
+
+  it('text that is not a code: an error tied to the box and no results; clearing it brings them back', () => {
+    type(box('opt-salary'), '40,000')
+    type(box('opt-tax-code'), '12A')
+    const input = box('opt-tax-code')
+    expect(input.getAttribute('aria-invalid')).toBe('true')
+    expect(input.getAttribute('aria-describedby')).toContain('opt-tax-code-error')
+    expect(view.host.textContent).toMatch(/Fix the highlighted inputs/)
+    type(box('opt-tax-code'), '')
+    expect(byText(view.host, 'h2', 'Breakdown')).toBeDefined()
+    expect(session.get().inputs.taxCode).toBe('')
+  })
+
+  it('warns when the code’s prefix and where you live disagree', () => {
+    type(box('opt-salary'), '40,000')
+    type(box('opt-tax-code'), 'S100L')
+    expect($('[data-input-warning="taxCodeRegion"]')).not.toBeNull()
+    choose('opt-region', 'scotland')
+    expect($('[data-input-warning="taxCodeRegion"]')).toBeNull()
+  })
+
+  it('lists the PAYE assumptions with a supported code (level monthly pay), with no figures', () => {
+    type(box('opt-salary'), '40,000')
+    type(box('opt-tax-code'), '100L')
+    const text = $('details#assumptions')!.textContent ?? ''
+    for (const line of estimate('100L').paye.assumptions) expect(text).toContain(line)
+    expect(text).toMatch(/level monthly pay/i)
+  })
+})
+
+describe('Optimiser page: the breakdown by year or month (B14)', () => {
+  /** The breakdown card's rows, by label. */
+  const shownRows = () => {
+    const card = $('[data-breakdown]')!
+    return Object.fromEntries(
+      [...card.querySelectorAll('dt')].map((dt) => [dt.textContent!.trim(), dt.nextElementSibling!.firstChild!.textContent!.trim()]),
+    )
+  }
+
+  it('starts on the year; the month shows each row per month, adding up to take-home, with the PAYE month alongside', () => {
+    type(box('opt-salary'), '71,000')
+    click($('#opt-loan-plan1'))
+    type(box('opt-employee'), '2,500')
+    addItem('benefits', 'Medical', '40', 'month', { amount: '45', payment: 'beforeTax' })
+    addItem('deductions', 'Dental', '13', 'month')
+    type(box('opt-tax-code'), '900L')
+    expect(($('input[name="opt-breakdown-period"][value="year"]') as HTMLInputElement).checked).toBe(true)
+    expect($('[data-breakdown]')!.getAttribute('data-breakdown')).toBe('year')
+    choose('opt-breakdown-period', 'month')
+    const { annual } = engine()
+    const month = breakdown(annual, 'month')
+    const rows = shownRows()
+    expect(rows['Gross pay']).toBe(money(month.gross))
+    expect(rows['Income tax']).toBe(money(month.rows.incomeTax))
+    expect(rows['Salary given up for benefits']).toBe(money(month.rows.benefitSacrifice))
+    expect(rows['Take-home']).toBe(money(month.takeHome))
+    expect(rows['Income tax through PAYE']).toBe(money(estimate('900L').paye.months[0]!.tax))
+    expect(DEDUCTION_ROWS.reduce((left, r) => left - month.rows[r], month.gross as number)).toBe(month.takeHome)
+    choose('opt-breakdown-period', 'year')
+    expect(shownRows()['Take-home']).toBe(money(annual.net))
+    expect(shownRows()['Income tax through PAYE']).toBeUndefined()
+  })
+
+  it('states a penny difference from the year divided evenly when there is one', () => {
+    // Find salaries whose rounding moves the month: the difference is shown in words with both figures.
+    let shown = false
+    for (const salary of ['40,001', '40,003', '40,007', '40,011', '40,013', '40,017', '40,019', '40,023']) {
+      type(box('opt-salary'), salary)
+      choose('opt-breakdown-period', 'month')
+      const month = breakdown(engine().annual, 'month')
+      const text = $('[data-breakdown]')!.textContent ?? ''
+      if (month.difference !== 0) {
+        expect(text).toContain(money(month.evenShare))
+        expect(text).toMatch(/divided evenly/)
+        shown = true
+      } else expect(text).not.toMatch(/than the year’s take-home divided evenly/)
+    }
+    expect(shown).toBe(true)
+  })
+
+  it('the toggle is a native radio group with a legend, reachable by keyboard', () => {
+    type(box('opt-salary'), '30,000')
+    const radios = view.host.querySelectorAll('input[name="opt-breakdown-period"]')
+    expect(radios).toHaveLength(2)
+    for (const radio of radios) expect(radio.getAttribute('tabindex')).toBeNull()
+    expect(radios[0]!.closest('fieldset')!.querySelector('legend')!.textContent).toMatch(/breakdown/i)
+  })
+})
+
 describe('page code', () => {
   it('holds no tax figure: no amounts in pounds, no percentages, no config reads', () => {
-    for (const name of ['OptimiserPage.tsx', 'definition.ts', 'pageInputs.ts']) {
+    for (const name of ['OptimiserPage.tsx', 'definition.ts', 'pageInputs.ts', 'breakdown.ts']) {
       const source = readFileSync(join(__dirname, name), 'utf8')
       // "per cent" or "percent" as a word, not inside a name like PercentInput or percentRatio.
       expect(source, name).not.toMatch(/£\s?\d|\d\s?%|\bper ?cent\b/i)

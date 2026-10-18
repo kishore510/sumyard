@@ -5,6 +5,8 @@ import { percentRatio } from '@/lib/parse'
 import { MONTHS_PER_YEAR } from '@/lib/periods'
 import {
   annualAmount,
+  annualBenefit,
+  type BenefitItem,
   type ContributionEntry,
   isAboveAllOfPay,
   type ListItem,
@@ -112,5 +114,27 @@ describe('itemised lists, per month or per year (B7, B8)', () => {
   it('the largest list stays a safe whole number of pence', () => {
     const big = Array.from({ length: MAX_LIST_ITEMS }, () => item(MAX_INPUT_AMOUNT, 'month'))
     expect(Number.isSafeInteger(listTotal(big))).toBe(true)
+  })
+})
+
+describe('benefit items for the engine (B8, B10)', () => {
+  const item = (period: 'month' | 'year', payment: 'beforeTax' | 'afterTax'): BenefitItem => ({
+    name: 'Medical',
+    period,
+    value: fromPence(4_567),
+    taken: fromPence(1_234),
+    payment,
+  })
+
+  it('a yearly item goes as it is; the name and period stay on the page', () => {
+    expect(annualBenefit(item('year', 'afterTax'))).toEqual({ value: fromPence(4_567), taken: fromPence(1_234), payment: 'afterTax' })
+  })
+
+  it('a monthly item has both amounts times the months in a year, exactly', () => {
+    expect(annualBenefit(item('month', 'beforeTax'))).toEqual({
+      value: fromPence(4_567 * MONTHS_PER_YEAR),
+      taken: fromPence(1_234 * MONTHS_PER_YEAR),
+      payment: 'beforeTax',
+    })
   })
 })
