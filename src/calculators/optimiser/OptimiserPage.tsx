@@ -281,6 +281,8 @@ function ContributionInputs({
         options={MODE_OPTIONS}
         onChange={(mode) => {
           forget(mode === 'amount' ? `${field}-pct` : field)
+          // Pensionable pay leaves the page when neither contribution is a percentage any more.
+          if (!usesPensionablePay({ ...inputs, [field]: { ...entry, mode } })) forget('pensionablePay')
           set({ mode })
         }}
       />
@@ -394,7 +396,7 @@ function ItemList({ field, items, total, gbp }: { field: ListField; items: reado
         const label = itemLabel(field, item, index)
         return (
           <fieldset key={key} id={itemId} data-item className="flex min-w-0 flex-col gap-3 rounded-md border border-border p-3">
-            <legend className="max-w-full px-1 text-sm font-medium text-text [overflow-wrap:anywhere]">{label}</legend>
+            <legend className="px-1 text-sm font-medium text-text">{`${noun.replace(/^./, (c) => c.toUpperCase())} ${index + 1}`}</legend>
             <TextInput
               id={`${itemId}-name`}
               label="Name"

@@ -309,6 +309,17 @@ describe('Optimiser page: percentage contributions and pensionable pay', () => {
     expect($('#opt-employer-resolved')!.textContent).toContain(money(fromPounds(4_000)))
   })
 
+  it('an invalid own pensionable pay stops blocking results once no contribution is a percentage', () => {
+    type(box('opt-salary'), '30,000')
+    choose('opt-employee-mode', 'percentOfPay')
+    click($('#opt-pensionable-own'))
+    type(box('opt-pensionable'), '1.234')
+    expect(view.host.textContent).toMatch(/Fix the highlighted inputs/)
+    choose('opt-employee-mode', 'amount')
+    expect($('#opt-pensionable')).toBeNull()
+    expect(byText(view.host, 'h2', 'Breakdown')).toBeDefined()
+  })
+
   it('rounds a percentage to the nearest penny on the page', () => {
     type(box('opt-salary'), '10.10')
     choose('opt-employee-mode', 'percentOfPay')
@@ -407,7 +418,8 @@ describe('Optimiser page: itemised benefits and deductions', () => {
   it('a name over the limit shows an error tied to the box; names are shown only as text', () => {
     const item = addItem('benefits', '<b>Bold</b>', '10')
     expect(view.host.querySelector('b')).toBeNull()
-    expect($(`#${item} legend`)!.textContent).toBe('<b>Bold</b>')
+    expect($(`#${item} legend`)!.textContent).toBe('Benefit 1')
+    expect($(`#${item}-remove`)!.getAttribute('aria-label')).toBe('Remove <b>Bold</b>')
     type(box(`${item}-name`), 'n'.repeat(INPUT_LIMITS.maxNameLength + 1))
     const input = box(`${item}-name`)
     expect(input.getAttribute('aria-invalid')).toBe('true')
