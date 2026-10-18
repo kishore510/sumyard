@@ -4,8 +4,8 @@ import type { TaxBand, TaxYearConfig } from './schema'
 import type { SourceUrl, Verified } from './sourced'
 
 /*
- * 2026-27, verified in slice 1a session E. Every verified value below was
- * read on the GOV.UK page it cites, on the date given, and has a row in
+ * 2026-27, verified in slice 1a session E (the PAYE tax code unit in a later
+ * session). Every verified value below was read on the GOV.UK page it cites, on the date given, and has a row in
  * docs/verification-log.md with the exact line it came from and a second
  * source where one exists. A value still TODO was not verified; calculators
  * that need it refuse to show results. Never fill or change a value from
@@ -16,7 +16,14 @@ import type { SourceUrl, Verified } from './sourced'
  */
 
 const READ_ON: IsoDate = '2026-10-17'
-const read = <T>(value: T, sourceUrl: SourceUrl): Verified<T> => ({ status: 'verified', value, sourceUrl, verifiedOn: READ_ON })
+const read = <T>(value: T, sourceUrl: SourceUrl, verifiedOn: IsoDate = READ_ON): Verified<T> => ({
+  status: 'verified',
+  value,
+  sourceUrl,
+  verifiedOn,
+})
+/** Read in the session that added PAYE tax codes. */
+const READ_FOR_PAYE: IsoDate = '2026-10-18'
 
 const INCOME_TAX_RATES: SourceUrl = 'https://www.gov.uk/income-tax-rates'
 const HMRC_INCOME_TAX_RATES: SourceUrl =
@@ -33,6 +40,7 @@ const HICBC_PAYE_MANUAL: SourceUrl = 'https://www.gov.uk/hmrc-internal-manuals/p
 const HICBC_GUIDE: SourceUrl = 'https://www.gov.uk/child-benefit-tax-charge'
 const TAX_FREE_CHILDCARE: SourceUrl = 'https://www.gov.uk/tax-free-childcare/check-if-youre-eligible'
 const FREE_CHILDCARE_FOR_WORKING_PARENTS: SourceUrl = 'https://www.gov.uk/free-childcare-if-working/check-youre-eligible'
+const EMPLOYEE_TAX_CODES: SourceUrl = 'https://www.gov.uk/employee-tax-codes'
 const HMRC_NI_RATES: SourceUrl =
   'https://www.gov.uk/government/publications/rates-and-allowances-national-insurance-contributions/rates-and-allowances-national-insurance-contributions'
 
@@ -113,6 +121,10 @@ export const taxYear: TaxYearConfig = {
   childcare: {
     taxFreeChildcare: { incomeLimit: read(fromPounds(100_000), TAX_FREE_CHILDCARE) },
     thirtyHours: { incomeLimit: read(fromPounds(100_000), FREE_CHILDCARE_FOR_WORKING_PARENTS) },
+  },
+  paye: {
+    // A standing rule, not tied to a tax year on the page (docs/verification-log.md).
+    codeUnit: read(fromPounds(10), EMPLOYEE_TAX_CODES, READ_FOR_PAYE),
   },
   savingsAndDividends: { reserved: true },
 }
