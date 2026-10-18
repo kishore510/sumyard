@@ -866,8 +866,8 @@ function computeTakeHome(
     adjustedNetIncome: aniResult(grossPay, effect, taxYear),
     hicbc: charge,
     benefits: totals,
-    // PAYE's pay (B13): taxable pay without any benefit in kind.
-    payrollPay: subtract(effect.taxablePay, benefits),
+    // PAYE's pay (B17): the year's taxable pay, benefits in kind included, as if payrolled.
+    payrollPay: effect.taxablePay,
     annual: view('annual', 'Annual: the tax year’s figures', annual, 1),
     monthly: view('monthly', 'Monthly: each annual figure divided by the months in a year, to the nearest penny', annual, MONTHS_PER_YEAR),
     weekly: view('weekly', 'Weekly: each annual figure divided by the weeks in a year, to the nearest penny', annual, WEEKS_PER_YEAR),

@@ -1,6 +1,6 @@
 # Phase plan: Sumyard
 
-Last updated: 18 October 2026 (slice 1b, 0.11.0: benefits taken from pay before or after tax, an optional tax code with a PAYE estimate, a Year / Month breakdown, inputs version 3; slice 1b In progress)
+Last updated: 18 October 2026 (slice 1b, 0.11.1: the PAYE estimate now includes benefits in kind in its pay, decision B17; slice 1b In progress)
 
 Draft roadmap. When a slice starts, rewrite its prompt against the real code (see the skeleton in PHASE-BRIEF.md). Do not treat these notes as final prompts.
 
@@ -226,13 +226,14 @@ Engine (pure functions, tests first: red commit, then green).
 - **0.11.0 done (user-visible, 18 October 2026):** owner decisions B10 to B16 (`docs/modelling-decisions.md`, B4 superseded), GOV.UK lookups in `docs/verification-log.md` ("Session 0.11.0 lookups"). Benefit items with a value, an amount taken from pay and how (before tax and NI: taxed on the greater of the value and the salary given up, which comes off pay before tax, NI and student loan; after tax: the value less the contribution); an optional tax code with a PAYE estimate (level monthly pay, cumulative) beside the year's liability and the difference, and a notice for codes not modelled; a Year / Month breakdown that adds up in both views; inputs version 3 with migrations from versions 1 and 2 giving identical results. One config leaf added in its own commits: `paye.codeUnit` (www.gov.uk/employee-tax-codes). Engine: `TaxInputs.benefits`, `benefitTaxable`, `benefitTotals`, `TakeHomeResult.payrollPay`; new `paye.ts` (`parseTaxCode`, `paye`, `payeEstimate`) and `breakdown.ts`.
 - **What changed from the 0.11.0 prompt:**
   - `paye(code, pay, config)` takes no `ModellingPolicy`: no policy choice applies to it (the taper is in the code). The difference from the liability comes from `payeEstimate(code, takeHomeResult, config)`.
-  - "Taxable pay" for PAYE is pay through payroll (`payrollPay`): gross less salary given up and net pay contributions, without benefits in kind (they count only through the code).
+  - "Taxable pay" for PAYE is pay through payroll (`payrollPay`): gross less salary given up and net pay contributions, without benefits in kind (they count only through the code). Superseded in 0.11.1 by B17: benefits are in it.
   - The code's allowance needed a config value (the multiplier); it went in as `paye.codeUnit`, logged as a standing rule (the page does not tie it to a tax year), for the owner to confirm.
   - A C prefix uses the England, Wales and Northern Ireland bands, as GOV.UK's Income Tax in Wales page gives the same 2026 to 2027 rates; no separate Welsh leaf.
   - Exempt benefits are warned about whenever salary is given up (the engine cannot tell an item's kind from its name).
   - An item cannot both give up salary and make good (EIM44120's combined example is not representable).
   - The inputs version is derived from the list of migrations, because the literal guard covers `definition.ts`.
   - The month view's PAYE row shows the first month; the card says when months differ by a penny.
+- **0.11.1 fix (user-visible, 18 October 2026):** the PAYE estimate left benefits in kind out of its pay (B13), so with payrolled benefits it ran below the year's liability by the benefits at the marginal rate. Owner decision B17: `payrollPay` is the year's taxable pay, benefits included, as if payrolled. Tests: PAYE's pay equals the annual engine's taxable pay (a case with benefits and a code, and 100 random cases); `sacrifice.test.ts` and the reference fixture updated to the new measure. Not verified: GOV.UK's payrolling pages, and whether each benefit is payrolled for a given employer. Rollback: revert the fix PR (no storage or config change).
 - **Rollback (0.11.0):** revert the PR. Scenarios saved at inputs version 3 would be refused as newer and kept but hidden; versions 1 and 2 untouched until re-saved. Reverting also removes `paye.codeUnit` from the config and its log row together. No storage key changed.
 - **What changed from the 1b-i.1 prompt:**
   - A version 1 amount of nothing migrates to an empty list, not one item of nothing (which would only add a warning).

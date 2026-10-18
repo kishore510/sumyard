@@ -47,7 +47,7 @@ Choose **Percentage** under a contribution to enter it as a percentage of your *
 
 The tax code is optional; it is on your payslip or in the HMRC app. Type it as shown, for example a number then a letter, with S or C in front if yours has one. Sumyard models codes made of a number and the letter L, M, N or T, with or without S (Scottish rates) or C (Welsh rates). K codes, BR, the D codes, NT, the no-allowance code and emergency codes (ending W1, M1, X or NONCUM) show a note and no estimate.
 
-The estimate assumes the same pay every month for the whole year from this job, on the usual cumulative basis: each month gets its share of your tax-free pay and of each tax band. Benefits in kind count only through your code. It doesn't use HMRC's payroll tables, so payroll can differ by pennies or more. If the code's S or C doesn't match where you live, the page says so.
+The estimate assumes the same pay every month for the whole year from this job, on the usual cumulative basis: each month gets its share of your tax-free pay and of each tax band. Benefits in kind are counted in your pay each month, as if your employer payrolls them; if yours are not payrolled, your code takes them off your tax-free pay instead, and the estimate counts them twice. It doesn't use HMRC's payroll tables, so payroll can differ by pennies or more. If the code's S or C doesn't match where you live, the page says so.
 
 A difference between the estimate and the year's tax may be refunded or collected later: HMRC can change your tax code, or settle it after the year ends, by letter or through Self Assessment if you send a return.
 
