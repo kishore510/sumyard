@@ -9,7 +9,9 @@
 import type { TaxBand, TaxYearConfig } from '@/config/tax/schema'
 import { requireVerified } from '@/config/tax/sourced'
 import type { Money, Ratio } from '@/lib/money'
+import { MONTHS_PER_YEAR } from '@/lib/periods'
 import type {
+  BenefitInput,
   ChildBenefitInput,
   ModellingPolicy,
   PensionInput,
@@ -55,6 +57,7 @@ export const REFERENCE_PATHS = [
   'pension.moneyPurchaseAnnualAllowance',
   'childcare.taxFreeChildcare.incomeLimit',
   'childcare.thirtyHours.incomeLimit',
+  'paye.codeUnit',
 ] as const
 
 /** Every value the engine reads, straight from the config (throws if one is unverified). */
@@ -105,6 +108,7 @@ export function configValues(config: TaxYearConfig) {
       taxFreeChildcare: v['childcare.taxFreeChildcare.incomeLimit'],
       thirtyHours: v['childcare.thirtyHours.incomeLimit'],
     },
+    codeUnit: v['paye.codeUnit'],
   }
 }
 
@@ -342,11 +346,43 @@ export function referenceHicbc(ani: Money | Frac, children: ChildBenefitInput, c
   return { entitlement, received, steps, percent, charge }
 }
 
-/** Annual take-home with a pension, Child Benefit, taxable benefits and post-tax deductions, from the rules above. */
+/**
+ * 0.11.0 (decision B10), written a second way: per item, salary given up is taxed at whichever is larger of it and
+ * the value (the relevant amount, EIM44120); a contribution after tax takes the value down, but not below nothing
+ * (EIM21119). Returns the taxable total, the salary given up and what is paid from net pay.
+ */
+export function referenceBenefitItems(items: readonly BenefitInput[] = []): { taxable: number; sacrificed: number; after: number } {
+  let taxable = 0
+  let sacrificed = 0
+  let after = 0
+  for (const item of items) {
+    if (item.payment === 'beforeTax') {
+      sacrificed += item.taken
+      taxable += item.taken > item.value ? item.taken : item.value
+    } else {
+      after += item.taken
+      taxable += item.value > item.taken ? item.value - item.taken : 0
+    }
+  }
+  return { taxable, sacrificed, after }
+}
+
+/** Cash pay after salary given up for benefits, and every taxable benefit (the single figure and the items). */
+export function referenceCash(inputs: TaxInputs): { cash: Money; benefits: Money; sacrificed: number; after: number } {
+  const items = referenceBenefitItems(inputs.benefits)
+  return {
+    cash: (inputs.grossPay - items.sacrificed) as Money,
+    benefits: ((inputs.taxableBenefits ?? 0) + items.taxable) as Money,
+    sacrificed: items.sacrificed,
+    after: items.after,
+  }
+}
+
+/** Annual take-home with a pension, Child Benefit, taxable benefits, benefit items and post-tax deductions, from the rules above. */
 export function referenceTakeHome(inputs: TaxInputs, config: TaxYearConfig, policy: ModellingPolicy) {
-  const benefits = inputs.taxableBenefits ?? (0 as Money)
-  const p = referencePension(inputs.grossPay, inputs.pension, config, benefits)
-  const tax = referenceIncomeTaxWith(inputs.grossPay, inputs.pension, inputs.region, config, policy, benefits).total
+  const { cash, benefits, sacrificed, after } = referenceCash(inputs)
+  const p = referencePension(cash, inputs.pension, config, benefits)
+  const tax = referenceIncomeTaxWith(cash, inputs.pension, inputs.region, config, policy, benefits).total
   const niablePay = nearest(p.niablePay) as Money
   const ni = referenceNI(niablePay, config).total
   const values = configValues(config)
@@ -364,7 +400,9 @@ export function referenceTakeHome(inputs: TaxInputs, config: TaxYearConfig, poli
   const charge = child?.charge ?? 0
   // Post-tax deductions (decision B2) come off net pay and nothing else.
   const deductions = inputs.postTaxDeductions ?? 0
-  const net = inputs.grossPay - tax - ni - loan - pension - charge - deductions
+  const net = inputs.grossPay - sacrificed - tax - ni - loan - pension - charge - deductions - after
+  // Pay PAYE taxes: cash pay less salary sacrificed or net pay contributions (B13); benefits are not in it.
+  const payrollPay = inputs.pension && inputs.pension.method !== 'reliefAtSource' ? cash - inputs.pension.contribution : cash
   return {
     tax,
     ni,
@@ -376,6 +414,11 @@ export function referenceTakeHome(inputs: TaxInputs, config: TaxYearConfig, poli
     childBenefit: child?.received ?? 0,
     ani: nearest(p.ani),
     pot: nearest(p.pot),
+    niablePay: niablePay as number,
+    sacrificed,
+    after,
+    benefits: benefits as number,
+    payrollPay,
   }
 }
 
@@ -437,9 +480,10 @@ export interface ReferenceAllowance {
 /** The annual allowance position by PTM057100, PTM055100 and the MPAA guidance, money purchase savings only. */
 export function referenceAnnualAllowance(inputs: TaxInputs, savings: PensionSavingsInput, config: TaxYearConfig): ReferenceAllowance {
   const aa = configValues(config).annualAllowance
-  const benefits = inputs.taxableBenefits ?? (0 as Money)
-  const thresholdIncome = referenceThresholdIncome(inputs.grossPay, inputs.pension, config, benefits)
-  const adjustedIncome = referenceAdjustedIncome(inputs.grossPay, inputs.pension, savings.employerContribution, config, benefits)
+  // Salary given up for benefits is not pension provision, so it is not added back (B10): measures start from cash pay.
+  const { cash, benefits } = referenceCash(inputs)
+  const thresholdIncome = referenceThresholdIncome(cash, inputs.pension, config, benefits)
+  const adjustedIncome = referenceAdjustedIncome(cash, inputs.pension, savings.employerContribution, config, benefits)
   const tapered = less(whole(aa.thresholdIncomeLimit), thresholdIncome) && adjustedIncome > aa.adjustedIncomeLimit
   let allowance: number = aa.standard
   if (tapered) {
@@ -502,7 +546,8 @@ export function referenceAllowanceCharge(
 
 /** Exact taxable income and the band extension for take-home inputs, for the charge. */
 export function referenceTaxable(inputs: TaxInputs, config: TaxYearConfig, policy: ModellingPolicy): { taxable: Frac; extension: Frac } {
-  const p = referencePension(inputs.grossPay, inputs.pension, config, inputs.taxableBenefits)
+  const { cash, benefits } = referenceCash(inputs)
+  const p = referencePension(cash, inputs.pension, config, benefits)
   return { taxable: referenceExactTax(p.taxablePay, p.ani, p.extension, inputs.region, config, policy).taxable, extension: p.extension }
 }
 
@@ -576,3 +621,40 @@ export function referenceMeasure(grossPay: Money, pension: PensionInput, measure
 
 /** True if a is under b. */
 export const lessFrac = less
+
+/* 0.11.0: the PAYE estimate (decisions B12 and B13), written a second way. */
+
+/** A supported code's regime and number, or null: optional S or C, a number without a leading zero, then L, M, N or T. */
+export function referenceCode(text: string): { prefix: '' | 'S' | 'C'; number: number } | null {
+  const match = /^([SC]?)([1-9][0-9]*)[LMNT]$/.exec(text.toUpperCase().replace(/\s+/g, ''))
+  return match ? { prefix: match[1] as '' | 'S' | 'C', number: Number(match[2]) } : null
+}
+
+/**
+ * PAYE on level monthly pay, cumulative (PAYE11090, PAYE70025): month n has n twelfths of the pay, of the code's
+ * allowance and of each band's start; tax to date exact, rounded once to the nearest penny; each month the change.
+ */
+export function referencePaye(text: string, pay: Money, config: TaxYearConfig) {
+  const code = referenceCode(text)
+  if (!code) throw new Error(`reference: ${text} is not a supported code`)
+  const values = configValues(config)
+  const bands = values.bands[code.prefix === 'S' ? 'scotland' : 'rUK']
+  const allowance = code.number * values.codeUnit
+  const months: { taxToDate: number; tax: number; taxable: number }[] = []
+  let previous = 0
+  for (let n = 1; n <= MONTHS_PER_YEAR; n++) {
+    const share: Ratio = { numerator: n, denominator: MONTHS_PER_YEAR }
+    const taxable = clamp(sub(times(whole(pay), share), times(whole(allowance), share)), NONE, null)
+    let tax = NONE
+    bands.forEach((band, i) => {
+      const next = bands[i + 1]
+      const from = times(whole(band.from), share)
+      const width = next ? times(whole(next.from - band.from), share) : null
+      tax = plus(tax, times(clamp(sub(taxable, from), NONE, width), band.rate))
+    })
+    const toDate = nearest(tax)
+    months.push({ taxToDate: toDate, tax: toDate - previous, taxable: nearest(taxable) })
+    previous = toDate
+  }
+  return { allowance, months, total: previous }
+}

@@ -122,6 +122,11 @@ export interface TaxYearConfig {
     readonly taxFreeChildcare: { readonly incomeLimit: Sourced<Money> }
     readonly thirtyHours: { readonly incomeLimit: Sourced<Money> }
   }
+  /** PAYE tax codes (0.11.0). */
+  readonly paye: {
+    /** Tax-free pay per unit of a tax code's number: the code's allowance is its number times this. */
+    readonly codeUnit: Sourced<Money>
+  }
   /** Room for the dividend and savings allowances. Not modelled in Phase 1, so it holds no values. */
   readonly savingsAndDividends: Reserved
 }
@@ -279,6 +284,11 @@ export const TAX_GROUPS: readonly TaxGroup[] = [
         kind: 'money',
       },
     ],
+  },
+  {
+    id: 'paye',
+    title: 'PAYE tax codes',
+    fields: [{ path: 'paye.codeUnit', label: 'Tax-free pay per unit of the code number', kind: 'money' }],
   },
 ]
 

@@ -4,6 +4,16 @@ All notable changes to Sumyard are listed here, newest first. The format follows
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-10-18
+
+### Added
+- **Benefits through salary sacrifice.** Each benefit now has its value, what is taken from your pay for it, and whether that is before tax (salary sacrifice) or after tax. Salary you give up lowers your tax, National Insurance and student loan, and the benefit is taxed on the higher of its value and the salary given up. A note says some benefits keep an exemption Sumyard doesn't model.
+- **Tax code and PAYE estimate.** Optionally enter your tax code to see what PAYE would take over the year with level monthly pay, beside the year's tax and the difference. K, BR, D, NT, emergency and no-allowance codes show a note instead.
+- **Monthly breakdown.** Switch the breakdown between the year and a month; the monthly rows add up to your monthly take-home.
+
+### Changed
+- Scenarios you saved before open with the same take-home: each benefit keeps its amount as its value, with nothing taken from pay.
+
 ## [0.10.0] - 2026-10-18
 
 ### Added

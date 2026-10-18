@@ -8,6 +8,7 @@ import {
   adjustedNetIncome,
   annualAllowanceCharge,
   annualAllowanceCheck,
+  benefitTaxable,
   childcareCheck,
   employeeNI,
   hicbc,
@@ -15,7 +16,9 @@ import {
   pensionContribution,
   personalAllowance,
   studentLoan,
+  takeHome,
 } from './calc'
+import { parseTaxCode, paye } from './paye'
 import {
   DEFAULT_POLICY,
   type PensionInput,
@@ -404,5 +407,68 @@ describe(`CC-3, childcare: ${TAX_FREE_CHILDCARE}`, () => {
     const over = ok(childcareCheck(add(fromPounds(100_000), fromPence(1)), undefined, taxYear)).schemes[0]!
     expect(at.eligibleOnIncome).toBe(true)
     expect(over.eligibleOnIncome).toBe(false)
+  })
+})
+
+/*
+ * 0.11.0: benefits through salary sacrifice, contributions after tax, and tax codes (decisions B10 to B13;
+ * docs/worked-examples.md, BEN-1 to BEN-4 and TC-1 to TC-3). The figures are the pages' own.
+ */
+describe('published examples: benefits taken from pay (0.11.0)', () => {
+  const pounds = (n: number) => fromPounds(n)
+
+  it('BEN-1 (EIM44120 example 1; 480 Appendix 12 example 1): medical insurance costing £500 for £600 of salary: "The relevant amount is £600"', () => {
+    // https://www.gov.uk/hmrc-internal-manuals/employment-income-manual/eim44120
+    // The example's second step (£100 made good on top of the sacrifice) is not modelled: an item is one way or the other (B10).
+    expect(benefitTaxable({ value: pounds(500), taken: pounds(600), payment: 'beforeTax' })).toBe(pounds(600))
+  })
+
+  it('BEN-2 (480 Appendix 12 example 13): a workplace gym, otherwise exempt, for £300 of salary: "taxed on a benefit of £300"', () => {
+    // https://www.gov.uk/guidance/optional-remuneration-arrangements-480-appendix-12: "The cost of the benefit is treated as nil."
+    expect(benefitTaxable({ value: ZERO, taken: pounds(300), payment: 'beforeTax' })).toBe(pounds(300))
+  })
+
+  it('BEN-3 (NIM02330): salary £35,000 with £2,000 given up for a payment in kind: "NICs will be due only on the £33,000 cash"', () => {
+    // https://www.gov.uk/hmrc-internal-manuals/national-insurance-manual/nim02330. The example's childcare vouchers keep
+    // an exemption Sumyard does not model, so only the NI-able pay is mirrored.
+    const r = takeHome(
+      {
+        grossPay: pounds(35_000),
+        region: 'rUK',
+        studentLoans: [],
+        benefits: [{ value: pounds(2_000), taken: pounds(2_000), payment: 'beforeTax' }],
+      },
+      taxYear,
+      DEFAULT_POLICY,
+    )
+    if (!r.ok) throw new Error('refused')
+    expect(r.nationalInsurance.niablePay).toBe(pounds(33_000))
+  })
+
+  it('BEN-4 (NIM15201): earnings of £2,500 from a benefit, £500 made good: "reduced to £2,000"', () => {
+    // https://www.gov.uk/hmrc-internal-manuals/national-insurance-manual/nim15201
+    expect(benefitTaxable({ value: pounds(2_500), taken: pounds(500), payment: 'afterTax' })).toBe(pounds(2_000))
+  })
+})
+
+describe('published examples: tax codes (0.11.0)', () => {
+  it('TC-1 (Understanding your employees’ tax codes): 1257L "can earn £12,570 before being taxed"; on £27,000 "their taxable income is £14,430"', () => {
+    // https://www.gov.uk/employee-tax-codes (its example names the 2025 to 2026 tax year; the rule is the code unit's).
+    const r = paye('1257L', fromPounds(27_000), taxYear)
+    if (!r.ok) throw new Error('no estimate')
+    expect(r.codeAllowance).toBe(fromPounds(12_570))
+    expect(r.months.at(-1)!.taxablePayToDate).toBe(fromPounds(14_430))
+  })
+
+  it('TC-2 (What your tax code means): "a tax-free amount of £11,000. This would mean your tax code is 1100L"', () => {
+    // https://www.gov.uk/tax-codes/what-your-tax-code-means
+    const r = paye('1100L', ZERO, taxYear)
+    if (!r.ok) throw new Error('no estimate')
+    expect(r.codeAllowance).toBe(fromPounds(11_000))
+  })
+
+  it('TC-3 (Understanding your employees’ tax codes): K475 is a K code, which the estimate does not model', () => {
+    // https://www.gov.uk/employee-tax-codes: "An employee with tax code K475 ..." (B12: K codes get a notice).
+    expect(parseTaxCode('K475')).toEqual({ ok: false, reason: 'unsupported', kind: 'K', text: 'K475' })
   })
 })

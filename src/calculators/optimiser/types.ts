@@ -84,6 +84,35 @@ export interface ChildBenefitInput {
   readonly payments: ChildBenefitPayments
 }
 
+/**
+ * How a benefit item is paid for (decision B10): `beforeTax`, salary given up
+ * for it (salary sacrifice, an optional remuneration arrangement); `afterTax`,
+ * a contribution from net pay (making good). Nothing taken is an employer-paid
+ * benefit either way.
+ */
+export type BenefitPayment = 'beforeTax' | 'afterTax'
+
+export const BENEFIT_PAYMENTS = ['beforeTax', 'afterTax'] as const satisfies readonly BenefitPayment[]
+
+/** One benefit in kind for the year (B10). Annual amounts. */
+export interface BenefitInput {
+  /** The benefit's value under the normal rules, ignoring anything paid towards it, as the employer works it out; zero or more. */
+  readonly value: Money
+  /** What the employee gives for it in the year: the salary given up, or the contribution from net pay; zero or more. */
+  readonly taken: Money
+  readonly payment: BenefitPayment
+}
+
+/** Benefit items summed for the year (B10). */
+export interface BenefitTotals {
+  /** Added to taxable pay and adjusted net income: each item's relevant amount (before tax) or value less the contribution (after tax). */
+  readonly taxable: Money
+  /** Salary given up for benefits: off taxable pay, NI-able pay, the student loan base and take-home. */
+  readonly salaryGivenUp: Money
+  /** Contributions from net pay for benefits: off take-home only. */
+  readonly paidAfterTax: Money
+}
+
 /** What takeHome needs. Annual figures; employment income only. */
 export interface TaxInputs {
   /** Gross employment income for the tax year, in pence, zero or more: the contractual pay before any salary sacrifice. */
@@ -103,6 +132,8 @@ export interface TaxInputs {
   readonly taxableBenefits?: Money
   /** Amounts taken from net pay for the year with no tax effect, in pence, zero or more (none if absent). Off take-home only (B2). */
   readonly postTaxDeductions?: Money
+  /** Benefit items with what is taken from pay for them (B10), in addition to `taxableBenefits`; none if absent. */
+  readonly benefits?: readonly BenefitInput[]
 }
 
 /** A pension contribution's effect on pay, adjusted net income and the bands. */
@@ -264,6 +295,8 @@ export interface PeriodView {
   /** How the view is worked out, for the UI to show beside it. */
   readonly label: string
   readonly gross: Money
+  /** Salary given up for benefits (nothing without it). */
+  readonly benefitSacrifice: Money
   readonly incomeTax: Money
   readonly nationalInsurance: Money
   readonly studentLoan: Money
@@ -271,9 +304,11 @@ export interface PeriodView {
   readonly pension: Money
   /** The High Income Child Benefit Charge (nothing without Child Benefit). */
   readonly hicbc: Money
+  /** Contributions from net pay for benefits (nothing without them). */
+  readonly benefitPayments: Money
   /** Amounts taken from net pay with no tax effect (nothing without them). */
   readonly postTaxDeductions: Money
-  /** Take-home pay: gross less income tax, NI, student loan, pension, the charge and post-tax deductions. */
+  /** Take-home pay: gross less salary given up for benefits, income tax, NI, student loan, pension, the charge, benefit payments and post-tax deductions. */
   readonly net: Money
   /** Child Benefit received (nothing without it). */
   readonly childBenefit: Money
@@ -296,6 +331,13 @@ export interface TakeHomeResult {
   readonly adjustedNetIncome: AdjustedNetIncomeResult
   /** Child Benefit and the charge; null without Child Benefit. */
   readonly hicbc: HicbcResult | null
+  /** Benefit items summed (nothing in each without them). */
+  readonly benefits: BenefitTotals
+  /**
+   * Pay through payroll that PAYE taxes: gross pay less salary given up (for pension or benefits) and net pay contributions.
+   * Benefits in kind are not in it (decision B13).
+   */
+  readonly payrollPay: Money
   readonly annual: PeriodView
   readonly monthly: PeriodView
   readonly weekly: PeriodView
@@ -338,6 +380,7 @@ export interface EngineWarning {
     | 'carryForwardOutOfTime'
     | 'childcareOverLimit'
     | 'takeHomeBelowNothing'
+    | 'benefitSalarySacrifice'
   readonly message: string
 }
 
@@ -551,4 +594,81 @@ export interface OptimiseResult {
   readonly thresholds: readonly ThresholdContribution[]
   readonly cliffs: readonly Cliff[]
   readonly assumptions: readonly string[]
+}
+
+/* Tax codes and the PAYE estimate (decisions B11 to B13). */
+
+/** Which bands a code's prefix selects: none, England and Northern Ireland; S, Scotland; C, Wales. */
+export type TaxCodeRegime = 'rUK' | 'scotland' | 'wales'
+
+export type TaxCodeSuffix = 'L' | 'M' | 'N' | 'T'
+
+/** A supported code: a number with a suffix letter, and an optional S or C prefix. */
+export interface TaxCode {
+  /** The code in its canonical form: upper case, no spaces. */
+  readonly text: string
+  readonly regime: TaxCodeRegime
+  /** The number, a whole number of one or more. */
+  readonly number: number
+  readonly suffix: TaxCodeSuffix
+}
+
+/** Codes GOV.UK defines that the estimate does not model (B12). */
+export type UnsupportedTaxCode = 'K' | 'BR' | 'D' | '0T' | 'NT' | 'emergency'
+
+export type ParsedTaxCode =
+  | { readonly ok: true; readonly code: TaxCode }
+  /** A real code the estimate does not model; `text` is its canonical form. */
+  | { readonly ok: false; readonly reason: 'unsupported'; readonly kind: UnsupportedTaxCode; readonly text: string }
+  | { readonly ok: false; readonly reason: 'invalid' }
+
+/** No estimate for this code, and why, in words without figures. Distinct from a config Refusal (which lists unverified values). */
+export interface PayeNotModelled {
+  readonly ok: false
+  readonly reason: 'unsupported' | 'invalid'
+  readonly kind: UnsupportedTaxCode | null
+  readonly message: string
+}
+
+/** One month of level pay on the cumulative basis. "To date" figures run from the start of the year to the end of the month. */
+export interface PayeMonth {
+  /** One for the first month of the tax year, and so on. */
+  readonly month: number
+  /** This month's pay, to the nearest penny. */
+  readonly pay: Money
+  readonly payToDate: Money
+  readonly freePayToDate: Money
+  /** Pay to date less free pay to date, never below nothing. */
+  readonly taxablePayToDate: Money
+  /** Tax on taxable pay to date with the bands' share to date, rounded once to the nearest penny. */
+  readonly taxToDate: Money
+  /** Tax to date less the previous month's: this month's deduction. */
+  readonly tax: Money
+}
+
+export interface PayeResult {
+  readonly ok: true
+  readonly taxYear: TaxYearId
+  readonly estimate: true
+  readonly code: TaxCode
+  /** Which configured bands were used. */
+  readonly bands: Region
+  /** The code's number times the config's code unit. */
+  readonly codeAllowance: Money
+  /** The year's pay through payroll. */
+  readonly pay: Money
+  readonly months: readonly PayeMonth[]
+  /** The year's tax: the last month's tax to date. */
+  readonly total: Money
+  readonly assumptions: readonly string[]
+}
+
+/** The PAYE estimate beside the year's liability. */
+export interface PayeEstimate {
+  readonly ok: true
+  readonly paye: PayeResult
+  /** The annual liability's income tax (the headline figure). */
+  readonly liability: Money
+  /** The estimate less the liability: above nothing, PAYE takes more than the year's tax. */
+  readonly difference: Money
 }

@@ -1,6 +1,7 @@
 import { add, compareRatio, type Money, mulRound, ratio, ZERO } from '@/lib/money'
 import { percentRatio } from '@/lib/parse'
 import { MONTHS_PER_YEAR } from '@/lib/periods'
+import type { BenefitInput, BenefitPayment } from './types'
 
 /*
  * How the take-home page's inputs become the single annual figures the
@@ -35,11 +36,26 @@ export interface PensionablePayEntry {
 export const ITEM_PERIODS = ['month', 'year'] as const
 export type ItemPeriod = (typeof ITEM_PERIODS)[number]
 
-/** One named item in a list: benefits in kind or post-tax deductions. The name is text only. */
+/** One named item in the post-tax deductions list. The name is text only. */
 export interface ListItem {
   readonly name: string
   readonly amount: Money
   readonly period: ItemPeriod
+}
+
+/**
+ * One benefit in kind as entered (inputs version 3, decision B10): its value,
+ * what is taken from pay for it and how, both per month or per year. Nothing
+ * taken is an employer-paid benefit. The name is text only.
+ */
+export interface BenefitItem {
+  readonly name: string
+  readonly period: ItemPeriod
+  /** The benefit's value, ignoring anything paid towards it. */
+  readonly value: Money
+  /** What is taken from pay for it: salary given up (before tax) or a contribution from net pay (after tax). */
+  readonly taken: Money
+  readonly payment: BenefitPayment
 }
 
 const MONTHS = ratio(MONTHS_PER_YEAR, 1)
@@ -68,4 +84,10 @@ export function annualAmount(item: ListItem): Money {
 /** A list's total for the year; nothing for an empty list (B7). */
 export function listTotal(items: readonly ListItem[]): Money {
   return items.reduce((sum, item) => add(sum, annualAmount(item)), ZERO)
+}
+
+/** A benefit item's annual amounts for the engine: a monthly value and amount taken each times the months in a year (B8, B10). */
+export function annualBenefit(item: BenefitItem): BenefitInput {
+  const year = (amount: Money) => (item.period === 'month' ? mulRound(amount, MONTHS, 'nearest') : amount)
+  return { value: year(item.value), taken: year(item.taken), payment: item.payment }
 }

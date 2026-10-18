@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { type ReactNode, useState } from 'react'
 import { AssumptionsPanel } from '@/components/AssumptionsPanel'
 import { CurrencyInput } from '@/components/inputs/CurrencyInput'
 import { NumberInput } from '@/components/inputs/NumberInput'
@@ -6,6 +6,7 @@ import { PercentInput } from '@/components/inputs/PercentInput'
 import { Segmented } from '@/components/inputs/Segmented'
 import { Select } from '@/components/inputs/Select'
 import { TextInput } from '@/components/inputs/TextInput'
+import { TextValueInput } from '@/components/inputs/TextValueInput'
 import { Toggle } from '@/components/inputs/Toggle'
 import { RefusalNotice } from '@/components/RefusalNotice'
 import { ResultCard, StatRow } from '@/components/ResultCard'
@@ -15,13 +16,17 @@ import { Button } from '@/components/ui/button'
 import { VerifiedBadge } from '@/components/VerifiedBadge'
 import { listTaxYears, taxYearLabel } from '@/config/tax/index'
 import { formatGBP } from '@/lib/format'
-import { add, compare, type Money, ratio, ZERO } from '@/lib/money'
+import { add, compare, type Money, ratio, subtract, ZERO } from '@/lib/money'
+import type { Parsed } from '@/lib/parse'
 import { useStore } from '@/lib/store'
 import { settingsStore } from '@/settings/settings'
 import { DISCLAIMER } from '@/sheets/parts'
 import { configFor, sessionFor } from '../session'
+import { BREAKDOWN_PERIODS, type Breakdown, type BreakdownPeriod, breakdown } from './breakdown'
+import { benefitTaxable } from './calc'
 import {
   type ContributionField,
+  calculatePaye,
   calculateTakeHome,
   INPUT_LIMITS,
   type InputWarning,
@@ -43,15 +48,26 @@ import {
   resolveInputs,
   usesPensionablePay,
 } from './definition'
-import { annualAmount, CONTRIBUTION_MODES, ITEM_PERIODS, type ListItem } from './pageInputs'
-import { CHILD_BENEFIT_PAYMENTS, DEFAULT_POLICY, PENSION_METHODS, REGIONS, STUDENT_LOAN_PLANS, type TakeHomeResult } from './types'
+import { annualAmount, annualBenefit, type BenefitItem, CONTRIBUTION_MODES, ITEM_PERIODS, type ListItem } from './pageInputs'
+import { parseTaxCode } from './paye'
+import {
+  BENEFIT_PAYMENTS,
+  CHILD_BENEFIT_PAYMENTS,
+  DEFAULT_POLICY,
+  type PayeEstimate,
+  PENSION_METHODS,
+  REGIONS,
+  STUDENT_LOAN_PLANS,
+  type TakeHomeResult,
+} from './types'
 
 /*
  * The take-home page (slice 1b, session 1b-i; part 1b-i.1 added percentage
- * contributions and itemised lists) at #/c/optimiser: inputs, take-home for
- * the year, month and week, the breakdown, warnings, assumptions and
- * scenarios, all from shared components and the engine's takeHome. No
- * figure is written here. The pension sweep, chart and threshold points
+ * contributions and itemised lists; 0.11.0 benefits taken from pay, the tax
+ * code and PAYE estimate, and the monthly breakdown) at #/c/optimiser:
+ * inputs, take-home for the year, month and week, the breakdown by year or
+ * month, warnings, assumptions and scenarios, all from shared components and
+ * the engine's takeHome and payeEstimate. No figure is written here. The pension sweep, chart and threshold points
  * (optimise()) come in 1b-ii.
  */
 
@@ -63,6 +79,8 @@ const METHOD_OPTIONS = PENSION_METHODS.map((value) => ({ value, label: METHOD_LA
 const PAYMENT_OPTIONS = CHILD_BENEFIT_PAYMENTS.map((value) => ({ value, label: value === 'claimed' ? 'Claimed' : 'Opted out' }))
 const MODE_OPTIONS = CONTRIBUTION_MODES.map((value) => ({ value, label: value === 'amount' ? MODE_LABELS.amount : 'Percentage' }))
 const PERIOD_OPTIONS = ITEM_PERIODS.map((value) => ({ value, label: PERIOD_LABELS[value] }))
+const PAYMENT_OPTIONS_BENEFIT = BENEFIT_PAYMENTS.map((value) => ({ value, label: value === 'beforeTax' ? 'Before tax' : 'After tax' }))
+const BREAKDOWN_OPTIONS = BREAKDOWN_PERIODS.map((value) => ({ value, label: value === 'year' ? 'Year' : 'Month' }))
 const PERCENT_MIN = ratio(0, 1)
 
 const METHOD_HINTS: Record<OptimiserPageInputs['pensionMethod'], string> = {
@@ -76,7 +94,11 @@ const PAGE_ASSUMPTIONS = [
   `Child Benefit is counted for ${DEFAULT_POLICY.childBenefitWeeks} weeks of the year (the modelling policy), for every child entered.`,
   'Pension is counted as contributions only: what goes in this year. Growth, the annual allowance and tax on withdrawals are not shown here yet.',
   'Taxable benefits in kind are taken as entered: they are not checked against your employer’s annual statement of benefits or your tax code.',
-  'No tax code: tax is worked out on the year’s figures. PAYE through your tax code can take slightly different amounts each payday.',
+  'The year’s tax (the liability) is the headline figure, worked out on the year’s figures however it is collected. A tax code is optional: with one, a PAYE estimate shows what payroll would take, assuming level monthly pay all year.',
+  'Tax codes modelled: a number and a letter (L, M, N or T), with S or C in front if you have one. K, BR, D, NT, emergency and no-allowance codes get a notice and no estimate.',
+  'Benefits taken before tax (salary sacrifice) follow the general rule: the salary given up comes off your pay before tax, National Insurance and student loan, and the benefit is taxed on the higher of its value and the salary given up. Benefits that keep an exemption (such as cycle to work or pension contributions) are not modelled: enter pension contributions as pension.',
+  'Benefits paid for after tax: what you pay comes off take-home and takes the benefit’s taxable value down, not below nothing.',
+  'The monthly breakdown divides each yearly row by the months in a year, to the nearest penny; take-home per month is those rows added up, so it can differ by a penny or two from the year’s take-home divided evenly.',
   'Take-home leaves out costs the employer pays: Class 1A National Insurance on benefits, employer National Insurance and the employer’s pension contribution.',
   'Flexible-benefit cash is entered as salary.',
   'A contribution entered as a percentage is that share of pensionable pay (your salary, or your own figure, with the bonus only if you include it), rounded to the nearest penny. Your scheme may round differently.',
@@ -88,7 +110,7 @@ const LIST_IDS: Record<ListField, string> = { taxableBenefits: 'opt-benefits', p
 
 const LIST_HINTS: Record<ListField, string> = {
   taxableBenefits:
-    'The taxable value of benefits from your job, such as employer-paid medical cover, after anything you pay towards them. Add one item for each.',
+    'Benefits from your job, such as medical cover: their value, and anything taken from your pay for them, before tax (salary sacrifice) or after tax. Add one item for each.',
   postTaxDeductions:
     'Amounts taken from your pay after tax with no tax effect, such as medical or dental cover you pay for. Add one item for each.',
 }
@@ -114,6 +136,7 @@ export default function OptimiserPage() {
   const result = invalid ? null : calculateTakeHome(inputs, config)
   const resolved = resolveInputs(inputs)
   const warnings = invalid ? [] : inputWarnings(inputs)
+  const [period, setPeriod] = useState<BreakdownPeriod>('year')
   const gbp = (amount: Money) => formatGBP(amount, amounts)
   const togglePlan = (plan: (typeof STUDENT_LOAN_PLANS)[number], on: boolean) =>
     set({ studentLoans: STUDENT_LOAN_PLANS.filter((p) => (p === plan ? on : inputs.studentLoans.includes(p))) })
@@ -170,6 +193,17 @@ export default function OptimiserPage() {
             />
             {amountInput('opt-salary', 'salary', 'Your annual salary before tax. Include any flexible-benefit cash.')}
             {amountInput('opt-bonus', 'bonus', 'Any bonus for the year, added to salary.')}
+            <TextValueInput<string>
+              id="opt-tax-code"
+              label="Tax code (optional)"
+              hint="As on your payslip: a number then a letter, with S or C in front if yours has one. Leave it empty for no PAYE estimate."
+              value={inputs.taxCode}
+              inputMode="text"
+              parse={parseCodeText}
+              format={(code) => code}
+              onChange={(taxCode) => set({ taxCode })}
+              onValidityChange={valid('taxCode')}
+            />
 
             <Select
               id="opt-method"
@@ -183,8 +217,43 @@ export default function OptimiserPage() {
             <ContributionInputs id="opt-employer" field="employerContribution" inputs={inputs} resolved={resolved} gbp={gbp} />
             {usesPensionablePay(inputs) && <PensionablePayInputs inputs={inputs} resolved={resolved} gbp={gbp} />}
 
-            <ItemList field="taxableBenefits" items={inputs.taxableBenefits} total={resolved.taxableBenefits} gbp={gbp} />
-            <ItemList field="postTaxDeductions" items={inputs.postTaxDeductions} total={resolved.postTaxDeductions} gbp={gbp} />
+            <ItemList
+              field="taxableBenefits"
+              items={inputs.taxableBenefits}
+              blank={{ name: '', period: 'month', value: ZERO, taken: ZERO, payment: 'beforeTax' }}
+              invalidParts={['name', 'value', 'taken']}
+              fields={(item, itemId, update, part) => <BenefitFields item={item} itemId={itemId} update={update} part={part} />}
+              resolved={(item) => <BenefitResolved item={item} gbp={gbp} />}
+              total={<BenefitTotals resolved={resolved} gbp={gbp} empty={inputs.taxableBenefits.length === 0} />}
+            />
+            <ItemList
+              field="postTaxDeductions"
+              items={inputs.postTaxDeductions}
+              blank={{ name: '', amount: ZERO, period: 'month' }}
+              invalidParts={['name', 'amount']}
+              fields={(item, itemId, update, part) => (
+                <CurrencyInput
+                  id={`${itemId}-amount`}
+                  label="Amount"
+                  value={item.amount}
+                  min={ZERO}
+                  max={INPUT_LIMITS.maxAmount}
+                  onChange={(amount) => update({ amount })}
+                  onValidityChange={(ok) => session.setFieldValid(part('amount'), ok)}
+                />
+              )}
+              resolved={(item) => (
+                <>
+                  <span className="tabular-nums">{gbp(annualAmount(item))}</span> for the year
+                </>
+              )}
+              total={
+                <>
+                  Total for the year: <span className="font-semibold tabular-nums">{gbp(resolved.postTaxDeductions)}</span>
+                  {inputs.postTaxDeductions.length === 0 ? ' (none added)' : ''}
+                </>
+              }
+            />
 
             <fieldset className="flex min-w-0 flex-col gap-1">
               <legend className="pb-1.5 text-sm font-medium text-text">Student loans</legend>
@@ -236,10 +305,12 @@ export default function OptimiserPage() {
           ) : !result.ok ? (
             <RefusalNotice refusal={result} />
           ) : (
-            <Results result={result} inputs={inputs} resolved={resolved} gbp={gbp} />
+            <Results result={result} inputs={inputs} resolved={resolved} gbp={gbp} period={period} setPeriod={setPeriod} />
           )}
 
-          <AssumptionsPanel items={[...(result?.ok ? result.assumptions : [TAPER_ASSUMPTION]), ...PAGE_ASSUMPTIONS]}>
+          <AssumptionsPanel
+            items={[...(result?.ok ? result.assumptions : [TAPER_ASSUMPTION]), ...payeAssumptions(inputs, result), ...PAGE_ASSUMPTIONS]}
+          >
             <p className="text-text-muted">Illustrative only, not financial advice. {DISCLAIMER}</p>
           </AssumptionsPanel>
         </div>
@@ -375,14 +446,35 @@ function useItemKeys(count: number) {
   }
 }
 
-/** A list of named items (benefits in kind or post-tax deductions), each per month or per year, with its total for the year. */
-function ItemList({ field, items, total, gbp }: { field: ListField; items: readonly ListItem[]; total: Money; gbp: Gbp }) {
+type Item = { readonly name: string; readonly period: ListItem['period'] }
+
+/**
+ * A list of named items (benefits in kind or post-tax deductions), each per month or per year, with its total for the year.
+ * `fields` renders an item's own boxes between its name and its period; `part` names a box for the session's validity.
+ */
+function ItemList<T extends Item>({
+  field,
+  items,
+  blank,
+  invalidParts,
+  fields,
+  resolved,
+  total,
+}: {
+  field: ListField
+  items: readonly T[]
+  blank: T
+  invalidParts: readonly string[]
+  fields: (item: T, itemId: string, update: (patch: Partial<T>) => void, part: (name: string) => string) => ReactNode
+  resolved: (item: T) => ReactNode
+  total: ReactNode
+}) {
   const id = LIST_IDS[field]
   const noun = ITEM_NOUNS[field]
   const { keys, added, removed } = useItemKeys(items.length)
   const full = items.length >= INPUT_LIMITS.maxItems
-  const setItems = (next: readonly ListItem[]) => session.setInputs({ [field]: next })
-  const update = (index: number, patch: Partial<ListItem>) => setItems(items.map((item, i) => (i === index ? { ...item, ...patch } : item)))
+  const setItems = (next: readonly T[]) => session.setInputs({ [field]: next })
+  const update = (index: number, patch: Partial<T>) => setItems(items.map((item, i) => (i === index ? { ...item, ...patch } : item)))
   const fieldName = (key: number, part: string) => `${field}-${key}-${part}`
   return (
     <fieldset aria-describedby={`${id}-hint`} className="flex min-w-0 flex-col gap-3" data-list={field}>
@@ -402,34 +494,29 @@ function ItemList({ field, items, total, gbp }: { field: ListField; items: reado
               label="Name"
               value={item.name}
               maxLength={INPUT_LIMITS.maxNameLength}
-              onChange={(name) => update(index, { name })}
+              onChange={(name) => update(index, { name } as Partial<T>)}
               onValidityChange={(ok) => session.setFieldValid(fieldName(key, 'name'), ok)}
             />
-            <CurrencyInput
-              id={`${itemId}-amount`}
-              label="Amount"
-              value={item.amount}
-              min={ZERO}
-              max={INPUT_LIMITS.maxAmount}
-              onChange={(amount) => update(index, { amount })}
-              onValidityChange={(ok) => session.setFieldValid(fieldName(key, 'amount'), ok)}
-            />
+            {fields(
+              item,
+              itemId,
+              (patch) => update(index, patch),
+              (part) => fieldName(key, part),
+            )}
             <Segmented
               id={`${itemId}-period`}
               label="How often"
               value={item.period}
               options={PERIOD_OPTIONS}
-              onChange={(period) => update(index, { period })}
+              onChange={(period) => update(index, { period } as Partial<T>)}
             />
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="text-sm text-text-muted">
-                <span className="tabular-nums">{gbp(annualAmount(item))}</span> for the year
-              </p>
+              <p className="min-w-0 text-sm text-text-muted">{resolved(item)}</p>
               <Button
                 id={`${itemId}-remove`}
                 aria-label={`Remove ${label}`}
                 onClick={() => {
-                  forget(fieldName(key, 'name'), fieldName(key, 'amount'))
+                  forget(...invalidParts.map((part) => fieldName(key, part)))
                   removed(index)
                   setItems(items.filter((_, i) => i !== index))
                 }}
@@ -441,8 +528,7 @@ function ItemList({ field, items, total, gbp }: { field: ListField; items: reado
         )
       })}
       <p id={`${id}-total`} className="text-sm text-text" aria-live="polite">
-        Total for the year: <span className="font-semibold tabular-nums">{gbp(total)}</span>
-        {items.length === 0 ? ' (none added)' : ''}
+        {total}
       </p>
       <div className="flex flex-col gap-1.5">
         <Button
@@ -451,7 +537,7 @@ function ItemList({ field, items, total, gbp }: { field: ListField; items: reado
           aria-describedby={full ? `${id}-full` : undefined}
           onClick={() => {
             added()
-            setItems([...items, { name: '', amount: ZERO, period: 'month' }])
+            setItems([...items, blank])
           }}
           className="self-start"
         >
@@ -467,6 +553,113 @@ function ItemList({ field, items, total, gbp }: { field: ListField; items: reado
   )
 }
 
+const PAYMENT_HINTS: Record<BenefitItem['payment'], string> = {
+  beforeTax:
+    'Salary you give up for it: less tax, National Insurance and student loan on your pay, but it is taxed on the higher of its value and the salary given up.',
+  afterTax: 'Paid from your take-home pay: it lowers the benefit’s taxable value.',
+}
+
+/** A benefit item's own boxes: its value, what is taken from pay, and how (B10). */
+function BenefitFields({
+  item,
+  itemId,
+  update,
+  part,
+}: {
+  item: BenefitItem
+  itemId: string
+  update: (patch: Partial<BenefitItem>) => void
+  part: (name: string) => string
+}) {
+  return (
+    <>
+      <CurrencyInput
+        id={`${itemId}-value`}
+        label="Value of the benefit"
+        hint="As your employer works it out, before anything you pay towards it."
+        value={item.value}
+        min={ZERO}
+        max={INPUT_LIMITS.maxAmount}
+        onChange={(value) => update({ value })}
+        onValidityChange={(ok) => session.setFieldValid(part('value'), ok)}
+      />
+      <CurrencyInput
+        id={`${itemId}-taken`}
+        label="Taken from your pay for it"
+        hint="Nothing if your employer pays for it all."
+        value={item.taken}
+        min={ZERO}
+        max={INPUT_LIMITS.maxAmount}
+        onChange={(taken) => update({ taken })}
+        onValidityChange={(ok) => session.setFieldValid(part('taken'), ok)}
+      />
+      <Segmented
+        id={`${itemId}-payment`}
+        label="Taken from pay"
+        hint={PAYMENT_HINTS[item.payment]}
+        value={item.payment}
+        options={PAYMENT_OPTIONS_BENEFIT}
+        onChange={(payment) => update({ payment })}
+      />
+    </>
+  )
+}
+
+/** What a benefit item comes to for the year: taxable, and taken from pay (and how). */
+function BenefitResolved({ item, gbp }: { item: BenefitItem; gbp: Gbp }) {
+  const year = annualBenefit(item)
+  return (
+    <>
+      Taxable: <span className="tabular-nums">{gbp(benefitTaxable(year))}</span> for the year
+      {compare(year.taken, ZERO) > 0 && (
+        <>
+          {' '}
+          · taken from pay: <span className="tabular-nums">{gbp(year.taken)}</span>{' '}
+          {item.payment === 'beforeTax' ? 'before tax' : 'after tax'}
+        </>
+      )}
+    </>
+  )
+}
+
+/** The benefit items' running totals for the year. */
+function BenefitTotals({ resolved, gbp, empty }: { resolved: ResolvedInputs; gbp: Gbp; empty: boolean }) {
+  return (
+    <>
+      Taxable for the year: <span className="font-semibold tabular-nums">{gbp(resolved.taxableBenefits)}</span>
+      {empty ? ' (none added)' : ''}
+      {compare(resolved.benefitSacrifice, ZERO) > 0 && (
+        <>
+          . Salary given up: <span className="font-semibold tabular-nums">{gbp(resolved.benefitSacrifice)}</span>
+        </>
+      )}
+      {compare(resolved.benefitPaidAfterTax, ZERO) > 0 && (
+        <>
+          . Paid after tax: <span className="font-semibold tabular-nums">{gbp(resolved.benefitPaidAfterTax)}</span>
+        </>
+      )}
+    </>
+  )
+}
+
+/** The tax code box's text: empty for none, or a code GOV.UK defines, kept in its canonical form (B12). */
+function parseCodeText(text: string): Parsed<string> {
+  if (text.trim() === '') return { ok: true, value: '' }
+  if (Array.from(text.trim()).length > INPUT_LIMITS.maxTaxCodeLength)
+    return { ok: false, error: `Use at most ${INPUT_LIMITS.maxTaxCodeLength} characters.` }
+  const parsed = parseTaxCode(text)
+  if (parsed.ok) return { ok: true, value: parsed.code.text }
+  if (parsed.reason === 'unsupported') return { ok: true, value: parsed.text }
+  return { ok: false, error: 'Not a tax code Sumyard recognises: a number then a letter, with S or C in front if yours has one.' }
+}
+
+/** The PAYE estimate's assumptions, when a supported code gives one. */
+function payeAssumptions(inputs: OptimiserPageInputs, result: ReturnType<typeof calculateTakeHome> | null): readonly string[] {
+  if (!result?.ok || isInputProblem(result)) return []
+  const paye = calculatePaye(inputs, result, configFor(session.get().taxYear))
+  return paye?.ok ? paye.paye.assumptions : []
+}
+
 /** Warnings about the inputs themselves, shown above the results and never a cap. */
 function InputWarnings({ warnings }: { warnings: readonly InputWarning[] }) {
   return warnings.map((warning) => (
@@ -478,18 +671,47 @@ function InputWarnings({ warnings }: { warnings: readonly InputWarning[] }) {
   ))
 }
 
+/** Breakdown row labels, in order; the benefit rows show only when they hold something. */
+const ROW_LABELS = {
+  benefitSacrifice: 'Salary given up for benefits',
+  incomeTax: 'Income tax',
+  nationalInsurance: 'National Insurance',
+  studentLoan: 'Student loan',
+  pension: 'Employee pension',
+  hicbc: 'High Income Child Benefit Charge',
+  benefitPayments: 'Benefit payments after tax',
+  postTaxDeductions: 'Post-tax deductions',
+} as const
+
+const OPTIONAL_ROWS = new Set<keyof typeof ROW_LABELS>(['benefitSacrifice', 'benefitPayments'])
+
+/** The pennies a month's take-home moves from an even division of the year's, in words. */
+function pennyNote(month: Breakdown, gbp: Gbp): string | undefined {
+  const moved = compare(month.difference, ZERO)
+  if (moved === 0) return undefined
+  const by = gbp(moved > 0 ? month.difference : subtract(ZERO, month.difference))
+  return `The rows added up: ${by} ${moved > 0 ? 'more' : 'less'} than the year’s take-home divided evenly (${gbp(month.evenShare)}), from rounding each row.`
+}
+
 function Results({
   result,
   inputs,
   resolved,
   gbp,
+  period,
+  setPeriod,
 }: {
   result: TakeHomeResult
   inputs: OptimiserPageInputs
   resolved: ResolvedInputs
   gbp: Gbp
+  period: BreakdownPeriod
+  setPeriod: (period: BreakdownPeriod) => void
 }) {
-  const { annual, monthly, weekly } = result
+  const { annual, weekly } = result
+  const month = breakdown(annual, 'month')
+  const shown = breakdown(annual, period)
+  const paye = calculatePaye(inputs, result, configFor(result.taxYear))
   const intoPension = add(result.pension?.grossContribution ?? ZERO, resolved.employerContribution)
   const hasChildren = inputs.children > 0
   return (
@@ -504,7 +726,11 @@ function Results({
 
       <ResultCard title="Take-home pay" headlineLabel="Take-home for the year" headline={gbp(annual.net)}>
         <StatRow label="Year" value={gbp(annual.net)} detail={annual.label} />
-        <StatRow label="Month" value={gbp(monthly.net)} detail={monthly.label} />
+        <StatRow
+          label="Month"
+          value={gbp(month.takeHome)}
+          detail="Each yearly row divided by the months in a year, to the nearest penny, then added up"
+        />
         <StatRow label="Week" value={gbp(weekly.net)} detail={weekly.label} />
       </ResultCard>
       <InlineNotice>
@@ -514,20 +740,55 @@ function Results({
         </p>
       </InlineNotice>
 
-      <ResultCard title="Breakdown">
-        <StatRow label="Gross pay" value={gbp(annual.gross)} detail="Salary plus bonus" />
-        <StatRow label="Income tax" value={gbp(annual.incomeTax)} />
-        <StatRow label="National Insurance" value={gbp(annual.nationalInsurance)} />
-        <StatRow label="Student loan" value={gbp(annual.studentLoan)} />
-        <StatRow
-          label="Employee pension"
-          value={gbp(annual.pension)}
-          detail={result.pension ? METHOD_LABELS[result.pension.method] : undefined}
+      {paye && !paye.ok && 'reason' in paye && (
+        <div data-paye-notice={paye.kind ?? paye.reason}>
+          <InlineNotice tone="info" title="No PAYE estimate for this tax code">
+            <p>{paye.message}</p>
+          </InlineNotice>
+        </div>
+      )}
+      {paye && !paye.ok && !('reason' in paye) && <RefusalNotice refusal={paye} />}
+      {paye?.ok && <PayeCard estimate={paye} gbp={gbp} />}
+
+      <div className="flex flex-col gap-3" data-breakdown={period}>
+        <Segmented
+          id="opt-breakdown-period"
+          label="Show the breakdown for a"
+          value={period}
+          options={BREAKDOWN_OPTIONS}
+          onChange={setPeriod}
         />
-        <StatRow label="High Income Child Benefit Charge" value={gbp(annual.hicbc)} />
-        <StatRow label="Post-tax deductions" value={gbp(annual.postTaxDeductions)} />
-        <StatRow label="Take-home" value={gbp(annual.net)} detail="Gross pay less every row above" />
-      </ResultCard>
+        <ResultCard title="Breakdown">
+          <StatRow label="Gross pay" value={gbp(shown.gross)} detail="Salary plus bonus" />
+          {(Object.keys(ROW_LABELS) as (keyof typeof ROW_LABELS)[])
+            .filter((row) => !OPTIONAL_ROWS.has(row) || compare(annual[row], ZERO) !== 0)
+            .map((row) => (
+              <StatRow
+                key={row}
+                label={ROW_LABELS[row]}
+                value={gbp(shown.rows[row])}
+                detail={row === 'pension' && result.pension ? METHOD_LABELS[result.pension.method] : undefined}
+              />
+            ))}
+          <StatRow
+            label="Take-home"
+            value={gbp(shown.takeHome)}
+            detail={period === 'year' ? 'Gross pay less every row above' : (pennyNote(shown, gbp) ?? 'Gross pay less every row above')}
+          />
+          {period === 'month' && paye?.ok && (
+            <StatRow
+              label="Income tax through PAYE"
+              value={gbp(paye.paye.months[0]!.tax)}
+              detail="Estimate for a month on your tax code; not in the sum above"
+            />
+          )}
+        </ResultCard>
+        <p className="text-xs text-text-muted">
+          {period === 'year'
+            ? 'The tax year’s figures.'
+            : 'Each yearly row divided by the months in a year, to the nearest penny; take-home is those rows added up. Not a payslip.'}
+        </p>
+      </div>
 
       <ResultCard title="Alongside your pay">
         {hasChildren && <StatRow label="Child Benefit received" value={gbp(annual.childBenefit)} />}
@@ -545,5 +806,42 @@ function Results({
         <StatRow label="Adjusted net income" value={gbp(result.adjustedNetIncome.adjustedNetIncome)} />
       </ResultCard>
     </>
+  )
+}
+
+/** The PAYE estimate beside the year's tax (B11): the estimate, a month, the liability and the difference, in words. */
+function PayeCard({ estimate, gbp }: { estimate: PayeEstimate; gbp: Gbp }) {
+  const { paye, liability, difference } = estimate
+  const taxes = paye.months.map((m) => m.tax)
+  const level = taxes.every((tax) => tax === taxes[0])
+  const sign = compare(difference, ZERO)
+  return (
+    <div className="flex flex-col gap-3" data-paye>
+      <ResultCard title="PAYE estimate" headlineLabel={`PAYE for the year on tax code ${paye.code.text}`} headline={gbp(paye.total)}>
+        <StatRow
+          label="PAYE a month"
+          value={gbp(taxes[0]!)}
+          detail={level ? 'Level monthly pay' : 'Level monthly pay; some months differ by a penny, and the year adds up exactly'}
+        />
+        <StatRow label="Income tax for the year" value={gbp(liability)} detail="The headline figure: the year’s tax on these inputs" />
+        <StatRow
+          label="Difference"
+          value={gbp(sign < 0 ? subtract(ZERO, difference) : difference)}
+          detail={
+            sign > 0
+              ? 'PAYE would take more than the year’s tax'
+              : sign < 0
+                ? 'PAYE would take less than the year’s tax'
+                : 'PAYE would take the year’s tax exactly'
+          }
+        />
+      </ResultCard>
+      <InlineNotice>
+        <p>
+          A difference may be refunded or collected later: HMRC can change your tax code, or settle it after the year ends, by letter or
+          through Self Assessment if you send a return.
+        </p>
+      </InlineNotice>
+    </div>
   )
 }

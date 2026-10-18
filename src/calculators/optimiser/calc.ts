@@ -31,6 +31,9 @@ import {
   type AnnualAllowanceChargeResult,
   type AnnualAllowanceResult,
   type BandSlice,
+  BENEFIT_PAYMENTS,
+  type BenefitInput,
+  type BenefitTotals,
   type CarryForwardUse,
   CHILD_BENEFIT_PAYMENTS,
   CHILDCARE_SCHEMES,
@@ -96,7 +99,10 @@ import {
  *   pay only; relief at source grossed up, off adjusted net income, with every
  *   band above the basic rate band moved up by the gross amount;
  * - the High Income Child Benefit Charge in whole steps (G1), Child Benefit
- *   for the policy's weeks (G4).
+ *   for the policy's weeks (G4);
+ * - benefit items (B10): salary given up comes off pay before everything
+ *   else, and each item is taxed on the greater of its value and the salary
+ *   given up, or on its value less a contribution made after tax.
  */
 
 export class EngineInputError extends RangeError {
@@ -583,6 +589,45 @@ export function hicbc(ani: Money, children: ChildBenefitInput, config: TaxYearCo
   return computeHicbc(exact(ani), childBenefit, granted.values, policy, config.id)
 }
 
+/* Benefit items with what is taken from pay for them (decision B10). */
+
+function checkBenefit(item: BenefitInput): BenefitInput {
+  if (!BENEFIT_PAYMENTS.includes(item?.payment)) throw new EngineInputError(`unknown benefit payment ${JSON.stringify(item?.payment)}`)
+  checkAmount(item.value, 'a benefit’s value')
+  checkAmount(item.taken, 'the amount taken for a benefit')
+  return item
+}
+
+/**
+ * The taxable amount of one benefit item for the year. Before tax and NI (an
+ * optional remuneration arrangement): the greater of its value and the salary
+ * given up, the "relevant amount" (HMRC’s benefits guide, appendix on optional remuneration; EIM44120). After tax: its
+ * value less the contribution, never below nothing (making good, EIM21119).
+ * Nothing taken: its value. Exemptions are not modelled (B10).
+ */
+export function benefitTaxable(item: BenefitInput): Money {
+  const { value, taken, payment } = checkBenefit(item)
+  return payment === 'beforeTax' ? max(value, taken) : max(ZERO, subtract(value, taken))
+}
+
+/** Benefit items summed for the year: the taxable amount, the salary given up and the contributions after tax (B10). */
+export function benefitTotals(items: readonly BenefitInput[]): BenefitTotals {
+  let totals: BenefitTotals = { taxable: ZERO, salaryGivenUp: ZERO, paidAfterTax: ZERO }
+  for (const item of items) {
+    const taxable = benefitTaxable(item)
+    const before = item.payment === 'beforeTax'
+    totals = {
+      taxable: add(totals.taxable, taxable),
+      salaryGivenUp: before ? add(totals.salaryGivenUp, item.taken) : totals.salaryGivenUp,
+      paidAfterTax: before ? totals.paidAfterTax : add(totals.paidAfterTax, item.taken),
+    }
+  }
+  return totals
+}
+
+const givesUpSalary = (items: readonly BenefitInput[]) =>
+  items.some((item) => item.payment === 'beforeTax' && compare(item.taken, ZERO) > 0)
+
 /* Take-home pay. */
 
 function view(period: PeriodView['period'], label: string, annual: Omit<PeriodView, 'period' | 'label'>, divisor: number): PeriodView {
@@ -591,11 +636,13 @@ function view(period: PeriodView['period'], label: string, annual: Omit<PeriodVi
     period,
     label,
     gross: part(annual.gross),
+    benefitSacrifice: part(annual.benefitSacrifice),
     incomeTax: part(annual.incomeTax),
     nationalInsurance: part(annual.nationalInsurance),
     studentLoan: part(annual.studentLoan),
     pension: part(annual.pension),
     hicbc: part(annual.hicbc),
+    benefitPayments: part(annual.benefitPayments),
     postTaxDeductions: part(annual.postTaxDeductions),
     net: part(annual.net),
     childBenefit: part(annual.childBenefit),
@@ -634,8 +681,18 @@ function childBenefitAssumptions(childBenefit: ChildBenefitInput | undefined): s
   ]
 }
 
-function benefitAssumptions({ benefits, deductions }: CheckedInputs): string[] {
+function benefitAssumptions({ benefits, deductions, items, totals }: CheckedInputs): string[] {
   return [
+    ...(givesUpSalary(items)
+      ? [
+          'Benefits taken through salary sacrifice: the salary given up comes off taxable pay, National Insurance-able pay, student loan pay and take-home, and the benefit is taxed on the higher of its value and the salary given up (the general rule for optional remuneration arrangements). Exemptions some benefits keep, and older arrangements’ protection, are not modelled. Nothing is added back to threshold income for the annual allowance.',
+        ]
+      : []),
+    ...(compare(totals.paidAfterTax, ZERO) > 0
+      ? [
+          'Contributions to benefits paid after tax come off take-home and take the benefit’s taxable value down, not below nothing. They are assumed paid in time to count for the tax year.',
+        ]
+      : []),
     ...(compare(benefits, ZERO) > 0
       ? [
           'Taxable benefits in kind are taken as entered: their taxable value for the year, after anything paid towards them. They are added to taxable pay and adjusted net income, not to National Insurance-able pay or student loan pay, and are not paid in cash.',
@@ -682,9 +739,11 @@ function assumptions(inputs: TaxInputs, checked: CheckedInputs, policy: Modellin
 }
 
 /**
- * Take-home pay for a year of employment income: gross, income tax, employee
- * NI, student loan, the pension contribution out of pay and the High Income
- * Child Benefit Charge, then net, as annual, monthly and weekly views, with
+ * Take-home pay for a year of employment income: gross, salary given up for
+ * benefits, income tax, employee NI, student loan, the pension contribution
+ * out of pay, the High Income Child Benefit Charge, benefit contributions
+ * after tax and post-tax deductions, then net, as annual, monthly and weekly
+ * views, with
  * the Child Benefit received beside them and the assumptions behind them.
  * Refuses, listing every unverified value, if the config lacks any value these
  * need (the relief-at-source rate only with relief at source, Child Benefit
@@ -702,23 +761,37 @@ export function takeHome(inputs: TaxInputs, config: TaxYearConfig, policy: Model
 /** Checked take-home inputs. */
 interface CheckedInputs {
   readonly grossPay: Money
+  /** Gross pay less salary given up for benefits: what the pension, tax, NI and student loan steps start from (B10). */
+  readonly cashPay: Money
   readonly region: Region
   readonly plans: StudentLoanPlanId[]
   readonly pension: PensionInput | undefined
   readonly childBenefit: ChildBenefitInput | undefined
+  /** Every taxable benefit: the single figure plus the items' taxable amounts. */
   readonly benefits: Money
   readonly deductions: Money
+  readonly items: readonly BenefitInput[]
+  readonly totals: BenefitTotals
 }
 
 function checkInputs(inputs: TaxInputs): CheckedInputs {
+  const grossPay = checkAmount(inputs.grossPay, 'gross pay')
+  const items = inputs.benefits ?? []
+  if (!Array.isArray(items)) throw new EngineInputError('benefits must be a list')
+  const totals = benefitTotals(items)
+  if (compare(totals.salaryGivenUp, grossPay) > 0)
+    throw new EngineInputError('the salary given up for benefits is more than gross pay; that is not modelled')
   return {
-    grossPay: checkAmount(inputs.grossPay, 'gross pay'),
+    grossPay,
+    cashPay: subtract(grossPay, totals.salaryGivenUp),
     region: checkRegion(inputs.region),
     plans: checkPlans(inputs.studentLoans),
     pension: checkPension(inputs.pension),
     childBenefit: inputs.childBenefit === undefined ? undefined : checkChildBenefit(inputs.childBenefit),
-    benefits: checkAmount(inputs.taxableBenefits ?? ZERO, 'taxable benefits'),
+    benefits: add(checkAmount(inputs.taxableBenefits ?? ZERO, 'taxable benefits'), totals.taxable),
     deductions: checkAmount(inputs.postTaxDeductions ?? ZERO, 'post-tax deductions'),
+    items,
+    totals,
   }
 }
 
@@ -735,13 +808,15 @@ function takeHomePaths({ region, plans, pension, childBenefit }: CheckedInputs):
 }
 
 function computeTakeHome(
-  { grossPay, region, plans, pension, childBenefit, benefits, deductions }: CheckedInputs,
+  checked: CheckedInputs,
   inputs: TaxInputs,
   values: Values<LeafPath>,
   policy: ModellingPolicy,
   taxYear: TaxYearConfig['id'],
 ): TakeHomeResult {
-  const effect = pensionEffect(grossPay, pension, values[RAS_PATH], benefits)
+  const { grossPay, cashPay, region, plans, pension, childBenefit, benefits, deductions, items, totals } = checked
+  // Salary given up for benefits is gone before any other step (B10): the pension, tax, NI and loan start from cash pay.
+  const effect = pensionEffect(cashPay, pension, values[RAS_PATH], benefits)
   const tax = computeIncomeTax(grossPay, effect, region, values, policy, taxYear)
   const ni = computeNI(effect.niablePay, values, taxYear)
   // The student loan is worked out on NI-able pay: the employer's secondary NIC pay (decisions D5 and G6).
@@ -750,18 +825,20 @@ function computeTakeHome(
   const contribution = pension?.contribution ?? ZERO
   const hicbcCharge = charge?.charge ?? ZERO
   const received = charge?.childBenefit ?? ZERO
-  // Post-tax deductions come off take-home and nothing else (decision B2).
-  const net = [tax.total, ni.total, loans.total, contribution, hicbcCharge, deductions].reduce(
+  // Post-tax deductions come off take-home and nothing else (decision B2); so do contributions to benefits after tax (B10).
+  const net = [totals.salaryGivenUp, tax.total, ni.total, loans.total, contribution, hicbcCharge, deductions, totals.paidAfterTax].reduce(
     (left, deduction) => subtract(left, deduction),
     grossPay,
   )
   const annual = {
     gross: grossPay,
+    benefitSacrifice: totals.salaryGivenUp,
     incomeTax: tax.total,
     nationalInsurance: ni.total,
     studentLoan: loans.total,
     pension: contribution,
     hicbc: hicbcCharge,
+    benefitPayments: totals.paidAfterTax,
     postTaxDeductions: deductions,
     net,
     childBenefit: received,
@@ -779,6 +856,7 @@ function computeTakeHome(
       ...(childBenefit ? { childBenefit: { children: childBenefit.children, payments: childBenefit.payments } } : {}),
       ...(inputs.taxableBenefits === undefined ? {} : { taxableBenefits: benefits }),
       ...(inputs.postTaxDeductions === undefined ? {} : { postTaxDeductions: deductions }),
+      ...(inputs.benefits === undefined ? {} : { benefits: items.map(({ value, taken, payment }) => ({ value, taken, payment })) }),
     },
     policy: { taperRounding: policy.taperRounding, childBenefitWeeks: policy.childBenefitWeeks },
     incomeTax: tax,
@@ -787,11 +865,17 @@ function computeTakeHome(
     pension: pension ? pensionResult(grossPay, effect, pension, taxYear) : null,
     adjustedNetIncome: aniResult(grossPay, effect, taxYear),
     hicbc: charge,
+    benefits: totals,
+    // PAYE's pay (B13): taxable pay without any benefit in kind.
+    payrollPay: subtract(effect.taxablePay, benefits),
     annual: view('annual', 'Annual: the tax year’s figures', annual, 1),
     monthly: view('monthly', 'Monthly: each annual figure divided by the months in a year, to the nearest penny', annual, MONTHS_PER_YEAR),
     weekly: view('weekly', 'Weekly: each annual figure divided by the weeks in a year, to the nearest penny', annual, WEEKS_PER_YEAR),
-    warnings: compare(net, ZERO) < 0 ? [warn('takeHomeBelowNothing')] : [],
-    assumptions: assumptions(inputs, { grossPay, region, plans, pension, childBenefit, benefits, deductions }, policy),
+    warnings: [
+      ...(compare(net, ZERO) < 0 ? [warn('takeHomeBelowNothing')] : []),
+      ...(givesUpSalary(items) ? [warn('benefitSalarySacrifice')] : []),
+    ],
+    assumptions: assumptions(inputs, checked, policy),
   }
 }
 
@@ -976,6 +1060,8 @@ const WARNINGS = {
   childcareOverLimit: 'Adjusted net income is over a childcare income limit: the support is lost entirely, not tapered.',
   takeHomeBelowNothing:
     'Take-home pay is below nothing: the deductions and the tax on benefits are more than the pay. It is shown as worked out, not capped.',
+  benefitSalarySacrifice:
+    'Some benefits taken through salary sacrifice keep a tax exemption or a different value (pension contributions, pensions advice, some childcare, cycle to work, low-emission cars). Each item here follows the general rule: taxed on the higher of its value and the salary given up.',
 } as const satisfies Record<EngineWarning['code'], string>
 
 const warn = (code: EngineWarning['code']): EngineWarning => ({ code, message: WARNINGS[code] })
@@ -996,7 +1082,7 @@ function computeAllowance(
   policy: ModellingPolicy,
   taxYear: TaxYearConfig['id'],
 ): AnnualAllowanceResult {
-  const effect = pensionEffect(checked.grossPay, checked.pension, values[RAS_PATH], checked.benefits)
+  const effect = pensionEffect(checked.cashPay, checked.pension, values[RAS_PATH], checked.benefits)
   const position = allowancePosition(effect, savings, values)
   const { available, counted: sums } = position
   const excess = max(ZERO, subtract(sums.total, available))
@@ -1176,7 +1262,8 @@ function solveThreshold(
   inputs: OptimiserInputs,
   values: Values<LeafPath>,
 ): ThresholdContribution {
-  const { grossPay } = checked
+  // Salary given up for benefits is not pay any more: the solver starts from cash pay (B10).
+  const { cashPay: grossPay } = checked
   const { method, contribution: current } = inputs.pension
   const rate = values[RAS_PATH]
   const base = { threshold: threshold.id, measure: threshold.measure, limit: roundExact(threshold.limit, 'nearest') }
@@ -1267,7 +1354,7 @@ function evaluate(
   const home = computeTakeHome(at, { ...inputs, pension }, values, policy, taxYear)
   const allowance = computeAllowance(at, inputs.savings, values, policy, taxYear)
   const childcare = inputs.checkChildcare
-    ? computeChildcare(pensionEffect(checked.grossPay, pension, values[RAS_PATH], checked.benefits).ani, values, taxYear)
+    ? computeChildcare(pensionEffect(checked.cashPay, pension, values[RAS_PATH], checked.benefits).ani, values, taxYear)
     : null
   const relief = home.pension?.providerRelief ?? ZERO
   const employer = inputs.savings.employerContribution
@@ -1337,7 +1424,7 @@ export function optimise(
   if (!granted.ok) return granted
   const { values } = granted
   const { method, contribution: current } = inputs.pension
-  const maximum = maximumContribution(checked.grossPay, method, values[RAS_PATH])
+  const maximum = maximumContribution(checked.cashPay, method, values[RAS_PATH])
   const sweeps = wholeSteps(exact(maximum), step) + 1
   if (sweeps > options.maxPoints) throw new EngineInputError('the sweep step is too small for this range: too many points')
   const thresholds = computeThresholds(checked, inputs, values)

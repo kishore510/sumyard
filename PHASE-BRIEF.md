@@ -1,6 +1,6 @@
 # PHASE-BRIEF: Slice 1b Optimiser: UI
 
-Status: In progress. **Session 1b-i is done (0.9.0, user-visible):** the first usable calculator, take-home pay at `#/c/optimiser`, with taxable benefits in kind and post-tax deductions in the engine, and the Hello placeholder removed. **Part 1b-i.1 is done (0.10.0, user-visible):** pension contributions as a percentage of pensionable pay, and benefits in kind and post-tax deductions as lists of named items per month or per year (inputs version 2). **Next:** the owner's 0.11.0 prompt (benefits through salary sacrifice, tax code and PAYE estimate, monthly breakdown) or session 1b-ii (the optimiser itself on the same page), in the owner's order. Slice 1a is Done (0.8.0, PR #8), with the HMRC cross-checks still pending. Rewritten at the start of every slice; roadmap and status live in `PLAN.md`. Slice 1a's brief and progress log are archived below, above slice 0.5's and slice 0's.
+Status: In progress. **Session 1b-i is done (0.9.0, user-visible):** the first usable calculator, take-home pay at `#/c/optimiser`, with taxable benefits in kind and post-tax deductions in the engine, and the Hello placeholder removed. **Part 1b-i.1 is done (0.10.0, user-visible):** pension contributions as a percentage of pensionable pay, and benefits in kind and post-tax deductions as lists of named items per month or per year (inputs version 2). **Part 0.11.0 is done (user-visible):** benefits taken from pay before or after tax, an optional tax code with a PAYE estimate, a Year / Month breakdown (inputs version 3). **Next:** session 1b-ii (the optimiser itself on the same page), starting from inputs version 3. Slice 1a is Done (0.8.0, PR #8), with the HMRC cross-checks still pending. Rewritten at the start of every slice; roadmap and status live in `PLAN.md`. Slice 1a's brief and progress log are archived below, above slice 0.5's and slice 0's.
 
 ## Docs rule
 
@@ -31,9 +31,19 @@ Page and definition only (no engine, config or tax rule change), tests first: co
 
 Charts, candidate points, the optimiser, per-pay-period payroll, tax codes, any engine or config change, salary sacrifice for benefits, any other year.
 
+## Part 0.11.0: benefits through salary sacrifice, tax code and PAYE estimate, monthly breakdown (0.11.0)
+
+### Scope
+
+GOV.UK lookups first (how a salary-sacrifice benefit is taxed, NI and the student loan on the sacrificed cash, contributions after tax, tax codes and cumulative PAYE), logged with exact wording; any value needed and not in config added as a sourced leaf in its own commits. Engine (tests first): benefit items in `TaxInputs`, `paye` for level monthly pay with a typed refusal for codes not modelled. Page (tests first): the item fields, a tax code box and PAYE card, a Year / Month breakdown, inputs version 3 with migrations, compare, assumptions and Help. Owner decisions B10 to B16.
+
+### Out of scope
+
+Charts, the optimiser, per-pay-period payroll beyond level pay, exempt benefits, K codes, other tax years.
+
 ## Next: session 1b-ii (the optimiser on the page)
 
-What 1b-ii picks up, on the same page and inputs (version 2; bump and migrate only if the stored shape changes). The owner's 0.11.0 prompt (benefits through salary sacrifice, tax code, PAYE estimate, monthly breakdown) may run first; if it does, 1b-ii starts from its inputs version.
+What 1b-ii picks up, on the same page and inputs (version 3 since 0.11.0; add a migration to `MIGRATIONS` in `definition.ts` only if the stored shape changes; the version follows). `optimise()` already sweeps from cash pay after salary given up for benefits.
 
 - `optimise(inputs, config, policy, options?)` from the page inputs: `toTaxInputs` plus `pension` (the method and the resolved current contribution, from `resolveInputs`), `savings` (the resolved `employerContribution`, carry forward and the MPAA flag as new inputs) and `checkChildcare`. A sweep over contributions is in amounts; a contribution entered as a percentage can be shown as a percentage of pensionable pay beside it.
 - The take-home (or spendable) against contribution chart from `points`, markers for `current`, `maximum` and each threshold, `cliffs` drawn as labelled jumps, a table fallback (the shared `Chart`).
@@ -41,11 +51,27 @@ What 1b-ii picks up, on the same page and inputs (version 2; bump and migrate on
 - Thresholds in words from `thresholds` ("already under", "contribute £X more", "out of reach" with the reason); the HICBC full-charge point said plainly (the charge first falls a penny below it).
 - Warnings from each point (annual allowance, taper, carry forward, childcare), never hidden, never a cap; childcare as eligibility only, with what isn't checked.
 - No point labelled "best". Compare: the current contribution against a chosen one.
-- **Still with the owner:** confirm the benefit value from an annual statement (B1) and run the payslip check; the 72 HMRC cross-checks; whether a benefit through salary sacrifice or one that attracts Class 1 needs its own input.
+- **Still with the owner:** confirm the benefit value from an annual statement (B1) and run the payslip check (B15: PAYE estimate, salary sacrifice benefits, the monthly breakdown); the 72 HMRC cross-checks; Tables A and B to D for the PAYE estimate (O10, O11); confirm `paye.codeUnit` as a standing rule; whether a benefit that attracts Class 1 needs its own input.
 
 ## Progress log
 
 Add one entry per session: date, what was done, what differs from the brief, what the next session should pick up, and which docs were updated.
+
+- **18 October 2026, build part 0.11.0 (benefits through salary sacrifice, tax code and PAYE estimate, monthly breakdown). Version 0.11.0, user-visible.**
+  - Pre-check: PR #11 merged; its Pages deploy (run 39104318284) succeeded. Names and signatures confirmed in the code: `TaxInputs` (`taxableBenefits`, `postTaxDeductions` as single annual figures), `takeHome(inputs, config, policy)`, the page's `ListItem` lists (`taxableBenefits`, `postTaxDeductions`), inputs version 2, `MONTHS_PER_YEAR`, `inputLimits.ts`. They match the prompt, except that the tax code needed a config value (below).
+  - Done (decisions and lookups `101cba2`; config red `1cce4b8`, green `214769a`; engine red `2f0f54a`, green `c9b141f`; page red `6456262`, green `fd6a165`; then the close-out):
+    - [x] GOV.UK lookups through the content API, logged with exact lines ("Session 0.11.0 lookups"): 480 Appendix 12, EIM44120 and Salary sacrifice for employers (the greater of value and salary given up; exemptions), NIM02330 (Class 1 only on the cash; Class 1A on the benefit), the student loan base (as G6), EIM21119 and NIM15201 (making good), the tax code pages, Understanding your employees' tax codes (code times ten), PAYE11015, PAYE11090, PAYE70025 (cumulative basis, free pay n twelfths), Income Tax in Wales (2026 to 2027 rates the same as rUK), the page on paying too much or too little. Tables A and Tables B to D are PDFs the network refuses: **OPEN** O10 (exact free pay) and O11 (per-period rounding); decision D3 rounding used, no guess coded.
+    - [x] Config: `paye.codeUnit` in a new "PAYE tax codes" group, its own red and green commits, with a log row (a standing rule, not tied to a tax year: for the owner to confirm).
+    - [x] Decisions B10 to B16 in `docs/modelling-decisions.md`; B4 marked superseded.
+    - [x] Engine: `TaxInputs.benefits`, `benefitTaxable`, `benefitTotals`; salary given up comes off pay before every step (tax, NI, loan, ANI, the annual allowance measures, `optimise()`'s sweep and solver) and is refused above pay; contributions after tax off take-home; breakdown rows for both; `payrollPay`; a warning when salary is given up; `paye.ts` (`parseTaxCode`, `paye`, `payeEstimate`).
+    - [x] Engine tests: `sacrifice.test.ts`, `paye.test.ts`, `published.test.ts` (BEN-1 to BEN-4, TC-1 to TC-3), `fixtures/reference.ts` extended independently (items, cash pay, payroll pay, its own cumulative PAYE). Literal guard passes. Mutation spot-checks: benefit dropped from taxable pay (10 fail); salary given up left in NI-able pay (3); code number mis-converted (7).
+    - [x] Page: benefit items (value, taken, how, per month or year) with each item's taxable amount and the totals; tax code box; PAYE card and notices; region warning; Year / Month breakdown (`breakdown.ts`) adding up in both views with the penny note; inputs version 3 with migrations from 1 and 2 (identical results); compare rows; assumptions; Help. A generic item list replaces the single one. Mutation spot-check: migrated items given their amount as salary given up (12 fail).
+    - [x] Chromium (vite preview) at 360, 768 and 1280 px, light and dark, five states including the Month view and an 80-character name at 360 px (30 runs): axe found no violations; no horizontal scroll; no external requests; no console errors; controls at least 44 px.
+    - [x] `test` (1,480 passed, 72 todo), `lint`, `typecheck`, `build` pass.
+  - Differences from the prompt (also in `PLAN.md`): `paye(code, pay, config)` takes no policy, and `payeEstimate` gives the difference; PAYE's pay is pay through payroll without benefits; the code multiplier went into config as `paye.codeUnit`; a C code uses the rUK bands (the same Welsh rates for 2026 to 2027); the exemption warning shows whenever salary is given up; an item cannot both give up salary and make good; the inputs version is derived from the migrations list (literal guard); the Month view's PAYE row shows the first month.
+  - Not verified: Tables A and B to D (the free pay and rounding payroll uses); the owner's payslip (manual, B15); real devices, Safari, Firefox, a screen reader; the deployed site.
+  - Next: session 1b-ii (above).
+  - Docs updated: `PHASE-BRIEF.md`, `PLAN.md`, `CHANGELOG.md` (0.11.0), `docs/modelling-decisions.md` (B10 to B16), `docs/verification-log.md` (lookups, O10, O11, the `paye.codeUnit` row), `docs/worked-examples.md`, `docs/performance.md`, `src/calculators/optimiser/README.md`, `src/lib/README.md`, Help (`take-home-pay`). `CLAUDE.md` unchanged (no rule changed). About > Privacy unchanged: no storage key changed.
 
 - **18 October 2026, build part 1b-i.1 (percentages, itemised benefits and deductions, monthly entry). Version 0.10.0, user-visible.**
   - Pre-check: PR #10 merged; its Pages deploy (run 39098710380) succeeded. Names and signatures confirmed in the code: `OptimiserPageInputs` (version 1: single `employeeContribution`, `employerContribution`, `taxableBenefits`, `postTaxDeductions` amounts), `toTaxInputs`, `calculateTakeHome`, `MONTHS_PER_YEAR` (`src/lib/periods.ts`), `MAX_INPUT_AMOUNT` and `MAX_CHILDREN` (`inputLimits.ts`), `parsePercentText`, `percentRatio` and `isCanonicalPercent` (`parse.ts`), `PercentInput`, `mulRound`. They match the prompt. An earlier prompt for 0.11.0 assumed this part had run; it was stopped at its pre-check with no changes.

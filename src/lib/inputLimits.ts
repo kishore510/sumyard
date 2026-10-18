@@ -20,3 +20,9 @@ export const MAX_ITEM_NAME_LENGTH = 80
 
 /** The largest percentage a percentage input accepts (as an exact Ratio): ten times the base. */
 export const MAX_PERCENT_INPUT = ratio(10, 1)
+
+/** The longest tax code text accepted, in characters (an S or C prefix, a long number, a suffix and an emergency marker fit). */
+export const MAX_TAX_CODE_LENGTH = 16
+
+/** The largest number a tax code may carry, so its allowance stays a safe amount. Not a tax figure. */
+export const MAX_TAX_CODE_NUMBER = 999_999
