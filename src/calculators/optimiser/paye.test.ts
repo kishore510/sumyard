@@ -200,7 +200,7 @@ describe('paye (B13)', () => {
   })
 
   it('level pay: each month within a penny of the others', () => {
-    const r = run(`${standard}L`, fromPounds(57_123.45))
+    const r = run(`${standard}L`, fromPounds('57123.45'))
     const taxes = r.months.map((m) => m.tax)
     expect(Math.max(...taxes) - Math.min(...taxes)).toBeLessThanOrEqual(1)
   })

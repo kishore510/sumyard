@@ -318,15 +318,14 @@ describe('edge cases (B10)', () => {
     const taken = fromPounds(800)
     const value = fromPounds(2_000)
     // Adjusted net income = gross − taken + value; place it a penny either side of the taper start.
-    for (const [offset, tapered] of [
-      [-1, false],
-      [0, false],
-      [1, true],
-    ] as const) {
+    for (const offset of [-1, 0, 1, 2]) {
       const grossPay = fromPence(v.taperStart - (value - taken) + offset)
-      const r = home(base({ grossPay, benefits: [item(value, taken, 'beforeTax')] }))
+      const inputs = base({ grossPay, benefits: [item(value, taken, 'beforeTax')] })
+      const r = home(inputs)
       expect(r.adjustedNetIncome.adjustedNetIncome).toBe(v.taperStart + offset)
-      expect(r.incomeTax.personalAllowance.reduction > 0, String(offset)).toBe(tapered)
+      expect(r.annual.incomeTax, String(offset)).toBe(referenceTakeHome(inputs, config, policy).tax)
+      // A penny over loses half a penny of allowance (exact), which rounds away on output; two pennies show it.
+      expect(r.incomeTax.personalAllowance.reduction > 0, String(offset)).toBe(offset >= 2)
     }
   })
 
