@@ -105,7 +105,7 @@ describe('taxable benefits in kind (B1)', () => {
   it('adds the benefit to taxable pay and adjusted net income, and not to NI-able pay or the student loan base', () => {
     for (const method of [undefined, ...PENSION_METHODS]) {
       const pension: PensionInput | undefined = method ? { method, contribution: fromPounds(3_000) } : undefined
-      const benefit = fromPounds(1_234.56)
+      const benefit = fromPounds('1234.56')
       const before = home(base({ studentLoans: ['plan2'], ...(pension ? { pension } : {}) }))
       const after = home(base({ studentLoans: ['plan2'], ...(pension ? { pension } : {}), taxableBenefits: benefit }))
       expect(after.incomeTax.taxablePay, String(method)).toBe(add(before.incomeTax.taxablePay, benefit))
