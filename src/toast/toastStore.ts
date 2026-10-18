@@ -10,6 +10,8 @@ import { createStore } from '@/lib/store'
 
 export interface ToastUndo {
   run: () => void
+  /** Why the action can no longer be undone (the state moved on), shown instead of running it; nothing when it can. */
+  blocked?: () => string | undefined
   /** Shown and announced after undoing. Default "Undone." */
   done?: string
 }

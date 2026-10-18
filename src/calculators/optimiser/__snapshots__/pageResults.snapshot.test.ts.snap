@@ -1,0 +1,3189 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`page results are unchanged by the redesign (snapshot of engine outputs) > code not modelled 1`] = `
+{
+  "month": {
+    "difference": -1,
+    "evenShare": 269330,
+    "gross": 333333,
+    "period": "month",
+    "rows": {
+      "benefitPayments": 0,
+      "benefitSacrifice": 0,
+      "hicbc": 0,
+      "incomeTax": 45717,
+      "nationalInsurance": 18287,
+      "pension": 0,
+      "postTaxDeductions": 0,
+      "studentLoan": 0,
+    },
+    "takeHome": 269329,
+  },
+  "paye": {
+    "kind": "BR",
+    "message": "BR taxes all the pay from this job at the basic rate, usually for a second job. It is not modelled, so no PAYE estimate is shown.",
+    "ok": false,
+    "reason": "unsupported",
+  },
+  "result": {
+    "adjustedNetIncome": {
+      "adjustedNetIncome": 4000000,
+      "grossPay": 4000000,
+      "method": null,
+      "netIncome": 4000000,
+      "ok": true,
+      "reliefAtSourceDeduction": 0,
+      "taxYear": "2026-27",
+    },
+    "annual": {
+      "benefitPayments": 0,
+      "benefitSacrifice": 0,
+      "childBenefit": 0,
+      "gross": 4000000,
+      "hicbc": 0,
+      "incomeTax": 548600,
+      "label": "Annual: the tax year’s figures",
+      "nationalInsurance": 219440,
+      "net": 3231960,
+      "netIncludingChildBenefit": 3231960,
+      "pension": 0,
+      "period": "annual",
+      "postTaxDeductions": 0,
+      "studentLoan": 0,
+    },
+    "assumptions": [
+      "These are estimates for the tax year, not payroll or Self Assessment figures.",
+      "Employment income only: no savings, dividends, property, self-employment or other income, and no benefits in kind.",
+      "Annual model: National Insurance and student loan repayments are worked out on the year’s pay with the annual thresholds. Payroll works per pay period, so monthly payslips, and months with a large bonus, can differ.",
+      "Income tax uses the rates and bands for England, Wales and Northern Ireland.",
+      "Standard Personal Allowance only: no Marriage Allowance, Blind Person’s Allowance or tax code adjustments.",
+      "Adjusted net income, which drives the personal allowance taper and the High Income Child Benefit Charge, is gross pay: no pension contribution, Gift Aid or other reliefs.",
+      "Personal allowance taper: the reduction is exact, with nothing rounded until the result.",
+      "National Insurance: the employee’s contributions only, at the standard (category A) rates.",
+      "No Child Benefit, so no High Income Child Benefit Charge.",
+      "Rounding: each band’s tax, each National Insurance rate’s contribution and the monthly and weekly figures are rounded to the nearest penny; nothing is rounded before that.",
+      "Monthly and weekly figures are the annual ones divided evenly; they are not payslip figures.",
+    ],
+    "benefits": {
+      "paidAfterTax": 0,
+      "salaryGivenUp": 0,
+      "taxable": 0,
+    },
+    "estimate": true,
+    "hicbc": null,
+    "incomeTax": {
+      "adjustedNetIncome": 4000000,
+      "bands": [
+        {
+          "from": 0,
+          "income": 2743000,
+          "name": "Basic rate",
+          "rate": {
+            "denominator": 100,
+            "numerator": 20,
+          },
+          "tax": 548600,
+          "to": 3770000,
+        },
+        {
+          "from": 3770000,
+          "income": 0,
+          "name": "Higher rate",
+          "rate": {
+            "denominator": 100,
+            "numerator": 40,
+          },
+          "tax": 0,
+          "to": 12514000,
+        },
+        {
+          "from": 12514000,
+          "income": 0,
+          "name": "Additional rate",
+          "rate": {
+            "denominator": 100,
+            "numerator": 45,
+          },
+          "tax": 0,
+          "to": null,
+        },
+      ],
+      "basicRateBandExtension": 0,
+      "income": 4000000,
+      "ok": true,
+      "pensionMethod": null,
+      "personalAllowance": {
+        "allowance": 1257000,
+        "fullAllowance": 1257000,
+        "income": 4000000,
+        "ok": true,
+        "reduction": 0,
+        "taperRounding": "exact",
+        "taxYear": "2026-27",
+      },
+      "region": "rUK",
+      "taxYear": "2026-27",
+      "taxableIncome": 2743000,
+      "taxablePay": 4000000,
+      "total": 548600,
+    },
+    "inputs": {
+      "benefits": [],
+      "grossPay": 4000000,
+      "postTaxDeductions": 0,
+      "region": "rUK",
+      "studentLoans": [],
+    },
+    "monthly": {
+      "benefitPayments": 0,
+      "benefitSacrifice": 0,
+      "childBenefit": 0,
+      "gross": 333333,
+      "hicbc": 0,
+      "incomeTax": 45717,
+      "label": "Monthly: each annual figure divided by the months in a year, to the nearest penny",
+      "nationalInsurance": 18287,
+      "net": 269330,
+      "netIncludingChildBenefit": 269330,
+      "pension": 0,
+      "period": "monthly",
+      "postTaxDeductions": 0,
+      "studentLoan": 0,
+    },
+    "nationalInsurance": {
+      "additional": {
+        "contribution": 0,
+        "earnings": 0,
+        "rate": {
+          "denominator": 100,
+          "numerator": 2,
+        },
+      },
+      "main": {
+        "contribution": 219440,
+        "earnings": 2743000,
+        "rate": {
+          "denominator": 100,
+          "numerator": 8,
+        },
+      },
+      "niablePay": 4000000,
+      "ok": true,
+      "taxYear": "2026-27",
+      "total": 219440,
+    },
+    "ok": true,
+    "payrollPay": 4000000,
+    "pension": null,
+    "policy": {
+      "childBenefitWeeks": 52,
+      "taperRounding": "exact",
+    },
+    "studentLoan": {
+      "deductions": [],
+      "ok": true,
+      "pay": 4000000,
+      "taxYear": "2026-27",
+      "total": 0,
+    },
+    "taxYear": "2026-27",
+    "warnings": [],
+    "weekly": {
+      "benefitPayments": 0,
+      "benefitSacrifice": 0,
+      "childBenefit": 0,
+      "gross": 76923,
+      "hicbc": 0,
+      "incomeTax": 10550,
+      "label": "Weekly: each annual figure divided by the weeks in a year, to the nearest penny",
+      "nationalInsurance": 4220,
+      "net": 62153,
+      "netIncludingChildBenefit": 62153,
+      "pension": 0,
+      "period": "weekly",
+      "postTaxDeductions": 0,
+      "studentLoan": 0,
+    },
+  },
+  "summary": {
+    "inputs": [
+      {
+        "label": "Region",
+        "value": {
+          "kind": "text",
+          "text": "England, Wales or Northern Ireland",
+        },
+      },
+      {
+        "label": "Salary",
+        "value": {
+          "amount": 4000000,
+          "kind": "money",
+        },
+      },
+      {
+        "label": "Bonus",
+        "value": {
+          "amount": 0,
+          "kind": "money",
+        },
+      },
+      {
+        "label": "Pension method",
+        "value": {
+          "kind": "text",
+          "text": "Salary sacrifice",
+        },
+      },
+      {
+        "label": "Employee pension contribution: entered as",
+        "value": {
+          "kind": "text",
+          "text": "Amount",
+        },
+      },
+      {
+        "label": "Employee pension contribution",
+        "value": {
+          "amount": 0,
+          "kind": "money",
+        },
+      },
+      {
+        "label": "Employer pension contribution: entered as",
+        "value": {
+          "kind": "text",
+          "text": "Amount",
+        },
+      },
+      {
+        "label": "Employer pension contribution",
+        "value": {
+          "amount": 0,
+          "kind": "money",
+        },
+      },
+      {
+        "label": "Taxable benefits in kind",
+        "value": {
+          "amount": 0,
+          "kind": "money",
+        },
+      },
+      {
+        "label": "Salary given up for benefits",
+        "value": {
+          "amount": 0,
+          "kind": "money",
+        },
+      },
+      {
+        "label": "Benefit payments after tax",
+        "value": {
+          "amount": 0,
+          "kind": "money",
+        },
+      },
+      {
+        "label": "Benefit items",
+        "value": {
+          "kind": "text",
+          "text": "None",
+        },
+      },
+      {
+        "label": "Post-tax deductions",
+        "value": {
+          "amount": 0,
+          "kind": "money",
+        },
+      },
+      {
+        "label": "Deduction items",
+        "value": {
+          "kind": "text",
+          "text": "None",
+        },
+      },
+      {
+        "label": "Student loans",
+        "value": {
+          "kind": "text",
+          "text": "None",
+        },
+      },
+      {
+        "label": "Children",
+        "value": {
+          "count": 0,
+          "kind": "count",
+        },
+      },
+      {
+        "label": "Tax code",
+        "value": {
+          "kind": "text",
+          "text": "BR",
+        },
+      },
+    ],
+    "results": {
+      "ok": true,
+      "rows": [
+        {
+          "label": "Take-home (year)",
+          "value": {
+            "amount": 3231960,
+            "kind": "money",
+          },
+        },
+        {
+          "label": "Take-home (month)",
+          "value": {
+            "amount": 269330,
+            "kind": "money",
+          },
+        },
+        {
+          "label": "Take-home (week)",
+          "value": {
+            "amount": 62153,
+            "kind": "money",
+          },
+        },
+        {
+          "label": "Gross pay",
+          "value": {
+            "amount": 4000000,
+            "kind": "money",
+          },
+        },
+        {
+          "label": "Salary given up for benefits",
+          "value": {
+            "amount": 0,
+            "kind": "money",
+          },
+        },
+        {
+          "label": "Income tax",
+          "value": {
+            "amount": 548600,
+            "kind": "money",
+          },
+        },
+        {
+          "label": "National Insurance",
+          "value": {
+            "amount": 219440,
+            "kind": "money",
+          },
+        },
+        {
+          "label": "Student loan",
+          "value": {
+            "amount": 0,
+            "kind": "money",
+          },
+        },
+        {
+          "label": "Employee pension",
+          "value": {
+            "amount": 0,
+            "kind": "money",
+          },
+        },
+        {
+          "label": "Child Benefit charge",
+          "value": {
+            "amount": 0,
+            "kind": "money",
+          },
+        },
+        {
+          "label": "Benefit payments after tax",
+          "value": {
+            "amount": 0,
+            "kind": "money",
+          },
+        },
+        {
+          "label": "Post-tax deductions",
+          "value": {
+            "amount": 0,
+            "kind": "money",
+          },
+        },
+        {
+          "label": "Child Benefit received",
+          "value": {
+            "amount": 0,
+            "kind": "money",
+          },
+        },
+        {
+          "label": "PAYE estimate",
+          "value": {
+            "kind": "text",
+            "text": "Not modelled for this code",
+          },
+        },
+      ],
+    },
+  },
+}
+`;
+
+exports[`page results are unchanged by the redesign (snapshot of engine outputs) > contribution above pay 1`] = `
+{
+  "month": null,
+  "paye": null,
+  "result": {
+    "ok": false,
+    "problem": "The pension contribution, with any salary given up for benefits, is more than your pay (salary plus bonus). Sumyard doesn’t model relief on contributions above earnings, or giving up more than your pay.",
+  },
+  "summary": {
+    "inputs": [
+      {
+        "label": "Region",
+        "value": {
+          "kind": "text",
+          "text": "England, Wales or Northern Ireland",
+        },
+      },
+      {
+        "label": "Salary",
+        "value": {
+          "amount": 1000000,
+          "kind": "money",
+        },
+      },
+      {
+        "label": "Bonus",
+        "value": {
+          "amount": 0,
+          "kind": "money",
+        },
+      },
+      {
+        "label": "Pension method",
+        "value": {
+          "kind": "text",
+          "text": "Salary sacrifice",
+        },
+      },
+      {
+        "label": "Employee pension contribution: entered as",
+        "value": {
+          "kind": "text",
+          "text": "Amount",
+        },
+      },
+      {
+        "label": "Employee pension contribution",
+        "value": {
+          "amount": 1200000,
+          "kind": "money",
+        },
+      },
+      {
+        "label": "Employer pension contribution: entered as",
+        "value": {
+          "kind": "text",
+          "text": "Amount",
+        },
+      },
+      {
+        "label": "Employer pension contribution",
+        "value": {
+          "amount": 0,
+          "kind": "money",
+        },
+      },
+      {
+        "label": "Taxable benefits in kind",
+        "value": {
+          "amount": 0,
+          "kind": "money",
+        },
+      },
+      {
+        "label": "Salary given up for benefits",
+        "value": {
+          "amount": 0,
+          "kind": "money",
+        },
+      },
+      {
+        "label": "Benefit payments after tax",
+        "value": {
+          "amount": 0,
+          "kind": "money",
+        },
+      },
+      {
+        "label": "Benefit items",
+        "value": {
+          "kind": "text",
+          "text": "None",
+        },
+      },
+      {
+        "label": "Post-tax deductions",
+        "value": {
+          "amount": 0,
+          "kind": "money",
+        },
+      },
+      {
+        "label": "Deduction items",
+        "value": {
+          "kind": "text",
+          "text": "None",
+        },
+      },
+      {
+        "label": "Student loans",
+        "value": {
+          "kind": "text",
+          "text": "None",
+        },
+      },
+      {
+        "label": "Children",
+        "value": {
+          "count": 0,
+          "kind": "count",
+        },
+      },
+      {
+        "label": "Tax code",
+        "value": {
+          "kind": "text",
+          "text": "None",
+        },
+      },
+    ],
+    "results": {
+      "ok": true,
+      "rows": [
+        {
+          "label": "Result",
+          "value": {
+            "kind": "text",
+            "text": "The pension contribution, with any salary given up for benefits, is more than your pay (salary plus bonus). Sumyard doesn’t model relief on contributions above earnings, or giving up more than your pay.",
+          },
+        },
+      ],
+    },
+  },
+}
+`;
+
+exports[`page results are unchanged by the redesign (snapshot of engine outputs) > defaults 1`] = `
+{
+  "month": {
+    "difference": 0,
+    "evenShare": 0,
+    "gross": 0,
+    "period": "month",
+    "rows": {
+      "benefitPayments": 0,
+      "benefitSacrifice": 0,
+      "hicbc": 0,
+      "incomeTax": 0,
+      "nationalInsurance": 0,
+      "pension": 0,
+      "postTaxDeductions": 0,
+      "studentLoan": 0,
+    },
+    "takeHome": 0,
+  },
+  "paye": null,
+  "result": {
+    "adjustedNetIncome": {
+      "adjustedNetIncome": 0,
+      "grossPay": 0,
+      "method": null,
+      "netIncome": 0,
+      "ok": true,
+      "reliefAtSourceDeduction": 0,
+      "taxYear": "2026-27",
+    },
+    "annual": {
+      "benefitPayments": 0,
+      "benefitSacrifice": 0,
+      "childBenefit": 0,
+      "gross": 0,
+      "hicbc": 0,
+      "incomeTax": 0,
+      "label": "Annual: the tax year’s figures",
+      "nationalInsurance": 0,
+      "net": 0,
+      "netIncludingChildBenefit": 0,
+      "pension": 0,
+      "period": "annual",
+      "postTaxDeductions": 0,
+      "studentLoan": 0,
+    },
+    "assumptions": [
+      "These are estimates for the tax year, not payroll or Self Assessment figures.",
+      "Employment income only: no savings, dividends, property, self-employment or other income, and no benefits in kind.",
+      "Annual model: National Insurance and student loan repayments are worked out on the year’s pay with the annual thresholds. Payroll works per pay period, so monthly payslips, and months with a large bonus, can differ.",
+      "Income tax uses the rates and bands for England, Wales and Northern Ireland.",
+      "Standard Personal Allowance only: no Marriage Allowance, Blind Person’s Allowance or tax code adjustments.",
+      "Adjusted net income, which drives the personal allowance taper and the High Income Child Benefit Charge, is gross pay: no pension contribution, Gift Aid or other reliefs.",
+      "Personal allowance taper: the reduction is exact, with nothing rounded until the result.",
+      "National Insurance: the employee’s contributions only, at the standard (category A) rates.",
+      "No Child Benefit, so no High Income Child Benefit Charge.",
+      "Rounding: each band’s tax, each National Insurance rate’s contribution and the monthly and weekly figures are rounded to the nearest penny; nothing is rounded before that.",
+      "Monthly and weekly figures are the annual ones divided evenly; they are not payslip figures.",
+    ],
+    "benefits": {
+      "paidAfterTax": 0,
+      "salaryGivenUp": 0,
+      "taxable": 0,
+    },
+    "estimate": true,
+    "hicbc": null,
+    "incomeTax": {
+      "adjustedNetIncome": 0,
+      "bands": [
+        {
+          "from": 0,
+          "income": 0,
+          "name": "Basic rate",
+          "rate": {
+            "denominator": 100,
+            "numerator": 20,
+          },
+          "tax": 0,
+          "to": 3770000,
+        },
+        {
+          "from": 3770000,
+          "income": 0,
+          "name": "Higher rate",
+          "rate": {
+            "denominator": 100,
+            "numerator": 40,
+          },
+          "tax": 0,
+          "to": 12514000,
+        },
+        {
+          "from": 12514000,
+          "income": 0,
+          "name": "Additional rate",
+          "rate": {
+            "denominator": 100,
+            "numerator": 45,
+          },
+          "tax": 0,
+          "to": null,
+        },
+      ],
+      "basicRateBandExtension": 0,
+      "income": 0,
+      "ok": true,
+      "pensionMethod": null,
+      "personalAllowance": {
+        "allowance": 1257000,
+        "fullAllowance": 1257000,
+        "income": 0,
+        "ok": true,
+        "reduction": 0,
+        "taperRounding": "exact",
+        "taxYear": "2026-27",
+      },
+      "region": "rUK",
+      "taxYear": "2026-27",
+      "taxableIncome": 0,
+      "taxablePay": 0,
+      "total": 0,
+    },
+    "inputs": {
+      "benefits": [],
+      "grossPay": 0,
+      "postTaxDeductions": 0,
+      "region": "rUK",
+      "studentLoans": [],
+    },
+    "monthly": {
+      "benefitPayments": 0,
+      "benefitSacrifice": 0,
+      "childBenefit": 0,
+      "gross": 0,
+      "hicbc": 0,
+      "incomeTax": 0,
+      "label": "Monthly: each annual figure divided by the months in a year, to the nearest penny",
+      "nationalInsurance": 0,
+      "net": 0,
+      "netIncludingChildBenefit": 0,
+      "pension": 0,
+      "period": "monthly",
+      "postTaxDeductions": 0,
+      "studentLoan": 0,
+    },
+    "nationalInsurance": {
+      "additional": {
+        "contribution": 0,
+        "earnings": 0,
+        "rate": {
+          "denominator": 100,
+          "numerator": 2,
+        },
+      },
+      "main": {
+        "contribution": 0,
+        "earnings": 0,
+        "rate": {
+          "denominator": 100,
+          "numerator": 8,
+        },
+      },
+      "niablePay": 0,
+      "ok": true,
+      "taxYear": "2026-27",
+      "total": 0,
+    },
+    "ok": true,
+    "payrollPay": 0,
+    "pension": null,
+    "policy": {
+      "childBenefitWeeks": 52,
+      "taperRounding": "exact",
+    },
+    "studentLoan": {
+      "deductions": [],
+      "ok": true,
+      "pay": 0,
+      "taxYear": "2026-27",
+      "total": 0,
+    },
+    "taxYear": "2026-27",
+    "warnings": [],
+    "weekly": {
+      "benefitPayments": 0,
+      "benefitSacrifice": 0,
+      "childBenefit": 0,
+      "gross": 0,
+      "hicbc": 0,
+      "incomeTax": 0,
+      "label": "Weekly: each annual figure divided by the weeks in a year, to the nearest penny",
+      "nationalInsurance": 0,
+      "net": 0,
+      "netIncludingChildBenefit": 0,
+      "pension": 0,
+      "period": "weekly",
+      "postTaxDeductions": 0,
+      "studentLoan": 0,
+    },
+  },
+  "summary": {
+    "inputs": [
+      {
+        "label": "Region",
+        "value": {
+          "kind": "text",
+          "text": "England, Wales or Northern Ireland",
+        },
+      },
+      {
+        "label": "Salary",
+        "value": {
+          "amount": 0,
+          "kind": "money",
+        },
+      },
+      {
+        "label": "Bonus",
+        "value": {
+          "amount": 0,
+          "kind": "money",
+        },
+      },
+      {
+        "label": "Pension method",
+        "value": {
+          "kind": "text",
+          "text": "Salary sacrifice",
+        },
+      },
+      {
+        "label": "Employee pension contribution: entered as",
+        "value": {
+          "kind": "text",
+          "text": "Amount",
+        },
+      },
+      {
+        "label": "Employee pension contribution",
+        "value": {
+          "amount": 0,
+          "kind": "money",
+        },
+      },
+      {
+        "label": "Employer pension contribution: entered as",
+        "value": {
+          "kind": "text",
+          "text": "Amount",
+        },
+      },
+      {
+        "label": "Employer pension contribution",
+        "value": {
+          "amount": 0,
+          "kind": "money",
+        },
+      },
+      {
+        "label": "Taxable benefits in kind",
+        "value": {
+          "amount": 0,
+          "kind": "money",
+        },
+      },
+      {
+        "label": "Salary given up for benefits",
+        "value": {
+          "amount": 0,
+          "kind": "money",
+        },
+      },
+      {
+        "label": "Benefit payments after tax",
+        "value": {
+          "amount": 0,
+          "kind": "money",
+        },
+      },
+      {
+        "label": "Benefit items",
+        "value": {
+          "kind": "text",
+          "text": "None",
+        },
+      },
+      {
+        "label": "Post-tax deductions",
+        "value": {
+          "amount": 0,
+          "kind": "money",
+        },
+      },
+      {
+        "label": "Deduction items",
+        "value": {
+          "kind": "text",
+          "text": "None",
+        },
+      },
+      {
+        "label": "Student loans",
+        "value": {
+          "kind": "text",
+          "text": "None",
+        },
+      },
+      {
+        "label": "Children",
+        "value": {
+          "count": 0,
+          "kind": "count",
+        },
+      },
+      {
+        "label": "Tax code",
+        "value": {
+          "kind": "text",
+          "text": "None",
+        },
+      },
+    ],
+    "results": {
+      "ok": true,
+      "rows": [
+        {
+          "label": "Take-home (year)",
+          "value": {
+            "amount": 0,
+            "kind": "money",
+          },
+        },
+        {
+          "label": "Take-home (month)",
+          "value": {
+            "amount": 0,
+            "kind": "money",
+          },
+        },
+        {
+          "label": "Take-home (week)",
+          "value": {
+            "amount": 0,
+            "kind": "money",
+          },
+        },
+        {
+          "label": "Gross pay",
+          "value": {
+            "amount": 0,
+            "kind": "money",
+          },
+        },
+        {
+          "label": "Salary given up for benefits",
+          "value": {
+            "amount": 0,
+            "kind": "money",
+          },
+        },
+        {
+          "label": "Income tax",
+          "value": {
+            "amount": 0,
+            "kind": "money",
+          },
+        },
+        {
+          "label": "National Insurance",
+          "value": {
+            "amount": 0,
+            "kind": "money",
+          },
+        },
+        {
+          "label": "Student loan",
+          "value": {
+            "amount": 0,
+            "kind": "money",
+          },
+        },
+        {
+          "label": "Employee pension",
+          "value": {
+            "amount": 0,
+            "kind": "money",
+          },
+        },
+        {
+          "label": "Child Benefit charge",
+          "value": {
+            "amount": 0,
+            "kind": "money",
+          },
+        },
+        {
+          "label": "Benefit payments after tax",
+          "value": {
+            "amount": 0,
+            "kind": "money",
+          },
+        },
+        {
+          "label": "Post-tax deductions",
+          "value": {
+            "amount": 0,
+            "kind": "money",
+          },
+        },
+        {
+          "label": "Child Benefit received",
+          "value": {
+            "amount": 0,
+            "kind": "money",
+          },
+        },
+      ],
+    },
+  },
+}
+`;
+
+exports[`page results are unchanged by the redesign (snapshot of engine outputs) > every section set 1`] = `
+{
+  "month": {
+    "difference": 0,
+    "evenShare": 450625,
+    "gross": 1058333,
+    "period": "month",
+    "rows": {
+      "benefitPayments": 1500,
+      "benefitSacrifice": 30000,
+      "hicbc": 19478,
+      "incomeTax": 332400,
+      "nationalInsurance": 37322,
+      "pension": 63500,
+      "postTaxDeductions": 1800,
+      "studentLoan": 121708,
+    },
+    "takeHome": 450625,
+  },
+  "paye": {
+    "difference": -272400,
+    "liability": 3988800,
+    "ok": true,
+    "paye": {
+      "assumptions": [
+        "PAYE estimate: level monthly pay for the whole tax year from this one job, on the cumulative basis: each month gets its share of the tax-free pay and of each band, set against pay so far.",
+        "Tax-free pay is the code’s number times the amount per unit in the tax data, as GOV.UK’s guidance states. Payroll uses HMRC’s tables, which Sumyard has not read, so payslips can differ by pennies or more.",
+        "Rounding: tax so far is rounded to the nearest penny each month, and each month’s tax is the change. Payroll rounding is not modelled.",
+        "PAYE taxes the year’s taxable pay: pay after any salary sacrifice and net pay pension contributions, plus the taxable value of benefits in kind, spread evenly as if the employer payrolls them. If your benefits are not payrolled, your code takes them off your tax-free pay instead and this estimate counts them twice. Relief at source above the basic rate and the High Income Child Benefit Charge count only through the code.",
+        "Only codes made of a number and a letter, with S or C in front, are modelled; K, BR, D, NT, emergency and no-allowance codes are not.",
+      ],
+      "bands": "rUK",
+      "code": {
+        "number": 900,
+        "regime": "rUK",
+        "suffix": "L",
+        "text": "900L",
+      },
+      "codeAllowance": 900000,
+      "estimate": true,
+      "months": [
+        {
+          "freePayToDate": 75000,
+          "month": 1,
+          "pay": 1006333,
+          "payToDate": 1006333,
+          "tax": 309700,
+          "taxToDate": 309700,
+          "taxablePayToDate": 931333,
+        },
+        {
+          "freePayToDate": 150000,
+          "month": 2,
+          "pay": 1006334,
+          "payToDate": 2012667,
+          "tax": 309700,
+          "taxToDate": 619400,
+          "taxablePayToDate": 1862667,
+        },
+        {
+          "freePayToDate": 225000,
+          "month": 3,
+          "pay": 1006333,
+          "payToDate": 3019000,
+          "tax": 309700,
+          "taxToDate": 929100,
+          "taxablePayToDate": 2794000,
+        },
+        {
+          "freePayToDate": 300000,
+          "month": 4,
+          "pay": 1006333,
+          "payToDate": 4025333,
+          "tax": 309700,
+          "taxToDate": 1238800,
+          "taxablePayToDate": 3725333,
+        },
+        {
+          "freePayToDate": 375000,
+          "month": 5,
+          "pay": 1006334,
+          "payToDate": 5031667,
+          "tax": 309700,
+          "taxToDate": 1548500,
+          "taxablePayToDate": 4656667,
+        },
+        {
+          "freePayToDate": 450000,
+          "month": 6,
+          "pay": 1006333,
+          "payToDate": 6038000,
+          "tax": 309700,
+          "taxToDate": 1858200,
+          "taxablePayToDate": 5588000,
+        },
+        {
+          "freePayToDate": 525000,
+          "month": 7,
+          "pay": 1006333,
+          "payToDate": 7044333,
+          "tax": 309700,
+          "taxToDate": 2167900,
+          "taxablePayToDate": 6519333,
+        },
+        {
+          "freePayToDate": 600000,
+          "month": 8,
+          "pay": 1006334,
+          "payToDate": 8050667,
+          "tax": 309700,
+          "taxToDate": 2477600,
+          "taxablePayToDate": 7450667,
+        },
+        {
+          "freePayToDate": 675000,
+          "month": 9,
+          "pay": 1006333,
+          "payToDate": 9057000,
+          "tax": 309700,
+          "taxToDate": 2787300,
+          "taxablePayToDate": 8382000,
+        },
+        {
+          "freePayToDate": 750000,
+          "month": 10,
+          "pay": 1006333,
+          "payToDate": 10063333,
+          "tax": 309700,
+          "taxToDate": 3097000,
+          "taxablePayToDate": 9313333,
+        },
+        {
+          "freePayToDate": 825000,
+          "month": 11,
+          "pay": 1006334,
+          "payToDate": 11069667,
+          "tax": 309700,
+          "taxToDate": 3406700,
+          "taxablePayToDate": 10244667,
+        },
+        {
+          "freePayToDate": 900000,
+          "month": 12,
+          "pay": 1006333,
+          "payToDate": 12076000,
+          "tax": 309700,
+          "taxToDate": 3716400,
+          "taxablePayToDate": 11176000,
+        },
+      ],
+      "ok": true,
+      "pay": 12076000,
+      "taxYear": "2026-27",
+      "total": 3716400,
+    },
+  },
+  "result": {
+    "adjustedNetIncome": {
+      "adjustedNetIncome": 12076000,
+      "grossPay": 12700000,
+      "method": "netPay",
+      "netIncome": 12076000,
+      "ok": true,
+      "reliefAtSourceDeduction": 0,
+      "taxYear": "2026-27",
+    },
+    "annual": {
+      "benefitPayments": 18000,
+      "benefitSacrifice": 360000,
+      "childBenefit": 233740,
+      "gross": 12700000,
+      "hicbc": 233740,
+      "incomeTax": 3988800,
+      "label": "Annual: the tax year’s figures",
+      "nationalInsurance": 447860,
+      "net": 5407500,
+      "netIncludingChildBenefit": 5641240,
+      "pension": 762000,
+      "period": "annual",
+      "postTaxDeductions": 21600,
+      "studentLoan": 1460500,
+    },
+    "assumptions": [
+      "These are estimates for the tax year, not payroll or Self Assessment figures.",
+      "Employment income only, with any taxable benefits in kind: no savings, dividends, property, self-employment or other income.",
+      "Annual model: National Insurance and student loan repayments are worked out on the year’s pay with the annual thresholds. Payroll works per pay period, so monthly payslips, and months with a large bonus, can differ.",
+      "Income tax uses the rates and bands for England, Wales and Northern Ireland.",
+      "Standard Personal Allowance only: no Marriage Allowance, Blind Person’s Allowance or tax code adjustments.",
+      "Adjusted net income, which drives the personal allowance taper and the High Income Child Benefit Charge, is gross pay less any salary sacrificed or net pay contribution, less any grossed-up relief at source contribution. No Gift Aid or other reliefs.",
+      "Pension by net pay arrangement: the contribution comes off pay before income tax and off adjusted net income, but not off National Insurance-able pay. Pay under the Personal Allowance gets no tax relief this way; the low earner’s pension payment is not modelled.",
+      "Pension contributions above gross pay, and relief at source with no earnings, are not modelled.",
+      "Personal allowance taper: the reduction is exact, with nothing rounded until the result.",
+      "National Insurance: the employee’s contributions only, at the standard (category A) rates.",
+      "Student loans: worked out on National Insurance-able pay, which salary sacrifice lowers and net pay and relief at source contributions do not. With more than one plan, one repayment is taken at the lowest threshold; a postgraduate loan is repaid as well. Each repayment is rounded down to a whole pound.",
+      "Child Benefit: the weekly rates for the eldest or only child and each other child, for the whole year, for the number of weeks set in the modelling policy.",
+      "High Income Child Benefit Charge: one percentage point of the Child Benefit for each whole step of adjusted net income over the threshold (part of a step adds nothing), and all of it above the full-charge point; the charge is rounded to the nearest penny.",
+      "The charge is worked out on this income alone: if a partner has a higher adjusted net income, the partner pays it instead.",
+      "Benefits taken through salary sacrifice: the salary given up comes off taxable pay, National Insurance-able pay, student loan pay and take-home, and the benefit is taxed on the higher of its value and the salary given up (the general rule for optional remuneration arrangements). Exemptions some benefits keep, and older arrangements’ protection, are not modelled. Nothing is added back to threshold income for the annual allowance.",
+      "Contributions to benefits paid after tax come off take-home and take the benefit’s taxable value down, not below nothing. They are assumed paid in time to count for the tax year.",
+      "Taxable benefits in kind are taken as entered: their taxable value for the year, after anything paid towards them. They are added to taxable pay and adjusted net income, not to National Insurance-able pay or student loan pay, and are not paid in cash.",
+      "The tax on benefits is worked out on the year’s figures, however it is collected (through the tax code, payrolled benefits or Self Assessment), so payslips can differ. The National Insurance the employer pays on benefits is the employer’s cost and is not taken from take-home.",
+      "Post-tax deductions come off take-home pay only: they change no tax, National Insurance, student loan or adjusted net income.",
+      "Rounding: each band’s tax, each National Insurance rate’s contribution and the monthly and weekly figures are rounded to the nearest penny; nothing is rounded before that.",
+      "Monthly and weekly figures are the annual ones divided evenly; they are not payslip figures.",
+    ],
+    "benefits": {
+      "paidAfterTax": 18000,
+      "salaryGivenUp": 360000,
+      "taxable": 498000,
+    },
+    "estimate": true,
+    "hicbc": {
+      "adjustedNetIncome": 12076000,
+      "charge": 233740,
+      "childBenefit": 233740,
+      "children": 2,
+      "entitlement": 233740,
+      "net": 0,
+      "ok": true,
+      "payments": "claimed",
+      "percentCharged": 100,
+      "steps": 303,
+      "taxYear": "2026-27",
+      "weeks": 52,
+    },
+    "incomeTax": {
+      "adjustedNetIncome": 12076000,
+      "bands": [
+        {
+          "from": 0,
+          "income": 3770000,
+          "name": "Basic rate",
+          "rate": {
+            "denominator": 100,
+            "numerator": 20,
+          },
+          "tax": 754000,
+          "to": 3770000,
+        },
+        {
+          "from": 3770000,
+          "income": 8087000,
+          "name": "Higher rate",
+          "rate": {
+            "denominator": 100,
+            "numerator": 40,
+          },
+          "tax": 3234800,
+          "to": 12514000,
+        },
+        {
+          "from": 12514000,
+          "income": 0,
+          "name": "Additional rate",
+          "rate": {
+            "denominator": 100,
+            "numerator": 45,
+          },
+          "tax": 0,
+          "to": null,
+        },
+      ],
+      "basicRateBandExtension": 0,
+      "income": 12700000,
+      "ok": true,
+      "pensionMethod": "netPay",
+      "personalAllowance": {
+        "allowance": 219000,
+        "fullAllowance": 1257000,
+        "income": 12076000,
+        "ok": true,
+        "reduction": 1038000,
+        "taperRounding": "exact",
+        "taxYear": "2026-27",
+      },
+      "region": "rUK",
+      "taxYear": "2026-27",
+      "taxableIncome": 11857000,
+      "taxablePay": 12076000,
+      "total": 3988800,
+    },
+    "inputs": {
+      "benefits": [
+        {
+          "payment": "beforeTax",
+          "taken": 0,
+          "value": 108000,
+        },
+        {
+          "payment": "beforeTax",
+          "taken": 360000,
+          "value": 320000,
+        },
+        {
+          "payment": "afterTax",
+          "taken": 18000,
+          "value": 48000,
+        },
+      ],
+      "childBenefit": {
+        "children": 2,
+        "payments": "claimed",
+      },
+      "grossPay": 12700000,
+      "pension": {
+        "contribution": 762000,
+        "method": "netPay",
+      },
+      "postTaxDeductions": 21600,
+      "region": "rUK",
+      "studentLoans": [
+        "plan2",
+        "postgraduate",
+      ],
+    },
+    "monthly": {
+      "benefitPayments": 1500,
+      "benefitSacrifice": 30000,
+      "childBenefit": 19478,
+      "gross": 1058333,
+      "hicbc": 19478,
+      "incomeTax": 332400,
+      "label": "Monthly: each annual figure divided by the months in a year, to the nearest penny",
+      "nationalInsurance": 37322,
+      "net": 450625,
+      "netIncludingChildBenefit": 470103,
+      "pension": 63500,
+      "period": "monthly",
+      "postTaxDeductions": 1800,
+      "studentLoan": 121708,
+    },
+    "nationalInsurance": {
+      "additional": {
+        "contribution": 146260,
+        "earnings": 7313000,
+        "rate": {
+          "denominator": 100,
+          "numerator": 2,
+        },
+      },
+      "main": {
+        "contribution": 301600,
+        "earnings": 3770000,
+        "rate": {
+          "denominator": 100,
+          "numerator": 8,
+        },
+      },
+      "niablePay": 12340000,
+      "ok": true,
+      "taxYear": "2026-27",
+      "total": 447860,
+    },
+    "ok": true,
+    "payrollPay": 12076000,
+    "pension": {
+      "basicRateBandExtension": 0,
+      "contribution": 762000,
+      "grossContribution": 762000,
+      "grossPay": 12700000,
+      "method": "netPay",
+      "niablePay": 12340000,
+      "ok": true,
+      "providerRelief": 0,
+      "reliefAtSourceDeduction": 0,
+      "studentLoanPay": 12340000,
+      "taxYear": "2026-27",
+      "taxablePay": 12076000,
+    },
+    "policy": {
+      "childBenefitWeeks": 52,
+      "taperRounding": "exact",
+    },
+    "studentLoan": {
+      "deductions": [
+        {
+          "basis": "plan2",
+          "excess": 9401500,
+          "kind": "plan",
+          "plans": [
+            "plan2",
+          ],
+          "rate": {
+            "denominator": 100,
+            "numerator": 9,
+          },
+          "repayment": 846100,
+          "threshold": 2938500,
+        },
+        {
+          "basis": "postgraduate",
+          "excess": 10240000,
+          "kind": "postgraduate",
+          "plans": [
+            "postgraduate",
+          ],
+          "rate": {
+            "denominator": 100,
+            "numerator": 6,
+          },
+          "repayment": 614400,
+          "threshold": 2100000,
+        },
+      ],
+      "ok": true,
+      "pay": 12340000,
+      "taxYear": "2026-27",
+      "total": 1460500,
+    },
+    "taxYear": "2026-27",
+    "warnings": [
+      {
+        "code": "benefitSalarySacrifice",
+        "message": "Some benefits taken through salary sacrifice keep a tax exemption or a different value (pension contributions, pensions advice, some childcare, cycle to work, low-emission cars). Each item here follows the general rule: taxed on the higher of its value and the salary given up.",
+      },
+    ],
+    "weekly": {
+      "benefitPayments": 346,
+      "benefitSacrifice": 6923,
+      "childBenefit": 4495,
+      "gross": 244231,
+      "hicbc": 4495,
+      "incomeTax": 76708,
+      "label": "Weekly: each annual figure divided by the weeks in a year, to the nearest penny",
+      "nationalInsurance": 8613,
+      "net": 103990,
+      "netIncludingChildBenefit": 108485,
+      "pension": 14654,
+      "period": "weekly",
+      "postTaxDeductions": 415,
+      "studentLoan": 28087,
+    },
+  },
+  "summary": {
+    "inputs": [
+      {
+        "label": "Region",
+        "value": {
+          "kind": "text",
+          "text": "England, Wales or Northern Ireland",
+        },
+      },
+      {
+        "label": "Salary",
+        "value": {
+          "amount": 11800000,
+          "kind": "money",
+        },
+      },
+      {
+        "label": "Bonus",
+        "value": {
+          "amount": 900000,
+          "kind": "money",
+        },
+      },
+      {
+        "label": "Pension method",
+        "value": {
+          "kind": "text",
+          "text": "Net pay arrangement",
+        },
+      },
+      {
+        "label": "Pensionable pay",
+        "value": {
+          "amount": 12700000,
+          "kind": "money",
+        },
+      },
+      {
+        "label": "Employee pension contribution: entered as",
+        "value": {
+          "kind": "text",
+          "text": "Percentage of pensionable pay",
+        },
+      },
+      {
+        "label": "Employee pension contribution: percentage",
+        "value": {
+          "kind": "ratio",
+          "ratio": {
+            "denominator": 100,
+            "numerator": 6,
+          },
+        },
+      },
+      {
+        "label": "Employee pension contribution",
+        "value": {
+          "amount": 762000,
+          "kind": "money",
+        },
+      },
+      {
+        "label": "Employer pension contribution: entered as",
+        "value": {
+          "kind": "text",
+          "text": "Amount",
+        },
+      },
+      {
+        "label": "Employer pension contribution",
+        "value": {
+          "amount": 400000,
+          "kind": "money",
+        },
+      },
+      {
+        "label": "Taxable benefits in kind",
+        "value": {
+          "amount": 498000,
+          "kind": "money",
+        },
+      },
+      {
+        "label": "Salary given up for benefits",
+        "value": {
+          "amount": 360000,
+          "kind": "money",
+        },
+      },
+      {
+        "label": "Benefit payments after tax",
+        "value": {
+          "amount": 18000,
+          "kind": "money",
+        },
+      },
+      {
+        "label": "Benefit items",
+        "value": {
+          "kind": "text",
+          "text": "Medical, Car, Gym",
+        },
+      },
+      {
+        "label": "Post-tax deductions",
+        "value": {
+          "amount": 21600,
+          "kind": "money",
+        },
+      },
+      {
+        "label": "Deduction items",
+        "value": {
+          "kind": "text",
+          "text": "Dental",
+        },
+      },
+      {
+        "label": "Student loans",
+        "value": {
+          "kind": "text",
+          "text": "Plan 2, Postgraduate loan",
+        },
+      },
+      {
+        "label": "Children",
+        "value": {
+          "count": 2,
+          "kind": "count",
+        },
+      },
+      {
+        "label": "Child Benefit",
+        "value": {
+          "kind": "text",
+          "text": "Claimed",
+        },
+      },
+      {
+        "label": "Tax code",
+        "value": {
+          "kind": "text",
+          "text": "900L",
+        },
+      },
+    ],
+    "results": {
+      "ok": true,
+      "rows": [
+        {
+          "label": "Take-home (year)",
+          "value": {
+            "amount": 5407500,
+            "kind": "money",
+          },
+        },
+        {
+          "label": "Take-home (month)",
+          "value": {
+            "amount": 450625,
+            "kind": "money",
+          },
+        },
+        {
+          "label": "Take-home (week)",
+          "value": {
+            "amount": 103990,
+            "kind": "money",
+          },
+        },
+        {
+          "label": "Gross pay",
+          "value": {
+            "amount": 12700000,
+            "kind": "money",
+          },
+        },
+        {
+          "label": "Salary given up for benefits",
+          "value": {
+            "amount": 360000,
+            "kind": "money",
+          },
+        },
+        {
+          "label": "Income tax",
+          "value": {
+            "amount": 3988800,
+            "kind": "money",
+          },
+        },
+        {
+          "label": "National Insurance",
+          "value": {
+            "amount": 447860,
+            "kind": "money",
+          },
+        },
+        {
+          "label": "Student loan",
+          "value": {
+            "amount": 1460500,
+            "kind": "money",
+          },
+        },
+        {
+          "label": "Employee pension",
+          "value": {
+            "amount": 762000,
+            "kind": "money",
+          },
+        },
+        {
+          "label": "Child Benefit charge",
+          "value": {
+            "amount": 233740,
+            "kind": "money",
+          },
+        },
+        {
+          "label": "Benefit payments after tax",
+          "value": {
+            "amount": 18000,
+            "kind": "money",
+          },
+        },
+        {
+          "label": "Post-tax deductions",
+          "value": {
+            "amount": 21600,
+            "kind": "money",
+          },
+        },
+        {
+          "label": "Child Benefit received",
+          "value": {
+            "amount": 233740,
+            "kind": "money",
+          },
+        },
+        {
+          "label": "PAYE estimate (year)",
+          "value": {
+            "amount": 3716400,
+            "kind": "money",
+          },
+        },
+        {
+          "label": "PAYE less the year’s tax",
+          "value": {
+            "amount": -272400,
+            "kind": "money",
+          },
+        },
+      ],
+    },
+  },
+}
+`;
+
+exports[`page results are unchanged by the redesign (snapshot of engine outputs) > salary and bonus 1`] = `
+{
+  "month": {
+    "difference": 1,
+    "evenShare": 358645,
+    "gross": 466667,
+    "period": "month",
+    "rows": {
+      "benefitPayments": 0,
+      "benefitSacrifice": 0,
+      "hicbc": 0,
+      "incomeTax": 81933,
+      "nationalInsurance": 26088,
+      "pension": 0,
+      "postTaxDeductions": 0,
+      "studentLoan": 0,
+    },
+    "takeHome": 358646,
+  },
+  "paye": null,
+  "result": {
+    "adjustedNetIncome": {
+      "adjustedNetIncome": 5600000,
+      "grossPay": 5600000,
+      "method": null,
+      "netIncome": 5600000,
+      "ok": true,
+      "reliefAtSourceDeduction": 0,
+      "taxYear": "2026-27",
+    },
+    "annual": {
+      "benefitPayments": 0,
+      "benefitSacrifice": 0,
+      "childBenefit": 0,
+      "gross": 5600000,
+      "hicbc": 0,
+      "incomeTax": 983200,
+      "label": "Annual: the tax year’s figures",
+      "nationalInsurance": 313060,
+      "net": 4303740,
+      "netIncludingChildBenefit": 4303740,
+      "pension": 0,
+      "period": "annual",
+      "postTaxDeductions": 0,
+      "studentLoan": 0,
+    },
+    "assumptions": [
+      "These are estimates for the tax year, not payroll or Self Assessment figures.",
+      "Employment income only: no savings, dividends, property, self-employment or other income, and no benefits in kind.",
+      "Annual model: National Insurance and student loan repayments are worked out on the year’s pay with the annual thresholds. Payroll works per pay period, so monthly payslips, and months with a large bonus, can differ.",
+      "Income tax uses the rates and bands for England, Wales and Northern Ireland.",
+      "Standard Personal Allowance only: no Marriage Allowance, Blind Person’s Allowance or tax code adjustments.",
+      "Adjusted net income, which drives the personal allowance taper and the High Income Child Benefit Charge, is gross pay: no pension contribution, Gift Aid or other reliefs.",
+      "Personal allowance taper: the reduction is exact, with nothing rounded until the result.",
+      "National Insurance: the employee’s contributions only, at the standard (category A) rates.",
+      "No Child Benefit, so no High Income Child Benefit Charge.",
+      "Rounding: each band’s tax, each National Insurance rate’s contribution and the monthly and weekly figures are rounded to the nearest penny; nothing is rounded before that.",
+      "Monthly and weekly figures are the annual ones divided evenly; they are not payslip figures.",
+    ],
+    "benefits": {
+      "paidAfterTax": 0,
+      "salaryGivenUp": 0,
+      "taxable": 0,
+    },
+    "estimate": true,
+    "hicbc": null,
+    "incomeTax": {
+      "adjustedNetIncome": 5600000,
+      "bands": [
+        {
+          "from": 0,
+          "income": 3770000,
+          "name": "Basic rate",
+          "rate": {
+            "denominator": 100,
+            "numerator": 20,
+          },
+          "tax": 754000,
+          "to": 3770000,
+        },
+        {
+          "from": 3770000,
+          "income": 573000,
+          "name": "Higher rate",
+          "rate": {
+            "denominator": 100,
+            "numerator": 40,
+          },
+          "tax": 229200,
+          "to": 12514000,
+        },
+        {
+          "from": 12514000,
+          "income": 0,
+          "name": "Additional rate",
+          "rate": {
+            "denominator": 100,
+            "numerator": 45,
+          },
+          "tax": 0,
+          "to": null,
+        },
+      ],
+      "basicRateBandExtension": 0,
+      "income": 5600000,
+      "ok": true,
+      "pensionMethod": null,
+      "personalAllowance": {
+        "allowance": 1257000,
+        "fullAllowance": 1257000,
+        "income": 5600000,
+        "ok": true,
+        "reduction": 0,
+        "taperRounding": "exact",
+        "taxYear": "2026-27",
+      },
+      "region": "rUK",
+      "taxYear": "2026-27",
+      "taxableIncome": 4343000,
+      "taxablePay": 5600000,
+      "total": 983200,
+    },
+    "inputs": {
+      "benefits": [],
+      "grossPay": 5600000,
+      "postTaxDeductions": 0,
+      "region": "rUK",
+      "studentLoans": [],
+    },
+    "monthly": {
+      "benefitPayments": 0,
+      "benefitSacrifice": 0,
+      "childBenefit": 0,
+      "gross": 466667,
+      "hicbc": 0,
+      "incomeTax": 81933,
+      "label": "Monthly: each annual figure divided by the months in a year, to the nearest penny",
+      "nationalInsurance": 26088,
+      "net": 358645,
+      "netIncludingChildBenefit": 358645,
+      "pension": 0,
+      "period": "monthly",
+      "postTaxDeductions": 0,
+      "studentLoan": 0,
+    },
+    "nationalInsurance": {
+      "additional": {
+        "contribution": 11460,
+        "earnings": 573000,
+        "rate": {
+          "denominator": 100,
+          "numerator": 2,
+        },
+      },
+      "main": {
+        "contribution": 301600,
+        "earnings": 3770000,
+        "rate": {
+          "denominator": 100,
+          "numerator": 8,
+        },
+      },
+      "niablePay": 5600000,
+      "ok": true,
+      "taxYear": "2026-27",
+      "total": 313060,
+    },
+    "ok": true,
+    "payrollPay": 5600000,
+    "pension": null,
+    "policy": {
+      "childBenefitWeeks": 52,
+      "taperRounding": "exact",
+    },
+    "studentLoan": {
+      "deductions": [],
+      "ok": true,
+      "pay": 5600000,
+      "taxYear": "2026-27",
+      "total": 0,
+    },
+    "taxYear": "2026-27",
+    "warnings": [],
+    "weekly": {
+      "benefitPayments": 0,
+      "benefitSacrifice": 0,
+      "childBenefit": 0,
+      "gross": 107692,
+      "hicbc": 0,
+      "incomeTax": 18908,
+      "label": "Weekly: each annual figure divided by the weeks in a year, to the nearest penny",
+      "nationalInsurance": 6020,
+      "net": 82764,
+      "netIncludingChildBenefit": 82764,
+      "pension": 0,
+      "period": "weekly",
+      "postTaxDeductions": 0,
+      "studentLoan": 0,
+    },
+  },
+  "summary": {
+    "inputs": [
+      {
+        "label": "Region",
+        "value": {
+          "kind": "text",
+          "text": "England, Wales or Northern Ireland",
+        },
+      },
+      {
+        "label": "Salary",
+        "value": {
+          "amount": 5200000,
+          "kind": "money",
+        },
+      },
+      {
+        "label": "Bonus",
+        "value": {
+          "amount": 400000,
+          "kind": "money",
+        },
+      },
+      {
+        "label": "Pension method",
+        "value": {
+          "kind": "text",
+          "text": "Salary sacrifice",
+        },
+      },
+      {
+        "label": "Employee pension contribution: entered as",
+        "value": {
+          "kind": "text",
+          "text": "Amount",
+        },
+      },
+      {
+        "label": "Employee pension contribution",
+        "value": {
+          "amount": 0,
+          "kind": "money",
+        },
+      },
+      {
+        "label": "Employer pension contribution: entered as",
+        "value": {
+          "kind": "text",
+          "text": "Amount",
+        },
+      },
+      {
+        "label": "Employer pension contribution",
+        "value": {
+          "amount": 0,
+          "kind": "money",
+        },
+      },
+      {
+        "label": "Taxable benefits in kind",
+        "value": {
+          "amount": 0,
+          "kind": "money",
+        },
+      },
+      {
+        "label": "Salary given up for benefits",
+        "value": {
+          "amount": 0,
+          "kind": "money",
+        },
+      },
+      {
+        "label": "Benefit payments after tax",
+        "value": {
+          "amount": 0,
+          "kind": "money",
+        },
+      },
+      {
+        "label": "Benefit items",
+        "value": {
+          "kind": "text",
+          "text": "None",
+        },
+      },
+      {
+        "label": "Post-tax deductions",
+        "value": {
+          "amount": 0,
+          "kind": "money",
+        },
+      },
+      {
+        "label": "Deduction items",
+        "value": {
+          "kind": "text",
+          "text": "None",
+        },
+      },
+      {
+        "label": "Student loans",
+        "value": {
+          "kind": "text",
+          "text": "None",
+        },
+      },
+      {
+        "label": "Children",
+        "value": {
+          "count": 0,
+          "kind": "count",
+        },
+      },
+      {
+        "label": "Tax code",
+        "value": {
+          "kind": "text",
+          "text": "None",
+        },
+      },
+    ],
+    "results": {
+      "ok": true,
+      "rows": [
+        {
+          "label": "Take-home (year)",
+          "value": {
+            "amount": 4303740,
+            "kind": "money",
+          },
+        },
+        {
+          "label": "Take-home (month)",
+          "value": {
+            "amount": 358645,
+            "kind": "money",
+          },
+        },
+        {
+          "label": "Take-home (week)",
+          "value": {
+            "amount": 82764,
+            "kind": "money",
+          },
+        },
+        {
+          "label": "Gross pay",
+          "value": {
+            "amount": 5600000,
+            "kind": "money",
+          },
+        },
+        {
+          "label": "Salary given up for benefits",
+          "value": {
+            "amount": 0,
+            "kind": "money",
+          },
+        },
+        {
+          "label": "Income tax",
+          "value": {
+            "amount": 983200,
+            "kind": "money",
+          },
+        },
+        {
+          "label": "National Insurance",
+          "value": {
+            "amount": 313060,
+            "kind": "money",
+          },
+        },
+        {
+          "label": "Student loan",
+          "value": {
+            "amount": 0,
+            "kind": "money",
+          },
+        },
+        {
+          "label": "Employee pension",
+          "value": {
+            "amount": 0,
+            "kind": "money",
+          },
+        },
+        {
+          "label": "Child Benefit charge",
+          "value": {
+            "amount": 0,
+            "kind": "money",
+          },
+        },
+        {
+          "label": "Benefit payments after tax",
+          "value": {
+            "amount": 0,
+            "kind": "money",
+          },
+        },
+        {
+          "label": "Post-tax deductions",
+          "value": {
+            "amount": 0,
+            "kind": "money",
+          },
+        },
+        {
+          "label": "Child Benefit received",
+          "value": {
+            "amount": 0,
+            "kind": "money",
+          },
+        },
+      ],
+    },
+  },
+}
+`;
+
+exports[`page results are unchanged by the redesign (snapshot of engine outputs) > scotland 1`] = `
+{
+  "month": {
+    "difference": 0,
+    "evenShare": 344911,
+    "gross": 533333,
+    "period": "month",
+    "rows": {
+      "benefitPayments": 0,
+      "benefitSacrifice": 0,
+      "hicbc": 0,
+      "incomeTax": 118350,
+      "nationalInsurance": 27422,
+      "pension": 20000,
+      "postTaxDeductions": 0,
+      "studentLoan": 22650,
+    },
+    "takeHome": 344911,
+  },
+  "paye": {
+    "difference": 131940,
+    "liability": 1420205,
+    "ok": true,
+    "paye": {
+      "assumptions": [
+        "PAYE estimate: level monthly pay for the whole tax year from this one job, on the cumulative basis: each month gets its share of the tax-free pay and of each band, set against pay so far.",
+        "Tax-free pay is the code’s number times the amount per unit in the tax data, as GOV.UK’s guidance states. Payroll uses HMRC’s tables, which Sumyard has not read, so payslips can differ by pennies or more.",
+        "Rounding: tax so far is rounded to the nearest penny each month, and each month’s tax is the change. Payroll rounding is not modelled.",
+        "PAYE taxes the year’s taxable pay: pay after any salary sacrifice and net pay pension contributions, plus the taxable value of benefits in kind, spread evenly as if the employer payrolls them. If your benefits are not payrolled, your code takes them off your tax-free pay instead and this estimate counts them twice. Relief at source above the basic rate and the High Income Child Benefit Charge count only through the code.",
+        "Only codes made of a number and a letter, with S or C in front, are modelled; K, BR, D, NT, emergency and no-allowance codes are not.",
+      ],
+      "bands": "scotland",
+      "code": {
+        "number": 1100,
+        "regime": "scotland",
+        "suffix": "L",
+        "text": "S1100L",
+      },
+      "codeAllowance": 1100000,
+      "estimate": true,
+      "months": [
+        {
+          "freePayToDate": 91667,
+          "month": 1,
+          "pay": 533333,
+          "payToDate": 533333,
+          "tax": 129345,
+          "taxToDate": 129345,
+          "taxablePayToDate": 441667,
+        },
+        {
+          "freePayToDate": 183333,
+          "month": 2,
+          "pay": 533334,
+          "payToDate": 1066667,
+          "tax": 129346,
+          "taxToDate": 258691,
+          "taxablePayToDate": 883333,
+        },
+        {
+          "freePayToDate": 275000,
+          "month": 3,
+          "pay": 533333,
+          "payToDate": 1600000,
+          "tax": 129345,
+          "taxToDate": 388036,
+          "taxablePayToDate": 1325000,
+        },
+        {
+          "freePayToDate": 366667,
+          "month": 4,
+          "pay": 533333,
+          "payToDate": 2133333,
+          "tax": 129346,
+          "taxToDate": 517382,
+          "taxablePayToDate": 1766667,
+        },
+        {
+          "freePayToDate": 458333,
+          "month": 5,
+          "pay": 533334,
+          "payToDate": 2666667,
+          "tax": 129345,
+          "taxToDate": 646727,
+          "taxablePayToDate": 2208333,
+        },
+        {
+          "freePayToDate": 550000,
+          "month": 6,
+          "pay": 533333,
+          "payToDate": 3200000,
+          "tax": 129346,
+          "taxToDate": 776073,
+          "taxablePayToDate": 2650000,
+        },
+        {
+          "freePayToDate": 641667,
+          "month": 7,
+          "pay": 533333,
+          "payToDate": 3733333,
+          "tax": 129345,
+          "taxToDate": 905418,
+          "taxablePayToDate": 3091667,
+        },
+        {
+          "freePayToDate": 733333,
+          "month": 8,
+          "pay": 533334,
+          "payToDate": 4266667,
+          "tax": 129345,
+          "taxToDate": 1034763,
+          "taxablePayToDate": 3533333,
+        },
+        {
+          "freePayToDate": 825000,
+          "month": 9,
+          "pay": 533333,
+          "payToDate": 4800000,
+          "tax": 129346,
+          "taxToDate": 1164109,
+          "taxablePayToDate": 3975000,
+        },
+        {
+          "freePayToDate": 916667,
+          "month": 10,
+          "pay": 533333,
+          "payToDate": 5333333,
+          "tax": 129345,
+          "taxToDate": 1293454,
+          "taxablePayToDate": 4416667,
+        },
+        {
+          "freePayToDate": 1008333,
+          "month": 11,
+          "pay": 533334,
+          "payToDate": 5866667,
+          "tax": 129346,
+          "taxToDate": 1422800,
+          "taxablePayToDate": 4858333,
+        },
+        {
+          "freePayToDate": 1100000,
+          "month": 12,
+          "pay": 533333,
+          "payToDate": 6400000,
+          "tax": 129345,
+          "taxToDate": 1552145,
+          "taxablePayToDate": 5300000,
+        },
+      ],
+      "ok": true,
+      "pay": 6400000,
+      "taxYear": "2026-27",
+      "total": 1552145,
+    },
+  },
+  "result": {
+    "adjustedNetIncome": {
+      "adjustedNetIncome": 6100000,
+      "grossPay": 6400000,
+      "method": "reliefAtSource",
+      "netIncome": 6400000,
+      "ok": true,
+      "reliefAtSourceDeduction": 300000,
+      "taxYear": "2026-27",
+    },
+    "annual": {
+      "benefitPayments": 0,
+      "benefitSacrifice": 0,
+      "childBenefit": 0,
+      "gross": 6400000,
+      "hicbc": 0,
+      "incomeTax": 1420205,
+      "label": "Annual: the tax year’s figures",
+      "nationalInsurance": 329060,
+      "net": 4138935,
+      "netIncludingChildBenefit": 4138935,
+      "pension": 240000,
+      "period": "annual",
+      "postTaxDeductions": 0,
+      "studentLoan": 271800,
+    },
+    "assumptions": [
+      "These are estimates for the tax year, not payroll or Self Assessment figures.",
+      "Employment income only: no savings, dividends, property, self-employment or other income, and no benefits in kind.",
+      "Annual model: National Insurance and student loan repayments are worked out on the year’s pay with the annual thresholds. Payroll works per pay period, so monthly payslips, and months with a large bonus, can differ.",
+      "Income tax uses the Scottish rates and bands, for a Scottish taxpayer.",
+      "Standard Personal Allowance only: no Marriage Allowance, Blind Person’s Allowance or tax code adjustments.",
+      "Adjusted net income, which drives the personal allowance taper and the High Income Child Benefit Charge, is gross pay less any salary sacrificed or net pay contribution, less any grossed-up relief at source contribution. No Gift Aid or other reliefs.",
+      "Pension by relief at source: the contribution is paid from take-home pay and the provider adds relief at the relief-at-source rate, even for a non-taxpayer. The gross contribution is the payment grossed up at that rate, kept exact until the result.",
+      "Relief at source above the basic rate is shown as if claimed in full: the basic rate band is extended by the gross contribution and adjusted net income reduced by it. In practice the extra relief is claimed through Self Assessment or from HMRC.",
+      "Pension contributions above gross pay, and relief at source with no earnings, are not modelled.",
+      "Personal allowance taper: the reduction is exact, with nothing rounded until the result.",
+      "National Insurance: the employee’s contributions only, at the standard (category A) rates.",
+      "Student loans: worked out on National Insurance-able pay, which salary sacrifice lowers and net pay and relief at source contributions do not. With more than one plan, one repayment is taken at the lowest threshold; a postgraduate loan is repaid as well. Each repayment is rounded down to a whole pound.",
+      "No Child Benefit, so no High Income Child Benefit Charge.",
+      "Rounding: each band’s tax, each National Insurance rate’s contribution and the monthly and weekly figures are rounded to the nearest penny; nothing is rounded before that.",
+      "Monthly and weekly figures are the annual ones divided evenly; they are not payslip figures.",
+    ],
+    "benefits": {
+      "paidAfterTax": 0,
+      "salaryGivenUp": 0,
+      "taxable": 0,
+    },
+    "estimate": true,
+    "hicbc": null,
+    "incomeTax": {
+      "adjustedNetIncome": 6100000,
+      "bands": [
+        {
+          "from": 0,
+          "income": 396700,
+          "name": "Starter rate",
+          "rate": {
+            "denominator": 100,
+            "numerator": 19,
+          },
+          "tax": 75373,
+          "to": 396700,
+        },
+        {
+          "from": 396700,
+          "income": 1598900,
+          "name": "Basic rate",
+          "rate": {
+            "denominator": 100,
+            "numerator": 20,
+          },
+          "tax": 319780,
+          "to": 1995600,
+        },
+        {
+          "from": 1995600,
+          "income": 1413600,
+          "name": "Intermediate rate",
+          "rate": {
+            "denominator": 100,
+            "numerator": 21,
+          },
+          "tax": 296856,
+          "to": 3409200,
+        },
+        {
+          "from": 3409200,
+          "income": 1733800,
+          "name": "Higher rate",
+          "rate": {
+            "denominator": 100,
+            "numerator": 42,
+          },
+          "tax": 728196,
+          "to": 6543000,
+        },
+        {
+          "from": 6543000,
+          "income": 0,
+          "name": "Advanced rate",
+          "rate": {
+            "denominator": 100,
+            "numerator": 45,
+          },
+          "tax": 0,
+          "to": 12814000,
+        },
+        {
+          "from": 12814000,
+          "income": 0,
+          "name": "Top rate",
+          "rate": {
+            "denominator": 100,
+            "numerator": 48,
+          },
+          "tax": 0,
+          "to": null,
+        },
+      ],
+      "basicRateBandExtension": 300000,
+      "income": 6400000,
+      "ok": true,
+      "pensionMethod": "reliefAtSource",
+      "personalAllowance": {
+        "allowance": 1257000,
+        "fullAllowance": 1257000,
+        "income": 6100000,
+        "ok": true,
+        "reduction": 0,
+        "taperRounding": "exact",
+        "taxYear": "2026-27",
+      },
+      "region": "scotland",
+      "taxYear": "2026-27",
+      "taxableIncome": 5143000,
+      "taxablePay": 6400000,
+      "total": 1420205,
+    },
+    "inputs": {
+      "benefits": [],
+      "grossPay": 6400000,
+      "pension": {
+        "contribution": 240000,
+        "method": "reliefAtSource",
+      },
+      "postTaxDeductions": 0,
+      "region": "scotland",
+      "studentLoans": [
+        "plan4",
+      ],
+    },
+    "monthly": {
+      "benefitPayments": 0,
+      "benefitSacrifice": 0,
+      "childBenefit": 0,
+      "gross": 533333,
+      "hicbc": 0,
+      "incomeTax": 118350,
+      "label": "Monthly: each annual figure divided by the months in a year, to the nearest penny",
+      "nationalInsurance": 27422,
+      "net": 344911,
+      "netIncludingChildBenefit": 344911,
+      "pension": 20000,
+      "period": "monthly",
+      "postTaxDeductions": 0,
+      "studentLoan": 22650,
+    },
+    "nationalInsurance": {
+      "additional": {
+        "contribution": 27460,
+        "earnings": 1373000,
+        "rate": {
+          "denominator": 100,
+          "numerator": 2,
+        },
+      },
+      "main": {
+        "contribution": 301600,
+        "earnings": 3770000,
+        "rate": {
+          "denominator": 100,
+          "numerator": 8,
+        },
+      },
+      "niablePay": 6400000,
+      "ok": true,
+      "taxYear": "2026-27",
+      "total": 329060,
+    },
+    "ok": true,
+    "payrollPay": 6400000,
+    "pension": {
+      "basicRateBandExtension": 300000,
+      "contribution": 240000,
+      "grossContribution": 300000,
+      "grossPay": 6400000,
+      "method": "reliefAtSource",
+      "niablePay": 6400000,
+      "ok": true,
+      "providerRelief": 60000,
+      "reliefAtSourceDeduction": 300000,
+      "studentLoanPay": 6400000,
+      "taxYear": "2026-27",
+      "taxablePay": 6400000,
+    },
+    "policy": {
+      "childBenefitWeeks": 52,
+      "taperRounding": "exact",
+    },
+    "studentLoan": {
+      "deductions": [
+        {
+          "basis": "plan4",
+          "excess": 3020500,
+          "kind": "plan",
+          "plans": [
+            "plan4",
+          ],
+          "rate": {
+            "denominator": 100,
+            "numerator": 9,
+          },
+          "repayment": 271800,
+          "threshold": 3379500,
+        },
+      ],
+      "ok": true,
+      "pay": 6400000,
+      "taxYear": "2026-27",
+      "total": 271800,
+    },
+    "taxYear": "2026-27",
+    "warnings": [],
+    "weekly": {
+      "benefitPayments": 0,
+      "benefitSacrifice": 0,
+      "childBenefit": 0,
+      "gross": 123077,
+      "hicbc": 0,
+      "incomeTax": 27312,
+      "label": "Weekly: each annual figure divided by the weeks in a year, to the nearest penny",
+      "nationalInsurance": 6328,
+      "net": 79595,
+      "netIncludingChildBenefit": 79595,
+      "pension": 4615,
+      "period": "weekly",
+      "postTaxDeductions": 0,
+      "studentLoan": 5227,
+    },
+  },
+  "summary": {
+    "inputs": [
+      {
+        "label": "Region",
+        "value": {
+          "kind": "text",
+          "text": "Scotland",
+        },
+      },
+      {
+        "label": "Salary",
+        "value": {
+          "amount": 6400000,
+          "kind": "money",
+        },
+      },
+      {
+        "label": "Bonus",
+        "value": {
+          "amount": 0,
+          "kind": "money",
+        },
+      },
+      {
+        "label": "Pension method",
+        "value": {
+          "kind": "text",
+          "text": "Relief at source",
+        },
+      },
+      {
+        "label": "Employee pension contribution: entered as",
+        "value": {
+          "kind": "text",
+          "text": "Amount",
+        },
+      },
+      {
+        "label": "Employee pension contribution",
+        "value": {
+          "amount": 240000,
+          "kind": "money",
+        },
+      },
+      {
+        "label": "Employer pension contribution: entered as",
+        "value": {
+          "kind": "text",
+          "text": "Amount",
+        },
+      },
+      {
+        "label": "Employer pension contribution",
+        "value": {
+          "amount": 0,
+          "kind": "money",
+        },
+      },
+      {
+        "label": "Taxable benefits in kind",
+        "value": {
+          "amount": 0,
+          "kind": "money",
+        },
+      },
+      {
+        "label": "Salary given up for benefits",
+        "value": {
+          "amount": 0,
+          "kind": "money",
+        },
+      },
+      {
+        "label": "Benefit payments after tax",
+        "value": {
+          "amount": 0,
+          "kind": "money",
+        },
+      },
+      {
+        "label": "Benefit items",
+        "value": {
+          "kind": "text",
+          "text": "None",
+        },
+      },
+      {
+        "label": "Post-tax deductions",
+        "value": {
+          "amount": 0,
+          "kind": "money",
+        },
+      },
+      {
+        "label": "Deduction items",
+        "value": {
+          "kind": "text",
+          "text": "None",
+        },
+      },
+      {
+        "label": "Student loans",
+        "value": {
+          "kind": "text",
+          "text": "Plan 4",
+        },
+      },
+      {
+        "label": "Children",
+        "value": {
+          "count": 0,
+          "kind": "count",
+        },
+      },
+      {
+        "label": "Tax code",
+        "value": {
+          "kind": "text",
+          "text": "S1100L",
+        },
+      },
+    ],
+    "results": {
+      "ok": true,
+      "rows": [
+        {
+          "label": "Take-home (year)",
+          "value": {
+            "amount": 4138935,
+            "kind": "money",
+          },
+        },
+        {
+          "label": "Take-home (month)",
+          "value": {
+            "amount": 344911,
+            "kind": "money",
+          },
+        },
+        {
+          "label": "Take-home (week)",
+          "value": {
+            "amount": 79595,
+            "kind": "money",
+          },
+        },
+        {
+          "label": "Gross pay",
+          "value": {
+            "amount": 6400000,
+            "kind": "money",
+          },
+        },
+        {
+          "label": "Salary given up for benefits",
+          "value": {
+            "amount": 0,
+            "kind": "money",
+          },
+        },
+        {
+          "label": "Income tax",
+          "value": {
+            "amount": 1420205,
+            "kind": "money",
+          },
+        },
+        {
+          "label": "National Insurance",
+          "value": {
+            "amount": 329060,
+            "kind": "money",
+          },
+        },
+        {
+          "label": "Student loan",
+          "value": {
+            "amount": 271800,
+            "kind": "money",
+          },
+        },
+        {
+          "label": "Employee pension",
+          "value": {
+            "amount": 240000,
+            "kind": "money",
+          },
+        },
+        {
+          "label": "Child Benefit charge",
+          "value": {
+            "amount": 0,
+            "kind": "money",
+          },
+        },
+        {
+          "label": "Benefit payments after tax",
+          "value": {
+            "amount": 0,
+            "kind": "money",
+          },
+        },
+        {
+          "label": "Post-tax deductions",
+          "value": {
+            "amount": 0,
+            "kind": "money",
+          },
+        },
+        {
+          "label": "Child Benefit received",
+          "value": {
+            "amount": 0,
+            "kind": "money",
+          },
+        },
+        {
+          "label": "PAYE estimate (year)",
+          "value": {
+            "amount": 1552145,
+            "kind": "money",
+          },
+        },
+        {
+          "label": "PAYE less the year’s tax",
+          "value": {
+            "amount": 131940,
+            "kind": "money",
+          },
+        },
+      ],
+    },
+  },
+}
+`;
+
+exports[`page results are unchanged by the redesign (snapshot of engine outputs) > take-home below nothing 1`] = `
+{
+  "month": {
+    "difference": 1,
+    "evenShare": -184003,
+    "gross": 166667,
+    "period": "month",
+    "rows": {
+      "benefitPayments": 0,
+      "benefitSacrifice": 0,
+      "hicbc": 0,
+      "incomeTax": 12383,
+      "nationalInsurance": 4953,
+      "pension": 0,
+      "postTaxDeductions": 333333,
+      "studentLoan": 0,
+    },
+    "takeHome": -184002,
+  },
+  "paye": null,
+  "result": {
+    "adjustedNetIncome": {
+      "adjustedNetIncome": 2000000,
+      "grossPay": 2000000,
+      "method": null,
+      "netIncome": 2000000,
+      "ok": true,
+      "reliefAtSourceDeduction": 0,
+      "taxYear": "2026-27",
+    },
+    "annual": {
+      "benefitPayments": 0,
+      "benefitSacrifice": 0,
+      "childBenefit": 0,
+      "gross": 2000000,
+      "hicbc": 0,
+      "incomeTax": 148600,
+      "label": "Annual: the tax year’s figures",
+      "nationalInsurance": 59440,
+      "net": -2208040,
+      "netIncludingChildBenefit": -2208040,
+      "pension": 0,
+      "period": "annual",
+      "postTaxDeductions": 4000000,
+      "studentLoan": 0,
+    },
+    "assumptions": [
+      "These are estimates for the tax year, not payroll or Self Assessment figures.",
+      "Employment income only: no savings, dividends, property, self-employment or other income, and no benefits in kind.",
+      "Annual model: National Insurance and student loan repayments are worked out on the year’s pay with the annual thresholds. Payroll works per pay period, so monthly payslips, and months with a large bonus, can differ.",
+      "Income tax uses the rates and bands for England, Wales and Northern Ireland.",
+      "Standard Personal Allowance only: no Marriage Allowance, Blind Person’s Allowance or tax code adjustments.",
+      "Adjusted net income, which drives the personal allowance taper and the High Income Child Benefit Charge, is gross pay: no pension contribution, Gift Aid or other reliefs.",
+      "Personal allowance taper: the reduction is exact, with nothing rounded until the result.",
+      "National Insurance: the employee’s contributions only, at the standard (category A) rates.",
+      "No Child Benefit, so no High Income Child Benefit Charge.",
+      "Post-tax deductions come off take-home pay only: they change no tax, National Insurance, student loan or adjusted net income.",
+      "Rounding: each band’s tax, each National Insurance rate’s contribution and the monthly and weekly figures are rounded to the nearest penny; nothing is rounded before that.",
+      "Monthly and weekly figures are the annual ones divided evenly; they are not payslip figures.",
+    ],
+    "benefits": {
+      "paidAfterTax": 0,
+      "salaryGivenUp": 0,
+      "taxable": 0,
+    },
+    "estimate": true,
+    "hicbc": null,
+    "incomeTax": {
+      "adjustedNetIncome": 2000000,
+      "bands": [
+        {
+          "from": 0,
+          "income": 743000,
+          "name": "Basic rate",
+          "rate": {
+            "denominator": 100,
+            "numerator": 20,
+          },
+          "tax": 148600,
+          "to": 3770000,
+        },
+        {
+          "from": 3770000,
+          "income": 0,
+          "name": "Higher rate",
+          "rate": {
+            "denominator": 100,
+            "numerator": 40,
+          },
+          "tax": 0,
+          "to": 12514000,
+        },
+        {
+          "from": 12514000,
+          "income": 0,
+          "name": "Additional rate",
+          "rate": {
+            "denominator": 100,
+            "numerator": 45,
+          },
+          "tax": 0,
+          "to": null,
+        },
+      ],
+      "basicRateBandExtension": 0,
+      "income": 2000000,
+      "ok": true,
+      "pensionMethod": null,
+      "personalAllowance": {
+        "allowance": 1257000,
+        "fullAllowance": 1257000,
+        "income": 2000000,
+        "ok": true,
+        "reduction": 0,
+        "taperRounding": "exact",
+        "taxYear": "2026-27",
+      },
+      "region": "rUK",
+      "taxYear": "2026-27",
+      "taxableIncome": 743000,
+      "taxablePay": 2000000,
+      "total": 148600,
+    },
+    "inputs": {
+      "benefits": [],
+      "grossPay": 2000000,
+      "postTaxDeductions": 4000000,
+      "region": "rUK",
+      "studentLoans": [],
+    },
+    "monthly": {
+      "benefitPayments": 0,
+      "benefitSacrifice": 0,
+      "childBenefit": 0,
+      "gross": 166667,
+      "hicbc": 0,
+      "incomeTax": 12383,
+      "label": "Monthly: each annual figure divided by the months in a year, to the nearest penny",
+      "nationalInsurance": 4953,
+      "net": -184003,
+      "netIncludingChildBenefit": -184003,
+      "pension": 0,
+      "period": "monthly",
+      "postTaxDeductions": 333333,
+      "studentLoan": 0,
+    },
+    "nationalInsurance": {
+      "additional": {
+        "contribution": 0,
+        "earnings": 0,
+        "rate": {
+          "denominator": 100,
+          "numerator": 2,
+        },
+      },
+      "main": {
+        "contribution": 59440,
+        "earnings": 743000,
+        "rate": {
+          "denominator": 100,
+          "numerator": 8,
+        },
+      },
+      "niablePay": 2000000,
+      "ok": true,
+      "taxYear": "2026-27",
+      "total": 59440,
+    },
+    "ok": true,
+    "payrollPay": 2000000,
+    "pension": null,
+    "policy": {
+      "childBenefitWeeks": 52,
+      "taperRounding": "exact",
+    },
+    "studentLoan": {
+      "deductions": [],
+      "ok": true,
+      "pay": 2000000,
+      "taxYear": "2026-27",
+      "total": 0,
+    },
+    "taxYear": "2026-27",
+    "warnings": [
+      {
+        "code": "takeHomeBelowNothing",
+        "message": "Take-home pay is below nothing: the deductions and the tax on benefits are more than the pay. It is shown as worked out, not capped.",
+      },
+    ],
+    "weekly": {
+      "benefitPayments": 0,
+      "benefitSacrifice": 0,
+      "childBenefit": 0,
+      "gross": 38462,
+      "hicbc": 0,
+      "incomeTax": 2858,
+      "label": "Weekly: each annual figure divided by the weeks in a year, to the nearest penny",
+      "nationalInsurance": 1143,
+      "net": -42462,
+      "netIncludingChildBenefit": -42462,
+      "pension": 0,
+      "period": "weekly",
+      "postTaxDeductions": 76923,
+      "studentLoan": 0,
+    },
+  },
+  "summary": {
+    "inputs": [
+      {
+        "label": "Region",
+        "value": {
+          "kind": "text",
+          "text": "England, Wales or Northern Ireland",
+        },
+      },
+      {
+        "label": "Salary",
+        "value": {
+          "amount": 2000000,
+          "kind": "money",
+        },
+      },
+      {
+        "label": "Bonus",
+        "value": {
+          "amount": 0,
+          "kind": "money",
+        },
+      },
+      {
+        "label": "Pension method",
+        "value": {
+          "kind": "text",
+          "text": "Salary sacrifice",
+        },
+      },
+      {
+        "label": "Employee pension contribution: entered as",
+        "value": {
+          "kind": "text",
+          "text": "Amount",
+        },
+      },
+      {
+        "label": "Employee pension contribution",
+        "value": {
+          "amount": 0,
+          "kind": "money",
+        },
+      },
+      {
+        "label": "Employer pension contribution: entered as",
+        "value": {
+          "kind": "text",
+          "text": "Amount",
+        },
+      },
+      {
+        "label": "Employer pension contribution",
+        "value": {
+          "amount": 0,
+          "kind": "money",
+        },
+      },
+      {
+        "label": "Taxable benefits in kind",
+        "value": {
+          "amount": 0,
+          "kind": "money",
+        },
+      },
+      {
+        "label": "Salary given up for benefits",
+        "value": {
+          "amount": 0,
+          "kind": "money",
+        },
+      },
+      {
+        "label": "Benefit payments after tax",
+        "value": {
+          "amount": 0,
+          "kind": "money",
+        },
+      },
+      {
+        "label": "Benefit items",
+        "value": {
+          "kind": "text",
+          "text": "None",
+        },
+      },
+      {
+        "label": "Post-tax deductions",
+        "value": {
+          "amount": 4000000,
+          "kind": "money",
+        },
+      },
+      {
+        "label": "Deduction items",
+        "value": {
+          "kind": "text",
+          "text": "Rent",
+        },
+      },
+      {
+        "label": "Student loans",
+        "value": {
+          "kind": "text",
+          "text": "None",
+        },
+      },
+      {
+        "label": "Children",
+        "value": {
+          "count": 0,
+          "kind": "count",
+        },
+      },
+      {
+        "label": "Tax code",
+        "value": {
+          "kind": "text",
+          "text": "None",
+        },
+      },
+    ],
+    "results": {
+      "ok": true,
+      "rows": [
+        {
+          "label": "Take-home (year)",
+          "value": {
+            "amount": -2208040,
+            "kind": "money",
+          },
+        },
+        {
+          "label": "Take-home (month)",
+          "value": {
+            "amount": -184003,
+            "kind": "money",
+          },
+        },
+        {
+          "label": "Take-home (week)",
+          "value": {
+            "amount": -42462,
+            "kind": "money",
+          },
+        },
+        {
+          "label": "Gross pay",
+          "value": {
+            "amount": 2000000,
+            "kind": "money",
+          },
+        },
+        {
+          "label": "Salary given up for benefits",
+          "value": {
+            "amount": 0,
+            "kind": "money",
+          },
+        },
+        {
+          "label": "Income tax",
+          "value": {
+            "amount": 148600,
+            "kind": "money",
+          },
+        },
+        {
+          "label": "National Insurance",
+          "value": {
+            "amount": 59440,
+            "kind": "money",
+          },
+        },
+        {
+          "label": "Student loan",
+          "value": {
+            "amount": 0,
+            "kind": "money",
+          },
+        },
+        {
+          "label": "Employee pension",
+          "value": {
+            "amount": 0,
+            "kind": "money",
+          },
+        },
+        {
+          "label": "Child Benefit charge",
+          "value": {
+            "amount": 0,
+            "kind": "money",
+          },
+        },
+        {
+          "label": "Benefit payments after tax",
+          "value": {
+            "amount": 0,
+            "kind": "money",
+          },
+        },
+        {
+          "label": "Post-tax deductions",
+          "value": {
+            "amount": 4000000,
+            "kind": "money",
+          },
+        },
+        {
+          "label": "Child Benefit received",
+          "value": {
+            "amount": 0,
+            "kind": "money",
+          },
+        },
+      ],
+    },
+  },
+}
+`;
