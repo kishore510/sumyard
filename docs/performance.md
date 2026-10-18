@@ -45,3 +45,23 @@ Not checked: a real phone, Safari, Firefox, a screen reader, the deployed site.
 The same scratch Playwright and axe-core 4.10 setup against `vite preview`, on the take-home page at 360, 768 and 1280 px in light and dark (system theme), in five states: empty; filled by year (an 80-character unbroken benefit name taken before tax, an after-tax benefit, a deduction, children, a Scottish code with "Where you live" in England so the region warning shows, the PAYE card, assumptions open); filled by month (the Month view with the PAYE month row); a code not modelled (an emergency code's notice); text that is not a code (the error and no results). 30 runs. axe (WCAG 2.0/2.1 A and AA, best practice) found no violations; no horizontal page scroll and nothing wider than the viewport; no external requests; no console errors; every visible control at least 44 px tall. No fixes were needed.
 
 Not checked: a real phone, Safari, Firefox, a screen reader, the deployed site.
+
+## Browser checks (slice 1b, 0.12.0: take-home page redesign)
+
+The same scratch Playwright and axe-core 4.10 setup against `vite preview`, on the take-home page at 360, 768, 1024 and 1280 px in light and dark (the theme set in storage), empty and filled (every section set, an 80-character unbroken benefit name, a deduction, two children, a supported tax code), with the split bar's table and the assumptions open, plus: the phone bar scrolled (collapsed) and tapped (expanded); a scroll from the top in 3 px steps (the bar changes state exactly once, no flicker); 70 Tabs from Salary with no focused element under the sticky bar; the wide results column sticky with the headline in view after scrolling; Section by Enter and Space, Add moving focus to the new name, Remove then Undo by keyboard (focus returns to the restored item's Edit); reduced motion (no transition or animation on the page's sections, bar or split bar); 200% text at 360 px in both themes. 96 checks passed; axe (WCAG 2.0/2.1 A and AA, best practice) found no violations in 29 runs; no horizontal page scroll; no external requests; no console errors; every visible control at least 44 px tall. Fixes that came out of it: the Add buttons and an item's Edit and Remove wrap at 200% text; the split bar's table no longer widens the page at 200% text; an item's name keeps a minimum width so its buttons wrap below it on a phone.
+
+## Lighthouse (mobile), 0.12.0, 18 October 2026
+
+Lighthouse 12.8.2, mobile form factor, headless Chromium 1194, against `vite preview` on this machine, the take-home page (`#/c/optimiser`), against the 0.11.1 build (`origin/main`) measured the same way.
+
+| Build | Performance | Accessibility | Best practices | SEO | FCP | LCP | TBT | CLS |
+|---|---|---|---|---|---|---|---|---|
+| 0.11.1 | 93 | 100 | 100 | 91 | 1.9 s | 2.0 s | 30 ms | 0.137 |
+| 0.12.0 | 92 | 100 | 100 | 91 | 1.9 s | 2.1 s | 10 ms | 0.137 |
+
+- The layout shift is the same before and after: the footer shows under the page's loading state and is pushed off-screen when the lazily loaded page arrives (in the Backlog).
+- SEO: "robots.txt is not valid", as before (`vite preview` serves the app's HTML there).
+- Label-in-name (best practice): the Section buttons were named by their title only; they are now named by their visible text. The one left is VerifiedBadge's link (unchanged, in the Backlog).
+- Bundle (gzip): the take-home page about 14.5 KB (from about 10.2 KB); CSS about 7.4 KB.
+
+Not checked: a real phone, Safari (it has no scroll anchoring, so the bar's collapse moves the content; the hysteresis still prevents flicker), Firefox, a screen reader, the deployed site.

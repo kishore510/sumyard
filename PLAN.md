@@ -1,6 +1,6 @@
 # Phase plan: Sumyard
 
-Last updated: 18 October 2026 (slice 1b, 0.11.1: the PAYE estimate now includes benefits in kind in its pay, decision B17; slice 1b In progress)
+Last updated: 18 October 2026 (slice 1b, 0.12.0: the take-home page redesign, UI only; slice 1b In progress)
 
 Draft roadmap. When a slice starts, rewrite its prompt against the real code (see the skeleton in PHASE-BRIEF.md). Do not treat these notes as final prompts.
 
@@ -24,7 +24,7 @@ Status values: Not started, In progress, Done (version, PR, date).
 
 | Calculator | Notes | Status |
 |---|---|---|
-| Take-home pay | Shipped as the first part of 1b (session 1b-i, 0.9.0) at `#/c/optimiser`; percentages and itemised lists in 1b-i.1 (0.10.0); salary sacrifice benefits, tax code and PAYE estimate, monthly breakdown in 0.11.0; 1b-ii adds the optimiser to the same page | In progress |
+| Take-home pay | Shipped as the first part of 1b (session 1b-i, 0.9.0) at `#/c/optimiser`; percentages and itemised lists in 1b-i.1 (0.10.0); salary sacrifice benefits, tax code and PAYE estimate, monthly breakdown in 0.11.0; page redesign (sections, sticky result, split bar) in 0.12.0; 1b-ii adds the optimiser to the same page | In progress |
 | Mortgage overpayment | Check daily vs monthly interest handling per lender | Not started |
 | Loan / APR | Verify the APR definition against official guidance | Not started |
 | ISA vs pension vs mortgage | Builds on 1b and the overpayment calculator | Not started |
@@ -234,6 +234,18 @@ Engine (pure functions, tests first: red commit, then green).
   - The inputs version is derived from the list of migrations, because the literal guard covers `definition.ts`.
   - The month view's PAYE row shows the first month; the card says when months differ by a penny.
 - **0.11.1 fix (user-visible, 18 October 2026):** the PAYE estimate left benefits in kind out of its pay (B13), so with payrolled benefits it ran below the year's liability by the benefits at the marginal rate. Owner decision B17: `payrollPay` is the year's taxable pay, benefits included, as if payrolled. Tests: PAYE's pay equals the annual engine's taxable pay (a case with benefits and a code, and 100 random cases); `sacrifice.test.ts` and the reference fixture updated to the new measure. Not verified: GOV.UK's payrolling pages, and whether each benefit is payrolled for a given employer. Rollback: revert the fix PR (no storage or config change).
+- **0.12.0 done (user-visible, UI only, 18 October 2026):** the take-home page redesign, decisions U1 to U9 in `docs/ui-patterns.md`. "Your pay" always visible; Pension, Benefits and deductions, Student loans, Child Benefit and Tax code as `Section`s with live one-line summaries from the resolved amounts, open on load when set (never stored); results first through `StickyResult` (a phone bar that collapses past its own height, two columns from `md` with the results sticky; one polite announcement once inputs settle); a `SplitBar` of where gross pay goes; with a supported code, estimated payslip net pay beside take-home after the year-end adjustment; item cards edited in place with Remove and Undo. No engine, config, input shape, `inputsVersion`, scenario or compare change: a snapshot of engine outputs from before the redesign still matches. Three shared components (`Section`, `StickyResult`, `SplitBar`); `CLAUDE.md` gains the rule that calculator pages use them.
+- **What changed from the 0.12.0 prompt:**
+  - The top bar is not sticky (the code wins), so the phone bar sits under the page title and sticks to the top of the screen once the top bar has scrolled away.
+  - One Year / Month choice for the page: the bar's and the breakdown's are the same state, so the headline, split bar and breakdown always agree.
+  - The shared `Chart` has no stacked bar, so `SplitBar` is a small component built the same way (reported as asked). The breakdown's salary given up and payments after tax are one part, "Benefits given up"; the Child Benefit charge and post-tax deductions are their own parts, so the parts add up to gross pay.
+  - Payslip net pay swaps only income tax, as asked: the Child Benefit charge (usually collected through Self Assessment, not payroll) and a relief at source contribution (paid from the bank) stay in it. Flagged as an open question.
+  - The per-keystroke live regions beside inputs (a percentage's resolved amount, pensionable pay, list totals) were removed, under "no announcements while typing"; their text stays.
+  - Section buttons are named by their whole visible text (title then summary), not the title alone, after Lighthouse's label-in-name check.
+  - The scroll padding uses a runtime CSS variable, `--sy-sticky-offset`, set from the bar's height; it is not a design token and `tokens.css` is unchanged.
+  - `toastStore`: an Undo can be `blocked` with a reason (a removed item after a load, or a full list).
+  - At `lg` the two columns stay equal (two fifths for results made the rows wrap).
+- **Rollback (0.12.0):** revert the PR. No storage key, input shape or config change, so scenarios are untouched either way.
 - **Rollback (0.11.0):** revert the PR. Scenarios saved at inputs version 3 would be refused as newer and kept but hidden; versions 1 and 2 untouched until re-saved. Reverting also removes `paye.codeUnit` from the config and its log row together. No storage key changed.
 - **What changed from the 1b-i.1 prompt:**
   - A version 1 amount of nothing migrates to an empty list, not one item of nothing (which would only add a warning).
@@ -279,6 +291,7 @@ Engine (pure functions, tests first: red commit, then green).
 - The owner's payslip check (manual, B15): the PAYE estimate, the salary sacrifice benefit treatment and the monthly breakdown against a real payslip.
 - The alternative annual allowance for 2023-24 onwards: PTM056510 says £30,000, the MPAA guidance and Pension schemes rates say £50,000. Not used (money purchase savings only); matters only if defined benefit savings are modelled.
 - HMRC cross-checks: 72 cases in `docs/hmrc-cross-checks.json` wait for the owner's figures from HMRC's calculators.
+- Estimated payslip net pay (0.12.0, U8) swaps only income tax for the PAYE estimate. The Child Benefit charge is usually collected through Self Assessment, not payroll, and a relief at source contribution is paid from the bank, so a real payslip would show neither; the owner decides whether payslip net pay should leave them out (a page-only change, no engine change).
 - URL-hash state sharing (a shareable link of inputs, local only): in or out.
 - Coverage target for pure calculator code.
 - Sumyard name and domain availability.
@@ -297,6 +310,8 @@ Engine (pure functions, tests first: red commit, then green).
 - Benefits in kind beyond a single net value: a benefit through salary sacrifice (the salary amount rule), benefits that attract Class 1, and the employer's Class 1A shown as an employer-side figure (needs a config leaf and the owner's decision).
 - Welsh rate variations beyond what the config supports.
 - Spreadsheet (CSV) export of a calculator's tables.
+- Layout shift while a calculator page loads (Lighthouse CLS 0.137 on the take-home page, the same before and after 0.12.0): the footer shows under the loading state and is pushed off-screen when the page arrives. Reserve the page's height while it loads.
+- VerifiedBadge's link has an `aria-label` that doesn't start with its visible text (Lighthouse label-in-name, best practice); name it by its text instead.
 - Phone-specific polish if the first phone audit shows gaps.
 - A Sumyard logo and favicon (the header uses a text wordmark; the favicon is empty).
 - Remember the compare selection across visits (it lasts for the visit now).

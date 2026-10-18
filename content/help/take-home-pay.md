@@ -1,7 +1,7 @@
 ---
 title: Take-home pay
 order: 2
-summary: What the take-home calculator works out, what it doesn't yet, and how to enter pension percentages, benefits, deductions and your tax code.
+summary: What the take-home calculator works out, what it doesn't yet, how the page is laid out, and how to enter pension percentages, benefits, deductions and your tax code.
 ---
 The **Take-home pay** calculator works out your pay after tax for one tax year, from your salary, bonus, pension, student loans, benefits from your job and Child Benefit. It is the first part of the pension optimiser.
 
@@ -15,6 +15,14 @@ The **Take-home pay** calculator works out your pay after tax for one tax year, 
 - Takes benefits in kind and post-tax deductions as lists of named items, each per month or per year.
 - Uses the rates for England, Wales and Northern Ireland, or for Scotland. Your default region and tax year come from [Settings](sheet:settings).
 - Saves your inputs as scenarios, so you can compare two or three. See [Scenarios and saving](help:scenarios-and-saving).
+
+## Finding your way around the page
+
+- **Your pay** is always shown: salary, bonus, where you live and the tax year. Everything else is in sections you open and close: **Pension**, **Benefits and deductions**, **Student loans**, **Child Benefit** and **Tax code**. Each closed section shows a one-line summary of what is in it, or "Not set". Sections you have filled in open by themselves, including when you load a saved scenario; which sections are open is not saved.
+- **Your result stays in view.** On a phone, a bar at the top shows your take-home for the year or a month (choose **Year** or **Month**) and the tax year. Once you scroll down it shrinks to one line; tap it to see the choice again. On a wider screen the results sit beside the inputs and stay put as you scroll. Screen readers hear the take-home figure once you stop typing, not on every key.
+- **Results, top to bottom:** your take-home; a bar showing where your gross pay goes (tax, National Insurance, student loan, pension, benefits, deductions and take-home), with the same figures as text and as a table; the breakdown by year or month; and, with a tax code, the PAYE estimate.
+- **With a tax code**, the take-home card shows two lines: **Estimated payslip net pay** uses the PAYE estimate for income tax, which is roughly what your payslips add up to; **Take-home after the year-end adjustment** uses the year's tax, once any difference has been refunded or collected. Only income tax differs between them: the Child Benefit charge, if any, is in both.
+- **Benefits and deductions** show as compact cards with their name and amounts. Use **Edit** to change one and **Done** to fold it away. **Remove** takes it out, with **Undo** for a few seconds; Undo won't work once you have loaded another scenario or filled the list.
 
 ## What it doesn't do yet
 
