@@ -216,18 +216,43 @@ export function referenceGrossUp(net: Money, config: TaxYearConfig): Frac {
   return [big(net) * big(rate.denominator), big(rate.denominator) - big(rate.numerator)]
 }
 
-export function referencePension(grossPay: Money, pension: PensionInput | undefined, config: TaxYearConfig): ReferencePension {
+/**
+ * `benefits` (session 1b-i, decision B1): a taxable benefit in kind is taxable employment income and in net income (the ANI
+ * guidance's step 1, PTM057100), but Class 1A rather than Class 1 (NIM13090), so it is not NI-able pay or the student loan base.
+ */
+export function referencePension(
+  grossPay: Money,
+  pension: PensionInput | undefined,
+  config: TaxYearConfig,
+  benefits: Money = 0 as Money,
+): ReferencePension {
   const gross = whole(grossPay)
-  if (!pension) return { taxablePay: gross, niablePay: gross, ani: gross, extension: NONE, pot: NONE, cost: NONE }
+  const withBenefits = (pay: Frac) => plus(pay, whole(benefits))
+  if (!pension)
+    return { taxablePay: withBenefits(gross), niablePay: gross, ani: withBenefits(gross), extension: NONE, pot: NONE, cost: NONE }
   const c = whole(pension.contribution)
   switch (pension.method) {
     case 'salarySacrifice':
-      return { taxablePay: sub(gross, c), niablePay: sub(gross, c), ani: sub(gross, c), extension: NONE, pot: c, cost: c }
+      return {
+        taxablePay: withBenefits(sub(gross, c)),
+        niablePay: sub(gross, c),
+        ani: withBenefits(sub(gross, c)),
+        extension: NONE,
+        pot: c,
+        cost: c,
+      }
     case 'netPay':
-      return { taxablePay: sub(gross, c), niablePay: gross, ani: sub(gross, c), extension: NONE, pot: c, cost: c }
+      return {
+        taxablePay: withBenefits(sub(gross, c)),
+        niablePay: gross,
+        ani: withBenefits(sub(gross, c)),
+        extension: NONE,
+        pot: c,
+        cost: c,
+      }
     case 'reliefAtSource': {
       const g = referenceGrossUp(pension.contribution, config)
-      return { taxablePay: gross, niablePay: gross, ani: sub(gross, g), extension: g, pot: g, cost: c }
+      return { taxablePay: withBenefits(gross), niablePay: gross, ani: withBenefits(sub(gross, g)), extension: g, pot: g, cost: c }
     }
   }
 }
@@ -261,8 +286,9 @@ export function referenceIncomeTaxWith(
   region: Region,
   config: TaxYearConfig,
   policy: ModellingPolicy,
+  benefits: Money = 0 as Money,
 ): ReferenceTax & { ani: number } {
-  const p = referencePension(grossPay, pension, config)
+  const p = referencePension(grossPay, pension, config, benefits)
   const { taxable, bandIncome, bandTax } = referenceExactTax(p.taxablePay, p.ani, p.extension, region, config, policy)
   const rounded = bandTax.map(nearest)
   return {
@@ -316,10 +342,11 @@ export function referenceHicbc(ani: Money | Frac, children: ChildBenefitInput, c
   return { entitlement, received, steps, percent, charge }
 }
 
-/** Annual take-home with a pension and Child Benefit, from the rules above. */
+/** Annual take-home with a pension, Child Benefit, taxable benefits and post-tax deductions, from the rules above. */
 export function referenceTakeHome(inputs: TaxInputs, config: TaxYearConfig, policy: ModellingPolicy) {
-  const p = referencePension(inputs.grossPay, inputs.pension, config)
-  const tax = referenceIncomeTaxWith(inputs.grossPay, inputs.pension, inputs.region, config, policy).total
+  const benefits = inputs.taxableBenefits ?? (0 as Money)
+  const p = referencePension(inputs.grossPay, inputs.pension, config, benefits)
+  const tax = referenceIncomeTaxWith(inputs.grossPay, inputs.pension, inputs.region, config, policy, benefits).total
   const niablePay = nearest(p.niablePay) as Money
   const ni = referenceNI(niablePay, config).total
   const values = configValues(config)
@@ -335,8 +362,21 @@ export function referenceTakeHome(inputs: TaxInputs, config: TaxYearConfig, poli
   const child = inputs.childBenefit ? referenceHicbc(p.ani, inputs.childBenefit, config, policy) : null
   const pension = nearest(p.cost)
   const charge = child?.charge ?? 0
-  const net = inputs.grossPay - tax - ni - loan - pension - charge
-  return { tax, ni, loan, pension, charge, net, childBenefit: child?.received ?? 0, ani: nearest(p.ani), pot: nearest(p.pot) }
+  // Post-tax deductions (decision B2) come off net pay and nothing else.
+  const deductions = inputs.postTaxDeductions ?? 0
+  const net = inputs.grossPay - tax - ni - loan - pension - charge - deductions
+  return {
+    tax,
+    ni,
+    loan,
+    pension,
+    charge,
+    deductions,
+    net,
+    childBenefit: child?.received ?? 0,
+    ani: nearest(p.ani),
+    pot: nearest(p.pot),
+  }
 }
 
 /** For tests: a fraction rounded to the nearest penny, and pence as a fraction. */
@@ -346,8 +386,13 @@ export const fracOf = (pence: number): Frac => whole(pence)
 /* Session G2: the annual allowance, carry forward, MPAA, the charge, childcare and threshold contributions, written a second way. */
 
 /** Threshold income (PTM057100): net income (taxable pay), plus salary sacrificed, less the gross relief at source contribution. */
-export function referenceThresholdIncome(grossPay: Money, pension: PensionInput | undefined, config: TaxYearConfig): Frac {
-  const p = referencePension(grossPay, pension, config)
+export function referenceThresholdIncome(
+  grossPay: Money,
+  pension: PensionInput | undefined,
+  config: TaxYearConfig,
+  benefits: Money = 0 as Money,
+): Frac {
+  const p = referencePension(grossPay, pension, config, benefits)
   if (pension?.method === 'salarySacrifice') return plus(p.taxablePay, whole(pension.contribution))
   if (pension?.method === 'reliefAtSource') return sub(p.taxablePay, p.pot)
   return p.taxablePay
@@ -363,8 +408,9 @@ export function referenceAdjustedIncome(
   pension: PensionInput | undefined,
   employer: Money,
   config: TaxYearConfig,
+  benefits: Money = 0 as Money,
 ): number {
-  const p = referencePension(grossPay, pension, config)
+  const p = referencePension(grossPay, pension, config, benefits)
   const netIncome = nearest(p.taxablePay)
   const netPay = pension?.method === 'netPay' ? pension.contribution : 0
   const member = pension && pension.method !== 'salarySacrifice' ? potPence(grossPay, pension, config) : 0
@@ -391,8 +437,9 @@ export interface ReferenceAllowance {
 /** The annual allowance position by PTM057100, PTM055100 and the MPAA guidance, money purchase savings only. */
 export function referenceAnnualAllowance(inputs: TaxInputs, savings: PensionSavingsInput, config: TaxYearConfig): ReferenceAllowance {
   const aa = configValues(config).annualAllowance
-  const thresholdIncome = referenceThresholdIncome(inputs.grossPay, inputs.pension, config)
-  const adjustedIncome = referenceAdjustedIncome(inputs.grossPay, inputs.pension, savings.employerContribution, config)
+  const benefits = inputs.taxableBenefits ?? (0 as Money)
+  const thresholdIncome = referenceThresholdIncome(inputs.grossPay, inputs.pension, config, benefits)
+  const adjustedIncome = referenceAdjustedIncome(inputs.grossPay, inputs.pension, savings.employerContribution, config, benefits)
   const tapered = less(whole(aa.thresholdIncomeLimit), thresholdIncome) && adjustedIncome > aa.adjustedIncomeLimit
   let allowance: number = aa.standard
   if (tapered) {
@@ -455,7 +502,7 @@ export function referenceAllowanceCharge(
 
 /** Exact taxable income and the band extension for take-home inputs, for the charge. */
 export function referenceTaxable(inputs: TaxInputs, config: TaxYearConfig, policy: ModellingPolicy): { taxable: Frac; extension: Frac } {
-  const p = referencePension(inputs.grossPay, inputs.pension, config)
+  const p = referencePension(inputs.grossPay, inputs.pension, config, inputs.taxableBenefits)
   return { taxable: referenceExactTax(p.taxablePay, p.ani, p.extension, inputs.region, config, policy).taxable, extension: p.extension }
 }
 
@@ -502,10 +549,13 @@ export function referenceThresholdContribution(
   limit: Frac,
   measure: 'ani' | 'threshold',
   config: TaxYearConfig,
+  benefits: Money = 0 as Money,
 ): number | null {
   const at = (c: number): Frac => {
     const pension = { method, contribution: c as Money }
-    return measure === 'ani' ? referencePension(grossPay, pension, config).ani : referenceThresholdIncome(grossPay, pension, config)
+    return measure === 'ani'
+      ? referencePension(grossPay, pension, config, benefits).ani
+      : referenceThresholdIncome(grossPay, pension, config, benefits)
   }
   const max = referenceMaximumContribution(grossPay, method, config)
   if (less(limit, at(max))) return null

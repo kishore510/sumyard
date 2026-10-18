@@ -145,3 +145,43 @@ Both schemes: "You cannot claim if ... you or your partner’s expected adjusted
 ### G14. Threshold contributions, solved exactly
 
 For each threshold the smallest total contribution (and the extra over the current one) that brings the measure to the threshold or under it: the personal allowance taper start and its zero point (worked out from the allowance, taper start and taper rate), the HICBC threshold and full-charge point (with Child Benefit claimed), each childcare limit (if asked) on adjusted net income; the threshold income limit on threshold income. Solved in exact pence, in closed form (no float, no bisection): salary sacrifice and net pay lower the measure penny for penny; relief at source by the grossed-up amount, so the payment is the reduction times one less the relief-at-source rate, rounded up to a penny. Status: already met; reachable; or unreachable, because the gross amount would exceed gross pay, the counted savings would exceed the available allowance, or the method does not lower that measure (salary sacrifice and threshold income). A target at the HICBC full-charge point lands where the charge is still all of the Child Benefit under whole steps (G1); the charge first falls a penny below it. Code: `thresholdContributions`.
+
+## Slice 1b, session 1b-i (benefits in kind, post-tax deductions, the first page)
+
+The owner's decisions were given at the start of session 1b-i (17 October 2026). The GOV.UK lookups were read that day, with exact lines in `docs/verification-log.md`, "Session 1b-i lookups". Code: `src/calculators/optimiser/calc.ts` (engine) and `src/calculators/optimiser/definition.ts` and `OptimiserPage.tsx` (page). A GOV.UK page that contradicts one of these wins, and is reported.
+
+### B1. Taxable benefits in kind (owner input; treatment from GOV.UK)
+
+An optional annual input, `TaxInputs.taxableBenefits`, default zero: the net taxable value of benefits in kind for the year, as the employer works it out, after anything the employee pays towards them (for example employer-arranged medical cover). The engine does not value benefits.
+
+| Measure | With a benefit | Source |
+|---|---|---|
+| Taxable pay | Plus the benefit | Tax on company benefits ("you pay tax on company benefits") |
+| Adjusted net income (taper, HICBC, childcare) | Plus the benefit (step 1, "including any benefits you get from your job") | The ANI guidance |
+| Threshold income and adjusted income (annual allowance) | Plus the benefit (both start from net income) | PTM057100 |
+| Pension savings counted | Unchanged (a benefit is not a contribution) | PTM053200 (G8) |
+| Employee NI-able pay | Unchanged | Tax on company benefits: National Insurance; NIM13090 |
+| Student loan base | Unchanged (not in the employer's secondary Class 1 earnings) | CSLM16030; NIM13090; the employers' student loan guidance |
+| Take-home | Unchanged in cash; it falls only by the extra tax | Follows from the above |
+
+Class 1A is the employer's charge on the benefit (NIM13090, NIM13001). It is never taken from take-home and the page names it in the assumptions. Its rate is not in the config, so no amount is shown. A benefit that attracts Class 1 instead, such as the employee's own contract paid by the employer or a reimbursement, counts as earnings and is entered as salary. A benefit above gross pay is allowed with no warning, because no GOV.UK page read limits it. A pension contribution is still limited to gross pay (G1's refusal); relief on contributions above cash pay is not modelled. A benefit taken through salary sacrifice, which uses the salary amount rule, is not modelled.
+
+**The owner has not confirmed the benefit's value from an annual statement.** It is built as specified; the payslip check will show any mismatch.
+
+### B2. Post-tax deductions (owner)
+
+An optional annual input, `TaxInputs.postTaxDeductions`, default zero: amounts taken from net pay with no tax effect (for example medical or dental cover the employee pays for). It reduces take-home only, and is shown as its own breakdown row. It changes no tax, NI, student loan, HICBC, adjusted net income or annual allowance figure.
+
+### B3. Flexible-benefit cash (owner)
+
+Flexible-benefit cash is entered as salary (in gross pay). There is no special handling.
+
+### B4. No tax code (owner)
+
+There is no tax code input. Tax is modelled on the year's liability (D1), however PAYE collects it: through the tax code, by payrolling the benefit, or through Self Assessment. PAYE deductions may differ slightly, and the assumptions say so.
+
+### B5. The page's inputs (session 1b-i)
+
+- Gross pay is the salary plus any bonus, as two Money inputs added together. The engine takes one `grossPay`.
+- The employer pension contribution (other than a salary sacrifice) is stored with the inputs for 1b-ii's annual allowance display. It changes no take-home figure, so the page shows it only in the inputs and the pension summary.
+- Region and tax year start from Settings. Each calculator page can override them.

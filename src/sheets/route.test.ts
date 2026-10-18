@@ -32,8 +32,8 @@ describe('parseHash', () => {
     '#/taxdata',
     '#//help',
     'help',
-    '#/c/hello',
-    '#/c/hello/compare',
+    '#/c/optimiser',
+    '#/c/optimiser/compare',
     '#/scenarios/x',
   ])('no sheet for %j', (hash) => {
     expect(parseHash(hash)).toBeNull()
@@ -227,21 +227,21 @@ describe('createSheetNavigator', () => {
   })
 
   it('remembers the page a sheet opened over, through every sheet in the stack', () => {
-    const t = fakeWindow('#/c/hello')
+    const t = fakeWindow('#/c/optimiser')
     t.nav.open({ kind: 'help' })
-    expect(t.nav.page()).toBe('#/c/hello')
+    expect(t.nav.page()).toBe('#/c/optimiser')
     t.nav.open({ kind: 'about' })
     t.nav.open({ kind: 'tax-data' })
-    expect(t.nav.page()).toBe('#/c/hello')
+    expect(t.nav.page()).toBe('#/c/optimiser')
     t.nav.back()
-    expect(t.nav.page()).toBe('#/c/hello')
+    expect(t.nav.page()).toBe('#/c/optimiser')
   })
 
   it('close returns to the calculator page the sheet opened over, not home', () => {
-    const t = fakeWindow('#/c/hello')
+    const t = fakeWindow('#/c/optimiser')
     t.nav.open({ kind: 'settings' })
     t.nav.close()
-    expect(t.win.location.hash).toBe('#/c/hello')
+    expect(t.win.location.hash).toBe('#/c/optimiser')
     expect(t.nav.current()).toBeNull()
   })
 
@@ -255,26 +255,26 @@ describe('createSheetNavigator', () => {
   it('close can go on to another page (opening a scenario from the Scenarios sheet)', () => {
     const t = fakeWindow('')
     t.nav.open({ kind: 'scenarios' })
-    t.nav.close('#/c/hello')
-    expect(t.win.location.hash).toBe('#/c/hello')
-    expect(t.entries()).toEqual(['', '#/c/hello'])
+    t.nav.close('#/c/optimiser')
+    expect(t.win.location.hash).toBe('#/c/optimiser')
+    expect(t.entries()).toEqual(['', '#/c/optimiser'])
     t.win.history.back()
     expect(t.win.location.hash).toBe('')
   })
 
   it('close to another page from a deep-linked sheet replaces it', () => {
     const t = fakeWindow('#/scenarios')
-    t.nav.close('#/c/hello')
-    expect(t.entries()).toEqual(['#/c/hello'])
+    t.nav.close('#/c/optimiser')
+    expect(t.entries()).toEqual(['#/c/optimiser'])
   })
 
   it('close to the page already underneath adds no entry', () => {
-    const t = fakeWindow('#/c/hello')
+    const t = fakeWindow('#/c/optimiser')
     t.nav.open({ kind: 'scenarios' })
-    t.nav.close('#/c/hello')
+    t.nav.close('#/c/optimiser')
     // Back in history to the page entry; the browser keeps the sheet as a forward entry.
-    expect(t.entries()).toEqual(['#/c/hello', '#/scenarios'])
-    expect(t.win.location.hash).toBe('#/c/hello')
+    expect(t.entries()).toEqual(['#/c/optimiser', '#/scenarios'])
+    expect(t.win.location.hash).toBe('#/c/optimiser')
     expect(t.at()).toBe(0)
   })
 

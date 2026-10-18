@@ -1,15 +1,15 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { scenarioStore } from '@/scenarios/index'
-import { byText, click, mount } from '@/test/dom'
+import { byText, mount } from '@/test/dom'
 import { sessionFor } from '../session'
-import { helloCalculator } from './definition'
-import HelloPage from './HelloPage'
+import { optimiserCalculator } from './definition'
+import OptimiserPage from './OptimiserPage'
 
 /*
- * The refusal path on the real page. The real 2026-27 year now has verified
- * dates, so this file swaps the registry for one holding a fake year with the
- * same id and every leaf unverified (fixtures are for tests only).
+ * The refusal path on the real page: the registry is swapped for one holding
+ * a fake year with the real id and every leaf unverified (fixtures are for
+ * tests only).
  */
 vi.mock('@/config/tax/index', async (importOriginal) => {
   const original = await importOriginal<typeof import('@/config/tax/index')>()
@@ -23,21 +23,21 @@ let view: ReturnType<typeof mount>
 beforeEach(() => {
   localStorage.clear()
   scenarioStore.clear()
-  sessionFor(helloCalculator).startNew()
-  view = mount(<HelloPage />)
+  sessionFor(optimiserCalculator).startNew()
+  view = mount(<OptimiserPage />)
 })
 afterEach(() => view.unmount())
 
 const $ = (selector: string) => view.host.querySelector(selector)
 
-describe('Hello calculator page, unverified tax year', () => {
-  it('shows the refusal (and no results) when tax data is needed and unverified', () => {
-    click($('#hello-dates'))
+describe('Optimiser page, unverified tax year', () => {
+  it('shows the refusal, naming the unverified groups, and no results', () => {
     expect($('[data-refusal]')).not.toBeNull()
-    expect($('[data-refusal]')!.textContent).toContain('Tax year dates')
+    expect($('[data-refusal]')!.textContent).toMatch(/Income Tax/i)
     expect($('[data-refusal] a[href="#/tax-data"]')).not.toBeNull()
-    expect(byText(view.host, 'h2', 'Results')).toBeUndefined()
-    expect($('[data-chart]')).toBeNull()
+    expect(byText(view.host, 'h2', 'Take-home pay')).toBeUndefined()
+    expect(byText(view.host, 'h2', 'Breakdown')).toBeUndefined()
     expect($('details#assumptions')).not.toBeNull()
+    expect(view.host.textContent).toMatch(/Not yet verified/)
   })
 })

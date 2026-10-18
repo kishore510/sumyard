@@ -110,6 +110,10 @@ Not mirrored: Jon's full adjusted income (it needs a defined benefit pension inp
 
 `src/calculators/optimiser/published.test.ts` mirrors NI-1, SL-1, SL-2, SL-3, SL-5, SL-6, SL-7, SL-8, SL-9, IT-1, IT-2 and PA-1, each citing its page. Per-period examples pass in the example's own weekly or monthly thresholds (quoted from the same page) in place of the annual ones; SL-6 runs on the 2026-27 config as is. Not mirrored: SL-4 and HICBC-1 (inconsistent as published), SL-10 and SL-11 (odd pay periods, not modelled), and the annual allowance, HICBC, adjusted net income, pension relief and childcare examples (session G).
 
+## Benefits in kind and post-tax deductions (session 1b-i)
+
+No GOV.UK page read in session 1b-i prints a numeric example with a taxable benefit in kind (Tax on company benefits, the medical benefits pages, the ANI guidance, NIM13090, CSLM16030; lines in `docs/verification-log.md`, "Session 1b-i lookups"), so none is mirrored. `src/calculators/optimiser/benefits.test.ts` checks the stated rules instead, against `fixtures/reference.ts`: a benefit adds to taxable pay and adjusted net income only; a post-tax deduction moves take-home and nothing else.
+
 ## HMRC cross-check harness
 
 `docs/hmrc-cross-checks.json` holds 72 input cases derived from the verified 2026-27 config: taper start less £1, at the start, plus £1, the zone's midpoint, the zero point and £10,000 above it; for rUK and Scotland; with no student loan and with each plan alone (1, 2, 4, 5, postgraduate). Every expected result is `null`, so `crossChecks.test.ts` lists each case as a todo. The owner fills them from HMRC's own online calculators (pounds strings, the calculator's www.gov.uk page and the date checked); a filled case is then compared with the engine, within the file's `tolerancePence` (0 now). The test fails if the cases drift from the config.
@@ -121,4 +125,5 @@ Not mirrored: Jon's full adjusted income (it needs a defined benefit pension inp
 - **Personal allowance taper and income tax:** no published numeric example found. Suggested: HMRC's "Estimate your Income Tax for the current year" at a few incomes either side of the taper, in England and Scotland.
 - **HICBC:** HMRC's Child Benefit tax calculator at incomes such as just over the threshold, mid-band with a part of £200, and above the full-charge point.
 - **Annual allowance with 2026 to 2027 limits:** HMRC's annual allowance calculator (the engine now models the taper, carry forward, the MPAA and the charge; the harness has no annual allowance cases yet).
+- **Benefits in kind:** HMRC's "Estimate your Income Tax for the current year" with a benefit entered, and the owner's own annual statement of benefits against a year of payslips (the value is not yet confirmed, decision B1).
 - **National Insurance monthly:** an HMRC calculator or a payslip, once O1 is decided.

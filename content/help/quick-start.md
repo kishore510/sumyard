@@ -7,7 +7,7 @@ Sumyard is a set of personal UK finance calculators in one clean, ad-free place.
 
 ## What works today
 
-**There are no real calculators yet**; they arrive in later releases. The **Hello calculator** on the home page is a placeholder that shows how they will work: inputs, results, a chart, assumptions and saving scenarios. It uses no tax figures, and it goes when the first real calculator arrives.
+**The first calculator is here: [Take-home pay](help:take-home-pay)**, your pay after tax for the year with pension, student loans, benefits and Child Benefit. The pension optimiser and more calculators arrive in later releases.
 
 - **Calculators**: the home page lists them. Each has its own page and address.
 - **Scenarios**: save a calculator’s inputs under a name, load them again, compare two or three, and export or import them. See [Scenarios and saving](help:scenarios-and-saving).
@@ -16,7 +16,7 @@ Sumyard is a set of personal UK finance calculators in one clean, ad-free place.
 - **Settings**: your theme, a default region, a default tax year, how amounts are shown, and backup and restore.
 - **What’s new**: the changes in each version. A **New** marker shows until you open it.
 - **About**: the version, how much Sumyard stores in this browser, privacy and credits.
-- **Tax data**: every tax figure Sumyard will use, with its GOV.UK source and the date it was checked. None is verified yet, so anything that needs one shows a “not verified” notice instead of results. See [How tax data and “last verified” work](help:tax-data-and-last-verified).
+- **Tax data**: every tax figure Sumyard will use, with its GOV.UK source and the date it was checked. If a figure a calculator needs isn’t verified, it shows a “not verified” notice instead of results. See [How tax data and “last verified” work](help:tax-data-and-last-verified).
 
 ## Getting around
 

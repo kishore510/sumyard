@@ -1,8 +1,8 @@
 // @vitest-environment happy-dom
 import { act } from 'react'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { helloCalculator } from '@/calculators/hello/definition'
 import { CALCULATORS } from '@/calculators/index'
+import { optimiserCalculator } from '@/calculators/optimiser/definition'
 import { pendingImport } from '@/scenarios/actions'
 import { readScenarioFile } from '@/scenarios/exchange'
 import { scenarioStore } from '@/scenarios/index'
@@ -11,12 +11,12 @@ import { ImportPage } from './ImportPage'
 
 let view: ReturnType<typeof mount>
 
-const scenario = (id: string, name: string, calculatorId = 'hello') => ({
+const scenario = (id: string, name: string, calculatorId = 'optimiser') => ({
   id,
   calculatorId,
   taxYear: '2026-27',
   name,
-  inputs: helloCalculator.defaultInputs(),
+  inputs: optimiserCalculator.defaultInputs(),
   inputsVersion: 1,
   createdAt: '2026-10-17T10:00:00.000Z',
   updatedAt: '2026-10-17T10:00:00.000Z',
@@ -61,10 +61,10 @@ describe('Import preview', () => {
 
   it('lists conflicts, and Add keeps both', () => {
     scenarioStore.create({
-      calculatorId: 'hello',
+      calculatorId: 'optimiser',
       taxYear: '2026-27',
       name: 'Mine',
-      inputs: { ...helloCalculator.defaultInputs(), steps: 3 },
+      inputs: { ...optimiserCalculator.defaultInputs(), children: 3 },
     })
     load([scenario('b1', 'Mine')])
     expect(view.host.textContent).toMatch(/“Mine” has the same name as one already here. Both will be kept./)
@@ -74,7 +74,7 @@ describe('Import preview', () => {
   })
 
   it('Replace warns, offers an export first, and replaces', () => {
-    scenarioStore.create({ calculatorId: 'hello', taxYear: '2026-27', name: 'Old', inputs: helloCalculator.defaultInputs() })
+    scenarioStore.create({ calculatorId: 'optimiser', taxYear: '2026-27', name: 'Old', inputs: optimiserCalculator.defaultInputs() })
     load([scenario('c1', 'New')])
     const replace = view.host.querySelector<HTMLInputElement>('input[type="radio"][value="replace"]')!
     click(replace)

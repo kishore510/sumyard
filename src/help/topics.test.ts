@@ -39,8 +39,23 @@ describe('buildTopics', () => {
 })
 
 describe('content/help', () => {
-  it('has the four slice 0 topics, Quick start first', () => {
-    expect(HELP_TOPICS.map((t) => t.id)).toEqual(['quick-start', 'scenarios-and-saving', 'tax-data-and-last-verified', 'troubleshooting'])
+  it('has Quick start first, then the take-home topic (1b-i), then the slice 0 topics', () => {
+    expect(HELP_TOPICS.map((t) => t.id)).toEqual([
+      'quick-start',
+      'take-home-pay',
+      'scenarios-and-saving',
+      'tax-data-and-last-verified',
+      'troubleshooting',
+    ])
+  })
+
+  it('the take-home topic covers the payslip caveat, flex cash, benefits and deductions, and says the optimiser is coming', () => {
+    const text = JSON.stringify(topicById('take-home-pay')!.blocks)
+    for (const word of [/payslip/i, /flex/i, /benefits in kind/i, /post-tax deductions/i, /salary/i, /coming/i]) expect(text).toMatch(word)
+  })
+
+  it('no topic mentions the removed Hello calculator', () => {
+    for (const topic of HELP_TOPICS) expect(JSON.stringify(topic.blocks), topic.id).not.toMatch(/Hello/)
   })
 
   it('links only to topics and sheets that exist (no external links)', () => {

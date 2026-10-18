@@ -43,9 +43,7 @@ export function HomePage() {
             )
           })}
         </ul>
-        <p className="text-sm text-text-muted">
-          Real calculators arrive in later releases. Until then, the Hello calculator shows how they will work.
-        </p>
+        <p className="text-sm text-text-muted">More calculators, starting with the pension optimiser, arrive in later releases.</p>
       </section>
 
       <p className="text-sm text-text-muted">Everything you enter stays on this device. Sumyard has no accounts, tracking or ads.</p>

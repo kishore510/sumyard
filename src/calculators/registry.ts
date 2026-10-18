@@ -49,6 +49,8 @@ export interface CalculatorDefinition<I = unknown> {
   /** Upgrades inputs saved at version `from` (below inputsVersion) to the current shape, or throws. Validated after. */
   migrateInputs(from: number, old: unknown): unknown
   summarise(inputs: I, config: TaxYearConfig): Summary
+  /** Applies the Settings defaults (region) to fresh inputs. Optional; the tax year comes from Settings for every calculator. */
+  applySettings?(inputs: I, settings: { readonly region: 'ruk' | 'scotland' }): I
 }
 
 /** Typed helper for writing a definition. */

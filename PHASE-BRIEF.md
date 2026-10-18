@@ -1,6 +1,6 @@
-# PHASE-BRIEF: Slice 1a Optimiser: config and engine
+# PHASE-BRIEF: Slice 1b Optimiser: UI
 
-Status: In progress. Session E is done (0.5.0, PR #5, merged and deployed): the config step is finished and logged. Session F is done (0.6.0, internal: the core tax engine for take-home pay without pension): the owner spot-checked the verified values and answered the engine questions as modelling decisions (`docs/modelling-decisions.md`). Session G is split into G1 (pensions, adjusted net income, HICBC; 0.7.0, internal) and G2 (annual allowance, carry forward, childcare check, `optimise()`; 0.8.0). **G1 is done (0.7.0, internal); G2 is done (0.8.0, internal): the engine is complete.** Slice 1a stays In progress until the owner agrees it is Done; **slice 1b (the optimiser page) is next**, and rewrites this brief. Slice 1a runs as two build sessions: **E** (verify and populate the 2026-27 tax config, docs only around it, no engine code, 0.5.0) and **F** (the pure engine, tests first, after the owner answers session E's open questions). Rewritten at the start of every slice. Roadmap and status live in `PLAN.md`. Slice 0.5 is Done (0.4.0, PR #4, 17 October 2026); its progress log is archived at the end of this file, above slice 0's.
+Status: In progress. **Session 1b-i is done (0.9.0, user-visible):** the first usable calculator, take-home pay at `#/c/optimiser`, with taxable benefits in kind and post-tax deductions in the engine, and the Hello placeholder removed. **Session 1b-ii is next:** the optimiser itself on the same page. Slice 1a is Done (0.8.0, PR #8), with the HMRC cross-checks still pending. Rewritten at the start of every slice; roadmap and status live in `PLAN.md`. Slice 1a's brief and progress log are archived below, above slice 0.5's and slice 0's.
 
 ## Docs rule
 
@@ -8,11 +8,67 @@ Every build session ends by updating the docs: this file (progress and next sess
 
 ## Goal
 
-A tax config for 2026 to 2027 in which every value Sumyard holds was read on a www.gov.uk page in a build session and logged with its source, then a pure engine (income tax with the personal allowance taper, NI, student loans, three pension methods, HICBC, annual allowance, `optimise()`) built tests first on top of it. Gate (from `PLAN.md`): the config step is finished and logged before any engine code is written.
+The £100k+ optimiser page, built from shared components on the slice 1a engine: take-home now, then candidate pension contributions with their cliffs, thresholds, annual allowance and childcare position, never one called "the best".
 
-## Session E: verify and populate the 2026-27 config (0.5.0)
+## Session 1b-i: first usable calculator, with benefits and deductions (0.9.0)
 
 ### Scope
+
+- Part A (engine, tests first): two optional `TaxInputs` fields, `taxableBenefits` and `postTaxDeductions`, after GOV.UK lookups on how a benefit in kind enters taxable pay, ANI, NI, the student loan base, the HICBC, the annual allowance and childcare (decisions B1 to B5).
+- Part B (page, tests first): `definition.ts` and `OptimiserPage.tsx` at `#/c/optimiser`, calling `takeHome` only; remove Hello; a Help topic; a `CLAUDE.md` changelog rule.
+
+### Out of scope
+
+Charts, candidate points, threshold markers, annual allowance and childcare displays, tax codes, per-period payroll, any config change, any other tax year.
+
+## Next: session 1b-ii (the optimiser on the page)
+
+What 1b-ii picks up, on the same page and inputs (version 1; bump and migrate only if the stored shape changes):
+
+- `optimise(inputs, config, policy, options?)` from the page inputs: `toTaxInputs` plus `pension` (the method and current contribution), `savings` (the stored `employerContribution`, carry forward and the MPAA flag as new inputs) and `checkChildcare`.
+- The take-home (or spendable) against contribution chart from `points`, markers for `current`, `maximum` and each threshold, `cliffs` drawn as labelled jumps, a table fallback (the shared `Chart`).
+- "Cost of £1 more pension" from `netCostPerPound` and `marginalRate`, labelled with what each is measured against.
+- Thresholds in words from `thresholds` ("already under", "contribute £X more", "out of reach" with the reason); the HICBC full-charge point said plainly (the charge first falls a penny below it).
+- Warnings from each point (annual allowance, taper, carry forward, childcare), never hidden, never a cap; childcare as eligibility only, with what isn't checked.
+- No point labelled "best". Compare: the current contribution against a chosen one.
+- **Still with the owner:** confirm the benefit value from an annual statement (B1) and run the payslip check; the 72 HMRC cross-checks; whether a benefit through salary sacrifice or one that attracts Class 1 needs its own input.
+
+## Progress log
+
+Add one entry per session: date, what was done, what differs from the brief, what the next session should pick up, and which docs were updated.
+
+- **18 October 2026, build session 1b-i (take-home page, benefits in kind, post-tax deductions). Version 0.9.0, user-visible.**
+  - Pre-check: PR #8 merged. Its own Pages deploy (run 39079146654) failed on a test timeout; PR #9 fixed it and its deploy (run 39079341182) succeeded. Names and signatures confirmed in the code: `takeHome(inputs, config, policy)`, `TaxInputs { grossPay, region, studentLoans, pension?, childBenefit? }`, `ModellingPolicy { taperRounding, childBenefitWeeks }`, `DEFAULT_POLICY`, `requireVerified(config, paths)`, `createCalculatorRegistry`, `defineCalculator`, `sessionFor`, and the shared components the prompt names. No existing field covered either new input. `TaxInputs` has no bonus or employer contribution: the page adds bonus to salary for `grossPay`; the employer contribution lives in `OptimiserInputs.savings` (1b-ii) and is stored by the page now.
+  - Done (docs and lookups `4a8dc25`; engine red `a282c1a`, green `d7ad53d`; page red `cd5eb94`, green `26599f8`):
+    - [x] GOV.UK lookups, logged with exact lines ("Session 1b-i lookups"): Tax on company benefits (tax, value, NI), the ANI guidance step 1 ("including any benefits you get from your job"), PTM057100 (net income), NIM13090 and NIM13001 (Class 1A, never with Class 1), the medical benefits pages (which NI applies, the value, the salary sacrifice rule), CSLM16030 and the employers' student loan guidance (the base is secondary Class 1 earnings). None silent or conflicting; nothing OPEN.
+    - [x] Decisions B1 to B5 in `docs/modelling-decisions.md`.
+    - [x] Engine: benefits into taxable pay and ANI (so tax, the taper, HICBC, childcare, both annual allowance measures and the threshold solver), not NI-able pay or the student loan base; deductions off take-home only, their own view row; a `takeHomeBelowNothing` warning, never a cap; assumptions without figures.
+    - [x] Engine tests (`benefits.test.ts`): per method; the reference on 300 random cases; benefits never lowering tax; deductions changing nothing but take-home, which falls by exactly the deduction; the taper start and the HICBC threshold and first step a penny either side, moved by a benefit; above gross pay; the annual allowance; threshold contributions and childcare; optimise(); inputs. No GOV.UK page read prints a numeric example with a benefit, so none is mirrored. `fixtures/reference.ts` extended independently. Literal guard passes. Mutation spot-checks: the benefit left out of ANI (5 fail); deductions off taxable pay (5 fail).
+    - [x] Page: inputs (tax year and region from Settings, salary, bonus, pension method and employee contribution, employer contribution, benefits, deductions, each student loan plan, children, Child Benefit claimed or opted out); take-home for the year, month and week with the engine's labels and a note that payslips may differ; a breakdown that adds up; Child Benefit, pension going in, benefits and ANI alongside; warnings, input problem, refusal; assumptions (the engine's and the page's); scenarios.
+    - [x] Page tests: definition (defaults, region from Settings, fresh object, hostile keys and bad shapes field by field, newer version refused, mapping, summarise); page (results, breakdown matching the engine and adding up, monthly and weekly, benefits and deductions, each method, warnings, input problem, invalid input, hints without figures, assumptions, save and load, no tax figure in page code); refusal on a fake year.
+    - [x] Hello removed: folder, registry, page entry, home page text, Quick start. Registry, Import, route and Help tests updated: the registry now lists only the optimiser and a stored Hello scenario is kept but hidden (tested); Import and route tests only swap the example id; Help expects the new topic.
+    - [x] Chromium (vite preview), 360, 768 and 1280 px, light and dark: home and the page empty, filled, warning, input problem, invalid input and the open scenario list (42 runs). axe (WCAG 2.0/2.1 A and AA, best practice) found no violations; no horizontal scroll; no external requests; no console errors; every visible control at least 44 px tall except ScenarioBar's hidden file input. One fix: the taper assumption showed twice.
+    - [x] `test`, `lint`, `typecheck`, `build` pass.
+  - Differences from the brief and prompt:
+    - The page is titled "Take-home pay"; the id stays `optimiser`.
+    - Input bounds moved to `src/lib/inputLimits.ts`: the engine's literal guard scans every non-test file in the folder, so `definition.ts` is held to it too.
+    - A benefit that attracts Class 1 (the employee's own contract paid by the employer, or a reimbursement) is earnings: the help text says to enter it as salary. A benefit through salary sacrifice (the salary amount rule) is not modelled.
+    - The Class 1A amount is not shown (no config leaf; employer-side costs out of scope); the assumptions name it.
+    - Engine assumption strings hold no digits, so "Class 1A" appears only in the page's own assumptions.
+    - A pension contribution above salary plus bonus shows a notice instead of results (the engine refuses it, decision G1).
+  - Not verified: the benefit value against the owner's annual statement; payslips; HMRC's calculators; legislation; real devices.
+  - Next: session 1b-ii (above).
+  - Docs updated: `PHASE-BRIEF.md` (rewritten for slice 1b), `PLAN.md`, `CHANGELOG.md` (0.9.0), `CLAUDE.md` (changelog entry rule; `applySettings`; the Hello rule removed), `docs/modelling-decisions.md` (B1 to B5), `docs/verification-log.md` (Session 1b-i lookups), `docs/worked-examples.md`, `docs/performance.md`, `src/calculators/optimiser/README.md`, `src/calculators/README.md`, `src/lib/README.md`, Help (`take-home-pay`, Quick start). About > Privacy unchanged: no storage key changed.
+
+## Archive: slice 1a brief and progress log
+
+### Goal
+
+A tax config for 2026 to 2027 in which every value Sumyard holds was read on a www.gov.uk page in a build session and logged with its source, then a pure engine (income tax with the personal allowance taper, NI, student loans, three pension methods, HICBC, annual allowance, `optimise()`) built tests first on top of it. Gate (from `PLAN.md`): the config step is finished and logged before any engine code is written.
+
+### Session E: verify and populate the 2026-27 config (0.5.0)
+
+#### Scope
 
 1. Replace `{ status: 'todo' }` in `src/config/tax/2026-27.ts`, group by group, only with values read on a www.gov.uk page in this session; everything else stays `todo` and is reported.
 2. Groups: tax year dates; personal allowance and taper (and whether the zero point is stated); income tax bands for England, Wales and Northern Ireland and for Scotland, noting whether each page states bands on taxable income or income after allowances; employee and employer NI (category A assumed); student loan plans 1, 2, 4, 5 and postgraduate; pensions (annual allowance, taper, carry forward, MPAA, relief-at-source rate); Child Benefit rates and HICBC mechanics; Tax-Free Childcare and 30 hours income limits; the announced salary sacrifice change (informational, not modelled); a Budget check.
@@ -22,21 +78,21 @@ A tax config for 2026 to 2027 in which every value Sumyard holds was read on a w
 6. Tests: every verified leaf has a www.gov.uk URL and a past date; each group's verified count matches the log.
 7. Tax data screen checked in Chromium at 360 and 1280 px, light and dark, with axe.
 
-### Rules
+#### Rules
 
 - Source rules: values only from pages fetched in the session; `sourceUrl` an exact `https://www.gov.uk/` page; `verifiedOn` the date read; check the tax year on every page; two sources where two pages cover a value; conflicts and ambiguity stay `todo` or OPEN. No URL-scan change.
 - No calculation logic; no real figure in code comments, Help text or tests (tests use the fake fixtures).
 - One commit per group. No new dependency, no runtime network request.
 
-### Out of scope
+#### Out of scope
 
 Engine code, UI work beyond fixing layout problems on the Tax data screen, URL-allowlist changes, any other tax year.
 
-## Session F: the core tax engine (0.6.0)
+### Session F: the core tax engine (0.6.0)
 
 Pre-check (17 October 2026): PR #5 merged; its Pages deploy (run 39060296115) succeeded; the owner confirmed the spot-check of the verified values.
 
-### Scope
+#### Scope
 
 Pure, unit-tested take-home pay functions with **no pension**, in `src/calculators/optimiser/`: no UI, no registry entry, no new dependency. Every figure comes from the verified config through `requireVerified`; a refusal is returned as the typed `Refusal`.
 
@@ -49,19 +105,19 @@ Pure, unit-tested take-home pay functions with **no pension**, in `src/calculato
 
 Owner's modelling decisions 1 to 7 are recorded in `docs/modelling-decisions.md`, with the decisions already taken for session G.
 
-### Tests (red commit, then green)
+#### Tests (red commit, then green)
 
 Published gov.uk examples that concern these functions (not those marked "do not mirror"), each citing its URL; property tests (tax never negative, tax and NI never fall as gross rises, take-home never negative, zero in gives zero, taper-zone marginal rate above the band rate, from an independent formula); edge cases (each threshold and a penny either side, beyond the taper's zero point, Scotland against rUK, each student loan plan alone and with the postgraduate loan, zero and negative inputs, the safe-integer guard); a literal guard on the engine source (only 0, 1, 2 and 100); a cross-check harness, `docs/hmrc-cross-checks.json`, with input cases derived from the config and `null` expected results (`it.todo` until the owner fills them from HMRC's calculators).
 
-### Out of scope
+#### Out of scope
 
 Session G's work (pension methods, adjusted net income, HICBC, annual allowance, childcare check, `optimise()`); the UI, the registry and the Tax data screen; any tax value change.
 
-## Session G, split into G1 and G2
+### Session G, split into G1 and G2
 
 Session G is split in two. **G1** (0.7.0, internal): pension contributions, adjusted net income and the High Income Child Benefit Charge, with `takeHome` extended. **G2** (0.8.0): `annualAllowanceCheck`, carry forward, the childcare check and `optimise()` with its sweep.
 
-### Session G1: pensions, adjusted net income, HICBC (0.7.0)
+#### Session G1: pensions, adjusted net income, HICBC (0.7.0)
 
 Pre-check (17 October 2026): PR #6 merged; its Pages deploy (run 39062754954) succeeded.
 
@@ -79,7 +135,7 @@ Tests first (red, then green): published GOV.UK examples, properties, edge cases
 
 Out of scope: the annual allowance, carry forward, childcare, `optimise()` (G2, 0.8.0); any UI; any tax value change; any year other than 2026-27.
 
-### Session G2: annual allowance, carry forward, childcare, `optimise()` (0.8.0)
+#### Session G2: annual allowance, carry forward, childcare, `optimise()` (0.8.0)
 
 Done (see the progress log). Pure functions in `src/calculators/optimiser/`, tests first, no UI.
 
@@ -93,7 +149,7 @@ Owner decisions for G2 (recorded in `docs/modelling-decisions.md`, G4 update and
 4. `optimise(inputs, config, policy)`: sweep contribution levels on `takeHome`; the take-home and marginal-rate curves; the contribution that brings ANI to each threshold (taper start, HICBC full-charge point and threshold, childcare limit); the cliffs the sweep crosses (HICBC whole steps, student loan whole pounds) documented.
 5. Owner inputs before or during G2: Child Benefit weeks (G4); the HMRC cross-checks.
 
-## Next: slice 1b (the optimiser page)
+### Next: slice 1b (the optimiser page)
 
 Rewrite this brief for 1b at its start, against the real code. What 1b picks up from the engine:
 
@@ -107,7 +163,7 @@ Rewrite this brief for 1b at its start, against the real code. What 1b picks up 
 - **Still with the owner:** agree slice 1a Done; the HMRC cross-checks (`docs/hmrc-cross-checks.json`, 72 pending; no pension or annual allowance cases yet); confirm 52 Child Benefit weeks.
 - **Not modelled (list in the page's assumptions):** defined benefit savings, first flexible access part-way through the year, Scheme Pays, the partner's income for HICBC and childcare, employer NI savings, the salary sacrifice change from April 2029, contribution timing within the year.
 
-## Progress log
+### Progress log
 
 Add one entry per session: date, what was done, what differs from the brief, what the next session should pick up, and which docs were updated.
 

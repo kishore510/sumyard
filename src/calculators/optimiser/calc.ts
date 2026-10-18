@@ -247,9 +247,17 @@ function grossUp(net: Money, rate: Ratio): ExactPence {
  * The effect on pay, adjusted net income and the bands. `rate` is the
  * relief-at-source rate, needed only for relief at source. A gross amount
  * above gross pay is refused: relief on contributions above earnings (and
- * relief at source with no earnings) is not modelled.
+ * relief at source with no earnings) is not modelled. Taxable benefits in kind
+ * (decision B1) are added to taxable pay and adjusted net income, never to
+ * NI-able pay: they are Class 1A, not Class 1 earnings.
  */
-function pensionEffect(grossPay: Money, pension: PensionInput | undefined, rate: Ratio | undefined): PensionEffect {
+function pensionEffect(grossPay: Money, pension: PensionInput | undefined, rate: Ratio | undefined, benefits: Money = ZERO): PensionEffect {
+  const cash = cashEffect(grossPay, pension, rate)
+  if (compare(benefits, ZERO) === 0) return cash
+  return { ...cash, taxablePay: add(cash.taxablePay, benefits), ani: exactAdd(cash.ani, exact(benefits)) }
+}
+
+function cashEffect(grossPay: Money, pension: PensionInput | undefined, rate: Ratio | undefined): PensionEffect {
   const pay = exact(grossPay)
   if (!pension) return { pension, gross: NOTHING, taxablePay: grossPay, niablePay: grossPay, ani: pay, reliefAtSource: NOTHING }
   const { method, contribution } = pension
@@ -588,6 +596,7 @@ function view(period: PeriodView['period'], label: string, annual: Omit<PeriodVi
     studentLoan: part(annual.studentLoan),
     pension: part(annual.pension),
     hicbc: part(annual.hicbc),
+    postTaxDeductions: part(annual.postTaxDeductions),
     net: part(annual.net),
     childBenefit: part(annual.childBenefit),
     netIncludingChildBenefit: part(annual.netIncludingChildBenefit),
@@ -625,10 +634,27 @@ function childBenefitAssumptions(childBenefit: ChildBenefitInput | undefined): s
   ]
 }
 
-function assumptions(inputs: TaxInputs, plans: StudentLoanPlanId[], policy: ModellingPolicy): string[] {
+function benefitAssumptions({ benefits, deductions }: CheckedInputs): string[] {
+  return [
+    ...(compare(benefits, ZERO) > 0
+      ? [
+          'Taxable benefits in kind are taken as entered: their taxable value for the year, after anything paid towards them. They are added to taxable pay and adjusted net income, not to National Insurance-able pay or student loan pay, and are not paid in cash.',
+          'The tax on benefits is worked out on the year’s figures, however it is collected (through the tax code, payrolled benefits or Self Assessment), so payslips can differ. The National Insurance the employer pays on benefits is the employer’s cost and is not taken from take-home.',
+        ]
+      : []),
+    ...(compare(deductions, ZERO) > 0
+      ? ['Post-tax deductions come off take-home pay only: they change no tax, National Insurance, student loan or adjusted net income.']
+      : []),
+  ]
+}
+
+function assumptions(inputs: TaxInputs, checked: CheckedInputs, policy: ModellingPolicy): string[] {
+  const { plans } = checked
   return [
     'These are estimates for the tax year, not payroll or Self Assessment figures.',
-    'Employment income only: no savings, dividends, property, self-employment or other income, and no benefits in kind.',
+    compare(checked.benefits, ZERO) > 0
+      ? 'Employment income only, with any taxable benefits in kind: no savings, dividends, property, self-employment or other income.'
+      : 'Employment income only: no savings, dividends, property, self-employment or other income, and no benefits in kind.',
     'Annual model: National Insurance and student loan repayments are worked out on the year’s pay with the annual thresholds. Payroll works per pay period, so monthly payslips, and months with a large bonus, can differ.',
     inputs.region === 'scotland'
       ? 'Income tax uses the Scottish rates and bands, for a Scottish taxpayer.'
@@ -649,6 +675,7 @@ function assumptions(inputs: TaxInputs, plans: StudentLoanPlanId[], policy: Mode
         ]
       : []),
     ...childBenefitAssumptions(inputs.childBenefit),
+    ...benefitAssumptions(checked),
     'Rounding: each band’s tax, each National Insurance rate’s contribution and the monthly and weekly figures are rounded to the nearest penny; nothing is rounded before that.',
     'Monthly and weekly figures are the annual ones divided evenly; they are not payslip figures.',
   ]
@@ -679,6 +706,8 @@ interface CheckedInputs {
   readonly plans: StudentLoanPlanId[]
   readonly pension: PensionInput | undefined
   readonly childBenefit: ChildBenefitInput | undefined
+  readonly benefits: Money
+  readonly deductions: Money
 }
 
 function checkInputs(inputs: TaxInputs): CheckedInputs {
@@ -688,6 +717,8 @@ function checkInputs(inputs: TaxInputs): CheckedInputs {
     plans: checkPlans(inputs.studentLoans),
     pension: checkPension(inputs.pension),
     childBenefit: inputs.childBenefit === undefined ? undefined : checkChildBenefit(inputs.childBenefit),
+    benefits: checkAmount(inputs.taxableBenefits ?? ZERO, 'taxable benefits'),
+    deductions: checkAmount(inputs.postTaxDeductions ?? ZERO, 'post-tax deductions'),
   }
 }
 
@@ -704,13 +735,13 @@ function takeHomePaths({ region, plans, pension, childBenefit }: CheckedInputs):
 }
 
 function computeTakeHome(
-  { grossPay, region, plans, pension, childBenefit }: CheckedInputs,
+  { grossPay, region, plans, pension, childBenefit, benefits, deductions }: CheckedInputs,
   inputs: TaxInputs,
   values: Values<LeafPath>,
   policy: ModellingPolicy,
   taxYear: TaxYearConfig['id'],
 ): TakeHomeResult {
-  const effect = pensionEffect(grossPay, pension, values[RAS_PATH])
+  const effect = pensionEffect(grossPay, pension, values[RAS_PATH], benefits)
   const tax = computeIncomeTax(grossPay, effect, region, values, policy, taxYear)
   const ni = computeNI(effect.niablePay, values, taxYear)
   // The student loan is worked out on NI-able pay: the employer's secondary NIC pay (decisions D5 and G6).
@@ -719,7 +750,11 @@ function computeTakeHome(
   const contribution = pension?.contribution ?? ZERO
   const hicbcCharge = charge?.charge ?? ZERO
   const received = charge?.childBenefit ?? ZERO
-  const net = [tax.total, ni.total, loans.total, contribution, hicbcCharge].reduce((left, deduction) => subtract(left, deduction), grossPay)
+  // Post-tax deductions come off take-home and nothing else (decision B2).
+  const net = [tax.total, ni.total, loans.total, contribution, hicbcCharge, deductions].reduce(
+    (left, deduction) => subtract(left, deduction),
+    grossPay,
+  )
   const annual = {
     gross: grossPay,
     incomeTax: tax.total,
@@ -727,6 +762,7 @@ function computeTakeHome(
     studentLoan: loans.total,
     pension: contribution,
     hicbc: hicbcCharge,
+    postTaxDeductions: deductions,
     net,
     childBenefit: received,
     netIncludingChildBenefit: add(net, received),
@@ -741,6 +777,8 @@ function computeTakeHome(
       studentLoans: [...inputs.studentLoans],
       ...(pension ? { pension: { method: pension.method, contribution: pension.contribution } } : {}),
       ...(childBenefit ? { childBenefit: { children: childBenefit.children, payments: childBenefit.payments } } : {}),
+      ...(inputs.taxableBenefits === undefined ? {} : { taxableBenefits: benefits }),
+      ...(inputs.postTaxDeductions === undefined ? {} : { postTaxDeductions: deductions }),
     },
     policy: { taperRounding: policy.taperRounding, childBenefitWeeks: policy.childBenefitWeeks },
     incomeTax: tax,
@@ -752,7 +790,8 @@ function computeTakeHome(
     annual: view('annual', 'Annual: the tax year’s figures', annual, 1),
     monthly: view('monthly', 'Monthly: each annual figure divided by the months in a year, to the nearest penny', annual, MONTHS_PER_YEAR),
     weekly: view('weekly', 'Weekly: each annual figure divided by the weeks in a year, to the nearest penny', annual, WEEKS_PER_YEAR),
-    assumptions: assumptions(inputs, plans, policy),
+    warnings: compare(net, ZERO) < 0 ? [warn('takeHomeBelowNothing')] : [],
+    assumptions: assumptions(inputs, { grossPay, region, plans, pension, childBenefit, benefits, deductions }, policy),
   }
 }
 
@@ -935,6 +974,8 @@ const WARNINGS = {
     'Unused allowance from earlier years is used, earliest year first; what is left of the earliest year is lost next year.',
   carryForwardOutOfTime: 'Unused allowance entered for a year beyond the carry forward period is ignored.',
   childcareOverLimit: 'Adjusted net income is over a childcare income limit: the support is lost entirely, not tapered.',
+  takeHomeBelowNothing:
+    'Take-home pay is below nothing: the deductions and the tax on benefits are more than the pay. It is shown as worked out, not capped.',
 } as const satisfies Record<EngineWarning['code'], string>
 
 const warn = (code: EngineWarning['code']): EngineWarning => ({ code, message: WARNINGS[code] })
@@ -955,7 +996,7 @@ function computeAllowance(
   policy: ModellingPolicy,
   taxYear: TaxYearConfig['id'],
 ): AnnualAllowanceResult {
-  const effect = pensionEffect(checked.grossPay, checked.pension, values[RAS_PATH])
+  const effect = pensionEffect(checked.grossPay, checked.pension, values[RAS_PATH], checked.benefits)
   const position = allowancePosition(effect, savings, values)
   const { available, counted: sums } = position
   const excess = max(ZERO, subtract(sums.total, available))
@@ -1116,14 +1157,17 @@ function measureAt(
   method: PensionMethod,
   contribution: Money,
   rate: Ratio,
+  benefits: Money,
 ): ExactPence {
   const gross =
     method === 'reliefAtSource'
       ? exactMul(exact(contribution), ratio(keptShare(rate).denominator, keptShare(rate).numerator))
       : exact(contribution)
+  // Taxable benefits are in net income, so in both measures (decision B1).
+  const income = exact(add(grossPay, benefits))
   // Salary sacrifice is added back to threshold income, so it does not lower it.
-  if (measure === 'thresholdIncome' && method === 'salarySacrifice') return exact(grossPay)
-  return exactSubtract(exact(grossPay), gross)
+  if (measure === 'thresholdIncome' && method === 'salarySacrifice') return income
+  return exactSubtract(income, gross)
 }
 
 function solveThreshold(
@@ -1136,19 +1180,20 @@ function solveThreshold(
   const { method, contribution: current } = inputs.pension
   const rate = values[RAS_PATH]
   const base = { threshold: threshold.id, measure: threshold.measure, limit: roundExact(threshold.limit, 'nearest') }
-  const over = exactSubtract(measureAt(threshold.measure, grossPay, method, ZERO, rate), threshold.limit)
+  const { benefits } = checked
+  const over = exactSubtract(measureAt(threshold.measure, grossPay, method, ZERO, rate, benefits), threshold.limit)
   if (threshold.measure === 'thresholdIncome' && method === 'salarySacrifice' && compareExact(over, NOTHING) > 0)
     return { ...base, status: 'unreachable', reason: 'notLoweredByMethod', contribution: null, extra: null, measureAt: null }
   // Closed form: salary sacrifice and net pay lower the measure penny for penny; relief at source by the grossed-up amount.
   const needed = compareExact(over, NOTHING) <= 0 ? NOTHING : method === 'reliefAtSource' ? exactMul(over, keptShare(rate)) : over
   const contribution = roundExact(needed, 'up')
-  const at = roundExact(measureAt(threshold.measure, grossPay, method, contribution, rate), 'nearest')
+  const at = roundExact(measureAt(threshold.measure, grossPay, method, contribution, rate, benefits), 'nearest')
   const result = { ...base, contribution, measureAt: at }
   if (compare(current, contribution) >= 0) return { ...result, status: 'alreadyMet', reason: null, extra: ZERO }
   const extra = subtract(contribution, current)
   if (compare(contribution, maximumContribution(grossPay, method, rate)) > 0)
     return { ...result, status: 'unreachable', reason: 'overGrossPay', extra }
-  const effect = pensionEffect(grossPay, { method, contribution }, rate)
+  const effect = pensionEffect(grossPay, { method, contribution }, rate, benefits)
   const position = allowancePosition(effect, inputs.savings, values)
   if (compare(position.counted.total, position.available) > 0) return { ...result, status: 'unreachable', reason: 'overAllowance', extra }
   return { ...result, status: 'reachable', reason: null, extra }
@@ -1222,7 +1267,7 @@ function evaluate(
   const home = computeTakeHome(at, { ...inputs, pension }, values, policy, taxYear)
   const allowance = computeAllowance(at, inputs.savings, values, policy, taxYear)
   const childcare = inputs.checkChildcare
-    ? computeChildcare(pensionEffect(checked.grossPay, pension, values[RAS_PATH]).ani, values, taxYear)
+    ? computeChildcare(pensionEffect(checked.grossPay, pension, values[RAS_PATH], checked.benefits).ani, values, taxYear)
     : null
   const relief = home.pension?.providerRelief ?? ZERO
   const employer = inputs.savings.employerContribution

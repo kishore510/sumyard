@@ -27,3 +27,9 @@ Not checked: a real phone, Safari, Firefox, a screen reader, the deployed site, 
 The same scratch Playwright and axe-core 4.10 setup, against `vite preview`, on the Tax data sheet with real verified 2026-27 values and every group open, at 360 and 1280 px in light and dark. In every combination: 38 of 38 values verified, the badge reads "Last verified 17 October 2026", ten groups "All n verified", no horizontal page scroll, nothing wider than the sheet (long labels such as the childcare and HICBC ones wrap), every "Source: GOV.UK" link at least 44 px tall, no external requests, no console errors, and axe found no violations. One wording fix came out of it: bands now read "20% above £3,967.00" with "On income after allowances", not "from £3,967.00 at 20%".
 
 Not checked: 768 px, a real phone, Safari, Firefox, a screen reader, the deployed site.
+
+## Browser checks (slice 1b session 1b-i, 0.9.0)
+
+The same scratch Playwright and axe-core 4.10 setup against `vite preview`, at 360, 768 and 1280 px in light and dark (system theme), on home and the take-home page in six states: empty, filled (every input, assumptions open), the take-home-below-nothing warning, the pension-above-pay notice, an invalid input, and the open scenario list after a save. 42 runs. axe (WCAG 2.0/2.1 A and AA, best practice) found no violations; no horizontal page scroll; no external requests; no console errors; every visible control at least 44 px tall (the only smaller element is ScenarioBar's hidden file input). One fix came out of it: the personal allowance taper assumption was listed twice. Bundle (gzip): the take-home page about 7 KB, which replaces the Hello page.
+
+Not checked: a real phone, Safari, Firefox, a screen reader, the deployed site.
