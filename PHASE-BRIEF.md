@@ -1,6 +1,6 @@
 # PHASE-BRIEF: Slice 1b Optimiser: UI
 
-Status: In progress. **Session 1b-i is done (0.9.0, user-visible):** the first usable calculator, take-home pay at `#/c/optimiser`, with taxable benefits in kind and post-tax deductions in the engine, and the Hello placeholder removed. **Part 1b-i.1 is done (0.10.0, user-visible):** pension contributions as a percentage of pensionable pay, and benefits in kind and post-tax deductions as lists of named items per month or per year (inputs version 2). **Part 0.11.0 is done (user-visible):** benefits taken from pay before or after tax, an optional tax code with a PAYE estimate, a Year / Month breakdown (inputs version 3). **Next:** session 1b-ii (the optimiser itself on the same page), starting from inputs version 3. Slice 1a is Done (0.8.0, PR #8), with the HMRC cross-checks still pending. Rewritten at the start of every slice; roadmap and status live in `PLAN.md`. Slice 1a's brief and progress log are archived below, above slice 0.5's and slice 0's.
+Status: In progress. **Session 1b-i is done (0.9.0, user-visible):** the first usable calculator, take-home pay at `#/c/optimiser`, with taxable benefits in kind and post-tax deductions in the engine, and the Hello placeholder removed. **Part 1b-i.1 is done (0.10.0, user-visible):** pension contributions as a percentage of pensionable pay, and benefits in kind and post-tax deductions as lists of named items per month or per year (inputs version 2). **Part 0.11.0 is done (user-visible):** benefits taken from pay before or after tax, an optional tax code with a PAYE estimate, a Year / Month breakdown (inputs version 3). **0.12.0 is done (user-visible, UI only):** the take-home page redesign (sections with summaries, a sticky result, a split bar, payslip net pay with a code). **Next:** session 1b-ii (the optimiser itself on the same page), starting from inputs version 3. Slice 1a is Done (0.8.0, PR #8), with the HMRC cross-checks still pending. Rewritten at the start of every slice; roadmap and status live in `PLAN.md`. Slice 1a's brief and progress log are archived below, above slice 0.5's and slice 0's.
 
 ## Docs rule
 
@@ -41,9 +41,19 @@ GOV.UK lookups first (how a salary-sacrifice benefit is taxed, NI and the studen
 
 Charts, the optimiser, per-pay-period payroll beyond level pay, exempt benefits, K codes, other tax years.
 
+## Part 0.12.0: take-home page redesign (UI only)
+
+### Scope
+
+A reusable `Section` and `StickyResult` in `src/components/`; the page rebuilt from them ("Your pay" always visible, five sections with live summaries, open on load when set, never stored; results first and sticky); a split bar of where gross pay goes; estimated payslip net pay beside take-home after the year-end adjustment with a supported code; compact item cards with Undo; one settled announcement; scroll padding, safe areas, no horizontal scroll at 360 px. Decisions U1 to U9 in `docs/ui-patterns.md`.
+
+### Out of scope
+
+Engine, config, tax rules, new inputs, the optimiser and its charts (1b-ii), persisted layout state, any other calculator, a logo.
+
 ## Next: session 1b-ii (the optimiser on the page)
 
-What 1b-ii picks up, on the same page and inputs (version 3 since 0.11.0; add a migration to `MIGRATIONS` in `definition.ts` only if the stored shape changes; the version follows). `optimise()` already sweeps from cash pay after salary given up for benefits.
+What 1b-ii picks up, on the same page and inputs (version 3 since 0.11.0; the 0.12.0 layout: put the optimiser's inputs in a new `Section` and its results in the `StickyResult` results column, with the chart below the split bar; add a migration to `MIGRATIONS` in `definition.ts` only if the stored shape changes; the version follows). `optimise()` already sweeps from cash pay after salary given up for benefits.
 
 - `optimise(inputs, config, policy, options?)` from the page inputs: `toTaxInputs` plus `pension` (the method and the resolved current contribution, from `resolveInputs`), `savings` (the resolved `employerContribution`, carry forward and the MPAA flag as new inputs) and `checkChildcare`. A sweep over contributions is in amounts; a contribution entered as a percentage can be shown as a percentage of pensionable pay beside it.
 - The take-home (or spendable) against contribution chart from `points`, markers for `current`, `maximum` and each threshold, `cliffs` drawn as labelled jumps, a table fallback (the shared `Chart`).
@@ -56,6 +66,20 @@ What 1b-ii picks up, on the same page and inputs (version 3 since 0.11.0; add a 
 ## Progress log
 
 Add one entry per session: date, what was done, what differs from the brief, what the next session should pick up, and which docs were updated.
+
+- **18 October 2026, part 0.12.0 (take-home page redesign). Version 0.12.0, user-visible, UI only.**
+  - Pre-check: PR #13 merged (3de8c1d on main); its Pages deploy (run 39121031476) succeeded. Names confirmed in the code: `OptimiserPage.tsx`, `definition.ts` (`resolveInputs`, `calculateTakeHome`, `calculatePaye`, `inputsVersion` from the migrations), `breakdown.ts`, the shared components (`ResultCard`/`StatRow`, `Segmented`, `ScenarioBar`, `AssumptionsPanel`, `VerifiedBadge`, `Chart`). They match the prompt, except: the top bar is not sticky, and `Chart` has no stacked bar (both below).
+  - Done (red `d55b1d7`, green `be60bb9`, then the close-out):
+    - [x] Decisions U1 to U9 in a new UI note, `docs/ui-patterns.md`.
+    - [x] `Section` (native button in a heading, `aria-expanded`, `aria-controls`, touch target, live summary, no motion, panel kept mounted), `StickyResult` (phone bar collapsing with hysteresis past its own height, tap to expand; two columns from `md`, results sticky; `--sy-sticky-offset` for `scroll-padding-top`; one polite announcement after `SETTLE_MS`), `SplitBar` (a small component, as `Chart` has no stacked bar).
+    - [x] The page: "Your pay"; the five sections (`sections.ts`: set or not, field to section, summaries from `resolveInputs`); results: headline for the period, split bar (`results.ts` `splitSegments`), breakdown, PAYE card; payslip net pay (`payslipNet`) only with a supported code; item cards edited in place, Remove with Undo (`toastStore` gains `blocked`).
+    - [x] Tests: the components; `sections.test.ts`; `results.test.ts` (the parts add up to gross pay on 300 random cases); 25 new page tests; `pageResults.snapshot.test.ts` (engine outputs, PAYE, month view and compare summary for seven inputs, written before the redesign, unchanged after). Every earlier page test passes unchanged; one new page test changed between red and green (section ids carry the `opt-section-` prefix). Literal and storage-key guards unchanged; no new storage key.
+    - [x] Chromium (vite preview) at 360, 768, 1024 and 1280 px, light and dark, with axe: 96 checks, 29 axe runs clean. Fixes from them: Add and item buttons wrap at 200% text; the split bar's table no longer widens the page; item names keep a minimum width beside their buttons. Lighthouse mobile in `docs/performance.md`.
+    - [x] `test` (1,585 passed, 72 todo), `lint`, `typecheck`, `build` pass.
+  - Differences from the prompt (also in `PLAN.md`): the phone bar sits under the page title, as the top bar doesn't stick; one Year / Month choice for the page; `SplitBar` instead of `Chart`; payslip net pay swaps income tax only (the Child Benefit charge and relief at source stay in: an open question); per-keystroke live regions beside inputs removed; Section buttons named by their visible text.
+  - Not verified: a real phone, Safari (no scroll anchoring there, so the collapse shift is not compensated; the hysteresis still prevents flicker), Firefox, a screen reader, the deployed site.
+  - Next: session 1b-ii (above).
+  - Docs updated: `PHASE-BRIEF.md`, `PLAN.md`, `CHANGELOG.md` (0.12.0), `CLAUDE.md` (pages use `Section` and `StickyResult`; the new shared components), `docs/ui-patterns.md` (new), `docs/README.md`, `docs/performance.md`, `src/calculators/optimiser/README.md`, Help (`take-home-pay`). `docs/design-tokens.md` unchanged: no token added. About > Privacy unchanged: no storage key changed. No config value touched.
 
 - **18 October 2026, fix 0.11.1 (benefits in kind in the PAYE estimate's pay). User-visible.**
   - Bug: for an owner's case with a salary sacrifice pension and benefit items (part sacrificed), `paye()` received taxable pay without the benefits (`payrollPay`, B13), while the annual income tax used taxable pay with them; the estimate ran below the liability by the benefits at the higher rate.

@@ -40,6 +40,19 @@ describe('toast store', () => {
     expect(toasts.get().announcement.text).toBe('Settings restored.')
   })
 
+  it('an Undo that is blocked says why instead of running', () => {
+    const toasts = make()
+    const run = vi.fn()
+    toasts.show({
+      message: 'Removed “Gym”.',
+      undo: { run, blocked: () => 'Couldn’t undo: the list has changed.', done: 'Restored “Gym”.' },
+    })
+    toasts.undo()
+    expect(run).not.toHaveBeenCalled()
+    expect(toasts.get().toast?.message).toBe('Couldn’t undo: the list has changed.')
+    expect(toasts.get().announcement.text).toBe('Couldn’t undo: the list has changed.')
+  })
+
   it('says when Undo is available, for screen readers', () => {
     const toasts = make()
     toasts.show({ message: 'Settings reset.', undo: { run: () => {} } })

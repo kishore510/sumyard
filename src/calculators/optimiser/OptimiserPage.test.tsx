@@ -2,22 +2,26 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { act } from 'react'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { SETTLE_MS } from '@/components/StickyResult'
 import { taxYear } from '@/config/tax/2026-27'
 import { formatGBP } from '@/lib/format'
-import { fromPence, fromPounds, type Money, mulRound } from '@/lib/money'
+import { fromPence, fromPounds, type Money, mulRound, ZERO } from '@/lib/money'
 import { percentRatio } from '@/lib/parse'
 import { MONTHS_PER_YEAR } from '@/lib/periods'
 import { STORAGE_KEYS } from '@/lib/storageKeys'
 import { scenarioStore } from '@/scenarios/index'
 import { settingsStore } from '@/settings/settings'
 import { byText, click, mount, type } from '@/test/dom'
+import { toasts } from '@/toast/toasts'
 import { sessionFor } from '../session'
 import { breakdown, DEDUCTION_ROWS } from './breakdown'
 import { takeHome } from './calc'
-import { INPUT_LIMITS, type OptimiserPageInputs, optimiserCalculator, toTaxInputs } from './definition'
+import { INPUT_LIMITS, type OptimiserPageInputs, optimiserCalculator, resolveInputs, toTaxInputs } from './definition'
 import OptimiserPage from './OptimiserPage'
 import { payeEstimate } from './paye'
+import { payslipNet, splitSegments } from './results'
+import { NOT_SET, SECTION_IDS, type SectionId, sectionSummary } from './sections'
 import { DEFAULT_POLICY, type PayeEstimate, type TakeHomeResult } from './types'
 
 /*
@@ -37,7 +41,10 @@ beforeEach(() => {
   session.startNew()
   view = mount(<OptimiserPage />)
 })
-afterEach(() => view.unmount())
+afterEach(() => {
+  view.unmount()
+  toasts.dismiss()
+})
 
 const $ = (selector: string) => view.host.querySelector(selector)
 const box = (id: string) => $(`#${id}`) as HTMLInputElement
@@ -666,6 +673,318 @@ describe('Optimiser page: the breakdown by year or month (B14)', () => {
     expect(radios).toHaveLength(2)
     for (const radio of radios) expect(radio.getAttribute('tabindex')).toBeNull()
     expect(radios[0]!.closest('fieldset')!.querySelector('legend')!.textContent).toMatch(/breakdown/i)
+  })
+})
+
+/** Loads inputs as a saved scenario would be, through the store and the session. */
+function loadScenario(name: string, inputs: OptimiserPageInputs) {
+  const created = scenarioStore.create({ calculatorId: 'optimiser', taxYear: taxYear.id, name, inputs })
+  if (!created.ok) throw new Error(created.error)
+  act(() => session.load(created.scenario))
+}
+
+const sectionButton = (id: SectionId) => $(`#opt-section-${id}-button`) as HTMLButtonElement
+const isOpen = (id: SectionId) => sectionButton(id).getAttribute('aria-expanded') === 'true'
+const openSections = () => SECTION_IDS.filter(isOpen)
+const summaryOf = (id: SectionId) => $(`#opt-section-${id}-summary`)!.textContent
+const defaults = optimiserCalculator.defaultInputs()
+
+describe('Optimiser page layout (0.12.0): your pay and sections', () => {
+  it('keeps salary, bonus, where you live and tax year always visible, outside any section', () => {
+    for (const id of ['opt-salary', 'opt-bonus', 'opt-tax-year']) {
+      expect(box(id).closest('[hidden]'), id).toBeNull()
+      expect(box(id).closest('[data-section]'), id).toBeNull()
+    }
+    const region = $('input[name="opt-region"]')!
+    expect(region.closest('[hidden]')).toBeNull()
+    expect(region.closest('[data-section]')).toBeNull()
+    expect(byText(view.host, 'h2', 'Your pay')).toBeDefined()
+  })
+
+  it('has the five sections, in order, each closed with “Not set” on a fresh start', () => {
+    expect([...view.host.querySelectorAll('[data-section]')].map((el) => el.getAttribute('data-section'))).toEqual(
+      SECTION_IDS.map((id) => `opt-section-${id}`),
+    )
+    expect(openSections()).toEqual([])
+    for (const id of SECTION_IDS) expect(summaryOf(id), id).toBe(NOT_SET)
+  })
+
+  it('puts each input in its section', () => {
+    const inSection = (selector: string) =>
+      $(selector)!.closest('[data-section]')?.getAttribute('data-section')?.replace('opt-section-', '')
+    expect(inSection('#opt-method')).toBe('pension')
+    expect(inSection('#opt-employee')).toBe('pension')
+    expect(inSection('#opt-employer')).toBe('pension')
+    expect(inSection('#opt-benefits-add')).toBe('benefits')
+    expect(inSection('#opt-deductions-add')).toBe('benefits')
+    expect(inSection('#opt-loan-plan1')).toBe('studentLoans')
+    expect(inSection('#opt-children')).toBe('childBenefit')
+    expect(inSection('#opt-tax-code')).toBe('taxCode')
+  })
+
+  it('opens and closes a section by its button, which says its state', () => {
+    click(sectionButton('pension'))
+    expect(isOpen('pension')).toBe(true)
+    expect(($('#opt-section-pension-panel') as HTMLElement).hidden).toBe(false)
+    click(sectionButton('pension'))
+    expect(isOpen('pension')).toBe(false)
+    expect(($('#opt-section-pension-panel') as HTMLElement).hidden).toBe(true)
+  })
+
+  it('summaries follow the inputs and match the resolved amounts the engine receives', () => {
+    type(box('opt-salary'), '50,000')
+    click(sectionButton('pension'))
+    choose('opt-employee-mode', 'percentOfPay')
+    type(box('opt-employee-pct'), '6')
+    addItem('benefits', 'Medical', '45', 'month')
+    addItem('deductions', 'Dental', '20', 'month')
+    click($('#opt-loan-plan2'))
+    type(box('opt-children'), '2')
+    type(box('opt-tax-code'), '900L')
+    const inputs = session.get().inputs
+    const resolved = resolveInputs(inputs)
+    for (const id of SECTION_IDS) expect(summaryOf(id), id).toBe(sectionSummary(id, inputs, resolved, money))
+    expect(summaryOf('pension')).toContain(money(resolved.employeeContribution))
+    expect(summaryOf('benefits')).toContain(money(resolved.taxableBenefits))
+    expect(summaryOf('benefits')).toContain(money(resolved.postTaxDeductions))
+  })
+
+  it('a section with an input to fix says so in its summary', () => {
+    type(box('opt-employee'), '1.234')
+    expect(summaryOf('pension')).toMatch(/needs fixing/)
+    type(box('opt-employee'), '1')
+    expect(summaryOf('pension')).not.toMatch(/needs fixing/)
+  })
+
+  it('a loaded scenario opens the sections it sets, and only those; starting new closes them all', () => {
+    loadScenario('Some set', {
+      ...defaults,
+      salary: fromPounds(60_000),
+      employeeContribution: { mode: 'amount', amount: fromPounds(3_000), percentOfPay: '0' },
+      taxCode: '1100L',
+    })
+    expect(openSections()).toEqual(['pension', 'taxCode'])
+    loadScenario('Others', { ...defaults, salary: fromPounds(30_000), studentLoans: ['plan1'], children: 1 })
+    expect(openSections()).toEqual(['studentLoans', 'childBenefit'])
+    act(() => session.startNew())
+    expect(openSections()).toEqual([])
+  })
+
+  it('open sections are not stored: a new visit opens only what the inputs set', () => {
+    click(sectionButton('studentLoans'))
+    expect(isOpen('studentLoans')).toBe(true)
+    view.unmount()
+    view = mount(<OptimiserPage />)
+    expect(openSections()).toEqual([])
+    const keys = Object.keys(localStorage)
+    expect(keys.every((key) => Object.values(STORAGE_KEYS).some((k) => k.key === key))).toBe(true)
+  })
+})
+
+describe('Optimiser page layout (0.12.0): results', () => {
+  const sticky = () => $('[data-sticky-result]')!
+
+  it('the sticky bar shows take-home for the chosen period, with the tax-year badge', () => {
+    type(box('opt-salary'), '52,000')
+    const r = engine()
+    expect($('[data-sticky-value]')!.textContent).toBe(money(r.annual.net))
+    expect(sticky().textContent).toMatch(/for the year/)
+    expect(sticky().querySelector('a[href="#/tax-data"]')).not.toBeNull()
+    choose('opt-period', 'month')
+    expect($('[data-sticky-value]')!.textContent).toBe(money(breakdown(r.annual, 'month').takeHome))
+    expect(sticky().textContent).toMatch(/a month/)
+    // One period for the page: the breakdown follows.
+    expect($('[data-breakdown]')!.getAttribute('data-breakdown')).toBe('month')
+  })
+
+  it('the sticky bar says there is no result while an input is invalid', () => {
+    type(box('opt-salary'), '1.234')
+    expect($('[data-sticky-value]')).toBeNull()
+    expect(sticky().textContent).toMatch(/fix/i)
+  })
+
+  it('announces take-home once, after the inputs settle, never on each keystroke', () => {
+    vi.useFakeTimers()
+    try {
+      const live = $('[data-sticky-announcer]')!
+      for (const text of ['5', '52', '52,0', '52,00', '52,000']) {
+        type(box('opt-salary'), text)
+        act(() => vi.advanceTimersByTime(SETTLE_MS / 2))
+        expect(live.textContent).toBe('')
+      }
+      act(() => vi.advanceTimersByTime(SETTLE_MS))
+      expect(live.textContent).toContain(money(engine().annual.net))
+      // No other live region in the inputs announces as you type.
+      expect($('[data-inputs] [aria-live]')).toBeNull()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('results run headline, split bar, breakdown, PAYE card, top to bottom', () => {
+    type(box('opt-salary'), '56,000')
+    type(box('opt-tax-code'), '900L')
+    const order = ['[data-headline]', '[data-split]', '[data-breakdown]', '[data-paye]'].map((sel) => $(sel)!)
+    for (let i = 1; i < order.length; i++)
+      expect(order[i - 1]!.compareDocumentPosition(order[i]!) & Node.DOCUMENT_POSITION_FOLLOWING, String(i)).toBeTruthy()
+    for (const el of order) expect(el.closest('[data-results]')).not.toBeNull()
+  })
+
+  it('the split bar shows where gross pay goes for the period, adding up to gross pay', () => {
+    type(box('opt-salary'), '70,000')
+    click($('#opt-loan-plan2'))
+    type(box('opt-employee'), '3,000')
+    addItem('benefits', 'Car', '0', 'year', { amount: '1,200', payment: 'beforeTax' })
+    for (const period of ['year', 'month'] as const) {
+      choose('opt-period', period)
+      const shown = breakdown(engine().annual, period)
+      const drawn = [...$('[data-split]')!.querySelectorAll('[data-segment]')]
+      const values: Record<string, number> = Object.fromEntries(
+        drawn.map((el) => [el.getAttribute('data-segment'), Number(el.getAttribute('data-value'))]),
+      )
+      const expected = Object.fromEntries(
+        splitSegments(shown)
+          .filter((s) => s.amount !== 0)
+          .map((s) => [s.id, s.amount]),
+      )
+      expect(values, period).toEqual(expected)
+      expect(
+        Object.values(values).reduce((a, b) => a + b, 0),
+        period,
+      ).toBe(shown.gross)
+      expect($('[data-split] figcaption')!.textContent).toContain(money(shown.gross))
+      expect($('[data-split] table')).not.toBeNull()
+    }
+  })
+
+  it('without a tax code, or with one not modelled, one take-home line as before', () => {
+    type(box('opt-salary'), '56,000')
+    expect(row('Estimated payslip net pay')).toBeUndefined()
+    expect(row('Take-home after the year-end adjustment')).toBeUndefined()
+    type(box('opt-tax-code'), 'BR')
+    expect(row('Estimated payslip net pay')).toBeUndefined()
+    expect(row('Year')).toBe(money(engine().annual.net))
+  })
+
+  it('with a supported code, two labelled lines: payslip net pay on the PAYE tax, and take-home after the year-end adjustment', () => {
+    type(box('opt-salary'), '56,000')
+    addItem('benefits', 'Medical', '1,200')
+    type(box('opt-tax-code'), '900L')
+    const e = estimate('900L')
+    const { annual } = engine()
+    expect(row('Estimated payslip net pay')).toBe(money(payslipNet(breakdown(annual, 'year'), e)))
+    expect(row('Take-home after the year-end adjustment')).toBe(money(annual.net))
+    choose('opt-period', 'month')
+    expect(row('Estimated payslip net pay')).toBe(money(payslipNet(breakdown(annual, 'month'), e)))
+    expect(row('Take-home after the year-end adjustment')).toBe(money(breakdown(annual, 'month').takeHome))
+    const note = $('[data-net-pay-note]')!.textContent ?? ''
+    expect(note.length).toBeGreaterThan(0)
+    expect(note).not.toMatch(/\d/)
+  })
+
+  it('the scenario bar sits in the inputs column, above the inputs', () => {
+    const bar = byText(view.host, 'button', 'Save')!.closest('section')!
+    const inputs = $('[data-inputs]')!
+    expect(inputs.contains(bar)).toBe(true)
+    expect(bar.compareDocumentPosition(box('opt-salary')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
+  it.each([
+    ['salary and bonus', { salary: fromPounds(52_000), bonus: fromPounds(4_000) }],
+    [
+      'every section',
+      {
+        salary: fromPounds(118_000),
+        pensionMethod: 'netPay',
+        employeeContribution: { mode: 'percentOfPay', amount: ZERO, percentOfPay: '6' },
+        taxableBenefits: [{ name: 'Car', period: 'year', value: fromPounds(3_200), taken: fromPounds(3_600), payment: 'beforeTax' }],
+        postTaxDeductions: [{ name: 'Dental', amount: fromPounds(18), period: 'month' }],
+        studentLoans: ['plan2'],
+        children: 2,
+        taxCode: '900L',
+      },
+    ],
+    ['scotland', { region: 'scotland', salary: fromPounds(64_000), studentLoans: ['plan4'], taxCode: 'S1100L' }],
+  ] as [string, Partial<OptimiserPageInputs>][])('shows the same results as before for %s', (_name, patch) => {
+    loadScenario('Case', { ...defaults, ...patch })
+    const { annual, weekly } = engine()
+    expect(row('Year')).toBe(money(annual.net))
+    expect(row('Week')).toBe(money(weekly.net))
+    for (const [label, value] of [
+      ['Gross pay', annual.gross],
+      ['Income tax', annual.incomeTax],
+      ['National Insurance', annual.nationalInsurance],
+      ['Take-home', annual.net],
+    ] as const)
+      expect(row(label), label).toBe(money(value))
+  })
+})
+
+describe('Optimiser page layout (0.12.0): item cards', () => {
+  it('a new item opens for editing with its name box focused; Done folds it to one line with its name and amounts', () => {
+    type(box('opt-salary'), '40,000')
+    const id = addItem('benefits', 'Medical', '45', 'month')
+    const edit = $(`#${id}-edit`) as HTMLButtonElement
+    expect(edit.getAttribute('aria-expanded')).toBe('true')
+    expect(edit.getAttribute('aria-controls')).toBe(`${id}-fields`)
+    click(edit)
+    expect(edit.getAttribute('aria-expanded')).toBe('false')
+    expect(($(`#${id}-fields`) as HTMLElement).hidden).toBe(true)
+    const header = $(`#${id}-summary`)!.textContent ?? ''
+    expect(header).toContain('Medical')
+    expect(header).toContain(money(fromPounds(45 * MONTHS_PER_YEAR)))
+  })
+
+  it('focuses the new item’s name when added', () => {
+    click(sectionButton('benefits'))
+    click($('#opt-deductions-add'))
+    const id = items('deductions').at(-1)!.id
+    expect(document.activeElement).toBe(box(`${id}-name`))
+  })
+
+  it('items in a loaded scenario show folded, and open in place to edit', () => {
+    loadScenario('Items', {
+      ...defaults,
+      salary: fromPounds(40_000),
+      postTaxDeductions: [{ name: 'Dental', amount: fromPounds(20), period: 'month' }],
+    })
+    const id = items('deductions')[0]!.id
+    expect(($(`#${id}-fields`) as HTMLElement).hidden).toBe(true)
+    click($(`#${id}-edit`))
+    expect(($(`#${id}-fields`) as HTMLElement).hidden).toBe(false)
+    expect(box(`${id}-name`).value).toBe('Dental')
+  })
+
+  it('an item with an input to fix stays open', () => {
+    const id = addItem('deductions', 'Gym', '30')
+    type(box(`${id}-amount`), '1.234')
+    click($(`#${id}-edit`))
+    expect(($(`#${id}-fields`) as HTMLElement).hidden).toBe(false)
+  })
+
+  it('Remove takes the item out and offers Undo, which puts it back where it was', () => {
+    type(box('opt-salary'), '40,000')
+    addItem('deductions', 'Gym', '30', 'month')
+    const second = addItem('deductions', 'Dental', '200')
+    addItem('deductions', 'Union', '10', 'month')
+    const before = row('Take-home')
+    click($(`#${second}-remove`))
+    expect(session.get().inputs.postTaxDeductions.map((i) => i.name)).toEqual(['Gym', 'Union'])
+    expect(toasts.get().toast?.message).toContain('“Dental”')
+    expect(toasts.get().toast?.undo).toBeDefined()
+    act(() => toasts.undo())
+    expect(session.get().inputs.postTaxDeductions.map((i) => i.name)).toEqual(['Gym', 'Dental', 'Union'])
+    expect(items('deductions')).toHaveLength(3)
+    expect(row('Take-home')).toBe(before)
+  })
+
+  it('Undo does nothing, and says so, once a different scenario is loaded', () => {
+    const id = addItem('deductions', 'Gym', '30')
+    click($(`#${id}-remove`))
+    loadScenario('Other', { ...defaults, salary: fromPounds(1) })
+    act(() => toasts.undo())
+    expect(session.get().inputs.postTaxDeductions).toEqual([])
+    expect(toasts.get().toast?.message).toMatch(/couldn’t undo/i)
   })
 })
 

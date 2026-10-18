@@ -4,6 +4,16 @@ All notable changes to Sumyard are listed here, newest first. The format follows
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-10-18
+
+### Changed
+- **A quicker take-home page.** Salary, bonus, where you live and the tax year are always shown; pension, benefits and deductions, student loans, Child Benefit and the tax code are in sections that show a one-line summary and open by themselves when filled in. Your take-home stays in view as you scroll: a bar at the top on a phone, a column beside the inputs on a wider screen.
+- Benefits and deductions are compact cards you edit in place, and Remove has Undo.
+
+### Added
+- **Where your pay goes.** A bar splits your gross pay into tax, National Insurance, student loan, pension, benefits, deductions and take-home, with the figures as text and as a table.
+- **Payslip net pay.** With a tax code, the take-home card shows your estimated payslip net pay beside your take-home after the year-end adjustment.
+
 ## [0.11.1] - 2026-10-18
 
 ### Fixed
