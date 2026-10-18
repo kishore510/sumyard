@@ -33,7 +33,8 @@ const sessions = new Map<string, ReturnType<typeof createSession>>()
 function createSession<I>(definition: CalculatorDefinition<I>) {
   const fresh = (revision: number): SessionState<I> => ({
     taxYear: settingsStore.get().taxYear,
-    inputs: definition.defaultInputs(),
+    // Settings supply the defaults a calculator asks for (its region), read at each fresh start.
+    inputs: definition.applySettings?.(definition.defaultInputs(), settingsStore.get()) ?? definition.defaultInputs(),
     loadedId: null,
     revision,
     taxYearWarning: null,
