@@ -402,10 +402,22 @@ const text = (label: string, value: string): SummaryRow => ({ label, value: { ki
 const noContribution = (): ContributionEntry => ({ mode: 'amount', amount: ZERO, percentOfPay: '0' })
 
 /**
- * STUB (red commit): version 2 to 3 (decision B16).
+ * Version 2 to 3 (decision B16): each benefit item keeps its name and period,
+ * with its amount as the value, nothing taken from pay (so an employer-paid
+ * benefit: the same taxable amount as before); deductions stay as they are;
+ * no tax code. Untrusted: hostile keys refuse it; a broken item is passed on
+ * as it is, for validation to reject; the result is validated after.
  */
 function migrateFromVersion2(old: unknown): unknown {
-  return old
+  if (!isRecord(old)) throw new Error('Version 2 inputs are not an object')
+  const hostile = checkUntrustedJson(old)
+  if (hostile) throw new Error(`Version 2 inputs are not safe to read: ${hostile}`)
+  const benefits = Array.isArray(old.taxableBenefits)
+    ? old.taxableBenefits.map((item: unknown) =>
+        isRecord(item) ? { name: item.name, period: item.period, value: item.amount, taken: 0, payment: 'beforeTax' } : item,
+      )
+    : old.taxableBenefits
+  return { ...old, taxableBenefits: benefits, taxCode: '' }
 }
 
 /**

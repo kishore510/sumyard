@@ -529,7 +529,7 @@ describe('Optimiser page: benefits taken from pay (B10)', () => {
     record.scenarios[0].inputs = v2
     localStorage.setItem(STORAGE_KEYS.scenarios.key, JSON.stringify(record))
     act(() => scenarioStore.reload())
-    click(byText(view.host, 'button', 'New'))
+    type(box('opt-salary'), '1')
     expect(row('Take-home')).not.toBe(money(expected))
     click($('button[aria-label="Load “Older”"]'))
     expect(row('Take-home')).toBe(money(expected))

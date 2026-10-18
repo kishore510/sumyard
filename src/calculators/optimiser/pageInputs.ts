@@ -86,7 +86,8 @@ export function listTotal(items: readonly ListItem[]): Money {
   return items.reduce((sum, item) => add(sum, annualAmount(item)), ZERO)
 }
 
-/** STUB (red commit): a benefit item's annual amounts for the engine. */
+/** A benefit item's annual amounts for the engine: a monthly value and amount taken each times the months in a year (B8, B10). */
 export function annualBenefit(item: BenefitItem): BenefitInput {
-  return { value: item.value, taken: ZERO, payment: item.payment }
+  const year = (amount: Money) => (item.period === 'month' ? mulRound(amount, MONTHS, 'nearest') : amount)
+  return { value: year(item.value), taken: year(item.taken), payment: item.payment }
 }

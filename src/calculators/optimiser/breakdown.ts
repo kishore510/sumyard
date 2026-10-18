@@ -1,8 +1,15 @@
-import type { Money } from '@/lib/money'
-import { ZERO } from '@/lib/money'
+import { type Money, mulRound, ratio, subtract, ZERO } from '@/lib/money'
+import { MONTHS_PER_YEAR } from '@/lib/periods'
 import type { PeriodView } from './types'
 
-/* STUB (red commit): the breakdown for a year or a month (decision B14). */
+/*
+ * The take-home breakdown for a year or a month (decision B14 in
+ * docs/modelling-decisions.md). A month is each yearly row divided by
+ * MONTHS_PER_YEAR (a calendar divisor from src/lib/periods.ts) to the
+ * nearest penny; take-home is gross less those rounded rows, so the month
+ * always adds up, and the difference from the year's take-home divided
+ * evenly is reported for the page to state. No tax figure here.
+ */
 
 export const BREAKDOWN_PERIODS = ['year', 'month'] as const
 export type BreakdownPeriod = (typeof BREAKDOWN_PERIODS)[number]
@@ -32,7 +39,14 @@ export interface Breakdown {
   readonly difference: Money
 }
 
+const MONTH = ratio(1, MONTHS_PER_YEAR)
+
+/** The breakdown of a take-home result's annual view, for the year or for a month. */
 export function breakdown(annual: PeriodView, period: BreakdownPeriod): Breakdown {
-  const rows = Object.fromEntries(DEDUCTION_ROWS.map((row) => [row, annual[row]])) as Record<DeductionRow, Money>
-  return { period, gross: annual.gross, rows, takeHome: annual.net, evenShare: annual.net, difference: ZERO }
+  const part = (amount: Money) => (period === 'year' ? amount : mulRound(amount, MONTH, 'nearest'))
+  const gross = part(annual.gross)
+  const rows = Object.fromEntries(DEDUCTION_ROWS.map((row) => [row, part(annual[row])])) as Record<DeductionRow, Money>
+  const takeHome = DEDUCTION_ROWS.reduce((left, row) => subtract(left, rows[row]), gross)
+  const evenShare = part(annual.net)
+  return { period, gross, rows, takeHome, evenShare, difference: period === 'year' ? ZERO : subtract(takeHome, evenShare) }
 }
