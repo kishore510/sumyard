@@ -114,6 +114,22 @@ Not mirrored: Jon's full adjusted income (it needs a defined benefit pension inp
 
 No GOV.UK page read in session 1b-i prints a numeric example with a taxable benefit in kind (Tax on company benefits, the medical benefits pages, the ANI guidance, NIM13090, CSLM16030; lines in `docs/verification-log.md`, "Session 1b-i lookups"), so none is mirrored. `src/calculators/optimiser/benefits.test.ts` checks the stated rules instead, against `fixtures/reference.ts`: a benefit adds to taxable pay and adjusted net income only; a post-tax deduction moves take-home and nothing else.
 
+## Benefits taken from pay and tax codes (0.11.0)
+
+Mirrored in `published.test.ts`. The figures are each page's own; none is a 2026 to 2027 rate.
+
+| Id | Year | Inputs | Published result | Source | Mirrored |
+|---|---|---|---|---|---|
+| BEN-1 | Not tied to a year | Medical insurance costing £500; salary of £600 given up | "The relevant amount is £600, being the greater of the cost of providing the benefit and the amount foregone" | EIM44120, https://www.gov.uk/hmrc-internal-manuals/employment-income-manual/eim44120 (also 480 Appendix 12, example 1) | **Yes**, the first step. The second (£100 made good on top) is not representable: an item gives up salary or pays after tax, not both (B10). |
+| BEN-2 | Not tied to a year | A workplace gym, otherwise exempt, for £300 of salary | "The cost of the benefit is treated as nil. The relevant amount is the salary foregone of £300." | Optional remuneration arrangements (480: Appendix 12), example 13, https://www.gov.uk/guidance/optional-remuneration-arrangements-480-appendix-12 | **Yes** (value entered as nothing). |
+| BEN-3 | Not tied to a year | Salary £35,000; £2,000 given up for childcare vouchers | "NICs will be due only on the £33,000 cash." | NIM02330, https://www.gov.uk/hmrc-internal-manuals/national-insurance-manual/nim02330 | **Yes**, NI-able pay only (the vouchers' exemption is not modelled). |
+| BEN-4 | 2021 to 2022 | A benefit of £2,500; £500 made good | "The amount of earnings chargeable to income tax is reduced to £2,000." | NIM15201, https://www.gov.uk/hmrc-internal-manuals/national-insurance-manual/nim15201 | **Yes** (after tax). |
+| TC-1 | Names 2025 to 2026 | Code 1257L; pay £27,000 a year | "can earn £12,570 before being taxed"; "their taxable income is £14,430" | Understanding your employees' tax codes, https://www.gov.uk/employee-tax-codes | **Yes** (the code's allowance and the year's taxable pay to date). |
+| TC-2 | Not tied to a year | A tax-free amount of £11,000 | "This would mean your tax code is 1100L." | Tax codes: What your tax code means, https://www.gov.uk/tax-codes/what-your-tax-code-means | **Yes**, read back from the code. |
+| TC-3 | Names 2025 to 2026 | Code K475; salary £27,000 | "has taxable income of £31,750" | Understanding your employees' tax codes | **No** for the figure (K codes are not modelled); the code is mirrored as not modelled. |
+
+No GOV.UK HTML page read gives a worked PAYE deduction for a month; the tables that do (Tables B to D) are PDFs not read (O11).
+
 ## HMRC cross-check harness
 
 `docs/hmrc-cross-checks.json` holds 72 input cases derived from the verified 2026-27 config: taper start less £1, at the start, plus £1, the zone's midpoint, the zero point and £10,000 above it; for rUK and Scotland; with no student loan and with each plan alone (1, 2, 4, 5, postgraduate). Every expected result is `null`, so `crossChecks.test.ts` lists each case as a todo. The owner fills them from HMRC's own online calculators (pounds strings, the calculator's www.gov.uk page and the date checked); a filled case is then compared with the engine, within the file's `tolerancePence` (0 now). The test fails if the cases drift from the config.
