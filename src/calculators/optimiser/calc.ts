@@ -31,6 +31,8 @@ import {
   type AnnualAllowanceChargeResult,
   type AnnualAllowanceResult,
   type BandSlice,
+  type BenefitInput,
+  type BenefitTotals,
   type CarryForwardUse,
   CHILD_BENEFIT_PAYMENTS,
   CHILDCARE_SCHEMES,
@@ -583,6 +585,18 @@ export function hicbc(ani: Money, children: ChildBenefitInput, config: TaxYearCo
   return computeHicbc(exact(ani), childBenefit, granted.values, policy, config.id)
 }
 
+/* Benefit items with what is taken from pay for them (decision B10). */
+
+/** STUB (red commit): the taxable amount of one benefit item. */
+export function benefitTaxable(_item: BenefitInput): Money {
+  return ZERO
+}
+
+/** STUB (red commit): benefit items summed for the year. */
+export function benefitTotals(_items: readonly BenefitInput[]): BenefitTotals {
+  return { taxable: ZERO, salaryGivenUp: ZERO, paidAfterTax: ZERO }
+}
+
 /* Take-home pay. */
 
 function view(period: PeriodView['period'], label: string, annual: Omit<PeriodView, 'period' | 'label'>, divisor: number): PeriodView {
@@ -591,11 +605,13 @@ function view(period: PeriodView['period'], label: string, annual: Omit<PeriodVi
     period,
     label,
     gross: part(annual.gross),
+    benefitSacrifice: part(annual.benefitSacrifice),
     incomeTax: part(annual.incomeTax),
     nationalInsurance: part(annual.nationalInsurance),
     studentLoan: part(annual.studentLoan),
     pension: part(annual.pension),
     hicbc: part(annual.hicbc),
+    benefitPayments: part(annual.benefitPayments),
     postTaxDeductions: part(annual.postTaxDeductions),
     net: part(annual.net),
     childBenefit: part(annual.childBenefit),
@@ -757,11 +773,13 @@ function computeTakeHome(
   )
   const annual = {
     gross: grossPay,
+    benefitSacrifice: ZERO,
     incomeTax: tax.total,
     nationalInsurance: ni.total,
     studentLoan: loans.total,
     pension: contribution,
     hicbc: hicbcCharge,
+    benefitPayments: ZERO,
     postTaxDeductions: deductions,
     net,
     childBenefit: received,
@@ -787,6 +805,8 @@ function computeTakeHome(
     pension: pension ? pensionResult(grossPay, effect, pension, taxYear) : null,
     adjustedNetIncome: aniResult(grossPay, effect, taxYear),
     hicbc: charge,
+    benefits: benefitTotals([]),
+    payrollPay: grossPay,
     annual: view('annual', 'Annual: the tax year’s figures', annual, 1),
     monthly: view('monthly', 'Monthly: each annual figure divided by the months in a year, to the nearest penny', annual, MONTHS_PER_YEAR),
     weekly: view('weekly', 'Weekly: each annual figure divided by the weeks in a year, to the nearest penny', annual, WEEKS_PER_YEAR),
@@ -976,6 +996,8 @@ const WARNINGS = {
   childcareOverLimit: 'Adjusted net income is over a childcare income limit: the support is lost entirely, not tapered.',
   takeHomeBelowNothing:
     'Take-home pay is below nothing: the deductions and the tax on benefits are more than the pay. It is shown as worked out, not capped.',
+  benefitSalarySacrifice:
+    'Some benefits taken through salary sacrifice keep a tax exemption or a different value (pension contributions, pensions advice, some childcare, cycle to work, low-emission cars). Each item here follows the general rule: taxed on the higher of its value and the salary given up.',
 } as const satisfies Record<EngineWarning['code'], string>
 
 const warn = (code: EngineWarning['code']): EngineWarning => ({ code, message: WARNINGS[code] })
