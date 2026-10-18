@@ -139,7 +139,7 @@ describe('auditTaxYear (on fake years)', () => {
 })
 
 describe('schema coverage', () => {
-  it('has a group for every area the slice 0.5 brief lists, plus the reserved savings and dividends slot', () => {
+  it('has a group for every area the slice 0.5 brief lists and the PAYE tax code unit (0.11.0), plus the reserved savings and dividends slot', () => {
     expect(TAX_GROUPS.map((g) => g.id)).toEqual([
       'period',
       'personal-allowance',
@@ -151,6 +151,7 @@ describe('schema coverage', () => {
       'pension',
       'child-benefit',
       'childcare',
+      'paye',
     ])
     expect(FAKE_TODO_YEAR.savingsAndDividends).toEqual({ reserved: true })
   })
@@ -187,6 +188,7 @@ describe('schema coverage', () => {
       'childBenefit.hicbc.fullChargeAt',
       'childcare.taxFreeChildcare.incomeLimit',
       'childcare.thirtyHours.incomeLimit',
+      'paye.codeUnit',
     ]) {
       expect(paths).toContain(path)
     }

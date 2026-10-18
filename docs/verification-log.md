@@ -28,7 +28,8 @@ Checked by Claude in slice 1a session E, from pages fetched on 17 October 2026. 
 | pension | 8 | 0 |
 | child-benefit | 5 | 0 |
 | childcare | 2 | 0 |
-| **All** | **38** | **0** |
+| paye | 1 | 0 |
+| **All** | **39** | **0** |
 
 ### OPEN questions
 
@@ -198,6 +199,7 @@ Could not be read (PDFs on assets.publishing.service.gov.uk, refused by this env
 | child-benefit | `childBenefit.hicbc.incomePerPercent` | £200 | High Income Child Benefit Charge | https://www.gov.uk/child-benefit-tax-charge | 2026-10-17 | "You’ll pay back 1% of your Child Benefit for every £200 you earn over £60,000." | PAYE14015: Coding: adjustments to collect tax: high income child benefit charge (HMRC PAYE Manual), https://www.gov.uk/hmrc-internal-manuals/paye-manual/paye14015: "For tax years from 2024 to 2025 and onwards ... One per cent of the full Child Benefit award, for each £200 of income which falls between £60,000 and £80,000". | verified | SCHEMA CHANGE (new leaf). Whether a part of £200 counts, and how the charge is rounded: OPEN O4. |
 | childcare | `childcare.taxFreeChildcare.incomeLimit` | £100,000 | Tax-Free Childcare: Check if you're eligible | https://www.gov.uk/tax-free-childcare/check-if-youre-eligible | 2026-10-17 | "you or your partner’s expected adjusted net income (including any foreign income) is over £100,000 for the current tax year" | None found: the same guide's printable version repeats it. | verified | Single source. The page says "the current tax year", read on 17 October 2026 (in 2026 to 2027); its minimum-income figures match the 2026 to 2027 National Living Wage on the employers page, which supports that the page is current. Expected ANI, each partner separately. Minimum earnings and other conditions not stored: OPEN O7. |
 | childcare | `childcare.thirtyHours.incomeLimit` | £100,000 | Free Childcare for Working Parents: Check if you're eligible | https://www.gov.uk/free-childcare-if-working/check-youre-eligible | 2026-10-17 | "you or your partner’s expected adjusted net income (including any foreign income) is over £100,000 for the current tax year" | Same page, fostering section: "your ‘adjusted net income’ is under £100,000" (not independent). | verified | Single source; "current tax year" as for Tax-Free Childcare. England only ("you must live in England"); Scotland, Wales and Northern Ireland have different schemes, not modelled. OPEN O7. |
+| paye | `paye.codeUnit` | £10 of tax-free pay per unit of the code number | Understanding your employees' tax codes | https://www.gov.uk/employee-tax-codes | 2026-10-18 | "You usually multiply the number in the tax code by 10 to get the total amount of income they can earn before being taxed."; "For example, an employee with the tax code 1257L can earn £12,570 before being taxed." | Tax codes: What your tax code means, https://www.gov.uk/tax-codes/what-your-tax-code-means: "They then replace the final digit with a letter." ("a tax-free amount of £11,000. This would mean your tax code is 1100L"). PAYE11015, https://www.gov.uk/hmrc-internal-manuals/paye-manual/paye11015: "The number is the Personal allowance without the final figure". | verified | Added in the 0.11.0 session, read on 18 October 2026. A standing rule: neither page ties it to a tax year (the first page's example names 2025 to 2026), so it is logged as the rule in force, not a 2026 to 2027 figure; for the owner to confirm. The free pay employers use is in Tables A, a PDF not read (O10). |
 
 ### Published but not stored
 
@@ -234,4 +236,5 @@ Figures read in session E that the schema does not hold. None is used by Sumyard
 ### Pages that could not be read
 
 - HMRC PDFs on `assets.publishing.service.gov.uk` (CA38 National Insurance tables 2026 to 2027, CA44 National Insurance for company directors 2026 to 2027, Taxable pay tables B to D 2026 to 2027): the request was refused by this environment's network proxy (HTTP 403). They would cover NI rounding by table, directors' annual earnings periods and income tax rounding in PAYE. Their GOV.UK publication pages were read.
+- Tables A: Pay adjustment tables and the 2026 to 2027 taxable pay tables (Tables B to D), PDFs on `assets.publishing.service.gov.uk`, in the 0.11.0 session: refused by the network (O10, O11).
 - legislation.gov.uk and gov.scot were not consulted (source rules).
