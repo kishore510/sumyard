@@ -185,3 +185,28 @@ There is no tax code input. Tax is modelled on the year's liability (D1), howeve
 - Gross pay is the salary plus any bonus, as two Money inputs added together. The engine takes one `grossPay`.
 - The employer pension contribution (other than a salary sacrifice) is stored with the inputs for 1b-ii's annual allowance display. It changes no take-home figure, so the page shows it only in the inputs and the pension summary.
 - Region and tax year start from Settings. Each calculator page can override them.
+
+## Slice 1b, part 1b-i.1 (percentages, itemised benefits and deductions, monthly entry)
+
+The owner's decisions were given at the start of part 1b-i.1 (18 October 2026). They are about how the page collects inputs, not tax rules: the engine, the config and every tax rule are unchanged, and the engine still receives one annual total for each of the employee contribution, taxable benefits and post-tax deductions. Code: `src/calculators/optimiser/pageInputs.ts` (resolving the inputs), `definition.ts` (storage, validation, migration, summary) and `OptimiserPage.tsx`.
+
+### B6. Pension contributions as an amount or a percentage of pensionable pay (owner)
+
+- The employee and the employer contribution can each be entered as an amount for the year or as a percentage of pensionable pay. Each keeps both entries, so switching back and forth loses nothing; the mode says which one counts.
+- **Pensionable pay** is the salary unless the person enters their own annual figure. The bonus is added only when the "include bonus" switch is on (it adds to whichever figure is used). It is used only for percentage contributions.
+- A percentage is stored as its canonical text and read with `percentRatio` (`src/lib/parse.ts`). The amount is pensionable pay times the exact Ratio, through `mulRound` (`src/lib/money.ts`), rounded to the **nearest** penny (an exact half penny rounds up). GOV.UK states no rule for this: it is the scheme's or the employer's arithmetic, so this is a modelling decision, not a tax rule. A scheme that rounds differently can differ by a penny.
+- The page shows the resolved amount for the year. A percentage above all of pensionable pay is accepted with a warning; a resolved employee contribution above pay shows the existing input notice (G1's refusal).
+
+### B7. Itemised benefits in kind and post-tax deductions (owner)
+
+- Taxable benefits in kind (B1) and post-tax deductions (B2) are each a list of up to `MAX_LIST_ITEMS` named items (`src/lib/inputLimits.ts`). An item has a name (text only, at most `MAX_ITEM_NAME_LENGTH` characters, shown only as text), an amount and a period: per month or per year. An empty list means nothing.
+- The list's annual total goes to the engine as `taxableBenefits` or `postTaxDeductions`, so any mix of items with the same annual total gives the same results as one annual figure.
+- An item with no amount is allowed, with a warning that it adds nothing. A negative amount is not accepted (an input error, as for every other amount on the page).
+
+### B8. Monthly amounts (owner)
+
+A monthly amount is multiplied by `MONTHS_PER_YEAR` from `src/lib/periods.ts` (a calendar divisor, not a tax figure), exactly (no rounding is needed). The assumptions say: "Monthly amounts are assumed level through the year."
+
+### B9. Inputs version 2 and the migration (owner)
+
+Inputs version 2 replaces version 1's single annual amounts. A version 1 scenario migrates with identical results: each pension contribution becomes amount mode with the same amount; a non-zero benefits or deductions amount becomes one item per year, named "Benefits in kind" or "Post-tax deductions"; a zero amount becomes an empty list (the prompt asked for one item each; an item of nothing would only add a warning). Pensionable pay starts as the salary, without the bonus. Inputs from a newer version are refused, as before.
