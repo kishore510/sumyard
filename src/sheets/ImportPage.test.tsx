@@ -17,7 +17,7 @@ const scenario = (id: string, name: string, calculatorId = 'optimiser') => ({
   taxYear: '2026-27',
   name,
   inputs: optimiserCalculator.defaultInputs(),
-  inputsVersion: 1,
+  inputsVersion: optimiserCalculator.inputsVersion,
   createdAt: '2026-10-17T10:00:00.000Z',
   updatedAt: '2026-10-17T10:00:00.000Z',
 })

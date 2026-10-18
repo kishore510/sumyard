@@ -4,6 +4,15 @@ All notable changes to Sumyard are listed here, newest first. The format follows
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-10-18
+
+### Added
+- **Pension as a percentage.** Enter your pension contribution, and your employer's, as an amount for the year or as a percentage of your pensionable pay: your salary, or your own figure, with the bonus only if you include it. The page shows what it comes to.
+- **Benefits and deductions as items.** Add each benefit in kind and each post-tax deduction as its own named item, per month or per year, with a running total for the year. A warning shows if an item has no amount, or a percentage is more than all of your pay.
+
+### Changed
+- Scenarios you saved before open as before, with the same take-home: your benefits and deductions become one yearly item each.
+
 ## [0.9.0] - 2026-10-18
 
 ### Added

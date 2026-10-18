@@ -1,6 +1,6 @@
 # Phase plan: Sumyard
 
-Last updated: 18 October 2026 (slice 1b session 1b-i: the first usable calculator, take-home pay with taxable benefits and post-tax deductions, 0.9.0; slice 1a Done with the HMRC cross-checks pending; slice 1b In progress, 1b-ii next)
+Last updated: 18 October 2026 (slice 1b part 1b-i.1: pension contributions as a percentage of pensionable pay, itemised benefits and deductions per month or per year, inputs version 2, 0.10.0; slice 1b In progress)
 
 Draft roadmap. When a slice starts, rewrite its prompt against the real code (see the skeleton in PHASE-BRIEF.md). Do not treat these notes as final prompts.
 
@@ -24,7 +24,7 @@ Status values: Not started, In progress, Done (version, PR, date).
 
 | Calculator | Notes | Status |
 |---|---|---|
-| Take-home pay | Shipped as the first part of 1b (session 1b-i, 0.9.0) at `#/c/optimiser`; 1b-ii adds the optimiser to the same page | In progress |
+| Take-home pay | Shipped as the first part of 1b (session 1b-i, 0.9.0) at `#/c/optimiser`; percentages and itemised lists in 1b-i.1 (0.10.0); 1b-ii adds the optimiser to the same page | In progress |
 | Mortgage overpayment | Check daily vs monthly interest handling per lender | Not started |
 | Loan / APR | Verify the APR definition against official guidance | Not started |
 | ISA vs pension vs mortgage | Builds on 1b and the overpayment calculator | Not started |
@@ -222,6 +222,14 @@ Engine (pure functions, tests first: red commit, then green).
 ### 1b Optimiser: UI
 
 - **Progress (18 October 2026).** Runs as two sessions. **Session 1b-i done (0.9.0, user-visible):** the engine gains taxable benefits in kind and post-tax deductions (owner decisions B1 to B5, GOV.UK lookups in `docs/verification-log.md`, "Session 1b-i lookups"); the take-home page at `#/c/optimiser` (inputs, take-home for the year, month and week, a breakdown that adds up, warnings, refusal, assumptions, scenarios, Help topic); the Hello placeholder removed (its stored scenarios kept but hidden). **Session 1b-ii next:** `optimise()` on the page (take-home against contribution chart with cliffs and threshold markers, cost of £1 more pension, thresholds in words, the annual allowance and childcare panels, current against a chosen contribution in compare).
+- **Part 1b-i.1 done (0.10.0, user-visible, 18 October 2026):** owner decisions B6 to B9 (`docs/modelling-decisions.md`). Employee and employer pension contributions as an amount or a percentage of pensionable pay (the salary or the person's own figure, the bonus only if included; nearest penny, a modelling decision); taxable benefits in kind and post-tax deductions as lists of named items, per month or per year (monthly times `MONTHS_PER_YEAR`); the resolved amounts shown on the page; input warnings (a percentage above all of pay, an item with no amount); inputs version 2 with a migration that gives identical results; compare shows the resolved totals, modes and item names. No engine, config or tax rule change. A shared `TextInput` (`src/components/inputs/`) for item names.
+- **What changed from the 1b-i.1 prompt:**
+  - A version 1 amount of nothing migrates to an empty list, not one item of nothing (which would only add a warning).
+  - A negative item amount is an input error (as everywhere on the page), so the warning covers an item with no amount only; it applies to both lists.
+  - Pensionable pay is shown only when a contribution is a percentage; "include the bonus" adds the bonus to the person's own figure too.
+  - The percentage input accepts up to `MAX_PERCENT_INPUT` (ten times pay) so the warning above all of pay can show; more is an input error.
+  - The page test's no-figures check now matches "per cent" or "percent" as a word, so names like `PercentInput` pass; the literal guard is unchanged.
+- **Rollback (1b-i.1):** revert the 0.10.0 PR. Scenarios saved at inputs version 2 would then be refused as newer ("saved by a newer version") and kept but hidden; version 1 scenarios are untouched until re-saved. No storage key changed.
 - **What changed from these notes (1b-i):**
   - The page is titled "Take-home pay" for now; it keeps the id `optimiser` so 1b-ii adds the sweep to the same page and scenarios carry over (inputs version 1).
   - Two inputs not in these notes: taxable benefits in kind (taxable pay and ANI only; Class 1A, so not NI or student loan) and post-tax deductions (take-home only). No tax code input.
@@ -252,6 +260,8 @@ Engine (pure functions, tests first: red commit, then green).
 - Relief at source as a band extension (G2): now stated on GOV.UK (PTM056120, found in G2).
 - Slice 1a is Done (marked in 1b-i at the owner's request); the 72 HMRC cross-checks in `docs/hmrc-cross-checks.json` are still pending.
 - Taxable benefits in kind: the owner has not yet confirmed the value from an annual statement (decision B1); a payslip check over the year will show any mismatch.
+- Percentage contributions round to the nearest penny (B6, a modelling decision: GOV.UK states no rule). If the owner's payslip shows a scheme rounding another way, change the one mode in `pageInputs.ts`.
+- Order of the next sessions: the owner's 0.11.0 prompt (benefits through salary sacrifice, tax code and PAYE estimate, monthly breakdown) assumed this part's item lists; it can now run, before or after 1b-ii.
 - The alternative annual allowance for 2023-24 onwards: PTM056510 says £30,000, the MPAA guidance and Pension schemes rates say £50,000. Not used (money purchase savings only); matters only if defined benefit savings are modelled.
 - HMRC cross-checks: 72 cases in `docs/hmrc-cross-checks.json` wait for the owner's figures from HMRC's calculators.
 - URL-hash state sharing (a shareable link of inputs, local only): in or out.

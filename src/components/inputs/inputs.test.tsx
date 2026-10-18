@@ -8,6 +8,7 @@ import { NumberInput } from './NumberInput'
 import { PercentInput } from './PercentInput'
 import { Segmented } from './Segmented'
 import { Select } from './Select'
+import { TextInput } from './TextInput'
 import { Toggle } from './Toggle'
 
 let view: ReturnType<typeof mount> | undefined
@@ -110,6 +111,24 @@ describe('PercentInput and NumberInput', () => {
     expect(onChange).toHaveBeenLastCalledWith(4)
     type(input(), '2.5')
     expect(view.host.querySelector('#n-error')!.textContent).toBe('Enter a whole number.')
+  })
+})
+
+describe('TextInput', () => {
+  it('passes tidy text and refuses more than maxLength characters with a tied error', () => {
+    const onChange = vi.fn()
+    const onValidityChange = vi.fn()
+    view = mount(<TextInput id="t" label="Name" value="" maxLength={5} onChange={onChange} onValidityChange={onValidityChange} />)
+    expect(input().getAttribute('inputmode')).toBe('text')
+    expect(view.host.querySelector('label[for="t"]')!.textContent).toBe('Name')
+    type(input(), '  a\u0007  b ')
+    expect(onChange).toHaveBeenLastCalledWith('a b')
+    type(input(), 'abcdef')
+    expect(onValidityChange).toHaveBeenLastCalledWith(false)
+    expect(view.host.querySelector('#t-error')!.textContent).toBe('Use at most 5 characters.')
+    expect(input().getAttribute('aria-describedby')).toBe('t-error')
+    type(input(), '😀😀😀😀😀')
+    expect(onChange).toHaveBeenLastCalledWith('😀😀😀😀😀')
   })
 })
 

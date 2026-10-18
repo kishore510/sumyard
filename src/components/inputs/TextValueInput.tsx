@@ -39,7 +39,7 @@ export function TextValueInput<T extends string | number>({
   format: (value: T) => string
   prefix?: string
   suffix?: string
-  inputMode: 'decimal' | 'numeric'
+  inputMode: 'decimal' | 'numeric' | 'text'
 }) {
   const [text, setText] = useState(() => format(value))
   const [error, setError] = useState<string | null>(null)

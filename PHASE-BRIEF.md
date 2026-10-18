@@ -1,6 +1,6 @@
 # PHASE-BRIEF: Slice 1b Optimiser: UI
 
-Status: In progress. **Session 1b-i is done (0.9.0, user-visible):** the first usable calculator, take-home pay at `#/c/optimiser`, with taxable benefits in kind and post-tax deductions in the engine, and the Hello placeholder removed. **Session 1b-ii is next:** the optimiser itself on the same page. Slice 1a is Done (0.8.0, PR #8), with the HMRC cross-checks still pending. Rewritten at the start of every slice; roadmap and status live in `PLAN.md`. Slice 1a's brief and progress log are archived below, above slice 0.5's and slice 0's.
+Status: In progress. **Session 1b-i is done (0.9.0, user-visible):** the first usable calculator, take-home pay at `#/c/optimiser`, with taxable benefits in kind and post-tax deductions in the engine, and the Hello placeholder removed. **Part 1b-i.1 is done (0.10.0, user-visible):** pension contributions as a percentage of pensionable pay, and benefits in kind and post-tax deductions as lists of named items per month or per year (inputs version 2). **Next:** the owner's 0.11.0 prompt (benefits through salary sacrifice, tax code and PAYE estimate, monthly breakdown) or session 1b-ii (the optimiser itself on the same page), in the owner's order. Slice 1a is Done (0.8.0, PR #8), with the HMRC cross-checks still pending. Rewritten at the start of every slice; roadmap and status live in `PLAN.md`. Slice 1a's brief and progress log are archived below, above slice 0.5's and slice 0's.
 
 ## Docs rule
 
@@ -21,11 +21,21 @@ The £100k+ optimiser page, built from shared components on the slice 1a engine:
 
 Charts, candidate points, threshold markers, annual allowance and childcare displays, tax codes, per-period payroll, any config change, any other tax year.
 
+## Part 1b-i.1: percentages, itemised benefits and deductions, monthly entry (0.10.0)
+
+### Scope
+
+Page and definition only (no engine, config or tax rule change), tests first: contribution mode (amount or percentage of pensionable pay) for the employee and employer; an optional pensionable pay with a bonus switch; benefits in kind and post-tax deductions as lists of up to `MAX_LIST_ITEMS` named items, per month or per year; resolved amounts shown; input warnings; inputs version 2 with a migration giving identical results; compare and summarise; assumptions and Help. Owner decisions B6 to B9.
+
+### Out of scope
+
+Charts, candidate points, the optimiser, per-pay-period payroll, tax codes, any engine or config change, salary sacrifice for benefits, any other year.
+
 ## Next: session 1b-ii (the optimiser on the page)
 
-What 1b-ii picks up, on the same page and inputs (version 1; bump and migrate only if the stored shape changes):
+What 1b-ii picks up, on the same page and inputs (version 2; bump and migrate only if the stored shape changes). The owner's 0.11.0 prompt (benefits through salary sacrifice, tax code, PAYE estimate, monthly breakdown) may run first; if it does, 1b-ii starts from its inputs version.
 
-- `optimise(inputs, config, policy, options?)` from the page inputs: `toTaxInputs` plus `pension` (the method and current contribution), `savings` (the stored `employerContribution`, carry forward and the MPAA flag as new inputs) and `checkChildcare`.
+- `optimise(inputs, config, policy, options?)` from the page inputs: `toTaxInputs` plus `pension` (the method and the resolved current contribution, from `resolveInputs`), `savings` (the resolved `employerContribution`, carry forward and the MPAA flag as new inputs) and `checkChildcare`. A sweep over contributions is in amounts; a contribution entered as a percentage can be shown as a percentage of pensionable pay beside it.
 - The take-home (or spendable) against contribution chart from `points`, markers for `current`, `maximum` and each threshold, `cliffs` drawn as labelled jumps, a table fallback (the shared `Chart`).
 - "Cost of £1 more pension" from `netCostPerPound` and `marginalRate`, labelled with what each is measured against.
 - Thresholds in words from `thresholds` ("already under", "contribute £X more", "out of reach" with the reason); the HICBC full-charge point said plainly (the charge first falls a penny below it).
@@ -36,6 +46,21 @@ What 1b-ii picks up, on the same page and inputs (version 1; bump and migrate on
 ## Progress log
 
 Add one entry per session: date, what was done, what differs from the brief, what the next session should pick up, and which docs were updated.
+
+- **18 October 2026, build part 1b-i.1 (percentages, itemised benefits and deductions, monthly entry). Version 0.10.0, user-visible.**
+  - Pre-check: PR #10 merged; its Pages deploy (run 39098710380) succeeded. Names and signatures confirmed in the code: `OptimiserPageInputs` (version 1: single `employeeContribution`, `employerContribution`, `taxableBenefits`, `postTaxDeductions` amounts), `toTaxInputs`, `calculateTakeHome`, `MONTHS_PER_YEAR` (`src/lib/periods.ts`), `MAX_INPUT_AMOUNT` and `MAX_CHILDREN` (`inputLimits.ts`), `parsePercentText`, `percentRatio` and `isCanonicalPercent` (`parse.ts`), `PercentInput`, `mulRound`. They match the prompt. An earlier prompt for 0.11.0 assumed this part had run; it was stopped at its pre-check with no changes.
+  - Done (decisions `a8cf88b`; red `c4b97e4`; green `b79efd5`; then the close-out):
+    - [x] Owner decisions B6 to B9 in `docs/modelling-decisions.md`.
+    - [x] `pageInputs.ts`: pensionable pay, contributions resolved to the nearest penny through `mulRound`, monthly items times `MONTHS_PER_YEAR`, list totals.
+    - [x] `definition.ts`: inputs version 2; `validateInputs` builds fresh objects (contributions, pensionable pay, items with names tidied by `cleanText`), rejects hostile keys, over-long names, bad modes, percentages and periods, and too many items; the version 1 migration; `resolveInputs`, `inputWarnings`; summarise with resolved totals, modes, the percentage as a ratio row and item names as text.
+    - [x] Page: mode switch (Segmented) per contribution with `PercentInput` and the resolved amount; pensionable pay (own figure, bonus switch) when a percentage is used; two item lists (numbered fieldsets with name, amount, per month or per year, Remove; Add disabled at the limit with the reason; each item's annual amount and the running total); input warnings above the results; three new assumptions. Fields that leave the page (a mode switch, a removed item) clear their invalid state. A shared `TextInput` for names.
+    - [x] Tests (`pageInputs.test.ts`, `definition.test.ts`, `OptimiserPage.test.tsx`, `inputs.test.tsx`): the prompt's list, including a nearest-versus-down rounding case, a version 1 scenario loading with identical take-home through storage, and the any-mix-of-items property (150 random cases). Literal guard unchanged and passing (it now also scans `pageInputs.ts`). Mutation spot-checks: rounding down (2 fail), the bonus always included (5), month and year swapped (17).
+    - [x] Chromium (vite preview) at 360, 768 and 1280 px, light and dark, five states including 80-character names at 360 px and a full list (30 runs): axe found no violations; no horizontal scroll; no external requests; no console errors; controls at least 44 px. One fix: item legends are numbered instead of showing the name.
+    - [x] `test` (1,322 passed, 72 todo), `lint`, `typecheck`, `build` pass.
+  - Differences from the prompt (also in `PLAN.md`): a version 1 zero migrates to an empty list; a negative item amount is an input error, so the warning is for an item with no amount, in both lists; pensionable pay shows only with a percentage and the bonus switch applies to the own figure too; percentages accepted up to ten times pay (`MAX_PERCENT_INPUT`) so the over-all-of-pay warning can show; the page test's no-figures regex matches "per cent" as a word only; `ImportPage.test.tsx` uses the current inputs version for its example.
+  - Not verified: the rounding against a real scheme's payslip; real devices, Safari, Firefox, a screen reader; the deployed site.
+  - Next: the owner's 0.11.0 prompt or 1b-ii (above).
+  - Docs updated: `PHASE-BRIEF.md`, `PLAN.md`, `CHANGELOG.md` (0.10.0), `docs/modelling-decisions.md` (B6 to B9), `docs/performance.md`, `src/calculators/optimiser/README.md`, `src/lib/README.md`, Help (`take-home-pay`). `CLAUDE.md` unchanged (no rule changed). About > Privacy unchanged: no storage key changed. No config value touched, so no verification log or worked example change.
 
 - **18 October 2026, build session 1b-i (take-home page, benefits in kind, post-tax deductions). Version 0.9.0, user-visible.**
   - Pre-check: PR #8 merged. Its own Pages deploy (run 39079146654) failed on a test timeout; PR #9 fixed it and its deploy (run 39079341182) succeeded. Names and signatures confirmed in the code: `takeHome(inputs, config, policy)`, `TaxInputs { grossPay, region, studentLoans, pension?, childBenefit? }`, `ModellingPolicy { taperRounding, childBenefitWeeks }`, `DEFAULT_POLICY`, `requireVerified(config, paths)`, `createCalculatorRegistry`, `defineCalculator`, `sessionFor`, and the shared components the prompt names. No existing field covered either new input. `TaxInputs` has no bonus or employer contribution: the page adds bonus to salary for `grossPay`; the employer contribution lives in `OptimiserInputs.savings` (1b-ii) and is stored by the page now.
@@ -166,6 +191,21 @@ Rewrite this brief for 1b at its start, against the real code. What 1b picks up 
 ### Progress log
 
 Add one entry per session: date, what was done, what differs from the brief, what the next session should pick up, and which docs were updated.
+
+- **18 October 2026, build part 1b-i.1 (percentages, itemised benefits and deductions, monthly entry). Version 0.10.0, user-visible.**
+  - Pre-check: PR #10 merged; its Pages deploy (run 39098710380) succeeded. Names and signatures confirmed in the code: `OptimiserPageInputs` (version 1: single `employeeContribution`, `employerContribution`, `taxableBenefits`, `postTaxDeductions` amounts), `toTaxInputs`, `calculateTakeHome`, `MONTHS_PER_YEAR` (`src/lib/periods.ts`), `MAX_INPUT_AMOUNT` and `MAX_CHILDREN` (`inputLimits.ts`), `parsePercentText`, `percentRatio` and `isCanonicalPercent` (`parse.ts`), `PercentInput`, `mulRound`. They match the prompt. An earlier prompt for 0.11.0 assumed this part had run; it was stopped at its pre-check with no changes.
+  - Done (decisions `a8cf88b`; red `c4b97e4`; green `b79efd5`; then the close-out):
+    - [x] Owner decisions B6 to B9 in `docs/modelling-decisions.md`.
+    - [x] `pageInputs.ts`: pensionable pay, contributions resolved to the nearest penny through `mulRound`, monthly items times `MONTHS_PER_YEAR`, list totals.
+    - [x] `definition.ts`: inputs version 2; `validateInputs` builds fresh objects (contributions, pensionable pay, items with names tidied by `cleanText`), rejects hostile keys, over-long names, bad modes, percentages and periods, and too many items; the version 1 migration; `resolveInputs`, `inputWarnings`; summarise with resolved totals, modes, the percentage as a ratio row and item names as text.
+    - [x] Page: mode switch (Segmented) per contribution with `PercentInput` and the resolved amount; pensionable pay (own figure, bonus switch) when a percentage is used; two item lists (numbered fieldsets with name, amount, per month or per year, Remove; Add disabled at the limit with the reason; each item's annual amount and the running total); input warnings above the results; three new assumptions. Fields that leave the page (a mode switch, a removed item) clear their invalid state. A shared `TextInput` for names.
+    - [x] Tests (`pageInputs.test.ts`, `definition.test.ts`, `OptimiserPage.test.tsx`, `inputs.test.tsx`): the prompt's list, including a nearest-versus-down rounding case, a version 1 scenario loading with identical take-home through storage, and the any-mix-of-items property (150 random cases). Literal guard unchanged and passing (it now also scans `pageInputs.ts`). Mutation spot-checks: rounding down (2 fail), the bonus always included (5), month and year swapped (17).
+    - [x] Chromium (vite preview) at 360, 768 and 1280 px, light and dark, five states including 80-character names at 360 px and a full list (30 runs): axe found no violations; no horizontal scroll; no external requests; no console errors; controls at least 44 px. One fix: item legends are numbered instead of showing the name.
+    - [x] `test` (1,322 passed, 72 todo), `lint`, `typecheck`, `build` pass.
+  - Differences from the prompt (also in `PLAN.md`): a version 1 zero migrates to an empty list; a negative item amount is an input error, so the warning is for an item with no amount, in both lists; pensionable pay shows only with a percentage and the bonus switch applies to the own figure too; percentages accepted up to ten times pay (`MAX_PERCENT_INPUT`) so the over-all-of-pay warning can show; the page test's no-figures regex matches "per cent" as a word only; `ImportPage.test.tsx` uses the current inputs version for its example.
+  - Not verified: the rounding against a real scheme's payslip; real devices, Safari, Firefox, a screen reader; the deployed site.
+  - Next: the owner's 0.11.0 prompt or 1b-ii (above).
+  - Docs updated: `PHASE-BRIEF.md`, `PLAN.md`, `CHANGELOG.md` (0.10.0), `docs/modelling-decisions.md` (B6 to B9), `docs/performance.md`, `src/calculators/optimiser/README.md`, `src/lib/README.md`, Help (`take-home-pay`). `CLAUDE.md` unchanged (no rule changed). About > Privacy unchanged: no storage key changed. No config value touched, so no verification log or worked example change.
 
 - **17 October 2026, build session G2 (annual allowance, carry forward, childcare, `optimise()`). Version 0.8.0, internal.**
   - Pre-check: PR #7 merged; its Pages deploy (run 39076987400) succeeded. Names and signatures confirmed in the code (listed under "Session G2" above); they match the prompt.
