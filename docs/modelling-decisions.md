@@ -176,9 +176,9 @@ An optional annual input, `TaxInputs.postTaxDeductions`, default zero: amounts t
 
 Flexible-benefit cash is entered as salary (in gross pay). There is no special handling.
 
-### B4. No tax code (owner)
+### B4. No tax code (owner; superseded by B11 in 0.11.0)
 
-There is no tax code input. Tax is modelled on the year's liability (D1), however PAYE collects it: through the tax code, by payrolling the benefit, or through Self Assessment. PAYE deductions may differ slightly, and the assumptions say so.
+There was no tax code input until 0.11.0 (B11). Tax is modelled on the year's liability (D1), however PAYE collects it: through the tax code, by payrolling the benefit, or through Self Assessment. PAYE deductions may differ slightly, and the assumptions say so.
 
 ### B5. The page's inputs (session 1b-i)
 
@@ -210,3 +210,56 @@ A monthly amount is multiplied by `MONTHS_PER_YEAR` from `src/lib/periods.ts` (a
 ### B9. Inputs version 2 and the migration (owner)
 
 Inputs version 2 replaces version 1's single annual amounts. A version 1 scenario migrates with identical results: each pension contribution becomes amount mode with the same amount; a non-zero benefits or deductions amount becomes one item per year, named "Benefits in kind" or "Post-tax deductions"; a zero amount becomes an empty list (the prompt asked for one item each; an item of nothing would only add a warning). Pensionable pay starts as the salary, without the bonus. Inputs from a newer version are refused, as before.
+
+## Slice 1b, 0.11.0 (benefits through salary sacrifice, tax code and PAYE estimate, monthly breakdown)
+
+The owner's decisions were given at the start of the 0.11.0 session (18 October 2026). The GOV.UK lookups were read that day, with exact lines in `docs/verification-log.md`, "Session 0.11.0 lookups". Code: `src/calculators/optimiser/calc.ts` (benefits), `paye.ts` (tax codes and the PAYE estimate), `breakdown.ts` (the monthly breakdown), `definition.ts`, `pageInputs.ts` and `OptimiserPage.tsx`. A GOV.UK page that contradicts one of these wins, and is reported.
+
+### B10. Benefit items: value, amount taken from pay, and how it is taken (owner; treatment from GOV.UK)
+
+Each benefit in kind is an item with a name, a period (per month or per year, B8), **the value of the benefit**, **the amount taken from pay**, and **how it is taken**: before tax and National Insurance (salary sacrifice, an optional remuneration arrangement) or after tax (a contribution from net pay, which GOV.UK calls making good). An amount taken of nothing is an employer-paid benefit. Post-tax deductions with no benefit stay a separate list (B2). The engine takes the items as annual amounts (`TaxInputs.benefits`) and sums them per item:
+
+| How taken | Taxable amount (added to taxable pay and adjusted net income) | Salary given up (off taxable pay, NI-able pay, the student loan base and take-home) | Paid from net pay (off take-home only) | Sources |
+|---|---|---|---|---|
+| Nothing taken | The value | Nothing | Nothing | B1 |
+| Before tax and NI | The greater of the value and the salary given up (the "relevant amount") | The amount taken | Nothing | 480 Appendix 12; EIM44120; Salary sacrifice for employers |
+| After tax | The value less the amount taken, never below nothing | Nothing | The amount taken | EIM21119; NIM15201 |
+
+- **The value** is the benefit's value under the normal rules, ignoring anything paid towards it, as the employer works it out (EIM44120: "do not account for any amount made good"). The engine does not value benefits.
+- **Salary given up** is not earnings for Class 1 (NIM02330: "NICs will be due only on the £33,000 cash"), so it lowers employee NI-able pay and, through the employer's secondary Class 1 earnings, the student loan base (G6). The benefit itself is Class 1A, the employer's (NIM02330, B1); no amount is shown. It is not added back to threshold income for the annual allowance (PTM057100 adds back only salary sacrificed for pension provision) and it is not pension savings.
+- **Exemptions are not modelled.** The general rule applies to every item. GOV.UK names benefits that keep their exemption through salary sacrifice (pension contributions and pensions advice, workplace nurseries and older childcare vouchers and employer-contracted childcare, cycles and cyclist's safety equipment) and low-emission cars that keep the normal valuation; an otherwise exempt benefit through salary sacrifice is taxed on the salary given up. The page warns whenever an item is taken before tax, and tells people to enter pension contributions in the pension inputs.
+- **Making good in time:** a contribution counts only if made by the date EIM21119 gives after the tax year; the assumptions say it is assumed made in time. An item that both gives up salary and makes good (EIM44120's example) is not modelled: an item is one or the other.
+- Arrangements made before the optional remuneration rules began, and their transitional protection, are not modelled (EIM44030).
+- Salary given up for benefits and pension together may not exceed gross pay: the engine refuses it (as G1 refuses a pension above pay). The National Minimum Wage floor on a sacrifice is not modelled.
+
+### B11. Tax code (owner; supersedes B4)
+
+The tax code is optional. **The annual liability stays the headline figure** (D1). With a supported code, a second view shows the PAYE estimate for the year, the annual liability's income tax, and the difference (the estimate less the liability). A difference is described in words: HMRC may refund or collect it later, through a tax code change or after the year ends (by letter, or through Self Assessment for someone who files a return); no figure is given for how.
+
+### B12. Which codes are modelled (owner; shapes from GOV.UK)
+
+- **Supported:** a number followed by a suffix letter L, M, N or T, with an optional S (Scottish rates) or C (Welsh rates) prefix, as GOV.UK's tax code pages define them. The number has no leading zero. Input is read without regard to case or spaces.
+- **Not modelled, with a notice and no estimate:** K codes (with or without S or C), BR, D0, D1 and the other D codes (with S or C), 0T (with S or C), NT, and emergency codes (a code followed by W1, M1, X or NONCUM). Anything else is not a tax code and is an input error.
+- **The code's allowance** is the number times the config's `paye.codeUnit` ("You usually multiply the number in the tax code by 10", Understanding your employees' tax codes). The suffix letter changes nothing in the arithmetic: M and N mean Marriage Allowance and T means other calculations, all already inside the number.
+- **The regime:** no prefix, the config's England, Wales and Northern Ireland bands; S, the Scottish bands; C, the same England, Wales and Northern Ireland bands, because GOV.UK's Income Tax in Wales page gives the same rates and bands for 2026 to 2027. A year whose Welsh rates differ needs its own config leaf first. When the prefix and "Where you live" disagree, the page says so.
+
+### B13. The PAYE estimate (owner: level monthly pay; method from GOV.UK)
+
+- **Level monthly pay** for the whole year, on the cumulative basis (PAYE11090), one employment. The assumptions say so.
+- **Pay PAYE taxes:** gross pay less salary given up (for pension or benefits) and net pay contributions. Benefits in kind are not in it (not payrolled; the code carries them), relief at source is not in it (its extra relief is claimed separately), and the taper and the High Income Child Benefit Charge count only as far as the code carries them.
+- **Month n** of `MONTHS_PER_YEAR` (`src/lib/periods.ts`): pay to date is n twelfths of the year's pay; free pay to date is n twelfths of the code's allowance (PAYE70025: "free pay for Month 1 is 1/12, Month 2 is 2/12 and so on"); taxable pay to date is pay to date less free pay to date, never below nothing (PAYE70025); each band's start is n twelfths of the year's (PAYE11090: "a proportion of any allowances and bands of tax rates for the pay period ... on a rolling basis up to each pay day"). Tax to date is the bands' rates on taxable pay to date.
+- **Rounding (not read; decision D3 applies):** Tables B to D, which give the rounding employers use for taxable pay and tax in each period, are a PDF this environment cannot fetch (OPEN O11). So tax to date is exact and rounded once to the nearest penny; each month's tax is the rounded tax to date less the previous month's, so the months add up to the year exactly. Payroll can differ by pennies or pounds from this.
+- **The code's exact free pay** comes from Tables A, also a PDF not read (OPEN O10). The estimate uses the number times `paye.codeUnit`, as the HTML guidance states; whether Tables A's figure is exactly that was not checked.
+- The estimate is never below nothing; a code over pay gives nothing.
+
+### B14. The monthly breakdown (owner)
+
+Every breakdown row can be shown per month: each annual figure divided by `MONTHS_PER_YEAR` from `src/lib/periods.ts`, to the nearest penny (D3). Take-home per month is gross pay per month less the other rounded rows, so the month table adds up; any penny difference from annual take-home divided by the months is stated beside it. With a supported tax code, the month view also shows PAYE income tax per month alongside (not in the sum). These are even divisions of the year, not payslips (D1).
+
+### B15. The owner's payslip is a manual check (owner)
+
+The owner checks the page against their own payslip by hand. No tax figure from it goes into tests, code or docs.
+
+### B16. Inputs version 3 and the migration (owner)
+
+Inputs version 3 changes each benefit item to `{ name, period, value, taken, payment }` (`payment`: `beforeTax` or `afterTax`) and adds `taxCode` (canonical text, empty for none). A version 2 benefit item migrates to the same name and period with `value` = its amount, `taken` = nothing and `payment` = `beforeTax` (with nothing taken, either way gives the same result); post-tax deductions stay in their own list unchanged; the tax code starts empty. A version 1 scenario migrates through version 2. Results are identical. Inputs from a newer version are refused, as before.
