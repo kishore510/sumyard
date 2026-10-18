@@ -702,13 +702,16 @@ describe('Optimiser page layout (0.12.0): your pay and sections', () => {
   })
 
   it('has the five sections, in order, each closed with “Not set” on a fresh start', () => {
-    expect([...view.host.querySelectorAll('[data-section]')].map((el) => el.getAttribute('data-section'))).toEqual([...SECTION_IDS])
+    expect([...view.host.querySelectorAll('[data-section]')].map((el) => el.getAttribute('data-section'))).toEqual(
+      SECTION_IDS.map((id) => `opt-section-${id}`),
+    )
     expect(openSections()).toEqual([])
     for (const id of SECTION_IDS) expect(summaryOf(id), id).toBe(NOT_SET)
   })
 
   it('puts each input in its section', () => {
-    const inSection = (selector: string) => $(selector)!.closest('[data-section]')?.getAttribute('data-section')
+    const inSection = (selector: string) =>
+      $(selector)!.closest('[data-section]')?.getAttribute('data-section')?.replace('opt-section-', '')
     expect(inSection('#opt-method')).toBe('pension')
     expect(inSection('#opt-employee')).toBe('pension')
     expect(inSection('#opt-employer')).toBe('pension')

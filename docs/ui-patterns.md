@@ -10,7 +10,7 @@ No engine, config, input shape, `inputsVersion`, saved scenario or compare chang
 
 - "Your pay" is always visible: Salary, Bonus, Where you live and Tax year.
 - Everything else is a section card (`src/components/Section.tsx`), in this order: Pension, Benefits and deductions, Student loans, Child Benefit, Tax code.
-- A section's header is a native button inside a heading, with `aria-expanded` and `aria-controls`, at least the touch target tall, named by its title and described by its summary. No motion of its own (so nothing for reduced motion to stop).
+- A section's header is a native button inside a heading, with `aria-expanded` and `aria-controls`, at least the touch target tall, whose accessible name is its visible text (the title, then the summary), so it matches what voice control users see. No motion of its own (so nothing for reduced motion to stop).
 - A closed section keeps its inputs mounted (hidden), so typed text and the page's "fix this input" state survive closing it.
 
 ### U2. Live one-line summaries

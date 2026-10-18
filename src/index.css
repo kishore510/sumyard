@@ -9,6 +9,11 @@
     min-height: 100dvh;
   }
 
+  /* A focused field is never hidden behind a page's sticky result bar: StickyResult sets --sy-sticky-offset to its height. */
+  html {
+    scroll-padding-top: calc(var(--sy-sticky-offset, 0rem) + var(--sy-gutter));
+  }
+
   body {
     background-color: var(--sy-bg);
     color: var(--sy-text);

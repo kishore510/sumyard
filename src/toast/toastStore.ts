@@ -71,6 +71,8 @@ export function createToastStore({ duration }: { duration: () => number }) {
     undo() {
       const undo = store.get().toast?.undo
       if (!undo) return
+      const blocked = undo.blocked?.()
+      if (blocked) return void show({ message: blocked })
       undo.run()
       show({ message: undo.done ?? 'Undone.' })
     },

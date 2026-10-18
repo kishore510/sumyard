@@ -60,17 +60,20 @@ describe('Section', () => {
     expect(button().onkeydown).toBeNull()
   })
 
-  it('is named by its title and described by its summary, which is shown in the header', () => {
+  it('is named by its visible text, the title then the summary, both in the header', () => {
     view = mount(
       <Section id="sec" title="Pension" summary="Salary sacrifice · You: £1.00 a year">
         <p>Inside</p>
       </Section>,
     )
-    const name = document.getElementById(button().getAttribute('aria-labelledby')!)
-    const description = document.getElementById(button().getAttribute('aria-describedby')!)
-    expect(name?.textContent).toBe('Pension')
-    expect(description?.textContent).toBe('Salary sacrifice · You: £1.00 a year')
-    expect(button().contains(description)).toBe(true)
+    // No aria-label or aria-labelledby: the name is the visible text, so voice control can say what it sees.
+    expect(button().getAttribute('aria-label')).toBeNull()
+    expect(button().getAttribute('aria-labelledby')).toBeNull()
+    expect($('#sec-title')!.textContent).toBe('Pension')
+    expect($('#sec-summary')!.textContent).toBe('Salary sacrifice · You: £1.00 a year')
+    expect(button().contains($('#sec-title'))).toBe(true)
+    expect(button().contains($('#sec-summary'))).toBe(true)
+    expect(button().textContent).toBe('PensionSalary sacrifice · You: £1.00 a year')
   })
 
   it('updates its summary when the summary changes', () => {

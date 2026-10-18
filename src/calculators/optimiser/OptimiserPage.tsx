@@ -1,4 +1,5 @@
-import { type ReactNode, useState } from 'react'
+import { Plus } from 'lucide-react'
+import { Fragment, type ReactNode, useEffect, useRef, useState } from 'react'
 import { AssumptionsPanel } from '@/components/AssumptionsPanel'
 import { CurrencyInput } from '@/components/inputs/CurrencyInput'
 import { NumberInput } from '@/components/inputs/NumberInput'
@@ -11,6 +12,9 @@ import { Toggle } from '@/components/inputs/Toggle'
 import { RefusalNotice } from '@/components/RefusalNotice'
 import { ResultCard, StatRow } from '@/components/ResultCard'
 import { ScenarioBar } from '@/components/ScenarioBar'
+import { Section } from '@/components/Section'
+import { SplitBar } from '@/components/SplitBar'
+import { StickyResult } from '@/components/StickyResult'
 import { InlineNotice } from '@/components/states'
 import { Button } from '@/components/ui/button'
 import { VerifiedBadge } from '@/components/VerifiedBadge'
@@ -21,6 +25,7 @@ import type { Parsed } from '@/lib/parse'
 import { useStore } from '@/lib/store'
 import { settingsStore } from '@/settings/settings'
 import { DISCLAIMER } from '@/sheets/parts'
+import { toasts } from '@/toast/toasts'
 import { configFor, sessionFor } from '../session'
 import { BREAKDOWN_PERIODS, type Breakdown, type BreakdownPeriod, breakdown } from './breakdown'
 import { benefitTaxable } from './calc'
@@ -41,6 +46,7 @@ import {
   type OptimiserPageInputs,
   optimiserCalculator,
   PAYMENT_LABELS,
+  type PageResult,
   PERIOD_LABELS,
   PLAN_LABELS,
   REGION_LABELS,
@@ -50,6 +56,8 @@ import {
 } from './definition'
 import { annualAmount, annualBenefit, type BenefitItem, CONTRIBUTION_MODES, ITEM_PERIODS, type ListItem } from './pageInputs'
 import { parseTaxCode } from './paye'
+import { payslipNet, splitSegments } from './results'
+import { NEEDS_FIXING, SECTION_IDS, SECTION_TITLES, type SectionId, sectionForField, sectionSummary, sectionsSet } from './sections'
 import {
   BENEFIT_PAYMENTS,
   CHILD_BENEFIT_PAYMENTS,
@@ -64,11 +72,14 @@ import {
 /*
  * The take-home page (slice 1b, session 1b-i; part 1b-i.1 added percentage
  * contributions and itemised lists; 0.11.0 benefits taken from pay, the tax
- * code and PAYE estimate, and the monthly breakdown) at #/c/optimiser:
- * inputs, take-home for the year, month and week, the breakdown by year or
- * month, warnings, assumptions and scenarios, all from shared components and
- * the engine's takeHome and payeEstimate. No figure is written here. The pension sweep, chart and threshold points
- * (optimise()) come in 1b-ii.
+ * code and PAYE estimate, and the monthly breakdown; 0.12.0 the layout in
+ * docs/ui-patterns.md) at #/c/optimiser: "Your pay" always visible, the other
+ * inputs in sections with live summaries, and results first (StickyResult):
+ * take-home for the chosen period, a split bar of where gross pay goes, the
+ * breakdown by year or month, the PAYE card, warnings, assumptions and
+ * scenarios, all from shared components and the engine's takeHome and
+ * payeEstimate. No figure is written here. The pension sweep, chart and
+ * threshold points (optimise()) come in 1b-ii.
  */
 
 const session = sessionFor(optimiserCalculator)
@@ -95,6 +106,7 @@ const PAGE_ASSUMPTIONS = [
   'Pension is counted as contributions only: what goes in this year. Growth, the annual allowance and tax on withdrawals are not shown here yet.',
   'Taxable benefits in kind are taken as entered: they are not checked against your employer’s annual statement of benefits or your tax code.',
   'The year’s tax (the liability) is the headline figure, worked out on the year’s figures however it is collected. A tax code is optional: with one, a PAYE estimate shows what payroll would take, assuming level monthly pay all year.',
+  'With a tax code, estimated payslip net pay is take-home with the PAYE estimate in place of the year’s income tax; everything else, including the Child Benefit charge, is as in take-home. Take-home after the year-end adjustment is the take-home figure itself.',
   'Tax codes modelled: a number and a letter (L, M, N or T), with S or C in front if you have one. K, BR, D, NT, emergency and no-allowance codes get a notice and no estimate.',
   'Benefits taken before tax (salary sacrifice) follow the general rule: the salary given up comes off your pay before tax, National Insurance and student loan, and the benefit is taxed on the higher of its value and the salary given up. Benefits that keep an exemption (such as cycle to work or pension contributions) are not modelled: enter pension contributions as pension.',
   'Benefits paid for after tax: what you pay comes off take-home and takes the benefit’s taxable value down, not below nothing.',
@@ -125,19 +137,91 @@ const TAPER_ASSUMPTION = 'Personal allowance taper: the reduction is worked out 
 
 const sameAmount = (a: Money, b: Money) => compare(a, b) === 0
 
+const PERIOD_LABELS_HEADLINE: Record<BreakdownPeriod, string> = { year: 'Take-home for the year', month: 'Take-home a month' }
+
 export default function OptimiserPage() {
   const state = useStore(session)
   const amounts = useStore(settingsStore, (s) => s.amounts)
   const inputs = state.inputs
   const config = configFor(state.taxYear)
-  const set = (patch: Partial<OptimiserPageInputs>) => session.setInputs(patch)
-  const valid = (field: string) => (ok: boolean) => session.setFieldValid(field, ok)
   const invalid = state.invalid.length > 0
   const result = invalid ? null : calculateTakeHome(inputs, config)
   const resolved = resolveInputs(inputs)
   const warnings = invalid ? [] : inputWarnings(inputs)
   const [period, setPeriod] = useState<BreakdownPeriod>('year')
   const gbp = (amount: Money) => formatGBP(amount, amounts)
+  const ok = result && !isInputProblem(result) && result.ok ? result : null
+  const label = PERIOD_LABELS_HEADLINE[period]
+  const value = ok ? gbp(breakdown(ok.annual, period).takeHome) : null
+
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-2">
+        <h1 id="main-title" tabIndex={-1} className="text-2xl font-semibold tracking-tight outline-none">
+          {optimiserCalculator.name}
+        </h1>
+        <p className="text-text-muted">{optimiserCalculator.summary}</p>
+        {/* On a phone the badge is in the sticky bar instead. */}
+        <div className="hidden md:flex">
+          <VerifiedBadge config={config} />
+        </div>
+      </div>
+
+      <StickyResult
+        label={label}
+        value={value}
+        emptyText={invalid ? 'Fix the highlighted inputs' : 'No result for these inputs'}
+        announcement={value === null ? null : `${label}: ${value}`}
+        controls={
+          <>
+            <Segmented id="opt-period" label="Show take-home for a" value={period} options={BREAKDOWN_OPTIONS} onChange={setPeriod} />
+            <div className="flex">
+              <VerifiedBadge config={config} />
+            </div>
+          </>
+        }
+        results={
+          <>
+            <InputWarnings warnings={warnings} />
+            <ResultsOrNotice result={result} inputs={inputs} resolved={resolved} gbp={gbp} period={period} setPeriod={setPeriod} />
+          </>
+        }
+      >
+        <ScenarioBar calculator={optimiserCalculator} session={session} />
+        {/* Keyed by revision: a loaded scenario or a fresh start resets every box and which sections are open. */}
+        <Inputs key={state.revision} taxYear={state.taxYear} inputs={inputs} resolved={resolved} invalidFields={state.invalid} gbp={gbp} />
+      </StickyResult>
+
+      <AssumptionsPanel
+        items={[...(result?.ok ? result.assumptions : [TAPER_ASSUMPTION]), ...payeAssumptions(inputs, result), ...PAGE_ASSUMPTIONS]}
+      >
+        <p className="text-text-muted">Illustrative only, not financial advice. {DISCLAIMER}</p>
+      </AssumptionsPanel>
+    </div>
+  )
+}
+
+const valid = (field: string) => (ok: boolean) => session.setFieldValid(field, ok)
+const set = (patch: Partial<OptimiserPageInputs>) => session.setInputs(patch)
+
+/**
+ * The inputs: "Your pay" always visible, then a section each (U1 to U3), open on mount when its inputs differ from the
+ * defaults. Remounted (by key) on a load or a fresh start, so the open sections follow the inputs; never stored.
+ */
+function Inputs({
+  taxYear,
+  inputs,
+  resolved,
+  invalidFields,
+  gbp,
+}: {
+  taxYear: string
+  inputs: OptimiserPageInputs
+  resolved: ResolvedInputs
+  invalidFields: readonly string[]
+  gbp: Gbp
+}) {
+  const [openOnMount] = useState(() => sectionsSet(inputs))
   const togglePlan = (plan: (typeof STUDENT_LOAN_PLANS)[number], on: boolean) =>
     set({ studentLoans: STUDENT_LOAN_PLANS.filter((p) => (p === plan ? on : inputs.studentLoans.includes(p))) })
   const amountInput = (id: string, field: 'salary' | 'bonus', hint?: string) => (
@@ -152,171 +236,188 @@ export default function OptimiserPage() {
       onValidityChange={valid(field)}
     />
   )
+  const section = (id: SectionId, children: ReactNode) => (
+    <Section
+      id={`opt-section-${id}`}
+      title={SECTION_TITLES[id]}
+      summary={invalidFields.some((f) => sectionForField(f) === id) ? NEEDS_FIXING : sectionSummary(id, inputs, resolved, gbp)}
+      defaultOpen={openOnMount.has(id)}
+    >
+      {children}
+    </Section>
+  )
+  const content: Record<SectionId, ReactNode> = {
+    pension: (
+      <>
+        <Select
+          id="opt-method"
+          label="Pension method"
+          hint={METHOD_HINTS[inputs.pensionMethod]}
+          value={inputs.pensionMethod}
+          options={METHOD_OPTIONS}
+          onChange={(pensionMethod) => set({ pensionMethod })}
+        />
+        <ContributionInputs id="opt-employee" field="employeeContribution" inputs={inputs} resolved={resolved} gbp={gbp} />
+        <ContributionInputs id="opt-employer" field="employerContribution" inputs={inputs} resolved={resolved} gbp={gbp} />
+        {usesPensionablePay(inputs) && <PensionablePayInputs inputs={inputs} resolved={resolved} gbp={gbp} />}
+      </>
+    ),
+    benefits: (
+      <>
+        <ItemList
+          field="taxableBenefits"
+          items={inputs.taxableBenefits}
+          invalidFields={invalidFields}
+          blank={{ name: '', period: 'month', value: ZERO, taken: ZERO, payment: 'beforeTax' }}
+          invalidParts={['name', 'value', 'taken']}
+          fields={(item, itemId, update, part) => <BenefitFields item={item} itemId={itemId} update={update} part={part} />}
+          resolved={(item) => <BenefitResolved item={item} gbp={gbp} />}
+          total={<BenefitTotals resolved={resolved} gbp={gbp} empty={inputs.taxableBenefits.length === 0} />}
+        />
+        <ItemList
+          field="postTaxDeductions"
+          items={inputs.postTaxDeductions}
+          invalidFields={invalidFields}
+          blank={{ name: '', amount: ZERO, period: 'month' }}
+          invalidParts={['name', 'amount']}
+          fields={(item, itemId, update, part) => (
+            <CurrencyInput
+              id={`${itemId}-amount`}
+              label="Amount"
+              value={item.amount}
+              min={ZERO}
+              max={INPUT_LIMITS.maxAmount}
+              onChange={(amount) => update({ amount })}
+              onValidityChange={(ok) => session.setFieldValid(part('amount'), ok)}
+            />
+          )}
+          resolved={(item) => (
+            <>
+              <span className="tabular-nums">{gbp(annualAmount(item))}</span> for the year
+            </>
+          )}
+          total={
+            <>
+              Total for the year: <span className="font-semibold tabular-nums">{gbp(resolved.postTaxDeductions)}</span>
+              {inputs.postTaxDeductions.length === 0 ? ' (none added)' : ''}
+            </>
+          }
+        />
+      </>
+    ),
+    studentLoans: (
+      <fieldset className="flex min-w-0 flex-col gap-1">
+        <legend className="pb-1.5 text-sm font-medium text-text">Plans you repay</legend>
+        {STUDENT_LOAN_PLANS.map((plan) => (
+          <Toggle
+            key={plan}
+            id={`opt-loan-${plan}`}
+            label={PLAN_LABELS[plan]}
+            checked={inputs.studentLoans.includes(plan)}
+            onChange={(on) => togglePlan(plan, on)}
+          />
+        ))}
+      </fieldset>
+    ),
+    childBenefit: (
+      <>
+        <NumberInput
+          id="opt-children"
+          label="Children you get Child Benefit for"
+          value={inputs.children}
+          min={0}
+          max={INPUT_LIMITS.maxChildren}
+          onChange={(children) => set({ children })}
+          onValidityChange={valid('children')}
+        />
+        {inputs.children > 0 && (
+          <Segmented
+            id="opt-child-benefit"
+            label="Child Benefit payments"
+            hint={inputs.childBenefit === 'optedOut' ? PAYMENT_LABELS.optedOut : 'Paid to you; a charge applies on higher incomes.'}
+            value={inputs.childBenefit}
+            options={PAYMENT_OPTIONS}
+            onChange={(childBenefit) => set({ childBenefit })}
+          />
+        )}
+      </>
+    ),
+    taxCode: (
+      <TextValueInput<string>
+        id="opt-tax-code"
+        label="Tax code (optional)"
+        hint="As on your payslip: a number then a letter, with S or C in front if yours has one. Leave it empty for no PAYE estimate."
+        value={inputs.taxCode}
+        inputMode="text"
+        parse={parseCodeText}
+        format={(code) => code}
+        onChange={(taxCode) => set({ taxCode })}
+        onValidityChange={valid('taxCode')}
+      />
+    ),
+  }
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-2">
-        <h1 id="main-title" tabIndex={-1} className="text-2xl font-semibold tracking-tight outline-none">
-          {optimiserCalculator.name}
-        </h1>
-        <p className="text-text-muted">{optimiserCalculator.summary}</p>
-        <div className="flex">
-          <VerifiedBadge config={config} />
-        </div>
-      </div>
-
-      <ScenarioBar calculator={optimiserCalculator} session={session} />
-
-      <div className="grid gap-6 lg:grid-cols-5">
-        <section
-          aria-labelledby="opt-inputs"
-          className="flex min-w-0 flex-col gap-4 self-start rounded-lg border border-border bg-surface p-5 shadow-sm lg:col-span-2"
-        >
-          <h2 id="opt-inputs" className="text-base font-semibold">
-            Inputs
-          </h2>
-          {/* Keyed by revision: a loaded scenario or a fresh start resets every box. */}
-          <div key={state.revision} className="flex flex-col gap-4">
-            <Select
-              id="opt-tax-year"
-              label="Tax year"
-              value={state.taxYear}
-              options={TAX_YEARS}
-              onChange={(taxYear) => session.setTaxYear(taxYear)}
-            />
-            <Segmented
-              id="opt-region"
-              label="Where you live"
-              value={inputs.region}
-              options={REGION_OPTIONS}
-              onChange={(region) => set({ region })}
-            />
-            {amountInput('opt-salary', 'salary', 'Your annual salary before tax. Include any flexible-benefit cash.')}
-            {amountInput('opt-bonus', 'bonus', 'Any bonus for the year, added to salary.')}
-            <TextValueInput<string>
-              id="opt-tax-code"
-              label="Tax code (optional)"
-              hint="As on your payslip: a number then a letter, with S or C in front if yours has one. Leave it empty for no PAYE estimate."
-              value={inputs.taxCode}
-              inputMode="text"
-              parse={parseCodeText}
-              format={(code) => code}
-              onChange={(taxCode) => set({ taxCode })}
-              onValidityChange={valid('taxCode')}
-            />
-
-            <Select
-              id="opt-method"
-              label="Pension method"
-              hint={METHOD_HINTS[inputs.pensionMethod]}
-              value={inputs.pensionMethod}
-              options={METHOD_OPTIONS}
-              onChange={(pensionMethod) => set({ pensionMethod })}
-            />
-            <ContributionInputs id="opt-employee" field="employeeContribution" inputs={inputs} resolved={resolved} gbp={gbp} />
-            <ContributionInputs id="opt-employer" field="employerContribution" inputs={inputs} resolved={resolved} gbp={gbp} />
-            {usesPensionablePay(inputs) && <PensionablePayInputs inputs={inputs} resolved={resolved} gbp={gbp} />}
-
-            <ItemList
-              field="taxableBenefits"
-              items={inputs.taxableBenefits}
-              blank={{ name: '', period: 'month', value: ZERO, taken: ZERO, payment: 'beforeTax' }}
-              invalidParts={['name', 'value', 'taken']}
-              fields={(item, itemId, update, part) => <BenefitFields item={item} itemId={itemId} update={update} part={part} />}
-              resolved={(item) => <BenefitResolved item={item} gbp={gbp} />}
-              total={<BenefitTotals resolved={resolved} gbp={gbp} empty={inputs.taxableBenefits.length === 0} />}
-            />
-            <ItemList
-              field="postTaxDeductions"
-              items={inputs.postTaxDeductions}
-              blank={{ name: '', amount: ZERO, period: 'month' }}
-              invalidParts={['name', 'amount']}
-              fields={(item, itemId, update, part) => (
-                <CurrencyInput
-                  id={`${itemId}-amount`}
-                  label="Amount"
-                  value={item.amount}
-                  min={ZERO}
-                  max={INPUT_LIMITS.maxAmount}
-                  onChange={(amount) => update({ amount })}
-                  onValidityChange={(ok) => session.setFieldValid(part('amount'), ok)}
-                />
-              )}
-              resolved={(item) => (
-                <>
-                  <span className="tabular-nums">{gbp(annualAmount(item))}</span> for the year
-                </>
-              )}
-              total={
-                <>
-                  Total for the year: <span className="font-semibold tabular-nums">{gbp(resolved.postTaxDeductions)}</span>
-                  {inputs.postTaxDeductions.length === 0 ? ' (none added)' : ''}
-                </>
-              }
-            />
-
-            <fieldset className="flex min-w-0 flex-col gap-1">
-              <legend className="pb-1.5 text-sm font-medium text-text">Student loans</legend>
-              {STUDENT_LOAN_PLANS.map((plan) => (
-                <Toggle
-                  key={plan}
-                  id={`opt-loan-${plan}`}
-                  label={PLAN_LABELS[plan]}
-                  checked={inputs.studentLoans.includes(plan)}
-                  onChange={(on) => togglePlan(plan, on)}
-                />
-              ))}
-            </fieldset>
-
-            <NumberInput
-              id="opt-children"
-              label="Children you get Child Benefit for"
-              value={inputs.children}
-              min={0}
-              max={INPUT_LIMITS.maxChildren}
-              onChange={(children) => set({ children })}
-              onValidityChange={valid('children')}
-            />
-            {inputs.children > 0 && (
-              <Segmented
-                id="opt-child-benefit"
-                label="Child Benefit payments"
-                hint={inputs.childBenefit === 'optedOut' ? PAYMENT_LABELS.optedOut : 'Paid to you; a charge applies on higher incomes.'}
-                value={inputs.childBenefit}
-                options={PAYMENT_OPTIONS}
-                onChange={(childBenefit) => set({ childBenefit })}
-              />
-            )}
-          </div>
-        </section>
-
-        <div className="flex min-w-0 flex-col gap-6 lg:col-span-3">
-          <InputWarnings warnings={warnings} />
-          {invalid || !result ? (
-            <InlineNotice tone="warning" title="No results until the inputs are fixed">
-              <p>Fix the highlighted inputs to see results.</p>
-            </InlineNotice>
-          ) : isInputProblem(result) ? (
-            <div data-input-problem>
-              <InlineNotice tone="warning" title="These inputs can’t be worked out">
-                <p>{result.problem}</p>
-              </InlineNotice>
-            </div>
-          ) : !result.ok ? (
-            <RefusalNotice refusal={result} />
-          ) : (
-            <Results result={result} inputs={inputs} resolved={resolved} gbp={gbp} period={period} setPeriod={setPeriod} />
-          )}
-
-          <AssumptionsPanel
-            items={[...(result?.ok ? result.assumptions : [TAPER_ASSUMPTION]), ...payeAssumptions(inputs, result), ...PAGE_ASSUMPTIONS]}
-          >
-            <p className="text-text-muted">Illustrative only, not financial advice. {DISCLAIMER}</p>
-          </AssumptionsPanel>
-        </div>
-      </div>
-    </div>
+    <>
+      <section
+        aria-labelledby="opt-your-pay"
+        className="flex min-w-0 flex-col gap-4 rounded-lg border border-border bg-surface p-4 shadow-sm"
+      >
+        <h2 id="opt-your-pay" className="text-base font-semibold">
+          Your pay
+        </h2>
+        {amountInput('opt-salary', 'salary', 'Your annual salary before tax. Include any flexible-benefit cash.')}
+        {amountInput('opt-bonus', 'bonus', 'Any bonus for the year, added to salary.')}
+        <Segmented
+          id="opt-region"
+          label="Where you live"
+          value={inputs.region}
+          options={REGION_OPTIONS}
+          onChange={(region) => set({ region })}
+        />
+        <Select
+          id="opt-tax-year"
+          label="Tax year"
+          value={taxYear}
+          options={TAX_YEARS}
+          onChange={(taxYear) => session.setTaxYear(taxYear)}
+        />
+      </section>
+      {SECTION_IDS.map((id) => (
+        <Fragment key={id}>{section(id, content[id])}</Fragment>
+      ))}
+    </>
   )
+}
+
+/** The results column: a notice when there are no results, else the results. */
+function ResultsOrNotice({
+  result,
+  ...props
+}: {
+  result: PageResult | null
+  inputs: OptimiserPageInputs
+  resolved: ResolvedInputs
+  gbp: Gbp
+  period: BreakdownPeriod
+  setPeriod: (period: BreakdownPeriod) => void
+}) {
+  if (!result)
+    return (
+      <InlineNotice tone="warning" title="No results until the inputs are fixed">
+        <p>Fix the highlighted inputs to see results.</p>
+      </InlineNotice>
+    )
+  if (isInputProblem(result))
+    return (
+      <div data-input-problem>
+        <InlineNotice tone="warning" title="These inputs can’t be worked out">
+          <p>{result.problem}</p>
+        </InlineNotice>
+      </div>
+    )
+  if (!result.ok) return <RefusalNotice refusal={result} />
+  return <Results result={result} {...props} />
 }
 
 type Gbp = (amount: Money) => string
@@ -380,7 +481,7 @@ function ContributionInputs({
             onChange={(percentOfPay) => set({ percentOfPay })}
             onValidityChange={valid(`${field}-pct`)}
           />
-          <p id={`${id}-resolved`} className="text-sm text-text" aria-live="polite">
+          <p id={`${id}-resolved`} className="text-sm text-text">
             Comes to <span className="font-semibold tabular-nums">{gbp(resolved[field])}</span> for the year.
           </p>
         </>
@@ -423,38 +524,48 @@ function PensionablePayInputs({ inputs, resolved, gbp }: { inputs: OptimiserPage
         checked={entry.includeBonus}
         onChange={(includeBonus) => set({ includeBonus })}
       />
-      <p id="opt-pensionable-resolved" className="text-sm text-text" aria-live="polite">
+      <p id="opt-pensionable-resolved" className="text-sm text-text">
         Percentages apply to <span className="font-semibold tabular-nums">{gbp(resolved.pensionablePay)}</span> a year.
       </p>
     </fieldset>
   )
 }
 
-/** Keys for a list's items that stay with each item as others are added or removed. Held by the page only, never stored. */
+/** Keys for a list's items that stay with each item as others are added, removed or restored. Held by the page only, never stored. */
 function useItemKeys(count: number) {
   const [state, setState] = useState(() => ({ next: count, keys: Array.from({ length: count }, (_, i) => i) }))
   let { keys } = state
   if (keys.length !== count) {
-    // The list changed from outside (it shouldn't, as a load remounts the inputs): start the keys afresh.
+    // The list changed from outside (an Undo after the page was left): start the keys afresh.
     keys = Array.from({ length: count }, (_, i) => state.next + i)
     setState({ next: state.next + count, keys })
   }
+  const key = state.next
   return {
     keys,
-    added: () => setState((s) => ({ next: s.next + 1, keys: [...s.keys, s.next] })),
+    /** Adds a key at `index` (the end for a new item) and returns it. */
+    inserted: (index: number) => {
+      setState((s) => ({ next: s.next + 1, keys: [...s.keys.slice(0, index), s.next, ...s.keys.slice(index)] }))
+      return key
+    },
     removed: (index: number) => setState((s) => ({ ...s, keys: s.keys.filter((_, i) => i !== index) })),
   }
 }
 
 type Item = { readonly name: string; readonly period: ListItem['period'] }
 
+const capitalised = (text: string) => text.replace(/^./, (c) => c.toUpperCase())
+
 /**
- * A list of named items (benefits in kind or post-tax deductions), each per month or per year, with its total for the year.
- * `fields` renders an item's own boxes between its name and its period; `part` names a box for the session's validity.
+ * A list of named items (benefits in kind or post-tax deductions), each per month or per year, with its total for the
+ * year (U9): each item a compact card with its name and resolved amounts, edited in place (Edit, Done) and removed with
+ * Undo. A new item opens for editing with its name focused; an item with an input to fix stays open. `fields` renders an
+ * item's own boxes between its name and its period; `part` names a box for the session's validity.
  */
 function ItemList<T extends Item>({
   field,
   items,
+  invalidFields,
   blank,
   invalidParts,
   fields,
@@ -463,6 +574,7 @@ function ItemList<T extends Item>({
 }: {
   field: ListField
   items: readonly T[]
+  invalidFields: readonly string[]
   blank: T
   invalidParts: readonly string[]
   fields: (item: T, itemId: string, update: (patch: Partial<T>) => void, part: (name: string) => string) => ReactNode
@@ -471,11 +583,57 @@ function ItemList<T extends Item>({
 }) {
   const id = LIST_IDS[field]
   const noun = ITEM_NOUNS[field]
-  const { keys, added, removed } = useItemKeys(items.length)
+  const { keys, inserted, removed } = useItemKeys(items.length)
+  const [editing, setEditing] = useState<ReadonlySet<number>>(() => new Set())
+  // What takes focus after the next render: a new item's name, a restored item's Edit, or Add after a removal.
+  const [focus, setFocus] = useState<string | null>(null)
+  const latest = useRef({ inserted, setEditing, setFocus })
+  latest.current = { inserted, setEditing, setFocus }
+  useEffect(() => {
+    if (focus === null) return
+    document.getElementById(focus)?.focus()
+    setFocus(null)
+  }, [focus])
   const full = items.length >= INPUT_LIMITS.maxItems
   const setItems = (next: readonly T[]) => session.setInputs({ [field]: next })
   const update = (index: number, patch: Partial<T>) => setItems(items.map((item, i) => (i === index ? { ...item, ...patch } : item)))
   const fieldName = (key: number, part: string) => `${field}-${key}-${part}`
+  const toggle = (key: number, on: boolean) =>
+    setEditing((s) => {
+      const next = new Set(s)
+      if (on) next.add(key)
+      else next.delete(key)
+      return next
+    })
+
+  const remove = (index: number, key: number, label: string) => {
+    const item = items[index]!
+    const revision = session.get().revision
+    forget(...invalidParts.map((part) => fieldName(key, part)))
+    removed(index)
+    setItems(items.filter((_, i) => i !== index))
+    setFocus(`${id}-add`)
+    toasts.show({
+      message: `Removed “${label}”.`,
+      undo: {
+        blocked: () =>
+          session.get().revision !== revision
+            ? 'Couldn’t undo: other inputs have been loaded since.'
+            : session.get().inputs[field].length >= INPUT_LIMITS.maxItems
+              ? 'Couldn’t undo: the list is full.'
+              : undefined,
+        run: () => {
+          const now = session.get().inputs[field] as unknown as readonly T[]
+          const at = Math.min(index, now.length)
+          const restored = latest.current.inserted(at)
+          session.setInputs({ [field]: [...now.slice(0, at), item, ...now.slice(at)] })
+          latest.current.setFocus(`${id}-${restored}-edit`)
+        },
+        done: `Restored “${label}”.`,
+      },
+    })
+  }
+
   return (
     <fieldset aria-describedby={`${id}-hint`} className="flex min-w-0 flex-col gap-3" data-list={field}>
       <legend className="pb-1.5 text-sm font-medium text-text">{MONEY_LABELS[field]}</legend>
@@ -486,48 +644,60 @@ function ItemList<T extends Item>({
         const key = keys[index] ?? index
         const itemId = `${id}-${key}`
         const label = itemLabel(field, item, index)
+        const numbered = `${capitalised(noun)} ${index + 1}`
+        const needsFixing = invalidFields.some((f) => f.startsWith(`${field}-${key}-`))
+        const open = editing.has(key) || needsFixing
         return (
-          <fieldset key={key} id={itemId} data-item className="flex min-w-0 flex-col gap-3 rounded-md border border-border p-3">
-            <legend className="px-1 text-sm font-medium text-text">{`${noun.replace(/^./, (c) => c.toUpperCase())} ${index + 1}`}</legend>
-            <TextInput
-              id={`${itemId}-name`}
-              label="Name"
-              value={item.name}
-              maxLength={INPUT_LIMITS.maxNameLength}
-              onChange={(name) => update(index, { name } as Partial<T>)}
-              onValidityChange={(ok) => session.setFieldValid(fieldName(key, 'name'), ok)}
-            />
-            {fields(
-              item,
-              itemId,
-              (patch) => update(index, patch),
-              (part) => fieldName(key, part),
-            )}
-            <Segmented
-              id={`${itemId}-period`}
-              label="How often"
-              value={item.period}
-              options={PERIOD_OPTIONS}
-              onChange={(period) => update(index, { period } as Partial<T>)}
-            />
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="min-w-0 text-sm text-text-muted">{resolved(item)}</p>
-              <Button
-                id={`${itemId}-remove`}
-                aria-label={`Remove ${label}`}
-                onClick={() => {
-                  forget(...invalidParts.map((part) => fieldName(key, part)))
-                  removed(index)
-                  setItems(items.filter((_, i) => i !== index))
-                }}
-              >
-                Remove
-              </Button>
+          <fieldset key={key} id={itemId} data-item className="flex min-w-0 flex-col rounded-md border border-border">
+            <legend className="sr-only">{numbered}</legend>
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 py-1 pr-1 pl-3">
+              <p id={`${itemId}-summary`} className="flex min-w-0 flex-1 basis-40 flex-col py-1 text-sm">
+                <span className="font-medium text-text [overflow-wrap:anywhere]">{item.name || numbered}</span>
+                <span className="text-xs text-text-muted">{resolved(item)}</span>
+              </p>
+              <div className="flex min-w-0 flex-wrap gap-1">
+                <Button
+                  id={`${itemId}-edit`}
+                  variant="ghost"
+                  aria-expanded={open}
+                  aria-controls={`${itemId}-fields`}
+                  onClick={() => toggle(key, !open)}
+                >
+                  {open ? 'Done' : 'Edit'}
+                  <span className="sr-only"> {label}</span>
+                </Button>
+                <Button id={`${itemId}-remove`} variant="ghost" aria-label={`Remove ${label}`} onClick={() => remove(index, key, label)}>
+                  Remove
+                </Button>
+              </div>
+            </div>
+            <div id={`${itemId}-fields`} hidden={!open} className="flex flex-col gap-3 border-t border-border p-3">
+              <TextInput
+                id={`${itemId}-name`}
+                label="Name"
+                value={item.name}
+                maxLength={INPUT_LIMITS.maxNameLength}
+                onChange={(name) => update(index, { name } as Partial<T>)}
+                onValidityChange={(ok) => session.setFieldValid(fieldName(key, 'name'), ok)}
+              />
+              {fields(
+                item,
+                itemId,
+                (patch) => update(index, patch),
+                (part) => fieldName(key, part),
+              )}
+              <Segmented
+                id={`${itemId}-period`}
+                label="How often"
+                value={item.period}
+                options={PERIOD_OPTIONS}
+                onChange={(period) => update(index, { period } as Partial<T>)}
+              />
             </div>
           </fieldset>
         )
       })}
-      <p id={`${id}-total`} className="text-sm text-text" aria-live="polite">
+      <p id={`${id}-total`} className="text-sm text-text">
         {total}
       </p>
       <div className="flex flex-col gap-1.5">
@@ -536,11 +706,14 @@ function ItemList<T extends Item>({
           disabled={full}
           aria-describedby={full ? `${id}-full` : undefined}
           onClick={() => {
-            added()
+            const key = inserted(items.length)
+            toggle(key, true)
             setItems([...items, blank])
+            setFocus(`${id}-${key}-name`)
           }}
-          className="self-start"
+          className="h-auto min-h-touch max-w-full self-start py-2 text-left whitespace-normal"
         >
+          <Plus />
           Add a {noun}
         </Button>
         {full && (
@@ -714,6 +887,7 @@ function Results({
   const paye = calculatePaye(inputs, result, configFor(result.taxYear))
   const intoPension = add(result.pension?.grossContribution ?? ZERO, resolved.employerContribution)
   const hasChildren = inputs.children > 0
+  const periodWords = period === 'year' ? 'for the year' : 'a month'
   return (
     <>
       {result.warnings.map((warning) => (
@@ -724,31 +898,54 @@ function Results({
         </div>
       ))}
 
-      <ResultCard title="Take-home pay" headlineLabel="Take-home for the year" headline={gbp(annual.net)}>
-        <StatRow label="Year" value={gbp(annual.net)} detail={annual.label} />
-        <StatRow
-          label="Month"
-          value={gbp(month.takeHome)}
-          detail="Each yearly row divided by the months in a year, to the nearest penny, then added up"
-        />
-        <StatRow label="Week" value={gbp(weekly.net)} detail={weekly.label} />
-      </ResultCard>
-      <InlineNotice>
-        <p>
-          Worked out for the whole tax year. Monthly and weekly are the annual figures divided evenly, so your payslips may differ,
-          especially in a month with a bonus.
-        </p>
-      </InlineNotice>
+      <div className="flex flex-col gap-3" data-headline>
+        <ResultCard title="Take-home pay" headlineLabel={PERIOD_LABELS_HEADLINE[period]} headline={gbp(shown.takeHome)}>
+          {paye?.ok && (
+            <>
+              <StatRow
+                label="Estimated payslip net pay"
+                value={gbp(payslipNet(shown, paye))}
+                detail={`Income tax as the PAYE estimate on your code, ${periodWords}`}
+              />
+              <StatRow
+                label="Take-home after the year-end adjustment"
+                value={gbp(shown.takeHome)}
+                detail={`Income tax as the year’s tax, ${periodWords}`}
+              />
+            </>
+          )}
+          <StatRow label="Year" value={gbp(annual.net)} detail={annual.label} />
+          <StatRow
+            label="Month"
+            value={gbp(month.takeHome)}
+            detail="Each yearly row divided by the months in a year, to the nearest penny, then added up"
+          />
+          <StatRow label="Week" value={gbp(weekly.net)} detail={weekly.label} />
+        </ResultCard>
+        {paye?.ok && (
+          <p data-net-pay-note className="text-xs text-text-muted">
+            Your payslips take income tax on your tax code; the year’s tax is settled after the year ends, so a difference is refunded or
+            collected then, or through a new code.
+          </p>
+        )}
+        <InlineNotice>
+          <p>
+            Worked out for the whole tax year. Monthly and weekly are the annual figures divided evenly, so your payslips may differ,
+            especially in a month with a bonus.
+          </p>
+        </InlineNotice>
+      </div>
 
-      {paye && !paye.ok && 'reason' in paye && (
-        <div data-paye-notice={paye.kind ?? paye.reason}>
-          <InlineNotice tone="info" title="No PAYE estimate for this tax code">
-            <p>{paye.message}</p>
-          </InlineNotice>
-        </div>
-      )}
-      {paye && !paye.ok && !('reason' in paye) && <RefusalNotice refusal={paye} />}
-      {paye?.ok && <PayeCard estimate={paye} gbp={gbp} />}
+      <section data-split aria-label="Where your gross pay goes" className="rounded-lg border border-border bg-surface p-5 shadow-sm">
+        <SplitBar
+          title={`Where your gross pay goes, ${periodWords}`}
+          segments={splitSegments(shown).map((s) => ({ id: s.id, label: s.label, value: s.amount }))}
+          total={shown.gross}
+          totalLabel="Gross pay"
+          formatValue={(pence) => gbp(pence as Money)}
+          highlight="takeHome"
+        />
+      </section>
 
       <div className="flex flex-col gap-3" data-breakdown={period}>
         <Segmented
@@ -789,6 +986,16 @@ function Results({
             : 'Each yearly row divided by the months in a year, to the nearest penny; take-home is those rows added up. Not a payslip.'}
         </p>
       </div>
+
+      {paye && !paye.ok && 'reason' in paye && (
+        <div data-paye-notice={paye.kind ?? paye.reason}>
+          <InlineNotice tone="info" title="No PAYE estimate for this tax code">
+            <p>{paye.message}</p>
+          </InlineNotice>
+        </div>
+      )}
+      {paye && !paye.ok && !('reason' in paye) && <RefusalNotice refusal={paye} />}
+      {paye?.ok && <PayeCard estimate={paye} gbp={gbp} />}
 
       <ResultCard title="Alongside your pay">
         {hasChildren && <StatRow label="Child Benefit received" value={gbp(annual.childBenefit)} />}
