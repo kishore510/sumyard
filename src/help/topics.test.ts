@@ -39,19 +39,46 @@ describe('buildTopics', () => {
 })
 
 describe('content/help', () => {
-  it('has Quick start first, then the take-home topic (1b-i), then the slice 0 topics', () => {
+  it('has Quick start first, then the take-home topic (1b-i) and the optimiser topic (1b-ii-b), then the slice 0 topics', () => {
     expect(HELP_TOPICS.map((t) => t.id)).toEqual([
       'quick-start',
       'take-home-pay',
+      'pension-optimiser',
       'scenarios-and-saving',
       'tax-data-and-last-verified',
       'troubleshooting',
     ])
   })
 
-  it('the take-home topic covers the payslip caveat, flex cash, benefits and deductions, and says the optimiser is coming', () => {
+  it('the take-home topic covers the payslip caveat, flex cash, benefits and deductions, and links to the optimiser topic', () => {
     const text = JSON.stringify(topicById('take-home-pay')!.blocks)
-    for (const word of [/payslip/i, /flex/i, /benefits in kind/i, /post-tax deductions/i, /salary/i, /coming/i]) expect(text).toMatch(word)
+    for (const word of [/payslip/i, /flex/i, /benefits in kind/i, /post-tax deductions/i, /salary/i]) expect(text).toMatch(word)
+    expect(text).not.toMatch(/coming/i)
+    expect(linksIn(topicById('take-home-pay')!.blocks)).toContain('help:pension-optimiser')
+  })
+
+  it('the optimiser topic covers reading the chart: period, zoom, change, cost, thresholds, warnings, childcare, compare, what is not modelled', () => {
+    const text = JSON.stringify(topicById('pension-optimiser')!.blocks)
+    for (const word of [
+      /Month/,
+      /Full range/,
+      /Change vs now/,
+      /a pound more/i,
+      /against no contribution/i,
+      /since the previous point/i,
+      /already under/i,
+      /out of reach/i,
+      /a penny below/i,
+      /warnings/i,
+      /never a cap|not capped|no contribution is stopped/i,
+      /childcare/i,
+      /not checked/i,
+      /compare/i,
+      /not modelled/i,
+      /no point is called the best/i,
+    ])
+      expect(text).toMatch(word)
+    expect(text).not.toMatch(/coming/i)
   })
 
   it('no topic mentions the removed Hello calculator', () => {

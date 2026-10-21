@@ -510,3 +510,36 @@ Slice 0 Foundation, Done (0.2.0, PR #2, 17 October 2026). The owner ran the sess
     6. Bookmark `#/help/troubleshooting`, open it from the bookmark, and close: you land on the home page.
   - Next: the owner runs the checklist on the deployed site, then sets slice 0 to Done in `PLAN.md` (0.2.0, the PR number, the date). Then slice 0.5 (core plumbing): money type, `Sourced<T>` tax config with the registry, which unlocks the Settings tax-year default (replace the `data-stub="tax-year"` placeholder in `src/sheets/SettingsPage.tsx`), versioned scenarios with export and import (the Scenarios menu item, the menu footnote and the "Scenarios and saving" Help topic then describe something real), backup and restore in Settings, and the shared input and result components. New storage keys from 0.5 must pass the storage-key guard.
   - Docs updated: `PHASE-BRIEF.md`, `PLAN.md`, `CHANGELOG.md` (0.2.0), `CLAUDE.md` (state stores, build docs guard, storage-key guard, allowlist pinning, chrome text rule), `docs/privacy.md` (four keys, records, migrations, allowlist), `docs/design-tokens.md` (six chrome tokens), `docs/README.md`, `content/help/README.md`, `src/lib/README.md`.
+
+
+## Archive: slice 1b part scopes (1b-ii-a, 1b-ii-b)
+
+### Part 1b-ii-a (the optimiser sweep and chart)
+
+On the same page and inputs (version 3 since 0.11.0), in the 0.12.0 layout. Add a migration to `MIGRATIONS` in `definition.ts` only if the stored shape changes; the version follows. `optimise()` already sweeps from cash pay after salary given up for benefits.
+
+### Scope
+
+- A new `Section` for the optimiser's inputs; its results in the `StickyResult` results column, with the chart below the split bar.
+- `optimise(inputs, config, policy, options?)` from the page inputs: `toTaxInputs` plus `pension` (the method and the resolved current contribution, from `resolveInputs`), `savings` (the resolved `employerContribution`, carry forward and the MPAA flag as new inputs) and `checkChildcare`. A sweep over contributions is in amounts; a contribution entered as a percentage can be shown as a percentage of pensionable pay beside it.
+- The take-home (or spendable) against contribution chart from `points`, markers for `current`, `maximum` and each threshold, `cliffs` drawn as labelled jumps, a table fallback (the shared `Chart`).
+- The layout-shift fix (backlog): reserve the page's height while a calculator page loads, so the footer is not pushed off-screen when the page arrives (Lighthouse CLS 0.137 on the take-home page).
+
+### Out of scope
+
+- Everything in 1b-ii-b below.
+- No point labelled "best".
+
+### Part 1b-ii-b (reading the result)
+
+### Scope
+
+- "Cost of £1 more pension" from `netCostPerPound` and `marginalRate`, labelled with what each is measured against.
+- Thresholds in words from `thresholds` ("already under", "contribute £X more", "out of reach" with the reason); the HICBC full-charge point said plainly (the charge first falls a penny below it).
+- Warnings from each point (annual allowance, taper, carry forward, childcare), never hidden, never a cap; childcare as eligibility only, with what isn't checked.
+- Compare: the current contribution against a chosen one. No point labelled "best".
+- Help and assumptions for the optimiser.
+
+### Out of scope
+
+- Slice 2 and later calculators.

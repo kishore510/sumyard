@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { bandScale, linearScale, niceDomain, niceStep } from './scale'
+import { bandScale, linearScale, niceDomain, niceStep, ticksWithin } from './scale'
 
 const MAX = Number.MAX_SAFE_INTEGER
 
@@ -107,5 +107,18 @@ describe('bandScale', () => {
 
   it('copes with no bands', () => {
     expect(bandScale(0, [0, 100], 0.2).bandwidth).toBe(0)
+  })
+})
+
+describe('ticksWithin', () => {
+  it('gives at least two round ticks inside the data, asking for more when the first try leaves fewer', () => {
+    // Two target ticks over 600 to 65,400 round to a step of 50,000: only one tick lies inside.
+    expect(
+      niceDomain([60_000, 6_540_000], { integer: true, targetTicks: 2 }).ticks.filter((t) => t >= 60_000 && t <= 6_540_000),
+    ).toHaveLength(1)
+    const ticks = ticksWithin([60_000, 6_540_000], { integer: true, targetTicks: 2 })
+    expect(ticks.length).toBeGreaterThanOrEqual(2)
+    expect(ticks.every((t) => t >= 60_000 && t <= 6_540_000)).toBe(true)
+    expect(ticksWithin([0, 100], { integer: true, targetTicks: 4 })).toEqual(niceDomain([0, 100], { integer: true, targetTicks: 4 }).ticks)
   })
 })

@@ -1,4 +1,4 @@
-import { type Money, mulRound, ratio, subtract, ZERO } from '@/lib/money'
+import { type Money, mulRound, type RoundingMode, ratio, subtract, ZERO } from '@/lib/money'
 import { MONTHS_PER_YEAR } from '@/lib/periods'
 import type { PeriodView } from './types'
 
@@ -41,9 +41,17 @@ export interface Breakdown {
 
 const MONTH = ratio(1, MONTHS_PER_YEAR)
 
+/**
+ * An annual amount for the period: itself for the year, divided by
+ * MONTHS_PER_YEAR for a month (to the nearest penny unless asked otherwise).
+ */
+export function perPeriod(amount: Money, period: BreakdownPeriod, mode: RoundingMode = 'nearest'): Money {
+  return period === 'year' ? amount : mulRound(amount, MONTH, mode)
+}
+
 /** The breakdown of a take-home result's annual view, for the year or for a month. */
 export function breakdown(annual: PeriodView, period: BreakdownPeriod): Breakdown {
-  const part = (amount: Money) => (period === 'year' ? amount : mulRound(amount, MONTH, 'nearest'))
+  const part = (amount: Money) => perPeriod(amount, period)
   const gross = part(annual.gross)
   const rows = Object.fromEntries(DEDUCTION_ROWS.map((row) => [row, part(annual[row])])) as Record<DeductionRow, Money>
   const takeHome = DEDUCTION_ROWS.reduce((left, row) => subtract(left, rows[row]), gross)

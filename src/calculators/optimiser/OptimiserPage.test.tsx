@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { SETTLE_MS } from '@/components/StickyResult'
 import { taxYear } from '@/config/tax/2026-27'
 import { formatGBP } from '@/lib/format'
-import { fromPence, fromPounds, type Money, mulRound, ZERO } from '@/lib/money'
+import { fromPence, fromPounds, type Money, mulRound, ratio, ZERO } from '@/lib/money'
 import { percentRatio } from '@/lib/parse'
 import { MONTHS_PER_YEAR } from '@/lib/periods'
 import { STORAGE_KEYS } from '@/lib/storageKeys'
@@ -1026,6 +1026,7 @@ describe('Optimiser chart (1b-ii-a)', () => {
     type(box('opt-salary'), '110,000')
     type(box('opt-children'), '2')
     const result = sweep()
+    click($('#opt-full-range'))
     const tableValues = () => [...$('[data-optimiser] tbody')!.querySelectorAll('tr')].map((tr) => tr.children[1]!.textContent)
     expect($('[data-optimiser] thead')!.textContent).toMatch(/Spendable/)
     expect(tableValues()).toEqual(result.points.map((p) => money(p.spendable)))
@@ -1038,6 +1039,7 @@ describe('Optimiser chart (1b-ii-a)', () => {
     type(box('opt-salary'), '125,000')
     type(box('opt-employee'), '4,000')
     const result = sweep()
+    click($('#opt-full-range'))
     const list = $('[data-optimiser] [data-marker-list]')!.textContent!
     expect(list).toContain(`${REASON_LABELS.current}: ${money(result.currentContribution)}`)
     expect(list).toContain(REASON_LABELS.maximum)
@@ -1059,6 +1061,172 @@ describe('Optimiser chart (1b-ii-a)', () => {
     expect($('[data-optimiser] [data-span]')).not.toBeNull()
     expect($('[data-optimiser] [data-marker-list]')!.textContent).toMatch(/Child Benefit charge/)
     expect($('[data-optimiser]')!.textContent).toMatch(/either way/)
+  })
+})
+
+describe('Optimiser chart by period (1b-ii-b)', () => {
+  it('follows the page’s Year / Month switch: axes, values and the month note', () => {
+    type(box('opt-salary'), '120,000')
+    expect($('[data-optimiser] thead')!.textContent).toMatch(/Spendable a year/)
+    expect($('[data-optimiser] [data-month-note]')).toBeNull()
+    choose('opt-period', 'month')
+    const result = calculateOptimise(session.get().inputs, taxYear, 'month')
+    if (!result.ok || 'problem' in result) throw new Error('no result')
+    expect($('[data-optimiser] thead')!.textContent).toMatch(/Pension a month/)
+    expect($('[data-optimiser] thead')!.textContent).toMatch(/Spendable a month/)
+    const first = $('[data-optimiser] tbody tr')!.children[1]!.textContent
+    expect(first).toBe(money(mulRound(result.points[0]!.spendable, ratio(1, MONTHS_PER_YEAR), 'nearest')))
+    expect($('[data-optimiser] [data-month-note]')!.textContent).toMatch(/PAYE estimate/)
+  })
+})
+
+describe('Change vs now (1b-ii-b)', () => {
+  it('adds a signed change against the current contribution to the table, nothing on the current row', () => {
+    type(box('opt-salary'), '120,000')
+    type(box('opt-employee'), '6,000')
+    const headings = [...$('[data-optimiser] thead tr')!.children].map((th) => th.textContent)
+    const at = headings.indexOf('Change vs now')
+    expect(at).toBeGreaterThan(1)
+    const rows = [...$('[data-optimiser] tbody')!.querySelectorAll('tr')]
+    const change = (tr: Element) => tr.children[at]!.textContent!
+    const now = rows.find((tr) => tr.textContent!.includes(REASON_LABELS.current))!
+    expect(change(now)).toBe(money(ZERO))
+    expect(rows.some((tr) => change(tr).startsWith('+'))).toBe(true)
+    expect(rows.some((tr) => change(tr).startsWith('-'))).toBe(true)
+  })
+
+  it('reads out the chosen point above the chart, the current contribution until another is chosen', () => {
+    type(box('opt-salary'), '120,000')
+    type(box('opt-employee'), '6,000')
+    const result = sweep()
+    const readout = () => $('[data-optimiser] [data-readout]')!.textContent!
+    expect(readout()).toContain(money(result.currentContribution))
+    expect(readout()).toMatch(/your contribution now/i)
+    const select = box('opt-chosen') as unknown as HTMLSelectElement
+    const other = result.points.find((p) => p.contribution > result.currentContribution)!
+    act(() => {
+      select.value = String(other.contribution)
+      select.dispatchEvent(new Event('change', { bubbles: true }))
+    })
+    expect(readout()).toContain(money(other.contribution))
+    expect(readout()).toMatch(/[+-]£/)
+    // The readout precedes the chart.
+    const chart = $('[data-optimiser] [data-chart]')!
+    expect($('[data-optimiser] [data-readout]')!.compareDocumentPosition(chart) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+})
+
+describe('Zoom (1b-ii-b)', () => {
+  const rows = () => [...$('[data-optimiser] tbody')!.querySelectorAll('tr')]
+  const yTicks = () => [...$('[data-optimiser] svg[role="img"]')!.querySelectorAll('text.tabular-nums')].map((t) => t.textContent ?? '')
+
+  it('shows the range around the current contribution by default, and every point with Full range', () => {
+    type(box('opt-salary'), '120,000')
+    type(box('opt-children'), '2')
+    const result = sweep()
+    expect(rows().length).toBeLessThan(result.points.length)
+    expect($('[data-optimiser] [data-marker-list]')!.textContent).not.toContain(REASON_LABELS.maximum)
+    click($('#opt-full-range'))
+    expect(rows()).toHaveLength(result.points.length)
+    expect($('[data-optimiser] [data-marker-list]')!.textContent).toContain(REASON_LABELS.maximum)
+  })
+
+  it('leaves the negative part of the y axis out unless the points shown go there', () => {
+    type(box('opt-salary'), '120,000')
+    type(box('opt-children'), '2')
+    addItem('deductions', 'Cover', '6,000')
+    const result = sweep()
+    expect(result.points.some((p) => p.spendable < 0)).toBe(true)
+    expect(yTicks().some((t) => t.startsWith('-'))).toBe(false)
+    click($('#opt-full-range'))
+    expect(yTicks().some((t) => t.startsWith('-'))).toBe(true)
+  })
+
+  it('has no range switch when no threshold lies ahead, and says the full range is shown', () => {
+    type(box('opt-salary'), '40,000')
+    expect($('#opt-full-range')).toBeNull()
+    expect(rows()).toHaveLength(sweep().points.length)
+    expect($('[data-optimiser] [data-range-note]')!.textContent).toMatch(/full range/i)
+  })
+})
+
+describe('Cost of more pension (1b-ii-b)', () => {
+  it('says what each pound more costs against no contribution and since the previous point, in the active period', () => {
+    type(box('opt-salary'), '120,000')
+    type(box('opt-employee'), '6,000')
+    const card = () => $('[data-cost]')!.textContent!
+    expect(card()).toMatch(/against no contribution/i)
+    expect(card()).toMatch(/since the previous point/i)
+    expect(card()).not.toMatch(/a month/)
+    choose('opt-period', 'month')
+    expect(card()).toMatch(/more a month/)
+  })
+
+  it('at no contribution says there is nothing to measure against yet', () => {
+    type(box('opt-salary'), '40,000')
+    expect($('[data-cost]')!.textContent).toMatch(/no contribution to measure against/i)
+  })
+})
+
+describe('Thresholds in words (1b-ii-b)', () => {
+  it('lists every threshold optimise() gives, each with its status in words', () => {
+    type(box('opt-salary'), '120,000')
+    type(box('opt-children'), '2')
+    type(box('opt-employee'), '2,000')
+    const result = sweep()
+    const items = [...$('[data-thresholds]')!.querySelectorAll('[data-threshold]')]
+    expect(items.map((li) => li.getAttribute('data-threshold'))).toEqual(result.thresholds.map((t) => t.threshold))
+    const statuses = new Set(items.map((li) => li.getAttribute('data-status')))
+    expect(statuses.has('contributeMore')).toBe(true)
+    expect($('[data-thresholds]')!.textContent).toMatch(/first falls a penny below/)
+    choose('opt-period', 'month')
+    expect($('[data-thresholds]')!.textContent).toMatch(/more a month/)
+  })
+})
+
+describe('Warnings across the contributions (1b-ii-b)', () => {
+  const panel = () => $('[data-optimiser-warnings]')!.textContent!
+
+  it('shows every warning any point carries, with where it applies, even outside the zoomed range', () => {
+    type(box('opt-salary'), '300,000')
+    const result = sweep()
+    const messages = new Set(result.points.flatMap((p) => p.warnings.map((w) => w.message)))
+    expect(messages.size).toBeGreaterThan(0)
+    for (const message of messages) expect(panel()).toContain(message)
+    expect(panel()).toMatch(/From £/)
+  })
+
+  it('says so when no point carries a warning, rather than leaving the panel out', () => {
+    type(box('opt-salary'), '40,000')
+    expect(panel()).toMatch(/No warnings/)
+  })
+
+  it('with the childcare check, gives eligibility on income only, at the chosen point, and what is not checked', () => {
+    type(box('opt-salary'), '120,000')
+    click($('#opt-childcare'))
+    expect(panel()).toMatch(/Tax-Free Childcare/)
+    expect(panel()).toMatch(/eligible on income|over the income limit/)
+    expect(panel()).toMatch(/not checked/i)
+  })
+})
+
+describe('Compare now and a chosen contribution (1b-ii-b)', () => {
+  it('compares the contribution now with the chosen one, with the change, and follows the choice', () => {
+    type(box('opt-salary'), '120,000')
+    type(box('opt-employee'), '6,000')
+    const card = () => $('[data-compare-choice]')!.textContent!
+    expect(card()).toMatch(/choose another contribution/i)
+    const result = sweep()
+    const other = result.points.find((p) => p.contribution > result.currentContribution)!
+    const select = box('opt-chosen') as unknown as HTMLSelectElement
+    act(() => {
+      select.value = String(other.contribution)
+      select.dispatchEvent(new Event('change', { bubbles: true }))
+    })
+    expect(card()).toContain(money(other.spendable))
+    expect(card()).toContain(`Now ${money(result.points.find((p) => p.contribution === result.currentContribution)!.spendable)}`)
+    expect(card()).toMatch(/Adjusted net income/)
+    expect(card()).not.toMatch(/\bbest\b|optimal|recommended/i)
   })
 })
 
@@ -1096,6 +1264,19 @@ describe('Pension allowances section (inputs version 4)', () => {
     expect($('[data-optimiser] [data-marker-list]')!.textContent).not.toContain(THRESHOLD_LABELS.taxFreeChildcareLimit)
     click($('#opt-childcare'))
     expect($('[data-optimiser] [data-marker-list]')!.textContent).toContain(THRESHOLD_LABELS.taxFreeChildcareLimit)
+  })
+
+  it('lists what the optimiser does not model, from the engine’s assumptions, and the reading assumptions (1b-ii-b)', () => {
+    type(box('opt-salary'), '120,000')
+    click($('#opt-childcare'))
+    const notModelled = $('details#assumptions [data-not-modelled]')!.textContent!
+    const lines = sweep().assumptions.filter((line) => /not modelled|not checked|not valued/i.test(line))
+    expect(lines.length).toBeGreaterThan(0)
+    for (const line of lines) expect(notModelled).toContain(line)
+    const text = $('details#assumptions')!.textContent!
+    expect(text).toMatch(/Change vs now/)
+    expect(text).toMatch(/rounded up to the penny/)
+    expect(text).toMatch(/around your contribution now/)
   })
 
   it('lists optimise()’s assumptions in the assumptions panel once there is a sweep', () => {

@@ -92,3 +92,17 @@ export function bandScale(count: number, [r0, r1]: readonly [number, number], pa
     center: (index: number) => r0 + index * step + step / 2,
   }
 }
+
+/** Round ticks inside the values' range (for a numeric x axis): at least two where doubling the target, up to three times, finds them. */
+export function ticksWithin(values: readonly number[], { integer = false, targetTicks = 6 }: DomainOptions = {}): number[] {
+  const finite = values.filter((v) => Number.isFinite(v))
+  if (finite.length === 0) return []
+  const low = Math.min(...finite)
+  const high = Math.max(...finite)
+  let ticks: number[] = []
+  for (let target = targetTicks, tries = 0; tries < 4; target *= 2, tries++) {
+    ticks = niceDomain(finite, { integer, targetTicks: target }).ticks.filter((t) => t >= low && t <= high)
+    if (ticks.length >= 2) break
+  }
+  return ticks
+}

@@ -582,6 +582,33 @@ describe('itemised lists against the single annual figure (B7)', () => {
   })
 })
 
+const VERSION_4_ROWS = ['Unused allowance carried forward', 'Money purchase annual allowance', 'Childcare income limits checked']
+const VERSION_4_DEFAULTS = { carryForward: [], moneyPurchaseAnnualAllowance: false, checkChildcare: false }
+
+describe('summarise: the version 4 inputs (1b-ii-b)', () => {
+  it('shows carry forward in all and by year, the money purchase flag and the childcare check', () => {
+    const inputs = {
+      ...optimiserCalculator.defaultInputs(),
+      salary: fromPounds(130_000),
+      carryForward: [
+        { yearsAgo: 1, amount: fromPounds(1_500) },
+        { yearsAgo: 3, amount: fromPounds(4_000) },
+      ],
+      moneyPurchaseAnnualAllowance: true,
+      checkChildcare: true,
+    }
+    const rows = optimiserCalculator.summarise(inputs, taxYear).inputs
+    const input = (label: string) => rows.find((r) => r.label === label)?.value
+    expect(input('Unused allowance carried forward')).toEqual({ kind: 'money', amount: fromPounds(5_500) })
+    expect(input('Carry forward from the tax year before')).toEqual({ kind: 'money', amount: fromPounds(1_500) })
+    expect(input('Carry forward from 3 tax years before')).toEqual({ kind: 'money', amount: fromPounds(4_000) })
+    expect(input('Money purchase annual allowance')).toEqual({ kind: 'text', text: 'Applies' })
+    expect(input('Childcare income limits checked')).toEqual({ kind: 'text', text: 'Yes' })
+    const none = optimiserCalculator.summarise(optimiserCalculator.defaultInputs(), taxYear).inputs
+    expect(none.some((r) => r.label.startsWith('Carry forward from'))).toBe(false)
+  })
+})
+
 describe('summarise: the resolved totals and how contributions were entered', () => {
   it('shows a percentage contribution’s mode, percentage, resolved amount and pensionable pay', () => {
     const inputs = valid({
@@ -692,7 +719,18 @@ describe('migration from inputs version 3 (1b-ii-a)', () => {
     expect(toTaxInputs(migrated)).toEqual(toTaxInputs(v3))
     if (after.ok && !('problem' in after) && before.ok && !('problem' in before))
       expect(calculatePaye(migrated, after, taxYear)).toEqual(calculatePaye(v3, before, taxYear))
-    expect(optimiserCalculator.summarise(migrated, taxYear)).toEqual(optimiserCalculator.summarise(v3, taxYear))
+    // The compare summary is unchanged apart from the rows for the version 4 inputs (1b-ii-b), at their defaults.
+    const without = (summary: ReturnType<typeof optimiserCalculator.summarise>) => ({
+      ...summary,
+      inputs: summary.inputs.filter((row) => !VERSION_4_ROWS.includes(row.label)),
+    })
+    const after4 = optimiserCalculator.summarise(migrated, taxYear)
+    expect(without(after4)).toEqual(without(optimiserCalculator.summarise({ ...v3, ...VERSION_4_DEFAULTS }, taxYear)))
+    expect(after4.inputs.filter((row) => VERSION_4_ROWS.includes(row.label)).map((row) => row.value)).toEqual([
+      { kind: 'money', amount: ZERO },
+      { kind: 'text', text: 'Does not apply' },
+      { kind: 'text', text: 'No' },
+    ])
   })
 
   it('refuses hostile or broken version 3 inputs rather than migrating them', () => {

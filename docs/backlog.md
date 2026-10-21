@@ -26,3 +26,4 @@ Moved verbatim from `PLAN.md` on 21 October 2026. New ideas go here.
 - Child Benefit for part of a year (a child born or turning the age limit mid-year), and which partner pays the charge.
 - Employer pension contributions on top of a salary sacrifice, and the employer's NI saving (slice 1b shows it employer-side).
 - Show the source page's title next to "Source: GOV.UK" on Tax data, so identical link texts are told apart by sight (they differ only in their accessible names today).
+- Optimiser: choose the contribution to look at by tapping the chart or a table row (today a select of the points shown), and measure thresholds from the chosen contribution as well as from now.

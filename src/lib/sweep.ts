@@ -1,4 +1,5 @@
-import { fromPence, fromPounds, type Money, toPence } from './money'
+import { fromPence, fromPounds, type Money, type Ratio, ratio, toPence } from './money'
+import { MONTHS_PER_YEAR } from './periods'
 
 /*
  * Defaults for the optimiser's contribution sweep (decision G13 in
@@ -10,6 +11,12 @@ import { fromPence, fromPounds, type Money, toPence } from './money'
 /** Distance between sweep points: a contribution every this many pence. */
 export const DEFAULT_SWEEP_STEP: Money = fromPounds(500)
 
+/** The sweep step in the take-home page's month view, a month: a round monthly amount (1b-ii-b). */
+export const DEFAULT_MONTHLY_SWEEP_STEP: Money = fromPounds(50)
+
+/** The take-home page's zoomed chart: the share of the zoomed span added on each side (1b-ii-b). A display choice. */
+export const ZOOM_MARGIN: Ratio = ratio(1, 10)
+
 /** The most sweep points one call may produce. */
 export const MAX_SWEEP_POINTS = 10_000
 
@@ -17,12 +24,14 @@ export const MAX_SWEEP_POINTS = 10_000
 export const PAGE_SWEEP_POINTS = 400
 
 /**
- * The page's sweep step for contributions from nothing to `range`: the
- * default step, or the smallest whole multiple of it that keeps the sweep
- * within PAGE_SWEEP_POINTS.
+ * The page's sweep step (for the year) for contributions from nothing to
+ * `range`: the default step, or the smallest whole multiple of it that keeps
+ * the sweep within PAGE_SWEEP_POINTS. In the month view the base step is the
+ * monthly step for a year, so each point is a round amount a month.
  */
-export function pageSweepStep(range: Money): Money {
+export function pageSweepStep(range: Money, period: 'year' | 'month' = 'year'): Money {
+  const base = period === 'month' ? toPence(DEFAULT_MONTHLY_SWEEP_STEP) * MONTHS_PER_YEAR : toPence(DEFAULT_SWEEP_STEP)
   // floor(range / (k × step)) + 1 points fit the budget exactly when k × step × PAGE_SWEEP_POINTS > range.
-  const times = Math.floor(Math.max(0, toPence(range)) / (toPence(DEFAULT_SWEEP_STEP) * PAGE_SWEEP_POINTS)) + 1
-  return fromPence(toPence(DEFAULT_SWEEP_STEP) * times)
+  const times = Math.floor(Math.max(0, toPence(range)) / (base * PAGE_SWEEP_POINTS)) + 1
+  return fromPence(base * times)
 }

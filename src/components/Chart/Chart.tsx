@@ -2,7 +2,7 @@ import { ChevronDown } from 'lucide-react'
 import { useEffect, useId, useRef, useState } from 'react'
 import { useTheme } from '@/hooks/useTheme'
 import { cn } from '@/lib/utils'
-import { bandScale, linearScale, niceDomain } from './scale'
+import { bandScale, linearScale, niceDomain, ticksWithin } from './scale'
 import { describeChart, spanKey } from './summary'
 import type { ChartMarker, ChartReference, ChartSeries, ChartSpan } from './types'
 
@@ -22,9 +22,12 @@ import type { ChartMarker, ChartReference, ChartSeries, ChartSpan } from './type
  * - It is drawn at its container's width (from 280 px), so it fits a 360 px
  *   phone, and it does not animate, so reduced motion needs nothing more.
  * - With `xValues` the x axis is numeric: points sit at their values, with
- *   value ticks. Then `markers` draw numbered vertical lines and `spans`
+ *   value ticks. Then `markers` draw numbered vertical lines (markers closer
+ *   than a number's width share one number) and `spans`
  *   lettered shaded ranges (the line across a range is dashed), each listed
- *   under the chart with its label and said in the text summary.
+ *   under the chart with its label and said in the text summary, and
+ *   `selectedX` highlights one point (on the line and in the table).
+ * - `columns` adds text columns to the table after the series.
  *
  * Geometry constants below are chart layout, not design tokens.
  */
@@ -37,7 +40,6 @@ const CHAR = 7
 const MARKER = 4
 const ROW = 14
 const MARKER_GAP = 16
-const MARKER_ROWS = 3
 const MIN_SPAN = 3
 
 /** Per series: stroke or fill class, dash and marker shape. Only token colours. */
@@ -71,8 +73,10 @@ export interface ChartProps {
   spans?: readonly ChartSpan[]
   /** Draw a marker on every line point (default); off for a dense line. */
   pointMarkers?: boolean
-  /** An extra table column, one text per category. */
-  rowNotes?: { readonly label: string; readonly values: readonly string[] }
+  /** Extra table columns after the series, one text per category each; `numeric` ones are right-aligned. */
+  columns?: readonly { readonly label: string; readonly values: readonly string[]; readonly numeric?: boolean }[]
+  /** Numeric x only: the x value of a point to highlight on the first line series and in the table. */
+  selectedX?: number
 }
 
 function useWidth() {
@@ -107,7 +111,8 @@ export function Chart({
   markers = [],
   spans = [],
   pointMarkers = true,
-  rowNotes,
+  columns = [],
+  selectedX,
 }: ChartProps) {
   const { theme } = useTheme()
   const [ref, width] = useWidth()
@@ -117,7 +122,6 @@ export function Chart({
   const numeric = xValues !== undefined && xValues.length === categories.length
   const shownMarkers = numeric ? markers : []
   const shownSpans = numeric ? spans : []
-  const summary = describeChart({ categories, series, references, markers: shownMarkers, spans: shownSpans, format: formatValue })
   const values = series.flatMap((s) => s.values.filter((v): v is number => v !== null))
   const empty = categories.length === 0 || values.length === 0
 
@@ -131,23 +135,20 @@ export function Chart({
   // Numeric x: the scale runs over the data, with round ticks inside it.
   const xMin = numeric ? Math.min(...xValues) : 0
   const xMax = numeric ? Math.max(...xValues) : 0
-  const xTicks = numeric
-    ? niceDomain(xValues, { integer, targetTicks: Math.max(2, Math.floor((right - left) / 90)) }).ticks.filter(
-        (t) => t >= xMin && t <= xMax,
-      )
-    : []
+  const xTicks = numeric ? ticksWithin(xValues, { integer, targetTicks: Math.max(2, Math.floor((right - left) / 90)) }) : []
   const xScale = numeric ? linearScale([xMin, xMax], [left, right]) : null
-  // Marker numbers sit in rows above the plot, a row lower when the one above is too close.
-  const markerRows: number[] = []
-  const lastInRow: number[] = []
+  // Markers closer than a number's width share one number, at the first one's place; the list says each label under it.
+  const groups: { at: number; markers: ChartMarker[] }[] = []
   for (const marker of shownMarkers) {
     const at = xScale ? xScale(marker.x) : 0
-    let row = lastInRow.findIndex((last) => at - last >= MARKER_GAP)
-    if (row === -1) row = lastInRow.length < MARKER_ROWS ? lastInRow.length : lastInRow.indexOf(Math.min(...lastInRow))
-    lastInRow[row] = at
-    markerRows.push(row)
+    const last = groups.at(-1)
+    const labelWidth = Math.max(MARKER_GAP, String(groups.length).length * CHAR + CHAR)
+    if (last && at - last.at < labelWidth) last.markers.push(marker)
+    else groups.push({ at, markers: [marker] })
   }
-  const extraTop = (shownMarkers.length > 0 ? lastInRow.length : 0) * ROW + (shownSpans.length > 0 ? ROW : 0)
+  const extraTop = (groups.length > 0 ? ROW : 0) + (shownSpans.length > 0 ? ROW : 0)
+  const merged = groups.map((group) => ({ x: group.markers[0]!.x, label: group.markers.map((m) => m.label).join('; ') }))
+  const summary = describeChart({ categories, series, references, markers: merged, spans: shownSpans, format: formatValue })
   const height = HEIGHT + extraTop
   const plot = { left, right, top: PAD.top + extraTop, bottom: height - PAD.bottom }
   const y = linearScale([domain.min, domain.max], [plot.bottom, plot.top])
@@ -161,6 +162,9 @@ export function Chart({
   const longest = Math.max(...categories.map((c) => c.length), 1)
   const every = Math.max(1, Math.ceil(((longest * CHAR + 8) * categories.length) / Math.max(1, plot.right - plot.left)))
   const zero = domain.min <= 0 && domain.max >= 0 ? y(0) : null
+  const selectedIndex = numeric && selectedX !== undefined ? xValues.indexOf(selectedX) : -1
+  const selectedSeries = series.find((s) => s.kind === 'line')
+  const selectedValue = selectedIndex >= 0 ? selectedSeries?.values[selectedIndex] : null
 
   return (
     <figure data-chart data-theme={theme} className="flex min-w-0 flex-col gap-3">
@@ -306,19 +310,43 @@ export function Chart({
               </g>
             ))}
 
+            {selectedValue !== null && selectedValue !== undefined && (
+              <circle
+                data-selected
+                cx={px(selectedIndex)}
+                cy={y(selectedValue)}
+                r={MARKER + 2}
+                strokeWidth={2}
+                className="fill-accent stroke-surface"
+              />
+            )}
+
             {xScale &&
-              shownMarkers.map((marker, i) => {
-                const at = xScale(marker.x)
-                const labelY = PAD.top + (markerRows[i] ?? 0) * ROW + ROW / 2
-                return (
-                  <g key={`${marker.x}-${marker.label}`} data-marker>
-                    <line x1={at} x2={at} y1={plot.top} y2={plot.bottom} strokeWidth={1.5} strokeDasharray="2 2" className="stroke-text" />
-                    <text x={at} y={labelY} dy="0.32em" textAnchor="middle" className="fill-text text-xs font-semibold tabular-nums">
-                      {i + 1}
-                    </text>
-                  </g>
-                )
-              })}
+              groups.map((group, i) => (
+                <g key={`${group.markers[0]!.x}-${group.markers[0]!.label}`} data-marker>
+                  {group.markers.map((marker) => (
+                    <line
+                      key={`${marker.x}-${marker.label}`}
+                      x1={xScale(marker.x)}
+                      x2={xScale(marker.x)}
+                      y1={plot.top}
+                      y2={plot.bottom}
+                      strokeWidth={1.5}
+                      strokeDasharray="2 2"
+                      className="stroke-text"
+                    />
+                  ))}
+                  <text
+                    x={group.at}
+                    y={PAD.top + ROW / 2}
+                    dy="0.32em"
+                    textAnchor="middle"
+                    className="fill-text text-xs font-semibold tabular-nums"
+                  >
+                    {i + 1}
+                  </text>
+                </g>
+              ))}
 
             {xScale && (
               <g data-x-ticks>
@@ -380,10 +408,14 @@ export function Chart({
 
       {(shownMarkers.length > 0 || shownSpans.length > 0) && !empty && (
         <ul data-marker-list className="flex flex-col gap-1 text-xs text-text [overflow-wrap:anywhere]">
-          {shownMarkers.map((marker, i) => (
-            <li key={`m-${marker.x}-${marker.label}`} className="flex gap-2">
+          {groups.map((group, i) => (
+            <li key={`m-${group.markers[0]!.x}-${group.markers[0]!.label}`} className="flex gap-2">
               <span className="w-6 shrink-0 text-right font-semibold tabular-nums">{i + 1}</span>
-              <span>{marker.label}</span>
+              <span className="flex min-w-0 flex-col">
+                {group.markers.map((marker) => (
+                  <span key={`${marker.x}-${marker.label}`}>{marker.label}</span>
+                ))}
+              </span>
             </li>
           ))}
           {shownSpans.map((span, i) => (
@@ -413,17 +445,21 @@ export function Chart({
                     {s.label}
                   </th>
                 ))}
-                {rowNotes && (
-                  <th scope="col" className="px-3 py-2 font-medium">
-                    {rowNotes.label}
+                {columns.map((column) => (
+                  <th key={column.label} scope="col" className={cn('px-3 py-2 font-medium', column.numeric && 'text-right')}>
+                    {column.label}
                   </th>
-                )}
+                ))}
               </tr>
             </thead>
             <tbody>
               {categories.map((category, i) => (
                 // Numeric x values are unique where formatted categories may not be (amounts shown in whole pounds).
-                <tr key={numeric ? xValues[i] : category} className="border-t border-border">
+                <tr
+                  key={numeric ? xValues[i] : category}
+                  data-selected-row={i === selectedIndex ? '' : undefined}
+                  className={cn('border-t border-border', i === selectedIndex && 'bg-accent-subtle')}
+                >
                   <th scope="row" className="px-3 py-2 text-left font-normal text-text">
                     {category}
                   </th>
@@ -435,7 +471,17 @@ export function Chart({
                       </td>
                     )
                   })}
-                  {rowNotes && <td className="px-3 py-2 text-xs text-text [overflow-wrap:anywhere]">{rowNotes.values[i] ?? ''}</td>}
+                  {columns.map((column) => (
+                    <td
+                      key={column.label}
+                      className={cn(
+                        'px-3 py-2 text-text',
+                        column.numeric ? 'text-right tabular-nums whitespace-nowrap' : 'text-xs [overflow-wrap:anywhere]',
+                      )}
+                    >
+                      {column.values[i] ?? ''}
+                    </td>
+                  ))}
                 </tr>
               ))}
             </tbody>

@@ -98,7 +98,7 @@ describe('Chart', () => {
       ],
       spans: [{ from: 10, to: 40, label: 'A jump lies here' }],
       pointMarkers: false,
-      rowNotes: { label: 'Marked', values: ['', 'Now: 10p', '', 'Most: 50p'] },
+      columns: [{ label: 'Marked', values: ['', 'Now: 10p', '', 'Most: 50p'] }],
     }
 
     it('places points by value, not evenly: the gap between 10 and 40 is three times that between 0 and 10', () => {
@@ -146,6 +146,44 @@ describe('Chart', () => {
       const rows = [...view.host.querySelectorAll('tbody tr')].map((tr) => [...tr.children].map((c) => c.textContent))
       expect(rows[1]).toEqual(['10p', '90 pence', 'Now: 10p'])
       expect(view.host.querySelector('thead')!.textContent).toContain('Marked')
+    })
+
+    it('merges markers closer than a label’s width into one number, listing every label under it', () => {
+      const close = [...numeric.markers!, { x: 11, label: 'Close: 11p' }].sort((a, b) => a.x - b.x)
+      view = mount(<Chart {...numeric} markers={close} />)
+      const markers = [...view.host.querySelectorAll('[data-marker]')]
+      expect(markers.map((m) => m.querySelector('text')!.textContent)).toEqual(['1', '2'])
+      const items = [...view.host.querySelectorAll('[data-marker-list] li')].map((li) => li.textContent)
+      expect(items[0]).toBe('1Now: 10pClose: 11p')
+      expect(items[1]).toBe('2Most: 50p')
+      const svg = view.host.querySelector('svg[role="img"]')!
+      const desc = document.getElementById(svg.getAttribute('aria-describedby')!)!.textContent!
+      expect(desc).toContain('Marked 1: Now: 10p; Close: 11p.')
+    })
+
+    it('keeps the y axis at or above zero when no value is below it', () => {
+      view = mount(<Chart {...numeric} series={[{ id: 'a', label: 'Amount', kind: 'line', values: [0, 1, 1, 0] }]} />)
+      const ticks = [...view.host.querySelectorAll('svg text.tabular-nums')].map((t) => t.textContent)
+      expect(ticks.some((t) => t?.startsWith('-'))).toBe(false)
+    })
+
+    it('puts every extra column in the table, in order', () => {
+      view = mount(
+        <Chart {...numeric} columns={[...numeric.columns!, { label: 'Change', values: ['+1p', '0p', '-1p', '-2p'], numeric: true }]} />,
+      )
+      const rows = [...view.host.querySelectorAll('tbody tr')].map((tr) => [...tr.children].map((c) => c.textContent))
+      expect(rows[2]).toEqual(['40p', '60 pence', '', '-1p'])
+      expect(view.host.querySelector('thead')!.textContent).toMatch(/Marked.*Change/)
+    })
+
+    it('highlights the selected point on the line and its table row', () => {
+      view = mount(<Chart {...numeric} selectedX={40} />)
+      expect(view.host.querySelectorAll('[data-selected]')).toHaveLength(1)
+      const rows = [...view.host.querySelectorAll('tbody tr')]
+      expect(rows.map((r) => r.hasAttribute('data-selected-row'))).toEqual([false, false, true, false])
+      view.unmount()
+      view = mount(<Chart {...numeric} />)
+      expect(view.host.querySelectorAll('[data-selected]')).toHaveLength(0)
     })
 
     it('says the markers and ranges in the text summary', () => {

@@ -326,6 +326,27 @@ exports[`page results are unchanged by the redesign (snapshot of engine outputs)
           "text": "BR",
         },
       },
+      {
+        "label": "Unused allowance carried forward",
+        "value": {
+          "amount": 0,
+          "kind": "money",
+        },
+      },
+      {
+        "label": "Money purchase annual allowance",
+        "value": {
+          "kind": "text",
+          "text": "Does not apply",
+        },
+      },
+      {
+        "label": "Childcare income limits checked",
+        "value": {
+          "kind": "text",
+          "text": "No",
+        },
+      },
     ],
     "results": {
       "ok": true,
@@ -561,6 +582,27 @@ exports[`page results are unchanged by the redesign (snapshot of engine outputs)
         "value": {
           "kind": "text",
           "text": "None",
+        },
+      },
+      {
+        "label": "Unused allowance carried forward",
+        "value": {
+          "amount": 0,
+          "kind": "money",
+        },
+      },
+      {
+        "label": "Money purchase annual allowance",
+        "value": {
+          "kind": "text",
+          "text": "Does not apply",
+        },
+      },
+      {
+        "label": "Childcare income limits checked",
+        "value": {
+          "kind": "text",
+          "text": "No",
         },
       },
     ],
@@ -899,6 +941,27 @@ exports[`page results are unchanged by the redesign (snapshot of engine outputs)
         "value": {
           "kind": "text",
           "text": "None",
+        },
+      },
+      {
+        "label": "Unused allowance carried forward",
+        "value": {
+          "amount": 0,
+          "kind": "money",
+        },
+      },
+      {
+        "label": "Money purchase annual allowance",
+        "value": {
+          "kind": "text",
+          "text": "Does not apply",
+        },
+      },
+      {
+        "label": "Childcare income limits checked",
+        "value": {
+          "kind": "text",
+          "text": "No",
         },
       },
     ],
@@ -1580,6 +1643,27 @@ exports[`page results are unchanged by the redesign (snapshot of engine outputs)
           "text": "900L",
         },
       },
+      {
+        "label": "Unused allowance carried forward",
+        "value": {
+          "amount": 0,
+          "kind": "money",
+        },
+      },
+      {
+        "label": "Money purchase annual allowance",
+        "value": {
+          "kind": "text",
+          "text": "Does not apply",
+        },
+      },
+      {
+        "label": "Childcare income limits checked",
+        "value": {
+          "kind": "text",
+          "text": "No",
+        },
+      },
     ],
     "results": {
       "ok": true,
@@ -2014,6 +2098,27 @@ exports[`page results are unchanged by the redesign (snapshot of engine outputs)
         "value": {
           "kind": "text",
           "text": "None",
+        },
+      },
+      {
+        "label": "Unused allowance carried forward",
+        "value": {
+          "amount": 0,
+          "kind": "money",
+        },
+      },
+      {
+        "label": "Money purchase annual allowance",
+        "value": {
+          "kind": "text",
+          "text": "Does not apply",
+        },
+      },
+      {
+        "label": "Childcare income limits checked",
+        "value": {
+          "kind": "text",
+          "text": "No",
         },
       },
     ],
@@ -2645,6 +2750,27 @@ exports[`page results are unchanged by the redesign (snapshot of engine outputs)
           "text": "S1100L",
         },
       },
+      {
+        "label": "Unused allowance carried forward",
+        "value": {
+          "amount": 0,
+          "kind": "money",
+        },
+      },
+      {
+        "label": "Money purchase annual allowance",
+        "value": {
+          "kind": "text",
+          "text": "Does not apply",
+        },
+      },
+      {
+        "label": "Childcare income limits checked",
+        "value": {
+          "kind": "text",
+          "text": "No",
+        },
+      },
     ],
     "results": {
       "ok": true,
@@ -3085,6 +3211,27 @@ exports[`page results are unchanged by the redesign (snapshot of engine outputs)
         "value": {
           "kind": "text",
           "text": "None",
+        },
+      },
+      {
+        "label": "Unused allowance carried forward",
+        "value": {
+          "amount": 0,
+          "kind": "money",
+        },
+      },
+      {
+        "label": "Money purchase annual allowance",
+        "value": {
+          "kind": "text",
+          "text": "Does not apply",
+        },
+      },
+      {
+        "label": "Childcare income limits checked",
+        "value": {
+          "kind": "text",
+          "text": "No",
         },
       },
     ],
