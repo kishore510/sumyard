@@ -2,7 +2,7 @@ import { ChevronDown } from 'lucide-react'
 import { useEffect, useId, useRef, useState } from 'react'
 import { useTheme } from '@/hooks/useTheme'
 import { cn } from '@/lib/utils'
-import { bandScale, linearScale, niceDomain } from './scale'
+import { bandScale, linearScale, niceDomain, ticksWithin } from './scale'
 import { describeChart, spanKey } from './summary'
 import type { ChartMarker, ChartReference, ChartSeries, ChartSpan } from './types'
 
@@ -135,11 +135,7 @@ export function Chart({
   // Numeric x: the scale runs over the data, with round ticks inside it.
   const xMin = numeric ? Math.min(...xValues) : 0
   const xMax = numeric ? Math.max(...xValues) : 0
-  const xTicks = numeric
-    ? niceDomain(xValues, { integer, targetTicks: Math.max(2, Math.floor((right - left) / 90)) }).ticks.filter(
-        (t) => t >= xMin && t <= xMax,
-      )
-    : []
+  const xTicks = numeric ? ticksWithin(xValues, { integer, targetTicks: Math.max(2, Math.floor((right - left) / 90)) }) : []
   const xScale = numeric ? linearScale([xMin, xMax], [left, right]) : null
   // Markers closer than a number's width share one number, at the first one's place; the list says each label under it.
   const groups: { at: number; markers: ChartMarker[] }[] = []
