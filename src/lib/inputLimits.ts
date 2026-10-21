@@ -44,3 +44,6 @@ export const MAX_FEE_RATE = ratio(1, 10)
 
 /** Compound interest: the largest annual increase in contributions (C8). */
 export const MAX_CONTRIBUTION_INCREASE = ratio(1, 2)
+
+/** Compound interest: the years a fresh page starts with. A starting value, not a bound and not advice. */
+export const DEFAULT_PROJECTION_YEARS = 10

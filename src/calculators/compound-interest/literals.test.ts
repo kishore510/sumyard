@@ -13,18 +13,20 @@ import { ALLOWED, engineFiles, FIGURE, numbersIn, split } from '../fixtures/lite
 
 const HERE = import.meta.dirname
 const ENGINE_FILES = engineFiles(HERE)
+/** The page and its definition (slice 2b) are held to the same rule: every figure comes from the engine, lib or Settings. */
+const PAGE_FILES = ['CompoundPage.tsx']
 
 describe('literal guard: the compound interest engine', () => {
   it('finds the engine files', () => {
-    expect(ENGINE_FILES).toEqual(['calc.ts', 'types.ts'])
+    expect(ENGINE_FILES).toEqual(['calc.ts', 'definition.ts', 'results.ts', 'types.ts'])
   })
 
-  it.each(ENGINE_FILES)('%s uses no numeric literal other than 0, 1, 2 and 100', (name) => {
+  it.each([...ENGINE_FILES, ...PAGE_FILES])('%s uses no numeric literal other than 0, 1, 2 and 100', (name) => {
     const { code } = split(readFileSync(join(HERE, name), 'utf8'))
     expect(numbersIn(code).filter((n) => !ALLOWED.has(n))).toEqual([])
   })
 
-  it.each(ENGINE_FILES)('%s has no figure in its comments or strings', (name) => {
+  it.each([...ENGINE_FILES, ...PAGE_FILES])('%s has no figure in its comments or strings', (name) => {
     const { prose } = split(readFileSync(join(HERE, name), 'utf8'))
     expect(prose.filter((text) => FIGURE.test(text))).toEqual([])
   })
