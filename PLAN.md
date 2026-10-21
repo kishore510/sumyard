@@ -1,6 +1,6 @@
 # Phase plan: Sumyard
 
-Last updated: 21 October 2026 (docs restructure: status lives only in the table below; history, open questions and backlog moved to `docs/`; slice 1b In progress)
+Last updated: 21 October 2026 (1b-ii-a Done, 0.13.0; slice 1b In progress)
 
 Sumyard is a set of personal UK finance calculators in one clean, ad-free web app, for the owner's own use. Constraints: client-side only, a static site on GitHub Pages, UK rules from versioned per-tax-year config, illustrative not advice.
 
@@ -19,7 +19,7 @@ Rules for this file: add a row when scope is added; update the Status cell when 
 | 0.11.0 Salary sacrifice and PAYE | Benefits through salary sacrifice, tax code and PAYE estimate, monthly breakdown | Done (0.11.0, PR #12, 18 October 2026) |
 | 0.11.1 Fix | PAYE estimate includes benefits in kind in its pay | Done (0.11.1, PR #13, 18 October 2026) |
 | 0.12.0 Page redesign | Sections, sticky result, split bar, payslip net pay (UI only) | Done (0.12.0, PR #14, 18 October 2026) |
-| 1b-ii-a Optimiser sweep and chart | `optimise()` from page inputs, take-home against contribution chart with markers and cliffs, table fallback, load layout-shift fix | Not started |
+| 1b-ii-a Optimiser sweep and chart | `optimise()` from page inputs, take-home against contribution chart with markers and cliffs, table fallback, load layout-shift fix | Done (0.13.0, PR #16, 21 October 2026) |
 | 1b-ii-b Reading the result | Cost of £1 more pension, thresholds in words, warnings, childcare eligibility, compare, Help and assumptions | Not started |
 | 2 Compound interest | Regular contributions, compounding, inflation-adjusted view, fee drag, yearly table and chart | Not started |
 | 3 Car decision | Keep vs PCP vs HP vs loan: finance, depreciation, running costs, tax, residual value | Not started |
