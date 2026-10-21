@@ -1,6 +1,6 @@
 # PHASE-BRIEF: Slice 3 Car decision
 
-Status: 3a (finance engine) In progress. Slices 1b and 2 are built and stay open in `PLAN.md` until the owner's checks below are done. Status per part lives only in `PLAN.md`. Finished part scopes are in `docs/history/phase-brief-archive.md`.
+Status: 3a (finance engine) Done (0.17.0, PR #21); 3b next, its brief and decisions first. Slices 1b and 2 are built and stay open in `PLAN.md` until the owner's checks below are done. Status per part lives only in `PLAN.md`. Finished part scopes are in `docs/history/phase-brief-archive.md`.
 
 ## Docs rule
 
@@ -42,7 +42,7 @@ Slice 3a: confirm decisions F5 to F14 and the bounds (`src/calculators/car-finan
 
 ## Last session
 
-- 21 October 2026, part 3a (0.17.0, internal): slice 3 brief, decisions F1 to F14 (`docs/modelling-decisions-car.md`), verification CR-1 to CR-14, examples EIR-1 to EIR-3, HP-1, R78-1; the engine in `src/calculators/car-finance/` (loan, HP, PCP; schedule; effective rate by bisection; outstanding balance); 300-case reference and round trip; mutation spot-checks all caught.
+- 21 October 2026, part 3a (0.17.0, PR #21, internal): slice 3 brief, decisions F1 to F14 (`docs/modelling-decisions-car.md`), verification CR-1 to CR-14, examples EIR-1 to EIR-3, HP-1, R78-1; the engine in `src/calculators/car-finance/` (loan, HP, PCP; schedule; effective rate by bisection; outstanding balance); 300-case reference and round trip; mutation spot-checks all caught.
 - Differs from the brief: the statutory APR is **OPEN** (legislation.gov.uk, the regulator's handbook and the guidance PDF refused), so the engine solves HMRC's effective interest rate (CFM21180), not "the APR"; no flat rate (no definition found); no APR or PCP published example exists on a reachable page; priced by payment, the last month's interest takes the rounding (F7, so HP-1's totals are exact).
 - Not verified: the statutory APR, voluntary termination and early settlement rules (secondary sources only, not modelled); any lender's rounding; no UI to check in a browser.
 - Owner: the items under "Still with the owner" above. Next: 3b (cost-of-ownership engine), its brief and decisions first.
