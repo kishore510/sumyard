@@ -26,4 +26,15 @@ describe('describeChart', () => {
       'X: £7 at Only.',
     )
   })
+
+  it('adds numbered markers and lettered ranges after the series', () => {
+    const text = describeChart({
+      categories: ['A', 'B'],
+      series: [{ id: 'a', label: 'X', kind: 'line', values: [1, 2] }],
+      markers: [{ x: 0, label: 'Start' }],
+      spans: [{ from: 0, to: 1, label: 'A step' }],
+      format,
+    })
+    expect(text).toBe('X: £1 at A to £2 at B; highest £2 at B, lowest £1 at A. Marked 1: Start. Range A: A step.')
+  })
 })

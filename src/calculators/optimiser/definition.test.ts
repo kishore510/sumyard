@@ -26,7 +26,9 @@ import { DEFAULT_POLICY, type TakeHomeResult } from './types'
  * are untrusted when they come from storage or an imported file, so
  * validateInputs checks every field and builds a fresh object. 0.11.0 moves
  * the inputs to version 3: benefit items with what is taken from pay (B10)
- * and the tax code (B11, B12), migrated from versions 1 and 2 (B16).
+ * and the tax code (B11, B12), migrated from versions 1 and 2 (B16). 1b-ii-a
+ * moves them to version 4: carry forward, the money purchase annual
+ * allowance flag and the childcare check, for optimise() only.
  */
 
 const defaults = () => optimiserCalculator.defaultInputs()
@@ -122,9 +124,9 @@ function generator(seed: number) {
 }
 
 describe('optimiser definition', () => {
-  it('is registered as "optimiser" at inputs version 3, with no placeholder label', () => {
+  it('is registered as "optimiser" at inputs version 4, with no placeholder label', () => {
     expect(CALCULATORS.get('optimiser')).toBe(optimiserCalculator)
-    expect(optimiserCalculator.inputsVersion).toBe(3)
+    expect(optimiserCalculator.inputsVersion).toBe(4)
     expect(optimiserCalculator.placeholder).toBeUndefined()
   })
 
@@ -144,6 +146,9 @@ describe('optimiser definition', () => {
       children: 0,
       childBenefit: 'claimed',
       taxCode: '',
+      carryForward: [],
+      moneyPurchaseAnnualAllowance: false,
+      checkChildcare: false,
     })
   })
 
@@ -260,6 +265,19 @@ describe('optimiser definition', () => {
     ['children', 1.5],
     ['children', INPUT_LIMITS.maxChildren + 1],
     ['childBenefit', 'maybe'],
+    ['carryForward', 'none'],
+    ['carryForward', [{ yearsAgo: 0, amount: 100 }]],
+    ['carryForward', [{ yearsAgo: 1.5, amount: 100 }]],
+    ['carryForward', [{ yearsAgo: INPUT_LIMITS.maxCarryForwardYears + 1, amount: 100 }]],
+    ['carryForward', [{ yearsAgo: '1', amount: 100 }]],
+    ['carryForward', [{ yearsAgo: 1, amount: -1 }]],
+    ['carryForward', [{ yearsAgo: 1, amount: 0.5 }]],
+    ['carryForward', [{ yearsAgo: 1 }]],
+    ['carryForward', [{ yearsAgo: 2, amount: 1 }, { yearsAgo: 2, amount: 5 }]],
+    ['carryForward', [5]],
+    ['moneyPurchaseAnnualAllowance', 'yes'],
+    ['moneyPurchaseAnnualAllowance', 1],
+    ['checkChildcare', null],
   ])('rejects %s = %j', (field, value) => {
     const result = check(valid({ [field]: value } as Partial<Record<keyof OptimiserPageInputs, unknown>>))
     expect(result.ok).toBe(false)
@@ -278,13 +296,13 @@ describe('optimiser definition', () => {
       expect(check(valid({ taxCode })).ok, taxCode).toBe(true)
   })
 
-  it('refuses inputs saved by a newer version; reads version 3 as it is', () => {
-    expect(CALCULATORS.readInputs('optimiser', 4, defaults())).toMatchObject({ ok: false, reason: 'newer-inputs' })
-    expect(CALCULATORS.readInputs('optimiser', 3, defaults())).toMatchObject({ ok: true, migrated: false })
+  it('refuses inputs saved by a newer version; reads version 4 as it is', () => {
+    expect(CALCULATORS.readInputs('optimiser', 5, defaults())).toMatchObject({ ok: false, reason: 'newer-inputs' })
+    expect(CALCULATORS.readInputs('optimiser', 4, defaults())).toMatchObject({ ok: true, migrated: false })
     expect(() => optimiserCalculator.migrateInputs(0, {})).toThrow()
   })
 
-  it('a version 3 round trip through JSON gives the same inputs and the same take-home', () => {
+  it('a version 4 round trip through JSON gives the same inputs and the same take-home', () => {
     const inputs = valid({
       salary: fromPounds(58_000),
       bonus: fromPounds(3_000),
@@ -297,8 +315,14 @@ describe('optimiser definition', () => {
       ],
       postTaxDeductions: [monthly(1_299, 'Dental')],
       taxCode: 'S100L',
+      carryForward: [
+        { yearsAgo: 1, amount: fromPounds(12_000) },
+        { yearsAgo: 3, amount: fromPence(1) },
+      ],
+      moneyPurchaseAnnualAllowance: true,
+      checkChildcare: true,
     }) as OptimiserPageInputs
-    const read = CALCULATORS.readInputs('optimiser', 3, JSON.parse(JSON.stringify(inputs)))
+    const read = CALCULATORS.readInputs('optimiser', 4, JSON.parse(JSON.stringify(inputs)))
     expect(read).toEqual({ ok: true, inputs, migrated: false })
     expect(net(calculateTakeHome(read.ok ? (read.inputs as OptimiserPageInputs) : inputs, taxYear))).toBe(
       net(calculateTakeHome(inputs, taxYear)),
@@ -610,6 +634,111 @@ describe('migration from inputs version 2 (B16)', () => {
     expect(
       CALCULATORS.readInputs('optimiser', 2, version2({ taxableBenefits: [{ name: 'x', amount: -1, period: 'year' }] })),
     ).toMatchObject({ ok: false, reason: 'invalid-inputs' })
+  })
+})
+
+/** A version 3 scenario's inputs, as 0.12.0 stored them. */
+const version3 = (patch: Record<string, unknown> = {}) => {
+  const { carryForward: _a, moneyPurchaseAnnualAllowance: _b, checkChildcare: _c, ...rest } = optimiserCalculator.defaultInputs()
+  return {
+    ...rest,
+    salary: fromPounds(112_000),
+    bonus: fromPounds(8_000),
+    pensionMethod: 'netPay',
+    employeeContribution: { mode: 'percentOfPay', amount: 0, percentOfPay: '7.5' },
+    employerContribution: { mode: 'amount', amount: fromPounds(4_000), percentOfPay: '0' },
+    taxableBenefits: [{ name: 'Medical', period: 'month', value: fromPounds(95), taken: fromPounds(20), payment: 'beforeTax' }],
+    postTaxDeductions: [{ name: 'Dental', amount: fromPounds(12), period: 'month' }],
+    studentLoans: ['plan2'],
+    children: 2,
+    taxCode: '1257L',
+    ...patch,
+  }
+}
+
+describe('migration from inputs version 3 (1b-ii-a)', () => {
+  it('adds no carry forward, no money purchase annual allowance and no childcare check, keeping everything else', () => {
+    const v3 = version3()
+    const read = CALCULATORS.readInputs('optimiser', 3, v3)
+    expect(read).toMatchObject({ ok: true, migrated: true })
+    if (!read.ok) return
+    expect(read.inputs).toEqual({ ...v3, carryForward: [], moneyPurchaseAnnualAllowance: false, checkChildcare: false })
+  })
+
+  it.each([
+    ['the example', {}],
+    ['no pension, benefits or children', { employeeContribution: amount(0), employerContribution: amount(0), taxableBenefits: [], children: 0 }],
+    ['Scotland, salary sacrifice', { region: 'scotland', pensionMethod: 'salarySacrifice', taxCode: 'S1257L' }],
+    ['relief at source, opted out', { pensionMethod: 'reliefAtSource', childBenefit: 'optedOut' }],
+    ['contribution above pay', { salary: fromPounds(1_000), bonus: 0, employeeContribution: amount(fromPounds(2_000)) }],
+  ])('gives identical take-home, PAYE and compare summary before and after: %s', (_, patch) => {
+    const v3 = version3(patch) as unknown as OptimiserPageInputs
+    const read = CALCULATORS.readInputs('optimiser', 3, v3)
+    if (!read.ok) throw new Error(read.message)
+    const migrated = read.inputs as OptimiserPageInputs
+    // The version 3 inputs as 0.12.0 read them, without the new fields.
+    const before = calculateTakeHome(v3, taxYear)
+    const after = calculateTakeHome(migrated, taxYear)
+    expect(views(after)).toEqual(views(before))
+    expect(toTaxInputs(migrated)).toEqual(toTaxInputs(v3))
+    if (after.ok && !('problem' in after) && before.ok && !('problem' in before))
+      expect(calculatePaye(migrated, after, taxYear)).toEqual(calculatePaye(v3, before, taxYear))
+    expect(optimiserCalculator.summarise(migrated, taxYear)).toEqual(optimiserCalculator.summarise(v3, taxYear))
+  })
+
+  it('refuses hostile or broken version 3 inputs rather than migrating them', () => {
+    expect(CALCULATORS.readInputs('optimiser', 3, JSON.parse('{"__proto__": {}, "region": "rUK"}'))).toMatchObject({ ok: false })
+    expect(CALCULATORS.readInputs('optimiser', 3, 'text')).toMatchObject({ ok: false, reason: 'migration-failed' })
+    expect(CALCULATORS.readInputs('optimiser', 3, version3({ salary: -1 }))).toMatchObject({ ok: false, reason: 'invalid-inputs' })
+  })
+
+  it('migrates versions 1 and 2 all the way to version 4', () => {
+    for (const [from, old] of [
+      [1, version1()],
+      [2, version2()],
+    ] as const) {
+      const read = CALCULATORS.readInputs('optimiser', from, old)
+      expect(read, String(from)).toMatchObject({
+        ok: true,
+        migrated: true,
+        inputs: { carryForward: [], moneyPurchaseAnnualAllowance: false, checkChildcare: false },
+      })
+    }
+  })
+})
+
+describe('pension allowance inputs (version 4)', () => {
+  it('builds fresh carry forward entries in year order, keeping only known fields', () => {
+    const raw = valid({
+      carryForward: [
+        { yearsAgo: 3, amount: fromPounds(5_000), extra: 1 },
+        { yearsAgo: 1, amount: fromPounds(2_000) },
+      ],
+      moneyPurchaseAnnualAllowance: true,
+      checkChildcare: true,
+    })
+    const result = check(raw)
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.inputs.carryForward).toEqual([
+      { yearsAgo: 1, amount: fromPounds(2_000) },
+      { yearsAgo: 3, amount: fromPounds(5_000) },
+    ])
+    expect(result.inputs.carryForward).not.toBe(raw.carryForward)
+    expect(result.inputs.carryForward[1]).not.toBe((raw.carryForward as unknown[])[0])
+    expect(result.inputs).toMatchObject({ moneyPurchaseAnnualAllowance: true, checkChildcare: true })
+  })
+
+  it('accepts the most earlier years, and rejects hostile keys in an entry', () => {
+    const most = Array.from({ length: INPUT_LIMITS.maxCarryForwardYears }, (_, i) => ({ yearsAgo: i + 1, amount: fromPence(1) }))
+    expect(check(valid({ carryForward: most })).ok).toBe(true)
+    expect(check({ ...valid(), carryForward: [JSON.parse('{"__proto__": {}, "yearsAgo": 1, "amount": 1}')] }).ok).toBe(false)
+  })
+
+  it('changes no take-home figure: the new inputs are for the pension sweep only', () => {
+    const base = valid({ salary: fromPounds(120_000), children: 1 }) as OptimiserPageInputs
+    const set = { ...base, carryForward: [{ yearsAgo: 1, amount: fromPounds(9_000) }], moneyPurchaseAnnualAllowance: true, checkChildcare: true }
+    expect(views(calculateTakeHome(set, taxYear))).toEqual(views(calculateTakeHome(base, taxYear)))
   })
 })
 

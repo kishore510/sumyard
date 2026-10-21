@@ -23,6 +23,11 @@ const ONE_CHANGE: Record<SectionId, Partial<OptimiserPageInputs>[]> = {
     { employerContribution: { mode: 'percentOfPay', amount: ZERO, percentOfPay: '0' } },
     { pensionablePay: { own: true, amount: ZERO, includeBonus: false } },
   ],
+  allowances: [
+    { carryForward: [{ yearsAgo: 1, amount: fromPounds(1) }] },
+    { moneyPurchaseAnnualAllowance: true },
+    { checkChildcare: true },
+  ],
   benefits: [
     { taxableBenefits: [{ name: '', period: 'month', value: ZERO, taken: ZERO, payment: 'beforeTax' }] },
     { postTaxDeductions: [{ name: 'Dental', amount: fromPounds(1), period: 'year' }] },
@@ -59,6 +64,8 @@ describe('sections: which section a field the page marks invalid belongs to', ()
     ['employerContribution', 'pension'],
     ['employerContribution-pct', 'pension'],
     ['pensionablePay', 'pension'],
+    ['carryForward-1', 'allowances'],
+    ['carryForward-12', 'allowances'],
     ['taxableBenefits-3-name', 'benefits'],
     ['taxableBenefits-0-taken', 'benefits'],
     ['postTaxDeductions-12-amount', 'benefits'],
@@ -68,7 +75,7 @@ describe('sections: which section a field the page marks invalid belongs to', ()
     expect(sectionForField(field)).toBe(id)
   })
 
-  it.each(['salary', 'bonus', 'taxableBenefitsX', 'something'])('%s is in no section', (field) => {
+  it.each(['salary', 'bonus', 'taxableBenefitsX', 'something', 'carryForward', 'carryForward-x'])('%s is in no section', (field) => {
     expect(sectionForField(field)).toBeUndefined()
   })
 })
@@ -127,6 +134,26 @@ describe('sections: one-line summaries from the resolved amounts', () => {
   it('Child Benefit: the children and whether it is claimed', () => {
     expect(summary('childBenefit', { ...defaults, children: 1 })).toBe(`1 child · ${PAYMENT_LABELS.claimed}`)
     expect(summary('childBenefit', { ...defaults, children: 3, childBenefit: 'optedOut' })).toBe(`3 children · ${PAYMENT_LABELS.optedOut}`)
+  })
+
+  it('pension allowances: the carry forward total and years, the money purchase allowance and the childcare check', () => {
+    const inputs: OptimiserPageInputs = {
+      ...defaults,
+      carryForward: [
+        { yearsAgo: 1, amount: fromPounds(2_000) },
+        { yearsAgo: 3, amount: fromPounds(500) },
+      ],
+      moneyPurchaseAnnualAllowance: true,
+      checkChildcare: true,
+    }
+    const text = summary('allowances', inputs)
+    expect(text).toContain(`Carry forward ${gbp(fromPounds(2_500))} from 2 years`)
+    expect(text).toMatch(/money purchase annual allowance/i)
+    expect(text).toMatch(/childcare limits checked/i)
+    expect(summary('allowances', { ...defaults, carryForward: [{ yearsAgo: 2, amount: fromPounds(1) }] })).toBe(
+      `Carry forward ${gbp(fromPounds(1))} from 1 year`,
+    )
+    expect(summary('allowances', { ...defaults, checkChildcare: true })).toBe('Childcare limits checked')
   })
 
   it('tax code: the code as stored', () => {
