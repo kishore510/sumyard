@@ -6,7 +6,9 @@ import { perPeriod } from './breakdown'
 import { type OptimiserPageInputs, optimiserCalculator } from './definition'
 import { calculateOptimise } from './optimiserInputs'
 import {
+  CHILDCARE_NOT_CHECKED,
   changeVsNow,
+  childcareRuns,
   costOfMore,
   currentPoint,
   nearestPoint,
@@ -14,6 +16,7 @@ import {
   pointsIn,
   THRESHOLD_NAMES,
   thresholdWords,
+  warningRuns,
   zoomRange,
 } from './reading'
 import type { OptimiseResult, ThresholdContribution } from './types'
@@ -212,5 +215,50 @@ describe('thresholdWords', () => {
       expect(words.name).toBe(THRESHOLD_NAMES[threshold.threshold])
       expect(words.text).not.toMatch(/\b(best|optimal|recommended)\b/i)
     }
+  })
+})
+
+describe('warningRuns and childcareRuns', () => {
+  const inside = (runs: readonly { from: Money; to: Money }[], amount: Money) =>
+    runs.some((run) => compare(amount, run.from) >= 0 && compare(amount, run.to) <= 0)
+
+  it('says, for every warning any point carries, each run of neighbouring points carrying it: none hidden', () => {
+    const r = result({
+      salary: fromPounds(300_000),
+      bonus: ZERO,
+      carryForward: [{ yearsAgo: 1, amount: fromPounds(20_000) }],
+    })
+    const runs = warningRuns(r.points)
+    const codes = new Set(r.points.flatMap((p) => p.warnings.map((w) => w.code)))
+    expect(codes.has('tapered')).toBe(true)
+    expect(codes.has('carryForwardUsed')).toBe(true)
+    expect(codes.has('overAllowance')).toBe(true)
+    expect(new Set(runs.map((run) => run.code))).toEqual(codes)
+    for (const run of runs) {
+      for (const p of r.points) {
+        const has = p.warnings.some((w) => w.code === run.code)
+        expect(inside(run.runs, p.contribution), `${run.code} ${p.contribution}`).toBe(has)
+      }
+      expect(run.message).toBe(r.points.flatMap((p) => p.warnings).find((w) => w.code === run.code)!.message)
+    }
+  })
+
+  it('has no runs when no point carries a warning', () => {
+    const r = result({ salary: fromPounds(40_000), bonus: ZERO, children: 0, checkChildcare: false })
+    expect(warningRuns(r.points)).toEqual([])
+    expect(childcareRuns(r.points)).toEqual([])
+  })
+
+  it('gives each childcare scheme’s runs of points eligible on income, and says what is not checked', () => {
+    const r = result()
+    const schemes = childcareRuns(r.points)
+    expect(schemes.map((s) => s.scheme).sort()).toEqual(['taxFreeChildcare', 'thirtyHours'])
+    for (const s of schemes)
+      for (const p of r.points) {
+        const eligible = p.childcare.find((c) => c.scheme === s.scheme)!.eligibleOnIncome
+        expect(inside(s.eligible, p.contribution)).toBe(eligible)
+      }
+    expect(CHILDCARE_NOT_CHECKED).toMatch(/not checked/i)
+    expect(CHILDCARE_NOT_CHECKED).toMatch(/partner/)
   })
 })

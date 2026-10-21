@@ -1184,6 +1184,32 @@ describe('Thresholds in words (1b-ii-b)', () => {
   })
 })
 
+describe('Warnings across the contributions (1b-ii-b)', () => {
+  const panel = () => $('[data-optimiser-warnings]')!.textContent!
+
+  it('shows every warning any point carries, with where it applies, even outside the zoomed range', () => {
+    type(box('opt-salary'), '300,000')
+    const result = sweep()
+    const messages = new Set(result.points.flatMap((p) => p.warnings.map((w) => w.message)))
+    expect(messages.size).toBeGreaterThan(0)
+    for (const message of messages) expect(panel()).toContain(message)
+    expect(panel()).toMatch(/From £/)
+  })
+
+  it('says so when no point carries a warning, rather than leaving the panel out', () => {
+    type(box('opt-salary'), '40,000')
+    expect(panel()).toMatch(/No warnings/)
+  })
+
+  it('with the childcare check, gives eligibility on income only, at the chosen point, and what is not checked', () => {
+    type(box('opt-salary'), '120,000')
+    click($('#opt-childcare'))
+    expect(panel()).toMatch(/Tax-Free Childcare/)
+    expect(panel()).toMatch(/eligible on income|over the income limit/)
+    expect(panel()).toMatch(/not checked/i)
+  })
+})
+
 describe('Pension allowances section (inputs version 4)', () => {
   it('starts closed and not set, and is placed after Pension', () => {
     expect($('#opt-section-allowances-button')!.getAttribute('aria-expanded')).toBe('false')
