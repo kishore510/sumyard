@@ -46,8 +46,9 @@ Confirm the benefit value from an annual statement (B1) and run the payslip chec
 
 ## Last session
 
-- 21 October 2026, docs housekeeping (no code, config or version change): history moved to `docs/history/`, open questions to `docs/open-questions.md`, backlog to `docs/backlog.md`; `PLAN.md` is now a short roadmap; tiered close-out in `CLAUDE.md`.
-- Last build part: 0.12.0, the take-home page redesign (PR #14). Not verified there: a real phone, Safari, Firefox, a screen reader, the deployed site.
-- Next: part 1b-ii-a.
+- 21 October 2026, part 1b-ii-a (0.13.0, PR #16): inputs version 4 (carry forward, MPAA flag, childcare check) in a "Pension allowances" section; `optimise()` on the page through `optimiserInputs.ts`; the contribution chart below the split bar (`chartData.ts`, shared `Chart` gained numeric x, markers and ranges); load height reserved (CLS 0.137 to 0).
+- Differs from the brief: compare does not show the new inputs (compare changes out of scope); the "not modelled" list was compiled from the engine's assumptions, as the brief has none.
+- Not verified: 768 px, a real phone, Safari, Firefox, a screen reader, the deployed site.
+- Next: part 1b-ii-b.
 
 Full history (progress logs, finished part scopes, slice archives): `docs/history/` (grep it, don't read it whole).

@@ -17,18 +17,21 @@ import { toasts } from '@/toast/toasts'
 import { sessionFor } from '../session'
 import { breakdown, DEDUCTION_ROWS } from './breakdown'
 import { takeHome } from './calc'
+import { REASON_LABELS, THRESHOLD_LABELS } from './chartData'
 import { INPUT_LIMITS, type OptimiserPageInputs, optimiserCalculator, resolveInputs, toTaxInputs } from './definition'
 import OptimiserPage from './OptimiserPage'
+import { calculateOptimise } from './optimiserInputs'
 import { payeEstimate } from './paye'
 import { payslipNet, splitSegments } from './results'
 import { NOT_SET, SECTION_IDS, type SectionId, sectionSummary } from './sections'
-import { DEFAULT_POLICY, type PayeEstimate, type TakeHomeResult } from './types'
+import { DEFAULT_POLICY, type OptimiseResult, type PayeEstimate, type TakeHomeResult } from './types'
 
 /*
- * Session 1b-i: the optimiser page at #/c/optimiser (take-home only; no
- * optimise(), chart or threshold points yet). Expected figures come from the
- * engine (takeHome), never from a figure written here. The refusal state is
- * in OptimiserPage.refusal.test.tsx.
+ * Session 1b-i: the optimiser page at #/c/optimiser. 1b-ii-a adds the
+ * pension allowances section and the optimise() chart. Expected figures come
+ * from the engine (takeHome, optimise), never from a figure written here.
+ * The refusal states are in OptimiserPage.refusal.test.tsx and
+ * OptimiserPage.chartRefusal.test.tsx.
  */
 
 let view: ReturnType<typeof mount>
@@ -250,7 +253,7 @@ describe('Optimiser page', () => {
     const medical = addItem('benefits', 'Medical', '70', 'month')
     save('Mine')
     const stored = JSON.parse(localStorage.getItem(STORAGE_KEYS.scenarios.key)!)
-    expect(stored.scenarios[0]).toMatchObject({ calculatorId: 'optimiser', inputsVersion: 3 })
+    expect(stored.scenarios[0]).toMatchObject({ calculatorId: 'optimiser', inputsVersion: 4 })
     expect(stored.scenarios[0].inputs.taxableBenefits).toEqual([
       { name: 'Medical', period: 'month', value: fromPounds(70), taken: 0, payment: 'beforeTax' },
     ])
@@ -990,11 +993,115 @@ describe('Optimiser page layout (0.12.0): item cards', () => {
 
 describe('page code', () => {
   it('holds no tax figure: no amounts in pounds, no percentages, no config reads', () => {
-    for (const name of ['OptimiserPage.tsx', 'definition.ts', 'pageInputs.ts', 'breakdown.ts']) {
+    for (const name of ['OptimiserPage.tsx', 'definition.ts', 'pageInputs.ts', 'breakdown.ts', 'chartData.ts']) {
       const source = readFileSync(join(__dirname, name), 'utf8')
       // "per cent" or "percent" as a word, not inside a name like PercentInput or percentRatio.
       expect(source, name).not.toMatch(/£\s?\d|\d\s?%|\bper ?cent\b/i)
       expect(source, name).not.toMatch(/requireVerified|from '@\/config\/tax\/2026-27'/)
     }
+  })
+})
+
+/** optimise() for the page's inputs now, as the page asks for it. */
+const sweep = (): OptimiseResult => {
+  const result = calculateOptimise(session.get().inputs, taxYear)
+  if (!result.ok || 'problem' in result) throw new Error('no result')
+  return result
+}
+
+describe('Optimiser chart (1b-ii-a)', () => {
+  it('shows no chart until there is pay, then one in the results column below the split bar', () => {
+    expect($('[data-optimiser]')).toBeNull()
+    type(box('opt-salary'), '120,000')
+    const chart = $('[data-optimiser]')!
+    expect(chart).not.toBeNull()
+    expect(chart.querySelector('[data-chart]')).not.toBeNull()
+    const split = $('[data-split]')!
+    expect(split.compareDocumentPosition(chart) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    // In the same results column, straight after the split bar.
+    expect(split.nextElementSibling).toBe(chart)
+  })
+
+  it('plots spendable against contribution by default, and take-home after the switch, from optimise()', () => {
+    type(box('opt-salary'), '110,000')
+    type(box('opt-children'), '2')
+    const result = sweep()
+    const tableValues = () => [...$('[data-optimiser] tbody')!.querySelectorAll('tr')].map((tr) => tr.children[1]!.textContent)
+    expect($('[data-optimiser] thead')!.textContent).toMatch(/Spendable/)
+    expect(tableValues()).toEqual(result.points.map((p) => money(p.spendable)))
+    choose('opt-chart-view', 'takeHome')
+    expect($('[data-optimiser] thead')!.textContent).toMatch(/Take-home/)
+    expect(tableValues()).toEqual(result.points.map((p) => money(p.takeHome)))
+  })
+
+  it('marks the current contribution, the maximum and each threshold point, and calls none the best', () => {
+    type(box('opt-salary'), '125,000')
+    type(box('opt-employee'), '4,000')
+    const result = sweep()
+    const list = $('[data-optimiser] [data-marker-list]')!.textContent!
+    expect(list).toContain(`${REASON_LABELS.current}: ${money(result.currentContribution)}`)
+    expect(list).toContain(REASON_LABELS.maximum)
+    for (const t of result.thresholds.filter((t) => t.contribution !== null && t.contribution <= result.maximumContribution))
+      expect(list, t.threshold).toContain(THRESHOLD_LABELS[t.threshold])
+    expect($('[data-optimiser]')!.textContent).not.toMatch(/\bbest\b|optimal|recommended/i)
+  })
+
+  it('shows a percentage contribution as a percentage of pensionable pay beside the marker labels', () => {
+    type(box('opt-salary'), '100,000')
+    choose('opt-employee-mode', 'percentOfPay')
+    type(box('opt-employee-pct'), '5')
+    expect($('[data-optimiser] [data-marker-list]')!.textContent).toMatch(/: £5,000\.00 \(5% of pensionable pay\)/)
+  })
+
+  it('draws the Child Benefit charge’s steps as a labelled range, and says the curve can move a little either way', () => {
+    type(box('opt-salary'), '95,000')
+    type(box('opt-children'), '1')
+    expect($('[data-optimiser] [data-span]')).not.toBeNull()
+    expect($('[data-optimiser] [data-marker-list]')!.textContent).toMatch(/Child Benefit charge/)
+    expect($('[data-optimiser]')!.textContent).toMatch(/either way/)
+  })
+})
+
+describe('Pension allowances section (inputs version 4)', () => {
+  it('starts closed and not set, and is placed after Pension', () => {
+    expect($('#opt-section-allowances-button')!.getAttribute('aria-expanded')).toBe('false')
+    expect($('#opt-section-allowances-summary')!.textContent).toBe(NOT_SET)
+    const pension = $('[data-section="opt-section-pension"]')!
+    expect(pension.nextElementSibling).toBe($('[data-section="opt-section-allowances"]'))
+  })
+
+  it('stores carry forward by year, the money purchase flag and the childcare check, with no take-home change', () => {
+    type(box('opt-salary'), '130,000')
+    const before = row('Year')
+    type(box('opt-carry-2'), '6,000')
+    type(box('opt-carry-1'), '1,500')
+    click($('#opt-mpaa'))
+    click($('#opt-childcare'))
+    expect(session.get().inputs).toMatchObject({
+      carryForward: [
+        { yearsAgo: 1, amount: fromPounds(1_500) },
+        { yearsAgo: 2, amount: fromPounds(6_000) },
+      ],
+      moneyPurchaseAnnualAllowance: true,
+      checkChildcare: true,
+    })
+    expect(row('Year')).toBe(before)
+    type(box('opt-carry-2'), '0')
+    expect(session.get().inputs.carryForward).toEqual([{ yearsAgo: 1, amount: fromPounds(1_500) }])
+    expect($('#opt-section-allowances-summary')!.textContent).toMatch(/Carry forward/)
+  })
+
+  it('the childcare check adds the childcare limits as marked points', () => {
+    type(box('opt-salary'), '120,000')
+    expect($('[data-optimiser] [data-marker-list]')!.textContent).not.toContain(THRESHOLD_LABELS.taxFreeChildcareLimit)
+    click($('#opt-childcare'))
+    expect($('[data-optimiser] [data-marker-list]')!.textContent).toContain(THRESHOLD_LABELS.taxFreeChildcareLimit)
+  })
+
+  it('lists optimise()’s assumptions in the assumptions panel once there is a sweep', () => {
+    type(box('opt-salary'), '120,000')
+    click($('#opt-childcare'))
+    const text = $('details#assumptions')!.textContent!
+    for (const line of sweep().assumptions) expect(text).toContain(line)
   })
 })

@@ -13,7 +13,6 @@ Moved verbatim from `PLAN.md` on 21 October 2026. New ideas go here.
 - Benefits in kind beyond a single net value: a benefit through salary sacrifice (the salary amount rule), benefits that attract Class 1, and the employer's Class 1A shown as an employer-side figure (needs a config leaf and the owner's decision).
 - Welsh rate variations beyond what the config supports.
 - Spreadsheet (CSV) export of a calculator's tables.
-- Layout shift while a calculator page loads (Lighthouse CLS 0.137 on the take-home page, the same before and after 0.12.0): the footer shows under the loading state and is pushed off-screen when the page arrives. Reserve the page's height while it loads.
 - VerifiedBadge's link has an `aria-label` that doesn't start with its visible text (Lighthouse label-in-name, best practice); name it by its text instead.
 - Phone-specific polish if the first phone audit shows gaps.
 - A Sumyard logo and favicon (the header uses a text wordmark; the favicon is empty).

@@ -62,6 +62,19 @@ export function LoadingState({ label = 'Loading' }: { label?: string }) {
 }
 
 /**
+ * A page's loading state that holds at least the screen's height, so what
+ * follows (the footer) starts below the fold and does not jump when the
+ * page arrives (layout shift).
+ */
+export function PageLoadingState() {
+  return (
+    <div data-page-loading className="min-h-svh">
+      <LoadingState />
+    </div>
+  )
+}
+
+/**
  * A notice inside a page: something to know (info), something that needs
  * attention (warning), or something that went wrong (error). Icon and words,
  * never colour alone. Not a live region: changes are announced by toasts.
