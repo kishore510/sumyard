@@ -139,7 +139,8 @@ describe('costOfMore', () => {
 
 describe('thresholdWords', () => {
   const gbp = (amount: Money) => formatGBP(amount, 'pence')
-  const limit = fromPounds(100_000)
+  // An arbitrary limit, not a tax figure: the words are tested, not the threshold.
+  const limit = fromPounds(123_456)
   const t = (patch: Partial<ThresholdContribution>): ThresholdContribution => ({
     threshold: 'personalAllowanceTaperStart',
     measure: 'adjustedNetIncome',
