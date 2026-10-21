@@ -2,6 +2,7 @@
 
 Moved verbatim from `PLAN.md` on 21 October 2026. New ideas go here.
 
+- Car finance: a flat-rate input, once a definition is verified (F14); early settlement and voluntary termination figures, once the statutory rules are read (CR-12, CR-13); personal contract hire (leasing) and dealer deposit contributions (not in v1, F1); an excess charge per mile in fractions of a penny.
 - First-run tour (about four steps), skippable, replayable from Help.
 - Keyboard shortcuts (desktop only) and a shortcuts reference.
 - Help search (hand-rolled index vs a small library such as MiniSearch).

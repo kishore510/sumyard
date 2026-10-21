@@ -38,8 +38,13 @@ The cumulative cost chart over the horizon with crossover points (shared Chart, 
 
 Confirm the benefit value from an annual statement (B1) and run the payslip check (B15: PAYE estimate, salary sacrifice benefits, the monthly breakdown); the 72 HMRC cross-checks; Tables A and B to D for the PAYE estimate (O10, O11); confirm `paye.codeUnit` as a standing rule; whether a benefit that attracts Class 1 needs its own input. Slice 2: fill `docs/compound-cross-checks.json` (eight cases, with source and date); confirm the C8 rate bounds and the starting years (`DEFAULT_PROJECTION_YEARS`).
 
+Slice 3a: confirm decisions F5 to F14 and the bounds (`src/calculators/car-finance/README.md`); close the APR (CR-1 to CR-3, CR-10) by reading SI 2010/1011 and CONC App 1, or allowing this environment to reach `www.legislation.gov.uk` and `www.handbook.fca.org.uk`, before any page shows an "APR"; decide whether the hand-back path should also take condition charges.
+
 ## Last session
 
-- 21 October 2026, part 3a (0.17.0, in progress): slice 3 brief, decisions and verification first; engine to follow.
+- 21 October 2026, part 3a (0.17.0, internal): slice 3 brief, decisions F1 to F14 (`docs/modelling-decisions-car.md`), verification CR-1 to CR-14, examples EIR-1 to EIR-3, HP-1, R78-1; the engine in `src/calculators/car-finance/` (loan, HP, PCP; schedule; effective rate by bisection; outstanding balance); 300-case reference and round trip; mutation spot-checks all caught.
+- Differs from the brief: the statutory APR is **OPEN** (legislation.gov.uk, the regulator's handbook and the guidance PDF refused), so the engine solves HMRC's effective interest rate (CFM21180), not "the APR"; no flat rate (no definition found); no APR or PCP published example exists on a reachable page; priced by payment, the last month's interest takes the rounding (F7, so HP-1's totals are exact).
+- Not verified: the statutory APR, voluntary termination and early settlement rules (secondary sources only, not modelled); any lender's rounding; no UI to check in a browser.
+- Owner: the items under "Still with the owner" above. Next: 3b (cost-of-ownership engine), its brief and decisions first.
 
 Full history (progress logs, finished part scopes, slice archives): `docs/history/` (grep it, don't read it whole).

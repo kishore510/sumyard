@@ -91,6 +91,27 @@ Decisions C6 (rounding) and C9 (arithmetic) in `docs/modelling-decisions-compoun
 | Fee drag | Rounded closing without the fee less rounded closing with it | `feeDrag` | C4 |
 | Rates shown (effective, per period, after fees, real) | Nearest at fifteen decimal places | `factorToRatio` | C6 |
 
+## Car finance (slice 3a)
+
+Decisions F7 (rounding), F8 and F9 (the rate) in `docs/modelling-decisions-car.md`. No tax rule is involved, and no lender's rounding was verified (`docs/verification-log.md`, CR-1).
+
+**Arithmetic.** The payment and the rate solver work in `FinePence` and `Factor` (as compound interest, C9): an `'annual'` basis monthly rate is a twelfth root, and a solved rate is a long binary search, so neither is held exactly. On the `'monthly'` basis the monthly rate r / 12 is rational, so each month's interest is rounded with `mulRound` on an exact `Ratio`; an exact half penny goes up, as it would by hand.
+
+**The rate solver (F9).** Bisection on f(i) = present value of the payments at i − credit received, which falls as i rises because every payment after the start is zero or more. The bracket is [0, 1] a period (refused as `'no-solution'` if f(0) < 0 or f(1) > 0); each step halves it, keeping f(low) > 0 ≥ f(high), until it is at most `RATE_SOLVE_TOLERANCE` = 10^-`RATE_SOLVE_DIGITS` = 10^-24 wide; the midpoint is returned, within half that of the root. That takes about eighty steps; `RATE_SOLVE_MAX_STEPS` (200) bounds it, and reaching the bound is the refusal `'no-convergence'`. Present values are worked by Horner's rule, each product to the nearest unit of 10^-40 of a penny. Deterministic: no float, no starting guess.
+
+**Round-trip tolerance.** With at most 120 payments, each within the safe range, the slope of the present value is below about 10^14 pence per unit of rate, so a rate within 10^-24 of the root discounts the payments to the credit within about 10^-10 of a penny. `rate.test.ts` allows 10^-9 of a penny (exact fractions), on 300 seeded agreements, and checks that the root lies strictly between the solved rate less and plus 10^-24.
+
+**Reference tolerance.** The payment is within about 10^-30 of a penny of the exact closed form, so `reference.test.ts` requires the engine's payment to equal the exact one rounded to the nearest penny (the same near-half margin as compound interest, 10^-12 of a penny; no seed is that close), and every schedule row to equal the reference's exact replay of F7.
+
+| Step | Mode | Where | Basis |
+|---|---|---|---|
+| Monthly rate | Exact `Ratio` (basis `'monthly'`); fine fixed point (basis `'annual'`, or solved) | `monthlyFactor` | F6 |
+| Regular payment | Closed form in fine fixed point, rounded once to the nearest penny | `regularPayment` | F7 |
+| Each month's interest | Opening balance × monthly rate, to the nearest penny | `buildSchedule` | F7 |
+| Last month | Priced by rate: the last payment brings the balance to the final payment. Priced by payment: the last month's interest does | `buildSchedule` | F7 |
+| Excess mileage charge | Whole miles × whole pence a mile: exact | `pcp` | F11 |
+| Effective rate, monthly and annual | Bisection to 10^-24, shown to fifteen decimal places (`factorToRatio`); nothing rounded for display | `solveRate`, `annualRate` | F8, F9 |
+
 ## Display (`format.ts`)
 
 Locale en-GB. Formatting works from integer pence in `BigInt`, never by dividing a float, so the digits are exact at any size. **Display rounding is nearest, halves away from zero**; it is for showing results and is not a tax rule.

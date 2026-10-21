@@ -1,6 +1,6 @@
 # Phase plan: Sumyard
 
-Last updated: 21 October 2026 (slice 3 brief; 3a In progress; slices 1b and 2 built, owner checks open)
+Last updated: 21 October 2026 (3a built, 0.17.0, In progress until it merges; slices 1b and 2 built, owner checks open)
 
 Sumyard is a set of personal UK finance calculators in one clean, ad-free web app, for the owner's own use. Constraints: client-side only, a static site on GitHub Pages, UK rules from versioned per-tax-year config, illustrative not advice.
 
