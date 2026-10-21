@@ -1150,6 +1150,24 @@ describe('Zoom (1b-ii-b)', () => {
   })
 })
 
+describe('Cost of more pension (1b-ii-b)', () => {
+  it('says what each pound more costs against no contribution and since the previous point, in the active period', () => {
+    type(box('opt-salary'), '120,000')
+    type(box('opt-employee'), '6,000')
+    const card = () => $('[data-cost]')!.textContent!
+    expect(card()).toMatch(/against no contribution/i)
+    expect(card()).toMatch(/since the previous point/i)
+    expect(card()).not.toMatch(/a month/)
+    choose('opt-period', 'month')
+    expect(card()).toMatch(/more a month/)
+  })
+
+  it('at no contribution says there is nothing to measure against yet', () => {
+    type(box('opt-salary'), '40,000')
+    expect($('[data-cost]')!.textContent).toMatch(/no contribution to measure against/i)
+  })
+})
+
 describe('Pension allowances section (inputs version 4)', () => {
   it('starts closed and not set, and is placed after Pension', () => {
     expect($('#opt-section-allowances-button')!.getAttribute('aria-expanded')).toBe('false')

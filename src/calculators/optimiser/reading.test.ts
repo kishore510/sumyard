@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import { taxYear } from '@/config/tax/2026-27'
-import { add, compare, fromPounds, max, subtract, ZERO } from '@/lib/money'
+import { add, compare, fromPounds, max, mulRound, subtract, ZERO } from '@/lib/money'
 import { perPeriod } from './breakdown'
 import { type OptimiserPageInputs, optimiserCalculator } from './definition'
 import { calculateOptimise } from './optimiserInputs'
-import { changeVsNow, currentPoint, nearestPoint, pointsIn, zoomRange } from './reading'
+import { changeVsNow, costOfMore, currentPoint, nearestPoint, ONE_POUND, pointsIn, zoomRange } from './reading'
 import type { OptimiseResult } from './types'
 
 /*
@@ -106,5 +106,22 @@ describe('zoomRange and pointsIn', () => {
     expect(zoomRange(r)).toBeNull()
     expect(pointsIn(r, null).points).toEqual(r.points)
     expect(pointsIn(r, null).cliffs).toEqual(r.cliffs)
+  })
+})
+
+describe('costOfMore', () => {
+  it('is the engine’s net cost per pound and marginal rate as pence of a pound, each against what it is measured from', () => {
+    const r = result()
+    r.points.forEach((p, i) => {
+      const cost = costOfMore(r.points, p)
+      if (p.netCostPerPound === null) expect(cost.sinceNothing).toBeNull()
+      else expect(cost.sinceNothing).toBe(mulRound(ONE_POUND, p.netCostPerPound, 'nearest'))
+      if (p.marginalRate === null) expect(cost.sincePrevious).toBeNull()
+      else {
+        const kept = mulRound(ONE_POUND, p.marginalRate, 'nearest')
+        expect(cost.sincePrevious).toEqual({ from: r.points[i - 1]!.contribution, kept, cost: subtract(ONE_POUND, kept) })
+      }
+    })
+    expect(costOfMore(r.points, r.points[0]!)).toEqual({ sinceNothing: null, sincePrevious: null })
   })
 })
