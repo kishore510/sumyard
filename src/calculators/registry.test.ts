@@ -28,6 +28,11 @@ describe('createCalculatorRegistry', () => {
     )
   })
 
+  it('accepts taxRules none and refuses any other value', () => {
+    expect(() => createCalculatorRegistry([{ ...echo, taxRules: 'none' }])).not.toThrow()
+    expect(() => createCalculatorRegistry([{ ...echo, taxRules: 'some' as 'none' }])).toThrow(/tax rules/)
+  })
+
   it('defineCalculator returns the definition as given', () => {
     expect(defineCalculator(echo)).toBe(echo)
   })

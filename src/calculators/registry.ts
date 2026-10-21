@@ -39,6 +39,12 @@ export interface CalculatorDefinition<I = unknown> {
   readonly name: string
   /** One line for the home page. */
   readonly summary: string
+  /**
+   * 'none' for a calculator that reads no tax config: its scenarios carry no
+   * tax year, its page shows "Uses no tax rules" in place of the verified
+   * badge, and `summarise` ignores the config it is given. Omitted for a tax calculator.
+   */
+  readonly taxRules?: 'none'
   /** Set on a placeholder, with what to tell people about it. */
   readonly placeholder?: string
   /** Version of the inputs shape. Bump it, and handle the old one in migrateInputs, when the shape changes. */

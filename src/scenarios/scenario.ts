@@ -11,8 +11,11 @@ import { canonicalJson, cleanText, isRecord } from '@/lib/validate'
 export interface Scenario {
   readonly id: string
   readonly calculatorId: string
-  /** The tax year it was saved against ("2026-27"). May be one this version doesn't have: the page then warns. */
-  readonly taxYear: string
+  /**
+   * The tax year it was saved against ("2026-27"). May be one this version doesn't have: the page then warns.
+   * Absent, and only absent, for a calculator that uses no tax rules (`taxRules: 'none'`).
+   */
+  readonly taxYear?: string
   readonly name: string
   /** Validated by the calculator (registry), at inputsVersion. */
   readonly inputs: unknown

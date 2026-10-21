@@ -74,7 +74,7 @@ function createSession<I>(definition: CalculatorDefinition<I>) {
     /** Back to the defaults, linked to no scenario. */
     startNew: () => store.set(fresh(store.get().revision + 1)),
     /** The inputs were just saved as (or into) this scenario. */
-    linkSaved: (id: string, taxYear: string) => update({ loadedId: id, taxYear, taxYearWarning: null }),
+    linkSaved: (id: string, taxYear: string | undefined) => update({ loadedId: id, taxYear, taxYearWarning: null }),
   }
 }
 
@@ -92,8 +92,16 @@ export function sessionFor<I>(definition: CalculatorDefinition<I>): CalculatorSe
 /** The config to calculate with: the session's year, or the latest if this version lacks it. */
 export const configFor = (taxYear: string): TaxYearConfig => getTaxYear(taxYear) ?? latestTaxYear()
 
+/** The tax year a scenario of this calculator is saved with: none for a calculator that uses no tax rules. */
+export function scenarioTaxYear(
+  _definition: Pick<CalculatorDefinition, 'taxRules'>,
+  state: Pick<SessionState, 'taxYear'>,
+): string | undefined {
+  return state.taxYear
+}
+
 /** True when the inputs or tax year differ from the loaded scenario (or nothing is loaded). */
-export function hasUnsavedChanges(session: Pick<SessionState, 'taxYear' | 'inputs'>, loaded: Scenario | undefined): boolean {
+export function hasUnsavedChanges(session: { readonly taxYear?: string; readonly inputs: unknown }, loaded: Scenario | undefined): boolean {
   if (!loaded) return true
   return loaded.taxYear !== session.taxYear || canonicalJson(loaded.inputs) !== canonicalJson(session.inputs)
 }
