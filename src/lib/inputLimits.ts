@@ -47,3 +47,15 @@ export const MAX_CONTRIBUTION_INCREASE = ratio(1, 2)
 
 /** Compound interest: the years a fresh page starts with. A starting value, not a bound and not advice. */
 export const DEFAULT_PROJECTION_YEARS = 10
+
+/** Car finance: the longest agreement, in whole months (decision F13 in docs/modelling-decisions-car.md). */
+export const MAX_FINANCE_TERM_MONTHS = 120
+
+/** Car finance: the largest annual interest rate an agreement accepts (F13). An input bound, not a market figure. */
+export const MAX_FINANCE_RATE = ratio(1, 1)
+
+/** Car finance: the most miles a PCP mileage input accepts, over the whole agreement (F13). */
+export const MAX_MILEAGE = 1_000_000
+
+/** Car finance: the largest excess mileage charge per mile (F13). */
+export const MAX_EXCESS_PER_MILE = fromPounds(10)
