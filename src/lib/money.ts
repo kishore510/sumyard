@@ -287,83 +287,133 @@ export const FINE_DIGITS = 40
 /** Decimal places of the Ratio factorToRatio gives (for showing a rate). */
 export const RATE_RATIO_DIGITS = 15
 
-const NOT_YET = (what: string): never => {
-  throw new MoneyError(`${what}: not implemented`)
+const FINE_SCALE = 10n ** BigInt(FINE_DIGITS)
+const RATE_RATIO_DENOMINATOR = 10n ** BigInt(RATE_RATIO_DIGITS)
+
+const isBig = (value: unknown): value is bigint => typeof value === 'bigint'
+const fineOf = (value: unknown, what: string): bigint => {
+  if (!isBig(value)) throw new MoneyError(`${what}: not a fine amount`)
+  return value
+}
+const factorOf = (value: unknown, what: string): bigint => {
+  if (!isBig(value)) throw new MoneyError(`${what}: not a factor`)
+  return value
+}
+const positive = (value: bigint, what: string): bigint => {
+  if (value <= 0n) throw new MoneyError(`${what}: the divisor must be above zero`)
+  return value
+}
+const wholeCount = (n: number, least: number, what: string): bigint => {
+  if (!isSafe(n) || n < least) throw new MoneyError(`${what}: ${String(n)} must be a whole number from ${least}`)
+  return BigInt(n)
 }
 
 export const FINE_ZERO = 0n as FinePence
-export const FACTOR_ONE = (10n ** BigInt(FINE_DIGITS)) as Factor
+export const FACTOR_ONE = FINE_SCALE as Factor
 
 /** A Money as fine pence, exactly. */
-export function fine(_amount: Money): FinePence {
-  return NOT_YET('fine')
+export function fine(amount: Money): FinePence {
+  return (BigInt(assertMoney(amount, 'fine')) * FINE_SCALE) as FinePence
 }
 
-export function fineAdd(_a: FinePence, _b: FinePence): FinePence {
-  return NOT_YET('fineAdd')
+export function fineAdd(a: FinePence, b: FinePence): FinePence {
+  return (fineOf(a, 'fineAdd') + fineOf(b, 'fineAdd')) as FinePence
 }
 
-export function fineSubtract(_a: FinePence, _b: FinePence): FinePence {
-  return NOT_YET('fineSubtract')
+export function fineSubtract(a: FinePence, b: FinePence): FinePence {
+  return (fineOf(a, 'fineSubtract') - fineOf(b, 'fineSubtract')) as FinePence
 }
 
-export function compareFine(_a: FinePence, _b: FinePence): -1 | 0 | 1 {
-  return NOT_YET('compareFine')
+export function compareFine(a: FinePence, b: FinePence): -1 | 0 | 1 {
+  const [x, y] = [fineOf(a, 'compareFine'), fineOf(b, 'compareFine')]
+  return x < y ? -1 : x > y ? 1 : 0
 }
 
 /** amount × f, to the nearest unit. */
-export function fineMul(_amount: FinePence, _f: Factor): FinePence {
-  return NOT_YET('fineMul')
+export function fineMul(amount: FinePence, f: Factor): FinePence {
+  return divideRound(fineOf(amount, 'fineMul') * factorOf(f, 'fineMul'), FINE_SCALE, 'nearest') as FinePence
 }
 
 /** amount ÷ f (f above zero), to the nearest unit. */
-export function fineDivide(_amount: FinePence, _f: Factor): FinePence {
-  return NOT_YET('fineDivide')
+export function fineDivide(amount: FinePence, f: Factor): FinePence {
+  const divisor = positive(factorOf(f, 'fineDivide'), 'fineDivide')
+  return divideRound(fineOf(amount, 'fineDivide') * FINE_SCALE, divisor, 'nearest') as FinePence
 }
 
 /** Fine pence rounded to a whole penny by `mode`: the one rounding at output. Throws past the safe range. */
-export function roundFine(_amount: FinePence, _mode: RoundingMode): Money {
-  return NOT_YET('roundFine')
+export function roundFine(amount: FinePence, mode: RoundingMode): Money {
+  return fromBigInt(divideRound(fineOf(amount, 'roundFine'), FINE_SCALE, mode), 'roundFine')
 }
 
 /** A Ratio as a Factor, to the nearest unit. */
-export function factor(_r: Ratio): Factor {
-  return NOT_YET('factor')
+export function factor(r: Ratio): Factor {
+  const [n, d] = ratioParts(r, 'factor')
+  return divideRound(n * FINE_SCALE, d, 'nearest') as Factor
 }
 
-export function factorAdd(_a: Factor, _b: Factor): Factor {
-  return NOT_YET('factorAdd')
+export function factorAdd(a: Factor, b: Factor): Factor {
+  return (factorOf(a, 'factorAdd') + factorOf(b, 'factorAdd')) as Factor
 }
 
-export function factorSubtract(_a: Factor, _b: Factor): Factor {
-  return NOT_YET('factorSubtract')
+export function factorSubtract(a: Factor, b: Factor): Factor {
+  return (factorOf(a, 'factorSubtract') - factorOf(b, 'factorSubtract')) as Factor
 }
 
-export function compareFactor(_a: Factor, _b: Factor): -1 | 0 | 1 {
-  return NOT_YET('compareFactor')
+export function compareFactor(a: Factor, b: Factor): -1 | 0 | 1 {
+  const [x, y] = [factorOf(a, 'compareFactor'), factorOf(b, 'compareFactor')]
+  return x < y ? -1 : x > y ? 1 : 0
 }
 
 /** a × b, to the nearest unit. */
-export function factorMul(_a: Factor, _b: Factor): Factor {
-  return NOT_YET('factorMul')
+export function factorMul(a: Factor, b: Factor): Factor {
+  return divideRound(factorOf(a, 'factorMul') * factorOf(b, 'factorMul'), FINE_SCALE, 'nearest') as Factor
 }
 
 /** a ÷ b (b above zero), to the nearest unit. */
-export function factorDivide(_a: Factor, _b: Factor): Factor {
-  return NOT_YET('factorDivide')
+export function factorDivide(a: Factor, b: Factor): Factor {
+  const divisor = positive(factorOf(b, 'factorDivide'), 'factorDivide')
+  return divideRound(factorOf(a, 'factorDivide') * FINE_SCALE, divisor, 'nearest') as Factor
 }
 
 /** f to a whole power n (n zero or more), by repeated squaring, each product to the nearest unit. */
-export function factorPow(_f: Factor, _n: number): Factor {
-  return NOT_YET('factorPow')
+export function factorPow(f: Factor, n: number): Factor {
+  let base = factorOf(f, 'factorPow') as Factor
+  let count = wholeCount(n, 0, 'factorPow')
+  let result = FACTOR_ONE
+  while (count > 0n) {
+    if (count & 1n) result = factorMul(result, base)
+    count >>= 1n
+    if (count > 0n) base = factorMul(base, base)
+  }
+  return result
+}
+
+/** The largest x with x^n <= value (value zero or more, n from one), by Newton's iteration from above. */
+function integerRoot(value: bigint, n: bigint): bigint {
+  if (value < 2n) return value
+  let x = 1n << (BigInt(value.toString(2).length) / n + 1n)
+  for (;;) {
+    const next = ((n - 1n) * x + value / x ** (n - 1n)) / n
+    if (next >= x) return x
+    x = next
+  }
 }
 
 /** The n-th root of f (f above zero, n a whole number from one), to the nearest unit. */
-export function factorRoot(_f: Factor, _n: number): Factor {
-  return NOT_YET('factorRoot')
+export function factorRoot(f: Factor, n: number): Factor {
+  const value = positive(factorOf(f, 'factorRoot'), 'factorRoot')
+  const k = wholeCount(n, 1, 'factorRoot')
+  // root = (f / SCALE)^(1/k) × SCALE = (f × SCALE^(k−1))^(1/k)
+  const target = value * FINE_SCALE ** (k - 1n)
+  const floor = integerRoot(target, k)
+  // Nearest: round up when (floor + ½)^k is below the target, i.e. (2 floor + 1)^k < 2^k target.
+  return ((2n * floor + 1n) ** k < 2n ** k * target ? floor + 1n : floor) as Factor
 }
 
 /** A Factor as a Ratio over 10^RATE_RATIO_DIGITS, to the nearest. For showing a rate. Throws past the safe range. */
-export function factorToRatio(_f: Factor): Ratio {
-  return NOT_YET('factorToRatio')
+export function factorToRatio(f: Factor): Ratio {
+  const numerator = divideRound(factorOf(f, 'factorToRatio') * RATE_RATIO_DENOMINATOR, FINE_SCALE, 'nearest')
+  const limit = BigInt(Number.MAX_SAFE_INTEGER)
+  if (numerator > limit || numerator < -limit) throw new MoneyError('factorToRatio: the rate is past the safe range')
+  return ratio(Number(numerator), Number(RATE_RATIO_DENOMINATOR))
 }

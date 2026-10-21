@@ -63,6 +63,20 @@ describe('one year, one period (hand-checkable)', () => {
     expect(pence(result.feeDrag.nominal)).toBe(11_000)
   })
 
+  it('the fee each compounding period is on the balance after that period’s growth (monthly)', () => {
+    // £12,000; one per cent growth then half a per cent fee each month for twelve months.
+    // Fees: Σ B × 1.01 × 0.005 = 74,732.84p; closing 1,200,000 × (1.01 × 0.995)^12 = 1,273,252.98p;
+    // growth takes the rest: 147,985.81p. Charging the fee before growth would give fees of 73,992.91p.
+    const result = run({
+      lumpSum: fromPounds(12_000),
+      growthRate: ratio(3, 25),
+      feeRate: ratio(3, 50),
+      compounding: 'monthly',
+      contributionFrequency: 'monthly',
+    })
+    expect(rowPence(result.withFee.nominal)[0]).toMatchObject({ fees: 74_733, closing: 1_273_253, growth: 147_986 })
+  })
+
   it('an end-of-period contribution pays no fee for that period', () => {
     // No growth; a hundredth fee on £1,000 is £10; the £100 paid at the end pays none.
     const result = run({ lumpSum: fromPounds(1000), contribution: fromPounds(100), feeRate: ratio(1, 100) })
