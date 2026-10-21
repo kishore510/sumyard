@@ -5,7 +5,7 @@ summary: Saving a calculator’s inputs as a scenario, comparing them, export an
 ---
 ## Scenarios
 
-A scenario keeps a calculator’s inputs and tax year under a name you choose, in this browser. Results are never stored: they are worked out again from the inputs each time, so they always use the calculator as it is now.
+A scenario keeps a calculator’s inputs and tax year under a name you choose, in this browser (a calculator that uses no tax rules, such as compound interest, keeps no tax year). Results are never stored: they are worked out again from the inputs each time, so they always use the calculator as it is now.
 
 On a calculator page, the scenario box at the top shows which scenario is open and whether it has **Unsaved changes**.
 

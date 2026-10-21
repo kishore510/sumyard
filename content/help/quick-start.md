@@ -7,7 +7,7 @@ Sumyard is a set of personal UK finance calculators in one clean, ad-free place.
 
 ## What works today
 
-**The first calculator is here: [Take-home pay](help:take-home-pay)**, your pay after tax for the year with pension, student loans, benefits and Child Benefit. The pension optimiser and more calculators arrive in later releases.
+**Two calculators are here.** [Take-home pay](help:take-home-pay) gives your pay after tax for the year with pension, student loans, benefits and Child Benefit, and a chart of pension contributions ([the optimiser](help:pension-optimiser)). [Compound interest](help:compound-interest) shows how savings could grow with a fee and inflation. More calculators arrive in later releases.
 
 - **Calculators**: the home page lists them. Each has its own page and address.
 - **Scenarios**: save a calculator’s inputs under a name, load them again, compare two or three, and export or import them. See [Scenarios and saving](help:scenarios-and-saving).
