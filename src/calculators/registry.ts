@@ -79,6 +79,8 @@ export function createCalculatorRegistry(definitions: readonly CalculatorDefinit
   for (const definition of definitions) {
     if (!isCalculatorId(definition.id)) throw new Error(`Calculator id ${JSON.stringify(definition.id)} must be lower-case kebab-case`)
     if (byId.has(definition.id)) throw new Error(`Calculator ${definition.id} is registered twice`)
+    if (definition.taxRules !== undefined && definition.taxRules !== 'none')
+      throw new Error(`Calculator ${definition.id}: its tax rules must be 'none' or left out`)
     if (!isVersion(definition.inputsVersion))
       throw new Error(`Calculator ${definition.id}: its inputs version must be a whole number from 1`)
     if (!definition.validateInputs(definition.defaultInputs()).ok)

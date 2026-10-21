@@ -3,6 +3,7 @@ import { useId } from 'react'
 import { CALCULATORS } from '@/calculators/index'
 import type { CalculatorDefinition, RowValue, Summary, SummaryRow } from '@/calculators/registry'
 import { configFor } from '@/calculators/session'
+import { NO_TAX_RULES } from '@/components/NoTaxRulesBadge'
 import { refusedGroups } from '@/components/RefusalNotice'
 import { SheetLink } from '@/components/SheetLink'
 import { EmptyState, InlineNotice } from '@/components/states'
@@ -129,22 +130,35 @@ function CompareTable({ calculator, picked }: { calculator: CalculatorDefinition
           </thead>
           <tbody>
             {sectionRow('Inputs')}
-            <tr className="border-t border-border">
-              <th scope="row" className="sticky left-0 bg-surface px-3 py-2 text-left font-normal text-text">
-                Tax year
-              </th>
-              {picked.map((s, i) => (
-                <td key={s.id} className="px-3 py-2 text-right text-text">
-                  <span className="block font-medium">{taxYearLabel(s.taxYear)}</span>
-                  {!getTaxYear(s.taxYear) && (
-                    <span className="block text-xs text-text-muted">Not in this version; worked out with the latest year</span>
-                  )}
-                  {i > 0 && (
-                    <span className="block text-xs text-text-muted">{s.taxYear === picked[0]!.taxYear ? 'Same' : 'Different'}</span>
-                  )}
-                </td>
-              ))}
-            </tr>
+            {calculator.taxRules === 'none' ? (
+              <tr className="border-t border-border">
+                <th scope="row" className="sticky left-0 bg-surface px-3 py-2 text-left font-normal text-text">
+                  Tax rules
+                </th>
+                {picked.map((s) => (
+                  <td key={s.id} className="px-3 py-2 text-right text-text">
+                    {NO_TAX_RULES}
+                  </td>
+                ))}
+              </tr>
+            ) : (
+              <tr className="border-t border-border">
+                <th scope="row" className="sticky left-0 bg-surface px-3 py-2 text-left font-normal text-text">
+                  Tax year
+                </th>
+                {picked.map((s, i) => (
+                  <td key={s.id} className="px-3 py-2 text-right text-text">
+                    <span className="block font-medium">{taxYearLabel(s.taxYear ?? '')}</span>
+                    {!getTaxYear(s.taxYear ?? '') && (
+                      <span className="block text-xs text-text-muted">Not in this version; worked out with the latest year</span>
+                    )}
+                    {i > 0 && (
+                      <span className="block text-xs text-text-muted">{s.taxYear === picked[0]!.taxYear ? 'Same' : 'Different'}</span>
+                    )}
+                  </td>
+                ))}
+              </tr>
+            )}
             {inputLabels.map((label) => (
               <tr key={label} className="border-t border-border">
                 <th scope="row" className="sticky left-0 bg-surface px-3 py-2 text-left font-normal text-text">

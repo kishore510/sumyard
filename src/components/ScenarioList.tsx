@@ -5,6 +5,7 @@ import { deleteScenario, duplicateScenario, quote, reportSaved } from '@/scenari
 import { scenarioStore } from '@/scenarios/index'
 import type { Scenario } from '@/scenarios/scenario'
 import { SCENARIO_LIMITS } from '@/scenarios/scenario'
+import { NO_TAX_RULES } from './NoTaxRulesBadge'
 import { Button } from './ui/button'
 
 /*
@@ -13,6 +14,12 @@ import { Button } from './ui/button'
  * Scenarios sheet. Names are untrusted (imported files) and only ever
  * rendered as text.
  */
+
+/** "2026 to 2027 tax year", with a note when this version lacks it; "Uses no tax rules" with no year. */
+export function taxYearText(taxYear: string | undefined): string {
+  if (taxYear === undefined) return NO_TAX_RULES
+  return `${taxYearLabel(taxYear)} tax year${getTaxYear(taxYear) ? '' : ' (not in this version)'}`
+}
 
 const SAVED = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
 
@@ -90,8 +97,7 @@ export function ScenarioList({
                     {current && <span className="ml-2 rounded-full bg-accent-subtle px-2 text-xs font-semibold text-text">Open now</span>}
                   </span>
                   <span className="text-xs text-text-muted">
-                    {taxYearLabel(scenario.taxYear)} tax year{getTaxYear(scenario.taxYear) ? '' : ' (not in this version)'} · Saved{' '}
-                    {Number.isNaN(updated.getTime()) ? 'at an unknown time' : SAVED.format(updated)}
+                    {taxYearText(scenario.taxYear)} · Saved {Number.isNaN(updated.getTime()) ? 'at an unknown time' : SAVED.format(updated)}
                   </span>
                 </div>
                 <div className="flex flex-wrap gap-1">

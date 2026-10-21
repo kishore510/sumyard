@@ -76,13 +76,17 @@ export function serializeScenarios(state: { scenarios: readonly Scenario[] }, pr
   return JSON.stringify({ schemaVersion: SCHEMA_VERSION, scenarios: [...state.scenarios, ...preserved] })
 }
 
+/** The taxYear field, or no key at all when there is no year (a calculator that uses no tax rules). */
+const withTaxYear = (taxYear: string | undefined) => (taxYear === undefined ? {} : { taxYear })
+
 export type ScenarioOp =
   | { readonly ok: true; readonly scenario: Scenario; readonly saved: boolean }
   | { readonly ok: false; readonly error: string }
 
 export interface ScenarioDraft {
   calculatorId: string
-  taxYear: string
+  /** Left out, and only left out, for a calculator that uses no tax rules. */
+  taxYear?: string
   name: string
   inputs: unknown
 }
@@ -128,7 +132,9 @@ export function createScenarioStore({ storage = appStorage, registry, newId, now
   ): { ok: true; name: string; inputs: unknown; inputsVersion: number } | { ok: false; error: string } {
     const definition = registry.get(draft.calculatorId)
     if (!definition) return { ok: false, error: 'This calculator isn’t in this version of Sumyard.' }
-    if (!isTaxYearText(draft.taxYear)) return { ok: false, error: 'Choose a tax year.' }
+    if (definition.taxRules === 'none') {
+      if (draft.taxYear !== undefined) return { ok: false, error: 'This calculator uses no tax rules, so it takes no tax year.' }
+    } else if (!isTaxYearText(draft.taxYear)) return { ok: false, error: 'Choose a tax year.' }
     const name = cleanName(draft.name)
     if (!name.ok) return name
     const inputs = registry.readInputs(draft.calculatorId, definition.inputsVersion, draft.inputs)
@@ -160,7 +166,7 @@ export function createScenarioStore({ storage = appStorage, registry, newId, now
       const scenario: Scenario = {
         id: newId(),
         calculatorId: draft.calculatorId,
-        taxYear: draft.taxYear,
+        ...withTaxYear(draft.taxYear),
         name: checked.name,
         inputs: checked.inputs,
         inputsVersion: checked.inputsVersion,
@@ -172,14 +178,14 @@ export function createScenarioStore({ storage = appStorage, registry, newId, now
     },
 
     /** Save changes to a loaded scenario: new inputs and tax year, same id, name and createdAt. */
-    update(id: string, change: { taxYear: string; inputs: unknown }): ScenarioOp {
+    update(id: string, change: { taxYear?: string; inputs: unknown }): ScenarioOp {
       const existing = find(id)
       if (!existing) return { ok: false, error: 'That scenario is no longer saved.' }
       const checked = checkDraft({ ...change, calculatorId: existing.calculatorId, name: existing.name })
       if (!checked.ok) return checked
-      return replaceOne(id, (s) => ({
+      return replaceOne(id, ({ taxYear: _old, ...s }) => ({
         ...s,
-        taxYear: change.taxYear,
+        ...withTaxYear(change.taxYear),
         inputs: checked.inputs,
         inputsVersion: checked.inputsVersion,
         updatedAt: now(),
