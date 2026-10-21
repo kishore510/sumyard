@@ -9,6 +9,7 @@ import {
   CHILDCARE_NOT_CHECKED,
   changeVsNow,
   childcareRuns,
+  compareRows,
   costOfMore,
   currentPoint,
   nearestPoint,
@@ -260,5 +261,32 @@ describe('warningRuns and childcareRuns', () => {
       }
     expect(CHILDCARE_NOT_CHECKED).toMatch(/not checked/i)
     expect(CHILDCARE_NOT_CHECKED).toMatch(/partner/)
+  })
+})
+
+describe('compareRows', () => {
+  it('gives each row now and at the choice, for the period (a year’s measures for the year), with the signed change', () => {
+    for (const period of ['year', 'month'] as const) {
+      const r = result({}, period)
+      const now = currentPoint(r)
+      const choice = r.points.at(-2)!
+      const rows = compareRows(now, choice, period)
+      const byId = Object.fromEntries(rows.map((row) => [row.id, row]))
+      expect(byId.contribution).toMatchObject({ now: perPeriod(now.contribution, period), chosen: perPeriod(choice.contribution, period) })
+      expect(byId.spendable).toMatchObject({ now: perPeriod(now.spendable, period), chosen: perPeriod(choice.spendable, period) })
+      expect(byId.takeHome!.chosen).toBe(perPeriod(choice.takeHome, period))
+      expect(byId.pension!.chosen).toBe(perPeriod(choice.pension.total, period))
+      expect(byId.adjustedNetIncome).toMatchObject({ now: now.adjustedNetIncome, chosen: choice.adjustedNetIncome, year: true })
+      for (const row of rows) expect(row.change).toBe(subtract(row.chosen, row.now))
+    }
+  })
+
+  it('leaves out Child Benefit and the annual allowance charge when both points have none', () => {
+    const r = result({ children: 0, salary: fromPounds(60_000), bonus: ZERO })
+    const ids = compareRows(currentPoint(r), r.points[1]!, 'year').map((row) => row.id)
+    expect(ids).not.toContain('childBenefit')
+    expect(ids).not.toContain('annualAllowanceCharge')
+    const high = result({ salary: fromPounds(300_000), bonus: ZERO })
+    expect(compareRows(currentPoint(high), high.points.at(-1)!, 'year').map((row) => row.id)).toContain('annualAllowanceCharge')
   })
 })

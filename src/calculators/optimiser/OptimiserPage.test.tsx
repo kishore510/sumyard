@@ -1210,6 +1210,26 @@ describe('Warnings across the contributions (1b-ii-b)', () => {
   })
 })
 
+describe('Compare now and a chosen contribution (1b-ii-b)', () => {
+  it('compares the contribution now with the chosen one, with the change, and follows the choice', () => {
+    type(box('opt-salary'), '120,000')
+    type(box('opt-employee'), '6,000')
+    const card = () => $('[data-compare-choice]')!.textContent!
+    expect(card()).toMatch(/choose another contribution/i)
+    const result = sweep()
+    const other = result.points.find((p) => p.contribution > result.currentContribution)!
+    const select = box('opt-chosen') as unknown as HTMLSelectElement
+    act(() => {
+      select.value = String(other.contribution)
+      select.dispatchEvent(new Event('change', { bubbles: true }))
+    })
+    expect(card()).toContain(money(other.spendable))
+    expect(card()).toContain(`Now ${money(result.points.find((p) => p.contribution === result.currentContribution)!.spendable)}`)
+    expect(card()).toMatch(/Adjusted net income/)
+    expect(card()).not.toMatch(/\bbest\b|optimal|recommended/i)
+  })
+})
+
 describe('Pension allowances section (inputs version 4)', () => {
   it('starts closed and not set, and is placed after Pension', () => {
     expect($('#opt-section-allowances-button')!.getAttribute('aria-expanded')).toBe('false')
