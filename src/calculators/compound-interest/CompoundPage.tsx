@@ -304,9 +304,9 @@ function Results({
       <div className="flex flex-col gap-3">
         <Segmented id="ci-view" label="Show amounts" value={view} options={VIEW_OPTIONS} onChange={setView} />
         <ResultCard
-          title={HEADLINE_LABELS[view]}
+          title={`After ${inputs.years === 1 ? 'one year' : `${inputs.years} years`}`}
           headline={gbp(projection.closing)}
-          headlineLabel={`After ${inputs.years === 1 ? 'one year' : `${inputs.years} years`}, with the fee, ${inView(view)}`}
+          headlineLabel={`${HEADLINE_LABELS[view]}, with the fee`}
         >
           <StatRow
             label="Paid in"
