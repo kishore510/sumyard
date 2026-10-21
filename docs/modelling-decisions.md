@@ -2,6 +2,8 @@
 
 How Sumyard applies the published tax rules where GOV.UK leaves a choice, or where Sumyard simplifies on purpose. The decisions are the owner's, given at the start of slice 1a session F (17 October 2026) in answer to the OPEN questions in `docs/verification-log.md`. Each names the questions it answers and the code that carries it out. A GOV.UK page that contradicts a decision wins: the session that finds one stops and reports it.
 
+The compound interest decisions (C1 to C9, slice 2) are in `docs/modelling-decisions-compound.md`.
+
 Figures are not repeated here. They live in `src/config/tax/<year>.ts`, with sources in `docs/verification-log.md`.
 
 ## Core tax engine (session F)

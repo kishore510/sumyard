@@ -72,6 +72,25 @@ Exact amounts use `ExactPence` (`exact`, `exactMul`, `exactAdd`, `exactSubtract`
 
 Rounding of each component means take-home is not strictly monotone at a penny: under salary sacrifice in the personal allowance taper zone, a penny more sacrifice can leave a penny more take-home (income tax and NI each round to the nearest penny). Session G2 found such steps when scanning a range penny by penny; they are not listed as cliffs.
 
+## Compound interest (slice 2a)
+
+Decisions C6 (rounding) and C9 (arithmetic) in `docs/modelling-decisions-compound.md`. No tax rule is involved.
+
+**Fine fixed point.** The equivalent rate per contribution period (C2) is a root when the compounding frequency is not a whole multiple of the contribution frequency, so it is irrational and `ExactPence` cannot hold it. The engine works in `FinePence` (pence) and `Factor` (plain numbers) from `money.ts`: BigInt integers in units of 10^-40 (`FINE_DIGITS`). `fineMul`, `fineDivide`, `factorMul` and `factorDivide` round each result to the nearest unit; `factorPow` squares and multiplies; `factorRoot` takes the integer n-th root by Newton's iteration and then the nearer unit. A `FinePence` becomes `Money` only through `roundFine`, which throws `MoneyError` past the safe range. `factorToRatio` shows a rate as a `Ratio` over 10^15 (`RATE_RATIO_DIGITS`).
+
+**Error bound.** A factor from `factorPow` or `factorRoot` is within a few hundred units (a few times 10^-38 relative) of its true value: the 365th power in `money.fine.test.ts` is within 365 units. Each step of a projection multiplies by such factors and rounds by half a unit. Over at most 5,200 steps (a hundred years weekly) on a balance within the safe range of `Money` (below 10^16 pence) the accumulated error is below about 10^-17 of a penny.
+
+**Test tolerance.** Because of that bound, the engine's one rounding to the penny must equal the exact value rounded to the nearest penny. `reference.test.ts` compares 300 seeded cases with `fixtures/reference.ts` (closed forms in exact BigInt fractions, a bisection root to 2^-224 where the rate is irrational) and allows a one-penny difference only when the exact value is within 10^-12 of a penny of a half penny, where the two roundings may legitimately fall either side. That margin is five orders of magnitude above the engine's error and still makes a penny tie vanishingly unlikely; none of the 300 cases is that close.
+
+| Step | Mode | Where | Basis |
+|---|---|---|---|
+| Growth, fee, contributions with the increase, inflation index | Fine fixed point, nearest unit at each step; no rounding to the penny | `simulate` | C6, C9 |
+| Closing balance, cumulative contributions, cumulative fees (each year, nominal and real) | Each to the nearest penny once (`roundFine`, `nearest`) | `toProjection` | C6 |
+| A year's contributions and fees | Rounded cumulative figure less the previous year's | `toProjection` | C6: rows add up to totals |
+| A year's growth | Closing − opening − contributions + fees (takes the penny) | `toProjection` | C6: every row balances |
+| Fee drag | Rounded closing without the fee less rounded closing with it | `feeDrag` | C4 |
+| Rates shown (effective, per period, after fees, real) | Nearest at fifteen decimal places | `factorToRatio` | C6 |
+
 ## Display (`format.ts`)
 
 Locale en-GB. Formatting works from integer pence in `BigInt`, never by dividing a float, so the digits are exact at any size. **Display rounding is nearest, halves away from zero**; it is for showing results and is not a tax rule.
