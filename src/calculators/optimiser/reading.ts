@@ -232,3 +232,38 @@ export function childcareRuns(
 /** What the childcare check leaves out: it is eligibility on income only. */
 export const CHILDCARE_NOT_CHECKED =
   'Eligibility on your adjusted net income only. Not checked: a partner’s income, minimum expected earnings, the child’s age and circumstances, immigration status, Universal Credit or childcare vouchers, and for Free Childcare for Working Parents living in England. The support itself is not counted in spendable.'
+
+export interface CompareRow {
+  readonly id: 'contribution' | 'pension' | 'takeHome' | 'childBenefit' | 'annualAllowanceCharge' | 'spendable' | 'adjustedNetIncome'
+  readonly label: string
+  readonly now: Money
+  readonly chosen: Money
+  /** Chosen less now, signed. */
+  readonly change: Money
+  /** A year's measure, shown for the year whatever the period. */
+  readonly year: boolean
+}
+
+/**
+ * The contribution now against a chosen one: amounts for the period, and
+ * adjusted net income for the year (its limits are a year's). Child Benefit
+ * and the annual allowance charge only when either point has some.
+ */
+export function compareRows(now: OptimiserPoint, chosen: OptimiserPoint, period: BreakdownPeriod): CompareRow[] {
+  const row = (id: CompareRow['id'], label: string, pick: (point: OptimiserPoint) => Money, year = false): CompareRow => {
+    const at = (point: OptimiserPoint) => (year ? pick(point) : perPeriod(pick(point), period))
+    return { id, label, now: at(now), chosen: at(chosen), change: subtract(at(chosen), at(now)), year }
+  }
+  const some = (pick: (point: OptimiserPoint) => Money) => compare(pick(now), ZERO) !== 0 || compare(pick(chosen), ZERO) !== 0
+  return [
+    row('contribution', 'Your contribution', (p) => p.contribution),
+    row('pension', 'Into your pension', (p) => p.pension.total),
+    row('takeHome', 'Take-home', (p) => p.takeHome),
+    ...(some((p) => p.childBenefit) ? [row('childBenefit', 'Child Benefit received', (p) => p.childBenefit)] : []),
+    ...(some((p) => p.annualAllowanceCharge)
+      ? [row('annualAllowanceCharge', 'Annual allowance charge', (p) => p.annualAllowanceCharge)]
+      : []),
+    row('spendable', 'Spendable', (p) => p.spendable),
+    row('adjustedNetIncome', 'Adjusted net income', (p) => p.adjustedNetIncome, true),
+  ]
+}

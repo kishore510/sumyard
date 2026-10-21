@@ -55,15 +55,18 @@ import {
   type ResolvedInputs,
   resolveInputs,
   usesPensionablePay,
+  yearsAgoLabel,
 } from './definition'
 import { calculateOptimise, carryForwardYears, type OptimiserPageResult } from './optimiserInputs'
 import { annualAmount, annualBenefit, type BenefitItem, CONTRIBUTION_MODES, ITEM_PERIODS, type ListItem } from './pageInputs'
 import { parseTaxCode } from './paye'
 import {
   CHILDCARE_NOT_CHECKED,
+  type CompareRow,
   type ContributionRun,
   changeVsNow,
   childcareRuns,
+  compareRows,
   costOfMore,
   currentPoint,
   nearestPoint,
@@ -1109,9 +1112,6 @@ function PayeCard({ estimate, gbp }: { estimate: PayeEstimate; gbp: Gbp }) {
   )
 }
 
-/** Earlier years' unused allowance, named by how long ago: "the tax year before", then "n tax years before". */
-const yearsAgoLabel = (yearsAgo: number) => (yearsAgo === 1 ? 'the tax year before' : `${yearsAgo} tax years before`)
-
 /**
  * The pension allowances section (1b-ii-a): unused allowance for each earlier year carry forward looks back (from the
  * year's config, plus any stored year beyond it), the money purchase annual allowance and the childcare check. Change
@@ -1379,6 +1379,7 @@ function ReadingCards({
       <CostCard sweep={sweep} choice={reading.choice} gbp={gbp} period={period} />
       <ThresholdsCard sweep={sweep} gbp={gbp} period={period} />
       <SweepWarnings sweep={sweep} choice={reading.choice} gbp={gbp} period={period} />
+      <CompareChoice now={reading.now} choice={reading.choice} gbp={gbp} period={period} />
     </>
   )
 }
@@ -1537,5 +1538,30 @@ function SweepWarnings({
         </div>
       )}
     </section>
+  )
+}
+
+/** The contribution now against the chosen one (1b-ii-b): each row at the choice, with now and the change beside it. */
+function CompareChoice({ now, choice, gbp, period }: { now: OptimiserPoint; choice: OptimiserPoint; gbp: Gbp; period: BreakdownPeriod }) {
+  const rows = compareRows(now, choice, period)
+  const words = (row: CompareRow) => (row.year ? ' for the year' : PERIOD_SUFFIX[period])
+  return (
+    <div data-compare-choice className="flex flex-col gap-2">
+      <ResultCard title="Your contribution now and the one you are looking at">
+        {rows.map((row) => (
+          <StatRow
+            key={row.id}
+            label={`${row.label}${words(row)}`}
+            value={gbp(row.chosen)}
+            detail={`Now ${gbp(row.now)} · change ${formatGBPDelta(row.change, 'pence')}`}
+          />
+        ))}
+      </ResultCard>
+      {choice === now && (
+        <p className="text-xs text-text-muted">
+          These are the figures at your contribution now: choose another contribution above the chart to compare it.
+        </p>
+      )}
+    </div>
   )
 }

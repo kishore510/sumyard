@@ -434,6 +434,9 @@ export function calculatePaye(
 }
 
 const money = (label: string, amount: Money): SummaryRow => ({ label, value: { kind: 'money', amount } })
+
+/** Earlier years' unused allowance, named by how long ago: "the tax year before", then "n tax years before". */
+export const yearsAgoLabel = (yearsAgo: number) => (yearsAgo === 1 ? 'the tax year before' : `${yearsAgo} tax years before`)
 const text = (label: string, value: string): SummaryRow => ({ label, value: { kind: 'text', text: value } })
 
 const noContribution = (): ContributionEntry => ({ mode: 'amount', amount: ZERO, percentOfPay: '0' })
@@ -568,6 +571,14 @@ export const optimiserCalculator: CalculatorDefinition<OptimiserPageInputs> = de
       { label: 'Children', value: { kind: 'count', count: inputs.children } },
       ...(inputs.children > 0 ? [text('Child Benefit', PAYMENT_LABELS[inputs.childBenefit])] : []),
       text('Tax code', inputs.taxCode === '' ? 'None' : inputs.taxCode),
+      // The version 4 inputs (1b-ii-b): they change no take-home figure, only the contribution chart.
+      money(
+        'Unused allowance carried forward',
+        inputs.carryForward.reduce((sum, year) => add(sum, year.amount), ZERO),
+      ),
+      ...inputs.carryForward.map((year) => money(`Carry forward from ${yearsAgoLabel(year.yearsAgo)}`, year.amount)),
+      text('Money purchase annual allowance', inputs.moneyPurchaseAnnualAllowance ? 'Applies' : 'Does not apply'),
+      text('Childcare income limits checked', inputs.checkChildcare ? 'Yes' : 'No'),
     ]
     if (isInputProblem(result)) return { inputs: rows, results: { ok: true, rows: [text('Result', result.problem)] } }
     if (!result.ok) return { inputs: rows, results: result }
