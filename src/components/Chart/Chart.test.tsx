@@ -149,7 +149,9 @@ describe('Chart', () => {
     })
 
     it('puts every extra column in the table, in order', () => {
-      view = mount(<Chart {...numeric} columns={[...numeric.columns!, { label: 'Change', values: ['+1p', '0p', '-1p', '-2p'], numeric: true }]} />)
+      view = mount(
+        <Chart {...numeric} columns={[...numeric.columns!, { label: 'Change', values: ['+1p', '0p', '-1p', '-2p'], numeric: true }]} />,
+      )
       const rows = [...view.host.querySelectorAll('tbody tr')].map((tr) => [...tr.children].map((c) => c.textContent))
       expect(rows[2]).toEqual(['40p', '60 pence', '', '-1p'])
       expect(view.host.querySelector('thead')!.textContent).toMatch(/Marked.*Change/)

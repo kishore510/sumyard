@@ -1082,12 +1082,15 @@ describe('Change vs now (1b-ii-b)', () => {
   it('adds a signed change against the current contribution to the table, nothing on the current row', () => {
     type(box('opt-salary'), '120,000')
     type(box('opt-employee'), '6,000')
-    expect($('[data-optimiser] thead')!.textContent).toContain('Change vs now')
+    const headings = [...$('[data-optimiser] thead tr')!.children].map((th) => th.textContent)
+    const at = headings.indexOf('Change vs now')
+    expect(at).toBeGreaterThan(1)
     const rows = [...$('[data-optimiser] tbody')!.querySelectorAll('tr')]
+    const change = (tr: Element) => tr.children[at]!.textContent!
     const now = rows.find((tr) => tr.textContent!.includes(REASON_LABELS.current))!
-    expect(now.lastElementChild!.textContent).toBe(money(ZERO))
-    expect(rows.some((tr) => tr.lastElementChild!.textContent!.startsWith('+'))).toBe(true)
-    expect(rows.some((tr) => tr.lastElementChild!.textContent!.startsWith('-'))).toBe(true)
+    expect(change(now)).toBe(money(ZERO))
+    expect(rows.some((tr) => change(tr).startsWith('+'))).toBe(true)
+    expect(rows.some((tr) => change(tr).startsWith('-'))).toBe(true)
   })
 
   it('reads out the chosen point above the chart, the current contribution until another is chosen', () => {

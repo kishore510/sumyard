@@ -20,15 +20,15 @@ import { InlineNotice } from '@/components/states'
 import { Button } from '@/components/ui/button'
 import { VerifiedBadge } from '@/components/VerifiedBadge'
 import { listTaxYears, taxYearLabel } from '@/config/tax/index'
-import { formatGBP, formatGBPCompact } from '@/lib/format'
-import { add, compare, fromPence, type Money, ratio, subtract, ZERO } from '@/lib/money'
+import { formatGBP, formatGBPCompact, formatGBPDelta } from '@/lib/format'
+import { add, compare, fromPence, type Money, ratio, subtract, toPence, ZERO } from '@/lib/money'
 import type { Parsed } from '@/lib/parse'
 import { useStore } from '@/lib/store'
 import { settingsStore } from '@/settings/settings'
 import { DISCLAIMER } from '@/sheets/parts'
 import { toasts } from '@/toast/toasts'
 import { configFor, sessionFor } from '../session'
-import { BREAKDOWN_PERIODS, type Breakdown, type BreakdownPeriod, breakdown } from './breakdown'
+import { BREAKDOWN_PERIODS, type Breakdown, type BreakdownPeriod, breakdown, perPeriod } from './breakdown'
 import { benefitTaxable } from './calc'
 import { CHART_VIEWS, type ChartView, CURVE_NOTE, MONTH_NOTE, optimiserChartData, viewLabel, X_LABELS } from './chartData'
 import {
@@ -59,6 +59,7 @@ import {
 import { calculateOptimise, carryForwardYears, type OptimiserPageResult } from './optimiserInputs'
 import { annualAmount, annualBenefit, type BenefitItem, CONTRIBUTION_MODES, ITEM_PERIODS, type ListItem } from './pageInputs'
 import { parseTaxCode } from './paye'
+import { changeVsNow, currentPoint, nearestPoint } from './reading'
 import { payslipNet, splitSegments } from './results'
 import { NEEDS_FIXING, SECTION_IDS, SECTION_TITLES, type SectionId, sectionForField, sectionSummary, sectionsSet } from './sections'
 import {
@@ -1158,6 +1159,8 @@ function AllowanceInputs({ taxYear, inputs }: { taxYear: string; inputs: Optimis
  * The contribution chart (1b-ii-a), below the split bar: spendable (or take-home) against the contribution by the
  * chosen method, from optimise()'s points, with the current contribution, the maximum and each threshold point marked,
  * cliffs as lettered ranges, and the table. A refusal takes its place; an input problem is already shown above.
+ * 1b-ii-b: in the page's period, with a chosen point (the current contribution until another is chosen) read out
+ * above the chart, and each point's change against now in the table. The choice is never stored.
  */
 function OptimiserChart({
   sweep,
@@ -1173,6 +1176,7 @@ function OptimiserChart({
   period: BreakdownPeriod
 }) {
   const [view, setView] = useState<ChartView>('spendable')
+  const [chosen, setChosen] = useState<Money | null>(null)
   if (isInputProblem(sweep)) return null
   return (
     <section
@@ -1186,16 +1190,30 @@ function OptimiserChart({
       {!sweep.ok ? (
         <RefusalNotice refusal={sweep} />
       ) : (
-        <ChartBody sweep={sweep} view={view} setView={setView} inputs={inputs} resolved={resolved} gbp={gbp} period={period} />
+        <ChartBody
+          sweep={sweep}
+          view={view}
+          setView={setView}
+          chosen={chosen}
+          setChosen={setChosen}
+          inputs={inputs}
+          resolved={resolved}
+          gbp={gbp}
+          period={period}
+        />
       )}
     </section>
   )
 }
 
+const PERIOD_SUFFIX: Record<BreakdownPeriod, string> = { year: ' a year', month: ' a month' }
+
 function ChartBody({
   sweep,
   view,
   setView,
+  chosen,
+  setChosen,
   inputs,
   resolved,
   gbp,
@@ -1204,16 +1222,30 @@ function ChartBody({
   sweep: OptimiseResult
   view: ChartView
   setView: (view: ChartView) => void
+  chosen: Money | null
+  setChosen: (contribution: Money) => void
   inputs: OptimiserPageInputs
   resolved: ResolvedInputs
   gbp: Gbp
   period: BreakdownPeriod
 }) {
   const percentBase = inputs.employeeContribution.mode === 'percentOfPay' ? resolved.pensionablePay : null
+  const points = sweep.points
   const data = optimiserChartData(sweep, view, { gbp, percentBase, period })
   const yLabel = viewLabel(view, period)
   const money = (pence: number) => gbp(fromPence(pence))
   const compact = (pence: number) => formatGBPCompact(fromPence(pence))
+  const per = (annual: Money) => `${gbp(perPeriod(annual, period))}${PERIOD_SUFFIX[period]}`
+  const now = currentPoint(sweep)
+  const choice = nearestPoint(points, chosen ?? now.contribution)
+  const changes = changeVsNow(points, now, view, period)
+  const delta = (amount: Money) => formatGBPDelta(amount, 'pence')
+  const index = points.indexOf(choice)
+  const isNow = choice === now
+  const options = points.map((point) => ({
+    value: String(toPence(point.contribution)),
+    label: `${per(point.contribution)}${point === now ? ' (your contribution now)' : ''}`,
+  }))
   return (
     <>
       <p className="text-sm text-text-muted">
@@ -1221,6 +1253,19 @@ function ChartBody({
         recommendation. Spendable is take-home with any Child Benefit, less any annual allowance charge.
       </p>
       <Segmented id="opt-chart-view" label="Show" value={view} options={VIEW_OPTIONS} onChange={setView} />
+      <Select
+        id="opt-chosen"
+        label="Contribution to look at"
+        hint="Your contribution now until you choose another. Read out below, highlighted on the chart and compared further down."
+        value={String(toPence(choice.contribution))}
+        options={options}
+        onChange={(pence) => setChosen(fromPence(Number(pence)))}
+      />
+      <p data-readout aria-live="polite" className="rounded-md bg-surface-muted px-3 py-2 text-sm text-text">
+        {isNow ? 'Your contribution now' : 'At'} <strong className="tabular-nums">{per(choice.contribution)}</strong>:{' '}
+        {VIEW_LABELS_LOWER[view]} <strong className="tabular-nums">{per(choice[view])}</strong>
+        {isNow ? '.' : `, ${delta(changes[index]!)}${PERIOD_SUFFIX[period]} against your contribution now (${per(now.contribution)}).`}
+      </p>
       <Chart
         title={`${yLabel} against your pension contribution`}
         categories={data.categories}
@@ -1230,7 +1275,11 @@ function ChartBody({
         markers={data.markers}
         spans={data.spans}
         pointMarkers={false}
-        rowNotes={{ label: 'Marked', values: data.rowNotes }}
+        selectedX={data.xValues[index]}
+        columns={[
+          { label: 'Change vs now', values: changes.map(delta), numeric: true },
+          { label: 'Marked', values: data.rowNotes },
+        ]}
         xLabel={X_LABELS[period]}
         yLabel={yLabel}
         formatTick={compact}
@@ -1247,3 +1296,5 @@ function ChartBody({
     </>
   )
 }
+
+const VIEW_LABELS_LOWER: Record<ChartView, string> = { spendable: 'spendable', takeHome: 'take-home' }
