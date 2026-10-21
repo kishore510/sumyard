@@ -543,3 +543,17 @@ On the same page and inputs (version 3 since 0.11.0), in the 0.12.0 layout. Add 
 ### Out of scope
 
 - Slice 2 and later calculators.
+
+## Archive: slice 1b brief header (as of 0.14.0)
+
+Moved verbatim from `PHASE-BRIEF.md` on 21 October 2026, when slice 2 became the current work.
+
+Status: Built, owner checks open. The take-home pay page at `#/c/optimiser` is live with the optimiser on it (1b-i to 0.12.0; the sweep and chart in 1b-ii-a, 0.13.0; reading the result in 1b-ii-b, 0.14.0). Status per part lives only in `PLAN.md`. Finished part scopes are in `docs/history/phase-brief-archive.md`.
+
+### Goal
+
+The £100k+ optimiser page, built from shared components on the slice 1a engine: take-home now, then candidate pension contributions with their cliffs, thresholds, annual allowance and childcare position, never one called "the best".
+
+### Next: slice 2 (compound interest)
+
+All 1b parts are built (1b-ii-b, 0.14.0, is the last). Next is slice 2 from `PLAN.md` (regular contributions, compounding, inflation-adjusted view, fee drag, yearly table and chart). It needs its own brief before work starts: write it here first, from `PLAN.md` and `docs/backlog.md`. Slice 1b stays open in `PLAN.md` until the owner's checks below are done.

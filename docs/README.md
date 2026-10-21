@@ -10,4 +10,5 @@ Area detail that does not belong in `CLAUDE.md`.
 - `worked-examples.md`: worked examples GOV.UK and HMRC publish, as published, which of them the engine tests mirror, and the HMRC cross-check harness.
 - `ui-patterns.md`: page-layout decisions (U1 to U9): essentials visible and the rest in sections with live summaries, results first and sticky, one settled announcement, the split bar, the two net pay lines, item cards with Undo.
 - `modelling-decisions.md`: how Sumyard applies the published rules where GOV.UK leaves a choice (the owner's decisions for the core tax engine, D1 to D7, and those for session G, G1 to G14), each with the OPEN questions it answers.
+- `modelling-decisions-compound.md`: the compound interest engine's decisions (C1 to C9): rate convention, timing, fees, inflation, rounding, calendar constants, limits and the fixed-point arithmetic.
 - `hmrc-cross-checks.json`: input cases derived from the config for cross-checking the engine against HMRC's own calculators; the owner fills the expected results (`src/calculators/optimiser/crossChecks.test.ts`).
