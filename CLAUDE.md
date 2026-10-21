@@ -14,7 +14,7 @@ Decided in the slice 0 recon (see `PHASE-BRIEF.md` progress log): mirror Chalkli
 - Biome for lint and format (`biome.json`). **Differs from Chalkline**, which has neither: typescript-eslint does not support TypeScript 7.
 - GitHub Pages via `.github/workflows/deploy.yml` on push to `main`; `VITE_BASE=/<repo>/`. `ci.yml` on other branches and PRs.
 - State: small stores on `useSyncExternalStore` (`src/lib/store.ts`); no Zustand or Zod yet. Add them only when a slice needs them.
-- Commands: `npm run dev`, `build` (typecheck; `vite build`, which fails if `PLAN.md`, `CHANGELOG.md` and `package.json` drift; then `vitest.build.config.ts` scans `dist/`), `test`, `lint`, `format`, `typecheck`. Run `test`, `lint` and `typecheck` before every commit.
+- Commands: `npm run dev`, `build` (typecheck; `vite build`, which fails if `PLAN.md`, `CHANGELOG.md` and `package.json` drift; then `vitest.build.config.ts` scans `dist/`), `test`, `lint`, `format`, `typecheck`. When to run them: Workflow > Testing.
 - Version bumps: `npm version <x.y.z> --no-git-tag-version`, so the lockfile matches.
 
 ## Architecture rules
@@ -55,19 +55,22 @@ Decided in the slice 0 recon (see `PHASE-BRIEF.md` progress log): mirror Chalkli
 
 ## Workflow
 
-- Read `PHASE-BRIEF.md` first. Work only on the current slice; do not start later slices.
+- Read `PHASE-BRIEF.md` first (current part only). Work only on the current part; do not start later ones. Do not read `docs/history/` unless the task needs a past decision; grep it, don't read it whole. Read `PLAN.md` only for roadmap, phase order, a new calculator or the backlog.
+- Pre-check: confirm the previous PR merged. Do not re-verify names and signatures; read a file only when about to edit it.
+- Each rung gives a working result: stop at any part and something still works. Done means trusted for a real decision, on a phone and a laptop, in both themes.
 - Tests first for calculator and config work: a red commit, then a green one.
+- Testing: while building run only affected test files (`npx vitest run <path>`). Run the full `test`, `lint`, `typecheck` and `build` once before the final commit.
+- Verification scaling: browser matrix (Chromium + axe) once per UI part, at 360 and 1280 px in light and dark, not every session. Mutation spot-checks: engine and tax logic only, not page or docs work.
 - One fresh session per part, at most per slice. Hand over through the PR description (what was done, what differs from the brief, what is next).
-- Docs are part of the work. Every build session ends by updating the docs, before the final commit; a session is not done until the close-out checklist below is complete. A docs test fails CI if `PLAN.md`, `CHANGELOG.md` and `package.json` drift apart.
-- Each change to tax values is its own PR, with the source for every changed value in `docs/verification-log.md`; `src/config/tax/verification.test.ts` fails if the log's Values table and the config disagree.
+- Context: use `/clear` between unrelated tasks; `/compact` if context passes about half.
+- Each change to tax values is its own PR, with the source for every changed value in `docs/verification-log.md`; `src/config/tax/verification.test.ts` fails if the log's Values table and the config disagree. A new tax year's config also gets a changelog entry.
 - Be concise and technical. Say what you changed and what you did not verify.
 
-## Session close-out checklist (every build session, no exceptions)
+## Session close-out checklist
 
-1. `PHASE-BRIEF.md`: tick off what was done, record anything that differs from the brief, and write what the next session should pick up.
-2. `PLAN.md`: update the slice's status row (Not started, In progress, Done with version, PR and date), the "Last updated" line, and the slice notes (what changed from the prompt, rollback or follow-up notes). Move new ideas to the Backlog and new unknowns to Open questions.
-3. `CHANGELOG.md`: add a user-facing entry under `[Unreleased]` for anything a user can see or rely on; cut a version heading (and bump `package.json`) when a part is merged. Internal-only sessions need no changelog entry but still need steps 1 and 2. An internal entry is at most two sentences, with no open questions (those go in `PLAN.md`); user-visible entries stay short too.
-4. `CLAUDE.md`: update only if a rule, command, stack decision or convention changed. Keep it short.
-5. Tax and calculator docs: `docs/verification-log.md` for every config value touched, `docs/worked-examples.md` for new cross-checks, and the calculator's `README` (assumptions, sources, edge cases) and Help topic if behaviour changed.
-6. In-app text: About > Privacy if a storage key was added or changed; credits regenerate from dependencies.
-7. Run `test`, `lint`, `typecheck` and `build`; confirm the docs test passes. In the PR description say which docs were updated, what was not verified, and what comes next.
+A docs test fails CI if `PLAN.md`, `CHANGELOG.md` and `package.json` drift apart.
+
+- Every session: replace `PHASE-BRIEF.md` "Last session" (at most 5 lines; replace, don't append); a short `CHANGELOG.md` `[Unreleased]` entry if user-visible; the PR description carries the detail (what changed, what differs from the brief, what was not verified, what is next).
+- Part or slice merge only: the `PLAN.md` Status cell and "Last updated"; version bump and changelog heading. New scope: add a row to `PLAN.md`. New unknowns: `docs/open-questions.md`; new ideas: `docs/backlog.md`.
+- Only when touched: `docs/verification-log.md`, `docs/worked-examples.md`, the calculator `README`, Help, About > Privacy, `CLAUDE.md`.
+- Progress detail goes in the PR and commit messages, never appended to `PHASE-BRIEF.md`.
