@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { fromPence, ratio } from '@/lib/money'
-import { formatDelta, formatRowValue } from './ComparePage'
+import { formatDelta, formatRowValue, refusedCellText } from './ComparePage'
 
 /* Made-up values. */
 
@@ -27,5 +27,14 @@ describe('compare deltas', () => {
   it('formats values', () => {
     expect(formatRowValue(money(123_456), 'pence')).toBe('£1,234.56')
     expect(formatRowValue({ kind: 'ratio', ratio: ratio(75, 1000) }, 'pence')).toBe('7.5%')
+  })
+})
+
+describe('compare cells for refused results', () => {
+  it('an input refusal names its fields; a tax refusal says the figures are not verified', () => {
+    expect(refusedCellText({ ok: false, kind: 'inputs', problems: [{ field: 'years', label: 'Years', message: 'Too many.' }] })).toBe(
+      'No results: Years',
+    )
+    expect(refusedCellText({ ok: false, taxYear: '2026-27', unverified: [] })).toBe('No results: tax figures not verified')
   })
 })

@@ -1,13 +1,14 @@
 import { ArrowLeft } from 'lucide-react'
 import { useId } from 'react'
 import { CALCULATORS } from '@/calculators/index'
-import type { CalculatorDefinition, RowValue, Summary, SummaryRow } from '@/calculators/registry'
+import type { CalculatorDefinition, InputRefusal, RowValue, Summary, SummaryRow } from '@/calculators/registry'
 import { configFor } from '@/calculators/session'
 import { NO_TAX_RULES } from '@/components/NoTaxRulesBadge'
 import { refusedGroups } from '@/components/RefusalNotice'
 import { SheetLink } from '@/components/SheetLink'
 import { EmptyState, InlineNotice } from '@/components/states'
 import { getTaxYear, taxYearLabel } from '@/config/tax/index'
+import type { Refusal } from '@/config/tax/sourced'
 import { formatGBP, formatGBPDelta, formatPercent, formatPercentPointDelta } from '@/lib/format'
 import { subtract, subtractRatio } from '@/lib/money'
 import { createStore, useStore } from '@/lib/store'
@@ -29,6 +30,11 @@ export const MAX_COMPARE = 3
 
 /** Which scenarios are picked, per calculator, for this visit. */
 const selection = createStore<Readonly<Record<string, readonly string[]>>>({})
+
+/** What a compare cell says for a scenario with no results. */
+export function refusedCellText(_refusal: Refusal | InputRefusal): string {
+  return 'No results: tax figures not verified'
+}
 
 export function formatRowValue(value: RowValue, amounts: AmountStyle): string {
   switch (value.kind) {
@@ -84,7 +90,7 @@ function CompareTable({ calculator, picked }: { calculator: CalculatorDefinition
   const labels = (pick: (s: Summary) => readonly SummaryRow[]) => [...new Set(summaries.flatMap((s) => pick(s).map((r) => r.label)))]
   const inputLabels = labels((s) => s.inputs)
   const resultLabels = labels((s) => (s.results.ok ? s.results.rows : []))
-  const refused = summaries.flatMap((s) => (s.results.ok ? [] : [s.results]))
+  const refused = summaries.flatMap((s) => (s.results.ok ? [] : [s.results as Refusal]))
   const sectionRow = (title: string) => (
     <tr className="border-t border-border bg-surface-muted">
       <th

@@ -27,10 +27,26 @@ export interface SummaryRow {
   readonly value: RowValue
 }
 
-/** A scenario's inputs and results as rows, for compare. Results are a refusal while tax values they need are unverified. */
+/**
+ * Inputs a calculator's engine refuses to work out (outside what it models, or a result too large to hold), each by
+ * field: its label and why, in words with no figures. The non-tax counterpart of a tax Refusal.
+ */
+export interface InputRefusal {
+  readonly ok: false
+  readonly kind: 'inputs'
+  readonly problems: readonly { readonly field: string; readonly label: string; readonly message: string }[]
+}
+
+/** True for an input refusal, false for a tax Refusal. */
+export const isInputRefusal = (refusal: Refusal | InputRefusal): refusal is InputRefusal => 'kind' in refusal
+
+/**
+ * A scenario's inputs and results as rows, for compare. Results are a refusal while tax values they need are
+ * unverified, or an input refusal when the engine refuses the inputs.
+ */
 export interface Summary {
   readonly inputs: readonly SummaryRow[]
-  readonly results: { readonly ok: true; readonly rows: readonly SummaryRow[] } | Refusal
+  readonly results: { readonly ok: true; readonly rows: readonly SummaryRow[] } | Refusal | InputRefusal
 }
 
 export interface CalculatorDefinition<I = unknown> {

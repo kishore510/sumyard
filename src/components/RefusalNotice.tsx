@@ -1,4 +1,5 @@
 import { ShieldAlert } from 'lucide-react'
+import type { InputRefusal } from '@/calculators/registry'
 import { taxYearLabel } from '@/config/tax/index'
 import { TAX_GROUPS } from '@/config/tax/schema'
 import type { Refusal } from '@/config/tax/sourced'
@@ -15,7 +16,8 @@ export function refusedGroups(refusal: Pick<Refusal, 'unverified'>): string[] {
   return TAX_GROUPS.filter((group) => group.fields.some((field) => refusal.unverified.includes(field.path))).map((g) => g.title)
 }
 
-export function RefusalNotice({ refusal }: { refusal: Refusal }) {
+export function RefusalNotice({ refusal: given }: { refusal: Refusal | InputRefusal }) {
+  const refusal = given as Refusal
   const groups = refusedGroups(refusal)
   return (
     <section
