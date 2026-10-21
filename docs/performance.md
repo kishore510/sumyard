@@ -83,3 +83,7 @@ Lighthouse 12.8.2, mobile form factor, headless Chromium 1194, `#/c/optimiser`:
 - The sweep for £150,000 of pay (302 points) takes about 20 ms in Node; the page caps the sweep at 400 points (`pageSweepStep`).
 
 Not checked: 768 px, a real phone, Safari, Firefox, a screen reader, the deployed site.
+
+## Browser checks, part 1b-ii-b, 21 October 2026
+
+The same scratch Playwright and axe-core 4.10 setup against `vite preview`, on the take-home page at 360 and 1280 px in light and dark (system colour scheme), filled (salary, a contribution, two children, the childcare check on) in four states: as loaded, Month, Full range, and a chosen contribution with the cards below the chart. 16 runs. axe (WCAG 2.0/2.1 A and AA, best practice) found no violations; no horizontal page scroll; no external requests; no console errors; every visible control in the chart section at least 44 px tall (Segmented's visually hidden radios aside; their labels are the targets). Fix that came out of it: the zoomed chart at 360 px had one x tick; the shared `Chart` now asks for more until at least two round ticks fall inside the range (`ticksWithin`). Lighthouse not re-run.
