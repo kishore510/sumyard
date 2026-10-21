@@ -47,3 +47,19 @@ With a supported tax code, the take-home card shows "Estimated payslip net pay" 
 ### U9. Item cards
 
 Benefit and deduction items keep their fields, in a compact card: a header line with the name and its resolved amounts, Edit (in place, `aria-expanded`) and Remove. A new item opens for editing with its name box focused; items in a loaded scenario start folded; an item with an input to fix stays open. Remove shows a toast with Undo, which puts the item back where it was, unless the list has since changed from outside (a scenario loaded or started new) or is full, when Undo says so and does nothing. Monthly, yearly and percentage entry are unchanged.
+
+## 1b-ii-b: reading the optimiser chart
+
+Patterns from part 1b-ii-b, for any later chart of candidates. Not owner decisions; change them with a note here.
+
+### U10. One period for the page
+
+The page's Year / Month choice drives every figure below it, the chart and its table included. A month is the year's figure divided by `MONTHS_PER_YEAR` to the nearest penny (`perPeriod`), and the page says it assumes level pay. Year-only measures (adjusted net income, the limits it is checked against) stay for the year and say so.
+
+### U11. A range that shows what matters, and the whole on request
+
+A chart of candidates opens on the range around the current value and the thresholds ahead of it, with a margin; a **Full range** switch shows everything, and the page says which is shown. Warnings are never limited to the range shown.
+
+### U12. One chosen point
+
+A select of the points shown picks one point (the current value until another is chosen; never stored). It is read out above the chart, highlighted on the line and in the table, and is what the cards below measure; the table's "Change vs now" column compares every point with now. No point is called the best.
