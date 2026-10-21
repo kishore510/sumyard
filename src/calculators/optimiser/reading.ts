@@ -2,7 +2,16 @@ import { add, compare, fromPounds, type Money, max, min, mulRound, subtract, toP
 import { ZOOM_MARGIN } from '@/lib/sweep'
 import { type BreakdownPeriod, perPeriod } from './breakdown'
 import type { ChartView } from './chartData'
-import type { Cliff, OptimiseResult, OptimiserPoint, PensionMethod, ThresholdContribution, ThresholdId } from './types'
+import type {
+  ChildcareScheme,
+  Cliff,
+  EngineWarning,
+  OptimiseResult,
+  OptimiserPoint,
+  PensionMethod,
+  ThresholdContribution,
+  ThresholdId,
+} from './types'
 
 /*
  * Reading optimise()'s result on the take-home page (part 1b-ii-b): the
@@ -171,3 +180,55 @@ export function thresholdWords(
           : 'going into your pension, gross, it would take more than your pay.'
   return { name, status: 'outOfReach', text: `Out of reach: ${reason}${fullCharge}` }
 }
+
+export interface ContributionRun {
+  readonly from: Money
+  readonly to: Money
+}
+
+/** Runs of neighbouring points (in sweep order) for which `holds` is true, by contribution. */
+function runsWhere(points: readonly OptimiserPoint[], holds: (point: OptimiserPoint) => boolean): ContributionRun[] {
+  const runs: { from: Money; to: Money }[] = []
+  let open = false
+  for (const point of points) {
+    if (!holds(point)) open = false
+    else if (open) runs[runs.length - 1]!.to = point.contribution
+    else {
+      runs.push({ from: point.contribution, to: point.contribution })
+      open = true
+    }
+  }
+  return runs
+}
+
+export interface WarningRun {
+  readonly code: EngineWarning['code']
+  readonly message: string
+  readonly runs: readonly ContributionRun[]
+}
+
+/** Every warning any point carries, in order of first appearance, with each run of neighbouring points carrying it. Nothing is left out. */
+export function warningRuns(points: readonly OptimiserPoint[]): WarningRun[] {
+  const first = new Map<EngineWarning['code'], string>()
+  for (const point of points) for (const warning of point.warnings) if (!first.has(warning.code)) first.set(warning.code, warning.message)
+  return [...first].map(([code, message]) => ({
+    code,
+    message,
+    runs: runsWhere(points, (point) => point.warnings.some((w) => w.code === code)),
+  }))
+}
+
+/** Per childcare scheme checked, the runs of points eligible on income (adjusted net income at or under the limit); empty when not checked. */
+export function childcareRuns(
+  points: readonly OptimiserPoint[],
+): { readonly scheme: ChildcareScheme; readonly eligible: readonly ContributionRun[] }[] {
+  const schemes = points[0]?.childcare.map((c) => c.scheme) ?? []
+  return schemes.map((scheme) => ({
+    scheme,
+    eligible: runsWhere(points, (point) => point.childcare.some((c) => c.scheme === scheme && c.eligibleOnIncome)),
+  }))
+}
+
+/** What the childcare check leaves out: it is eligibility on income only. */
+export const CHILDCARE_NOT_CHECKED =
+  'Eligibility on your adjusted net income only. Not checked: a partner’s income, minimum expected earnings, the child’s age and circumstances, immigration status, Universal Credit or childcare vouchers, and for Free Childcare for Working Parents living in England. The support itself is not counted in spendable.'

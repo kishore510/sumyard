@@ -60,7 +60,10 @@ import { calculateOptimise, carryForwardYears, type OptimiserPageResult } from '
 import { annualAmount, annualBenefit, type BenefitItem, CONTRIBUTION_MODES, ITEM_PERIODS, type ListItem } from './pageInputs'
 import { parseTaxCode } from './paye'
 import {
+  CHILDCARE_NOT_CHECKED,
+  type ContributionRun,
   changeVsNow,
+  childcareRuns,
   costOfMore,
   currentPoint,
   nearestPoint,
@@ -68,6 +71,7 @@ import {
   pointsIn,
   type ThresholdWords,
   thresholdWords,
+  warningRuns,
   type ZoomRange,
   zoomRange,
 } from './reading'
@@ -76,6 +80,7 @@ import { NEEDS_FIXING, SECTION_IDS, SECTION_TITLES, type SectionId, sectionForFi
 import {
   BENEFIT_PAYMENTS,
   CHILD_BENEFIT_PAYMENTS,
+  type ChildcareScheme,
   DEFAULT_POLICY,
   type OptimiseResult,
   type OptimiserPoint,
@@ -1373,6 +1378,7 @@ function ReadingCards({
     <>
       <CostCard sweep={sweep} choice={reading.choice} gbp={gbp} period={period} />
       <ThresholdsCard sweep={sweep} gbp={gbp} period={period} />
+      <SweepWarnings sweep={sweep} choice={reading.choice} gbp={gbp} period={period} />
     </>
   )
 }
@@ -1451,5 +1457,85 @@ function CostCard({ sweep, choice, gbp, period }: { sweep: OptimiseResult; choic
         lettered range on the chart) can make either figure very different from its neighbours’.
       </p>
     </div>
+  )
+}
+
+const SCHEME_LABELS: Record<ChildcareScheme, string> = {
+  taxFreeChildcare: 'Tax-Free Childcare',
+  thirtyHours: 'Free Childcare for Working Parents',
+}
+
+/**
+ * Every warning any point of the whole sweep carries (not only the range shown), with where it applies and whether
+ * it applies at the chosen point; never hidden and never a cap. With the childcare check, each scheme's eligibility
+ * on income at the chosen point and where it holds, and what is not checked.
+ */
+function SweepWarnings({
+  sweep,
+  choice,
+  gbp,
+  period,
+}: {
+  sweep: OptimiseResult
+  choice: OptimiserPoint
+  gbp: Gbp
+  period: BreakdownPeriod
+}) {
+  const per = perText(gbp, period)
+  const where = (runs: readonly ContributionRun[]) =>
+    runs.map((run) => (compare(run.from, run.to) === 0 ? `At ${per(run.from)}` : `From ${per(run.from)} to ${per(run.to)}`)).join('; ')
+  const warnings = warningRuns(sweep.points)
+  const childcare = childcareRuns(sweep.points)
+  return (
+    <section
+      data-optimiser-warnings
+      aria-labelledby="opt-sweep-warnings-heading"
+      className="flex min-w-0 flex-col gap-3 rounded-lg border border-border bg-surface p-5 shadow-sm"
+    >
+      <h2 id="opt-sweep-warnings-heading" className="text-base font-semibold">
+        Warnings across the contributions
+      </h2>
+      {warnings.length === 0 ? (
+        <p className="text-sm text-text-muted">No warnings at any contribution, from nothing up to the most modelled.</p>
+      ) : (
+        <ul className="flex flex-col gap-2">
+          {warnings.map((warning) => (
+            <li key={warning.code} data-sweep-warning={warning.code}>
+              <InlineNotice tone="warning">
+                <p>{warning.message}</p>
+                <p className="text-xs">
+                  {where(warning.runs)}.
+                  {choice.warnings.some((w) => w.code === warning.code) ? ' This applies at the contribution you are looking at.' : ''}
+                </p>
+              </InlineNotice>
+            </li>
+          ))}
+        </ul>
+      )}
+      <p className="text-xs text-text-muted">
+        Warnings are shown wherever they apply; no contribution is stopped or capped because of one.
+      </p>
+      {childcare.length > 0 && (
+        <div data-childcare className="flex flex-col gap-2 border-t border-border pt-3 text-sm">
+          <h3 className="font-medium text-text">Childcare support: eligibility on income</h3>
+          <ul className="flex flex-col gap-1">
+            {childcare.map((scheme) => {
+              const eligible = choice.childcare.some((c) => c.scheme === scheme.scheme && c.eligibleOnIncome)
+              return (
+                <li key={scheme.scheme} className="text-text">
+                  {SCHEME_LABELS[scheme.scheme]}: {eligible ? 'eligible on income' : 'over the income limit'} at {per(choice.contribution)}.{' '}
+                  <span className="text-text-muted">
+                    {scheme.eligible.length === 0
+                      ? 'Over the limit at every contribution.'
+                      : `Eligible on income: ${where(scheme.eligible)}.`}
+                  </span>
+                </li>
+              )
+            })}
+          </ul>
+          <p className="text-xs text-text-muted">{CHILDCARE_NOT_CHECKED}</p>
+        </div>
+      )}
+    </section>
   )
 }
