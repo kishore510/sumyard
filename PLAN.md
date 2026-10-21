@@ -1,30 +1,29 @@
 # Phase plan: Sumyard
 
-Last updated: 18 October 2026 (slice 1b, 0.12.0: the take-home page redesign, UI only; slice 1b In progress)
+Last updated: 21 October 2026 (docs restructure: status lives only in the table below; history, open questions and backlog moved to `docs/`; slice 1b In progress)
 
-Draft roadmap. When a slice starts, rewrite its prompt against the real code (see the skeleton in PHASE-BRIEF.md). Do not treat these notes as final prompts.
+Sumyard is a set of personal UK finance calculators in one clean, ad-free web app, for the owner's own use. Constraints: client-side only, a static site on GitHub Pages, UK rules from versioned per-tax-year config, illustrative not advice.
 
-Personal UK finance calculators in one clean, ad-free, client-only app, for own use. Illustrative, not financial advice.
-
-Status values: Not started, In progress, Done (version, PR, date).
+Rules for this file: add a row when scope is added; update the Status cell when a part merges; nothing else goes here.
 
 ## Status at a glance
 
-| Slice | Scope | Status |
+| Item | Scope | Status |
 |---|---|---|
-| 0 Foundation | Recon of Chalkline and Stickyard (stack, tokens, theme toggle, chrome inventory). Repo, TypeScript strict, lint, tests, CI, GitHub Pages deploy, `CLAUDE.md`, `PHASE-BRIEF.md`, `CHANGELOG.md`. Tokens from Chalkline, light / dark / system theme, app shell (top bar, menu, Help / What's new / About / Settings sheets), toasts with Undo, disclaimer footer. Web only | Done (0.2.0, PR #2, 17 October 2026) |
-| 0.5 Core plumbing | Money type and formatting, `Sourced<T>` tax config pipeline with a skeleton `2026-27`, Tax data screen, versioned scenario storage with JSON export and import, shared inputs and result components, token-aware chart, backup and restore, a "Hello calculator" placeholder that exercises all of it | Done (0.4.0, PR #4, 17 October 2026) |
-| 1a Optimiser: config and engine | Verify and populate `2026-27` from gov.uk/HMRC, verification log, worked examples; then the pure engine (income tax with taper, NI, student loan, three pension methods, HICBC, annual allowance, `optimise()`). Tests first. No UI | Done (0.8.0, PR #8, 17 October 2026) |
-| 1b Optimiser: UI | The £100k+ page: inputs, current vs optimised take-home, marginal-rate and take-home-vs-contribution charts, cost of £1 more pension, warnings, scenario compare, assumptions, Help topic | In progress |
-| 2 Compound interest | Regular contributions, frequency and timing, compounding, inflation-adjusted view, fee drag, yearly table and chart | Not started |
-| 3 Car decision | Keep vs PCP vs HP vs loan: finance cost, depreciation, fuel/energy, insurance, tax, maintenance, residual value | Not started |
-| Later | Calculators below, no slot yet | Parked |
-
-### Later calculators (no slot yet)
-
-| Calculator | Notes | Status |
-|---|---|---|
-| Take-home pay | Shipped as the first part of 1b (session 1b-i, 0.9.0) at `#/c/optimiser`; percentages and itemised lists in 1b-i.1 (0.10.0); salary sacrifice benefits, tax code and PAYE estimate, monthly breakdown in 0.11.0; page redesign (sections, sticky result, split bar) in 0.12.0; 1b-ii adds the optimiser to the same page | In progress |
+| 0 Foundation | Recon of Chalkline and Stickyard; repo, TypeScript strict, lint, tests, CI, Pages deploy, app chrome | Done (0.2.0, PR #2, 17 October 2026) |
+| 0.5 Core plumbing | Money, `Sourced<T>` config pipeline, Tax data screen, versioned scenario storage, shared inputs | Done (0.4.0, PR #4, 17 October 2026) |
+| 1a Optimiser: config and engine | Verified `2026-27` config, verification log, worked examples, the pure tax engine and `optimise()` | Done (0.8.0, PR #8, 17 October 2026) |
+| 1b Optimiser: UI | The £100k+ page on the 1a engine, built in the parts below | In progress |
+| 1b-i Take-home page | First usable calculator at `#/c/optimiser`: benefits in kind, post-tax deductions | Done (0.9.0, PR #10, 18 October 2026) |
+| 1b-i.1 Percentages and lists | Pension as a percentage, itemised benefits and deductions, monthly entry | Done (0.10.0, PR #11, 18 October 2026) |
+| 0.11.0 Salary sacrifice and PAYE | Benefits through salary sacrifice, tax code and PAYE estimate, monthly breakdown | Done (0.11.0, PR #12, 18 October 2026) |
+| 0.11.1 Fix | PAYE estimate includes benefits in kind in its pay | Done (0.11.1, PR #13, 18 October 2026) |
+| 0.12.0 Page redesign | Sections, sticky result, split bar, payslip net pay (UI only) | Done (0.12.0, PR #14, 18 October 2026) |
+| 1b-ii-a Optimiser sweep and chart | `optimise()` from page inputs, take-home against contribution chart with markers and cliffs, table fallback, load layout-shift fix | Not started |
+| 1b-ii-b Reading the result | Cost of £1 more pension, thresholds in words, warnings, childcare eligibility, compare, Help and assumptions | Not started |
+| 2 Compound interest | Regular contributions, compounding, inflation-adjusted view, fee drag, yearly table and chart | Not started |
+| 3 Car decision | Keep vs PCP vs HP vs loan: finance, depreciation, running costs, tax, residual value | Not started |
+| Take-home pay | Shipped inside 1b (1b-i to 0.12.0) at `#/c/optimiser`; 1b-ii adds the optimiser to the same page | In progress |
 | Mortgage overpayment | Check daily vs monthly interest handling per lender | Not started |
 | Loan / APR | Verify the APR definition against official guidance | Not started |
 | ISA vs pension vs mortgage | Builds on 1b and the overpayment calculator | Not started |
@@ -35,3 +34,8 @@ Status values: Not started, In progress, Done (version, PR, date).
 | Stamp duty | Needs per-nation rules (England, Scotland, Wales are separate taxes); verify | Not started |
 | Child-related costs | Shares HICBC and childcare thresholds with 1a config | Not started |
 
+## Pointers
+
+- Current work: `PHASE-BRIEF.md`. Rules: `CLAUDE.md`.
+- Open questions: `docs/open-questions.md`. Backlog: `docs/backlog.md`.
+- History (slice notes, principles, progress logs): `docs/history/`.
