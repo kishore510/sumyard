@@ -287,6 +287,12 @@ export const FINE_DIGITS = 40
 /** Decimal places of the Ratio factorToRatio gives (for showing a rate). */
 export const RATE_RATIO_DIGITS = 15
 
+/** A rate solver (slice 3a, decision F9 in docs/modelling-decisions-car.md) stops within 10^-RATE_SOLVE_DIGITS a period. */
+export const RATE_SOLVE_DIGITS = 24
+
+/** The most bisection steps a rate solver takes before it refuses (F9). */
+export const RATE_SOLVE_MAX_STEPS = 200
+
 const FINE_SCALE = 10n ** BigInt(FINE_DIGITS)
 const RATE_RATIO_DENOMINATOR = 10n ** BigInt(RATE_RATIO_DIGITS)
 
@@ -310,6 +316,9 @@ const wholeCount = (n: number, least: number, what: string): bigint => {
 
 export const FINE_ZERO = 0n as FinePence
 export const FACTOR_ONE = FINE_SCALE as Factor
+
+/** The rate solver's tolerance as a Factor: 10^-RATE_SOLVE_DIGITS (F9). */
+export const RATE_SOLVE_TOLERANCE = (10n ** BigInt(FINE_DIGITS - RATE_SOLVE_DIGITS)) as Factor
 
 /** A Money as fine pence, exactly. */
 export function fine(amount: Money): FinePence {

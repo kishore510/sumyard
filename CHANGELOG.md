@@ -4,6 +4,11 @@ All notable changes to Sumyard are listed here, newest first. The format follows
 
 ## [Unreleased]
 
+## [0.17.0] - 2026-10-21
+
+### Added
+- **Internal only: the car finance engine.** Nothing you can see in the app has changed. The behind-the-scenes calculations for the coming car decision calculator now work out a personal loan, hire purchase or PCP month by month: the monthly payment from a rate (or the rate from a payment), a schedule of interest and balance that adds up to the penny, the cost of credit, what you still owe at any month, and what each end of a PCP costs (buy the car, or hand it back and pay any excess mileage). They give an effective rate with fees included, but it is not labelled APR: the official APR rules could not be checked from here, so the two may differ. They are tested against HMRC's published effective-interest and hire purchase examples and against exact calculations. The page comes in a later release.
+
 ## [0.16.0] - 2026-10-21
 
 ### Added

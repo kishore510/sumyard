@@ -2,6 +2,9 @@
 
 Moved verbatim from `PLAN.md` on 21 October 2026. New unknowns go here.
 
+- **Car finance APR (slice 3a, CR-1 to CR-3, CR-10):** the statutory APR's equation of equivalence, time basis, included costs, rounding and treatment of a balloon are OPEN: SI 2010/1011, the regulator's handbook (CONC App 1) and the 2012 guidance PDF were refused by the network. The engine solves an effective rate (CFM21180) and does not call it APR. The owner reads the sources, or allows this environment to reach `www.legislation.gov.uk` and `www.handbook.fca.org.uk` (a network setting, not the build allowlist), before any page shows an "APR".
+- **Car finance statutory rules (CR-12, CR-13):** voluntary termination (Consumer Credit Act 1974, sections 99 and 100) and early settlement (the 2004 regulations) are logged from secondary www.gov.uk pages only and not modelled.
+- **Car finance engine decisions F5 to F14** are proposed, not yet confirmed: monthly periods in arrears, the rate basis choice, rounding, the effective rate on the PCP buy path, and the bounds (`src/calculators/car-finance/README.md`).
 - Tax-config sources beyond www.gov.uk: allow `https://www.legislation.gov.uk/` (exact prefix, `.js` only) if a value is only published there? Widens the URL allowlist, so the owner decides. Not needed for 2026-27 (session E found every value on www.gov.uk).
 - Slice 1a engine questions: O1 to O9 answered by the owner's decisions and sessions G1 and G2's GOV.UK lookups (`docs/modelling-decisions.md`). **Child Benefit weeks (O8, G4):** HMRC's press release of 31 March 2026 gives the 2026 to 2027 yearly amounts, each 52 times the weekly rate, matching the default; PAYE130030's method could still be read as 53 for the charge. The owner confirms or sets another count.
 - Relief at source as a band extension (G2): now stated on GOV.UK (PTM056120, found in G2).
