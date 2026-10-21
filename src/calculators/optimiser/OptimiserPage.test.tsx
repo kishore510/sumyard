@@ -1266,6 +1266,19 @@ describe('Pension allowances section (inputs version 4)', () => {
     expect($('[data-optimiser] [data-marker-list]')!.textContent).toContain(THRESHOLD_LABELS.taxFreeChildcareLimit)
   })
 
+  it('lists what the optimiser does not model, from the engine’s assumptions, and the reading assumptions (1b-ii-b)', () => {
+    type(box('opt-salary'), '120,000')
+    click($('#opt-childcare'))
+    const notModelled = $('details#assumptions [data-not-modelled]')!.textContent!
+    const lines = sweep().assumptions.filter((line) => /not modelled|not checked|not valued/i.test(line))
+    expect(lines.length).toBeGreaterThan(0)
+    for (const line of lines) expect(notModelled).toContain(line)
+    const text = $('details#assumptions')!.textContent!
+    expect(text).toMatch(/Change vs now/)
+    expect(text).toMatch(/rounded up to the penny/)
+    expect(text).toMatch(/around your contribution now/)
+  })
+
   it('lists optimise()’s assumptions in the assumptions panel once there is a sweep', () => {
     type(box('opt-salary'), '120,000')
     click($('#opt-childcare'))
