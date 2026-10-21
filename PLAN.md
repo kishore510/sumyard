@@ -1,6 +1,6 @@
 # Phase plan: Sumyard
 
-Last updated: 21 October 2026 (2b built, 0.16.0, in review; slice 1b built, owner checks open)
+Last updated: 21 October 2026 (2b Done, 0.16.0; slices 1b and 2 built, owner checks open)
 
 Sumyard is a set of personal UK finance calculators in one clean, ad-free web app, for the owner's own use. Constraints: client-side only, a static site on GitHub Pages, UK rules from versioned per-tax-year config, illustrative not advice.
 
@@ -23,7 +23,7 @@ Rules for this file: add a row when scope is added; update the Status cell when 
 | 1b-ii-b Reading the result | Cost of £1 more pension, thresholds in words, warnings, childcare eligibility, compare, Help and assumptions | Done (0.14.0, PR #17, 21 October 2026) |
 | 2 Compound interest | Regular contributions, compounding, inflation-adjusted view, fee drag, yearly table and chart | In progress |
 | 2a Compound interest engine | Pure engine: effective and equivalent rates, yearly projection with and without the fee, real view, fee drag, refusals (internal, no UI) | Done (0.15.0, PR #19, 21 October 2026) |
-| 2b Compound interest page | The page on the 2a engine: inputs, yearly table and chart, nominal and real, fee drag, scenarios, compare, Help | In progress |
+| 2b Compound interest page | The page on the 2a engine: inputs, yearly table and chart, nominal and real, fee drag, scenarios, compare, Help | Done (0.16.0, PR #20, 21 October 2026) |
 | 3 Car decision | Keep vs PCP vs HP vs loan: finance, depreciation, running costs, tax, residual value | Not started |
 | Take-home pay | Shipped inside 1b (1b-i to 0.12.0) at `#/c/optimiser`; 1b-ii added the optimiser to the same page | Done (0.14.0, PR #17, 21 October 2026) |
 | Mortgage overpayment | Check daily vs monthly interest handling per lender | Not started |

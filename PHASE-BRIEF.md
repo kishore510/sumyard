@@ -1,6 +1,6 @@
 # PHASE-BRIEF: Slice 2 Compound interest
 
-Status: 2a (engine) Done (0.15.0, PR #19); 2b (page) built (0.16.0), in review. Slice 1b is built (to 0.14.0) and stays open in `PLAN.md` until the owner's checks below are done. Status per part lives only in `PLAN.md`. Finished part scopes are in `docs/history/phase-brief-archive.md`.
+Status: 2a (engine) Done (0.15.0, PR #19); 2b (page) Done (0.16.0, PR #20). Slice 2 stays open in `PLAN.md` until the owner fills the compound cross-checks. Slice 1b is built (to 0.14.0) and stays open in `PLAN.md` until the owner's checks below are done. Status per part lives only in `PLAN.md`. Finished part scopes are in `docs/history/phase-brief-archive.md`.
 
 ## Docs rule
 
@@ -40,14 +40,14 @@ Flat fees, tax wrappers, Monte Carlo or varying returns, withdrawals, any engine
 
 ## Still with the owner
 
-Confirm the benefit value from an annual statement (B1) and run the payslip check (B15: PAYE estimate, salary sacrifice benefits, the monthly breakdown); the 72 HMRC cross-checks; Tables A and B to D for the PAYE estimate (O10, O11); confirm `paye.codeUnit` as a standing rule; whether a benefit that attracts Class 1 needs its own input.
+Confirm the benefit value from an annual statement (B1) and run the payslip check (B15: PAYE estimate, salary sacrifice benefits, the monthly breakdown); the 72 HMRC cross-checks; Tables A and B to D for the PAYE estimate (O10, O11); confirm `paye.codeUnit` as a standing rule; whether a benefit that attracts Class 1 needs its own input. Slice 2: fill `docs/compound-cross-checks.json` (eight cases, with source and date); confirm the C8 rate bounds and the starting years (`DEFAULT_PROJECTION_YEARS`).
 
 ## Last session
 
-- 21 October 2026, part 2b (0.16.0, internal review): the compound interest page at `#/c/compound-interest` (definition, results, page, Help topic, compare rows); scenarios with no tax year (registry `taxRules: 'none'`); `RefusalNotice` and compare show an engine input refusal; the Chart's data table is a focusable scroll region; `docs/compound-cross-checks.json` seeded.
+- 21 October 2026, part 2b (0.16.0, PR #20): the compound interest page at `#/c/compound-interest` (definition, results, page, Help topic, compare rows); scenarios with no tax year (registry `taxRules: 'none'`); `RefusalNotice` and compare show an engine input refusal; the Chart's data table is a focusable scroll region; `docs/compound-cross-checks.json` seeded.
 - Differs from the brief: the pre-check found RefusalNotice and scenarios tax-only, so (owner's call) registry and RefusalNotice changes came first, each red then green; PLAN 2a was already Done, so no first commit; the literal guard now also covers `definition.ts`, `results.ts` and the page; `DEFAULT_PROJECTION_YEARS` added to `inputLimits.ts`.
 - Not verified: a real phone, Safari, Firefox, a screen reader, the deployed site; no external cross-check yet.
 - Owner checks: fill `docs/compound-cross-checks.json` (spreadsheet FV or a reputable calculator, with source and date); confirm the C8 rate bounds and the starting years.
-- Next: merge 2b (PLAN row to Done with the PR number), then slice 3 (car decision) needs its own brief.
+- Next: slice 3 (car decision), its brief first.
 
 Full history (progress logs, finished part scopes, slice archives): `docs/history/` (grep it, don't read it whole).
