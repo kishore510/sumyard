@@ -262,3 +262,108 @@ export function wholeSteps(amount: ExactPence, step: Money): number {
   if (count > BigInt(Number.MAX_SAFE_INTEGER)) throw new MoneyError('wholeSteps: the count is past the safe-integer range')
   return Number(count)
 }
+
+/*
+ * Fine fixed point (slice 2a, decision C9 in docs/modelling-decisions-compound.md).
+ * For a calculation whose factors can be irrational (a root of a growth
+ * factor), where ExactPence cannot hold the value. A FinePence is pence and a
+ * Factor a plain number, each as a BigInt count of units of 10^-FINE_DIGITS.
+ * Every product and quotient rounds to the nearest unit at that scale; no
+ * float is involved. A FinePence becomes Money only through roundFine.
+ */
+
+declare const FINE: unique symbol
+declare const FACTOR: unique symbol
+
+/** Pence in units of 10^-FINE_DIGITS of a penny. Make one with fine(). */
+export type FinePence = bigint & { readonly [FINE]: true }
+
+/** A plain number in units of 10^-FINE_DIGITS. Make one with factor(). */
+export type Factor = bigint & { readonly [FACTOR]: true }
+
+/** Decimal places held by FinePence and Factor. */
+export const FINE_DIGITS = 40
+
+/** Decimal places of the Ratio factorToRatio gives (for showing a rate). */
+export const RATE_RATIO_DIGITS = 15
+
+const NOT_YET = (what: string): never => {
+  throw new MoneyError(`${what}: not implemented`)
+}
+
+export const FINE_ZERO = 0n as FinePence
+export const FACTOR_ONE = (10n ** BigInt(FINE_DIGITS)) as Factor
+
+/** A Money as fine pence, exactly. */
+export function fine(_amount: Money): FinePence {
+  return NOT_YET('fine')
+}
+
+export function fineAdd(_a: FinePence, _b: FinePence): FinePence {
+  return NOT_YET('fineAdd')
+}
+
+export function fineSubtract(_a: FinePence, _b: FinePence): FinePence {
+  return NOT_YET('fineSubtract')
+}
+
+export function compareFine(_a: FinePence, _b: FinePence): -1 | 0 | 1 {
+  return NOT_YET('compareFine')
+}
+
+/** amount × f, to the nearest unit. */
+export function fineMul(_amount: FinePence, _f: Factor): FinePence {
+  return NOT_YET('fineMul')
+}
+
+/** amount ÷ f (f above zero), to the nearest unit. */
+export function fineDivide(_amount: FinePence, _f: Factor): FinePence {
+  return NOT_YET('fineDivide')
+}
+
+/** Fine pence rounded to a whole penny by `mode`: the one rounding at output. Throws past the safe range. */
+export function roundFine(_amount: FinePence, _mode: RoundingMode): Money {
+  return NOT_YET('roundFine')
+}
+
+/** A Ratio as a Factor, to the nearest unit. */
+export function factor(_r: Ratio): Factor {
+  return NOT_YET('factor')
+}
+
+export function factorAdd(_a: Factor, _b: Factor): Factor {
+  return NOT_YET('factorAdd')
+}
+
+export function factorSubtract(_a: Factor, _b: Factor): Factor {
+  return NOT_YET('factorSubtract')
+}
+
+export function compareFactor(_a: Factor, _b: Factor): -1 | 0 | 1 {
+  return NOT_YET('compareFactor')
+}
+
+/** a × b, to the nearest unit. */
+export function factorMul(_a: Factor, _b: Factor): Factor {
+  return NOT_YET('factorMul')
+}
+
+/** a ÷ b (b above zero), to the nearest unit. */
+export function factorDivide(_a: Factor, _b: Factor): Factor {
+  return NOT_YET('factorDivide')
+}
+
+/** f to a whole power n (n zero or more), by repeated squaring, each product to the nearest unit. */
+export function factorPow(_f: Factor, _n: number): Factor {
+  return NOT_YET('factorPow')
+}
+
+/** The n-th root of f (f above zero, n a whole number from one), to the nearest unit. */
+export function factorRoot(_f: Factor, _n: number): Factor {
+  return NOT_YET('factorRoot')
+}
+
+/** A Factor as a Ratio over 10^RATE_RATIO_DIGITS, to the nearest. For showing a rate. Throws past the safe range. */
+export function factorToRatio(_f: Factor): Ratio {
+  return NOT_YET('factorToRatio')
+}

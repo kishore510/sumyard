@@ -29,3 +29,18 @@ export const MAX_TAX_CODE_NUMBER = 999_999
 
 /** The most earlier tax years a carry forward entry can name. An input bound, not the carry forward period (that is config). */
 export const MAX_CARRY_FORWARD_YEARS = 10
+
+/** The longest compound interest projection, in whole years (decision C8 in docs/modelling-decisions-compound.md). */
+export const MAX_PROJECTION_YEARS = 100
+
+/** Compound interest: the nominal growth rate lies within plus or minus this (C8). Negative rates are allowed. */
+export const GROWTH_RATE_BOUND = ratio(1, 2)
+
+/** Compound interest: the inflation rate lies within plus or minus this (C8). */
+export const INFLATION_RATE_BOUND = ratio(1, 2)
+
+/** Compound interest: the largest annual fee, as a share of the balance (C8). */
+export const MAX_FEE_RATE = ratio(1, 10)
+
+/** Compound interest: the largest annual increase in contributions (C8). */
+export const MAX_CONTRIBUTION_INCREASE = ratio(1, 2)
