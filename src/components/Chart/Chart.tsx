@@ -27,7 +27,8 @@ import type { ChartMarker, ChartReference, ChartSeries, ChartSpan } from './type
  *   lettered shaded ranges (the line across a range is dashed), each listed
  *   under the chart with its label and said in the text summary, and
  *   `selectedX` highlights one point (on the line and in the table).
- * - `columns` adds text columns to the table after the series.
+ * - `columns` adds text columns to the table after the series. The table
+ *   scrolls sideways in its own keyboard-focusable region on a narrow screen.
  *
  * Geometry constants below are chart layout, not design tokens.
  */
@@ -432,7 +433,12 @@ export function Chart({
           <span className="flex-1">Show the data as a table</span>
           <ChevronDown aria-hidden="true" className="size-4 text-text-muted transition-transform group-open:rotate-180" />
         </summary>
-        <div className="overflow-x-auto border-t border-border">
+        <section
+          aria-labelledby={titleId}
+          // biome-ignore lint/a11y/noNoninteractiveTabindex: a scrollable region must be keyboard-focusable (axe scrollable-region-focusable).
+          tabIndex={0}
+          className="overflow-x-auto border-t border-border"
+        >
           <table className="w-full text-sm">
             <caption className="sr-only">{title}</caption>
             <thead>
@@ -491,7 +497,7 @@ export function Chart({
               {references.map((r) => `${r.label}: ${formatValue(r.value)}`).join('. ')}.
             </p>
           )}
-        </div>
+        </section>
       </details>
     </figure>
   )
