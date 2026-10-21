@@ -1,6 +1,6 @@
 # Phase plan: Sumyard
 
-Last updated: 21 October 2026 (1b-ii-a Done, 0.13.0; slice 1b In progress)
+Last updated: 21 October 2026 (1b-ii-b Done, 0.14.0; slice 1b built, owner checks open)
 
 Sumyard is a set of personal UK finance calculators in one clean, ad-free web app, for the owner's own use. Constraints: client-side only, a static site on GitHub Pages, UK rules from versioned per-tax-year config, illustrative not advice.
 
@@ -20,10 +20,10 @@ Rules for this file: add a row when scope is added; update the Status cell when 
 | 0.11.1 Fix | PAYE estimate includes benefits in kind in its pay | Done (0.11.1, PR #13, 18 October 2026) |
 | 0.12.0 Page redesign | Sections, sticky result, split bar, payslip net pay (UI only) | Done (0.12.0, PR #14, 18 October 2026) |
 | 1b-ii-a Optimiser sweep and chart | `optimise()` from page inputs, take-home against contribution chart with markers and cliffs, table fallback, load layout-shift fix | Done (0.13.0, PR #16, 21 October 2026) |
-| 1b-ii-b Reading the result | Cost of £1 more pension, thresholds in words, warnings, childcare eligibility, compare, Help and assumptions | Not started |
+| 1b-ii-b Reading the result | Cost of £1 more pension, thresholds in words, warnings, childcare eligibility, compare, Help and assumptions | Done (0.14.0, PR #17, 21 October 2026) |
 | 2 Compound interest | Regular contributions, compounding, inflation-adjusted view, fee drag, yearly table and chart | Not started |
 | 3 Car decision | Keep vs PCP vs HP vs loan: finance, depreciation, running costs, tax, residual value | Not started |
-| Take-home pay | Shipped inside 1b (1b-i to 0.12.0) at `#/c/optimiser`; 1b-ii adds the optimiser to the same page | In progress |
+| Take-home pay | Shipped inside 1b (1b-i to 0.12.0) at `#/c/optimiser`; 1b-ii added the optimiser to the same page | Done (0.14.0, PR #17, 21 October 2026) |
 | Mortgage overpayment | Check daily vs monthly interest handling per lender | Not started |
 | Loan / APR | Verify the APR definition against official guidance | Not started |
 | ISA vs pension vs mortgage | Builds on 1b and the overpayment calculator | Not started |

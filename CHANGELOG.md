@@ -4,6 +4,19 @@ All notable changes to Sumyard are listed here, newest first. The format follows
 
 ## [Unreleased]
 
+## [0.14.0] - 2026-10-21
+
+### Added
+- **Reading the pension contributions chart.** Pick a contribution to look at and see, below the chart: what each pound more into your pension costs you (against no contribution, and since the previous point), each threshold in words (already under, how much more to contribute, or out of reach and why), every warning across the contributions (annual allowance, taper, carry forward, childcare) and where it applies, and your contribution now compared with the one you picked.
+- **Childcare eligibility** at the contribution you pick, on income only, with what is not checked.
+- **Change vs now** in the chart's table, and a readout above the chart.
+- A Help topic, **Pension contributions and the optimiser**, and a "not modelled" list in the assumptions.
+- Compare now shows carry forward, the money purchase annual allowance and the childcare check.
+
+### Changed
+- The chart follows the **Year / Month** choice: in Month, figures are a month (the year divided evenly, assuming level pay) and the points step by a round amount a month.
+- The chart opens on the range around your contribution now and the thresholds ahead of it; **Full range** shows everything. Markers too close together share one number.
+
 ## [0.13.0] - 2026-10-21
 
 ### Added
