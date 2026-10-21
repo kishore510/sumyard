@@ -49,11 +49,14 @@ Which basis a lender's quoted rate uses is not stated on any page read (CR-1, CR
 With A the balance financed (F10), B the final payment, n the term in months and i the monthly rate, v = 1 / (1 + i):
 
 - The regular payment P = (A − B × v^n) × i / (1 − v^n); when i is nothing, P = (A − B) / n. It is computed in fine fixed point and rounded **once to the nearest penny** (`nearest`, halves away from zero).
-- Each month: interest = the **opening** balance × i, rounded to the nearest penny; closing = opening + interest − payment.
-- The **last regular payment takes the rounding**: it is whatever brings the last closing balance to exactly B. So the schedule adds up to the penny: amount financed + total interest = total of regular payments + B.
+- Each month: interest = the **opening** balance × i, rounded to the nearest penny; closing = opening + interest − payment. On the `'monthly'` basis i is rational and the product is rounded exactly (`mulRound` with an exact `Ratio`), so an exact half penny goes up; on the `'annual'` basis, or a solved rate, i is held to forty places (`FinePence`).
+- **Priced by the rate**, the **last regular payment takes the rounding**: it is whatever brings the last closing balance to exactly B.
+- **Priced by the payment**, every payment is the one given (it is the contract's figure), and the **last month's interest takes the rounding** instead: it is whatever brings the last closing balance to exactly B. It differs from the last opening balance × i by the accumulated rounding, a few pence at most. So total interest is exactly n × P + B − A, as HMRC's HP example states it (HP-1).
+- Either way the schedule adds up to the penny: balance financed + total interest = total of monthly payments + B.
 - The last closing balance is the final payment still owed (zero for a loan or an HP agreement without a balloon). It is paid at the end (PCP buy, HP) or settled by handing the car back (PCP hand back, F11).
+- A rate-priced schedule whose rounded payment would leave the last payment below nothing (a balance only pennies above the final payment over a long term) is refused (`'result'`, `'not-payable'`).
 
-No source read states how a lender rounds monthly interest or the payment (CR-1); nearest penny on each month's interest, with the last payment taking the difference, is this decision. When the payment is given (F6), the schedule uses the solved monthly rate (F8) and the same rules; the last payment differs from the others by at most a few pence.
+No source read states how a lender rounds monthly interest or the payment (CR-1); this rounding is the decision. HMRC's finance-lease example (EIR-3) shows each year's split in whole pounds with the pound that makes the totals add up put in the last year; the engine, in pence, matches its first four years to the pound and its exact totals.
 
 ### F8. The effective rate (not the statutory APR)
 

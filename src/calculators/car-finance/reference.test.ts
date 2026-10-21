@@ -102,7 +102,10 @@ describe('engine against the exact-fraction reference (300 seeded agreements)', 
     expect(P).toBe(nearest(exactPayment))
 
     const rows = replay(A, i, n, P, B)
-    expect(exactInterests(rows, i).some(nearHalf), 'an exact interest sits near a half penny').toBe(false)
+    // On the 'monthly' basis the engine rounds interest exactly (an exact Ratio), so even an exact half penny must agree.
+    // On the 'annual' basis the rate is a root held to forty places: no exact interest may sit near a half penny.
+    const basis = agreement.inputs.pricing.kind === 'rate' ? agreement.inputs.pricing.basis : 'monthly'
+    if (basis === 'annual') expect(exactInterests(rows, i).some(nearHalf), 'an exact interest sits near a half penny').toBe(false)
     expect(result.schedule.rows.map((row) => [big(row.opening), big(row.interest), big(row.payment), big(row.closing)])).toEqual(
       rows.map((row) => [row.opening, row.interest, row.payment, row.closing]),
     )

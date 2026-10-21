@@ -50,14 +50,24 @@ describe('EIR-3: BLM15505 (https://www.gov.uk/hmrc-internal-manuals/business-lea
     expect(formatPercent(factorToRatio(rate), 2)).toBe('7.63%')
   })
 
-  it('the interest and capital elements, year by year, to the pound', () => {
-    const schedule = buildSchedule(fromPounds(50_000), { factor: rate, exact: null }, 5, rent, fromPence(0), 'last-interest')
-    if (!schedule) throw new Error('not payable')
-    expect(schedule.rows.map((row) => pounds(row.interest))).toEqual([3_814, 3_159, 2_454, 1_695, 878])
-    expect(schedule.rows.map((row) => pounds(fromPence(toPence(row.payment) - toPence(row.interest))))).toEqual([
-      8_586, 9_241, 9_946, 10_705, 11_522,
-    ])
+  const schedule = buildSchedule(fromPounds(50_000), { factor: rate, exact: null }, 5, rent, fromPence(0), 'last-interest')
+  if (!schedule) throw new Error('not payable')
+  const interest = schedule.rows.map((row) => pounds(row.interest))
+  const capital = schedule.rows.map((row) => pounds(fromPence(toPence(row.payment) - toPence(row.interest))))
+
+  it('years 1 to 4: the interest and capital elements, to the pound', () => {
+    expect(interest.slice(0, 4)).toEqual([3_814, 3_159, 2_454, 1_695])
+    expect(capital.slice(0, 4)).toEqual([8_586, 9_241, 9_946, 10_705])
     expect(schedule.rows.every((row) => toPence(row.payment) === toPence(rent))).toBe(true)
+  })
+
+  it('year 5 within the pound the published table moves there so its whole pounds add up ("878", "11,522")', () => {
+    // In pence the engine has 878.74 and 11,521.26; rounding each year to the pound would total
+    // 12,001 of interest, so the table shows 878 and 11,522. The totals below are exact.
+    expect(Math.abs(interest[4]! - 878)).toBeLessThanOrEqual(1)
+    expect(Math.abs(capital[4]! - 11_522)).toBeLessThanOrEqual(1)
+    expect(toPence(schedule.totalInterest)).toBe(1_200_000)
+    expect(toPence(schedule.totalPayments) - toPence(schedule.totalInterest)).toBe(5_000_000)
   })
 })
 
