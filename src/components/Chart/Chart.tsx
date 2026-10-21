@@ -22,7 +22,8 @@ import type { ChartMarker, ChartReference, ChartSeries, ChartSpan } from './type
  * - It is drawn at its container's width (from 280 px), so it fits a 360 px
  *   phone, and it does not animate, so reduced motion needs nothing more.
  * - With `xValues` the x axis is numeric: points sit at their values, with
- *   value ticks. Then `markers` draw numbered vertical lines and `spans`
+ *   value ticks. Then `markers` draw numbered vertical lines (markers closer
+ *   than a number's width share one number) and `spans`
  *   lettered shaded ranges (the line across a range is dashed), each listed
  *   under the chart with its label and said in the text summary, and
  *   `selectedX` highlights one point (on the line and in the table).
@@ -39,7 +40,6 @@ const CHAR = 7
 const MARKER = 4
 const ROW = 14
 const MARKER_GAP = 16
-const MARKER_ROWS = 3
 const MIN_SPAN = 3
 
 /** Per series: stroke or fill class, dash and marker shape. Only token colours. */
@@ -122,7 +122,6 @@ export function Chart({
   const numeric = xValues !== undefined && xValues.length === categories.length
   const shownMarkers = numeric ? markers : []
   const shownSpans = numeric ? spans : []
-  const summary = describeChart({ categories, series, references, markers: shownMarkers, spans: shownSpans, format: formatValue })
   const values = series.flatMap((s) => s.values.filter((v): v is number => v !== null))
   const empty = categories.length === 0 || values.length === 0
 
@@ -142,17 +141,18 @@ export function Chart({
       )
     : []
   const xScale = numeric ? linearScale([xMin, xMax], [left, right]) : null
-  // Marker numbers sit in rows above the plot, a row lower when the one above is too close.
-  const markerRows: number[] = []
-  const lastInRow: number[] = []
+  // Markers closer than a number's width share one number, at the first one's place; the list says each label under it.
+  const groups: { at: number; markers: ChartMarker[] }[] = []
   for (const marker of shownMarkers) {
     const at = xScale ? xScale(marker.x) : 0
-    let row = lastInRow.findIndex((last) => at - last >= MARKER_GAP)
-    if (row === -1) row = lastInRow.length < MARKER_ROWS ? lastInRow.length : lastInRow.indexOf(Math.min(...lastInRow))
-    lastInRow[row] = at
-    markerRows.push(row)
+    const last = groups.at(-1)
+    const labelWidth = Math.max(MARKER_GAP, String(groups.length).length * CHAR + CHAR)
+    if (last && at - last.at < labelWidth) last.markers.push(marker)
+    else groups.push({ at, markers: [marker] })
   }
-  const extraTop = (shownMarkers.length > 0 ? lastInRow.length : 0) * ROW + (shownSpans.length > 0 ? ROW : 0)
+  const extraTop = (groups.length > 0 ? ROW : 0) + (shownSpans.length > 0 ? ROW : 0)
+  const merged = groups.map((group) => ({ x: group.markers[0]!.x, label: group.markers.map((m) => m.label).join('; ') }))
+  const summary = describeChart({ categories, series, references, markers: merged, spans: shownSpans, format: formatValue })
   const height = HEIGHT + extraTop
   const plot = { left, right, top: PAD.top + extraTop, bottom: height - PAD.bottom }
   const y = linearScale([domain.min, domain.max], [plot.bottom, plot.top])
@@ -326,18 +326,31 @@ export function Chart({
             )}
 
             {xScale &&
-              shownMarkers.map((marker, i) => {
-                const at = xScale(marker.x)
-                const labelY = PAD.top + (markerRows[i] ?? 0) * ROW + ROW / 2
-                return (
-                  <g key={`${marker.x}-${marker.label}`} data-marker>
-                    <line x1={at} x2={at} y1={plot.top} y2={plot.bottom} strokeWidth={1.5} strokeDasharray="2 2" className="stroke-text" />
-                    <text x={at} y={labelY} dy="0.32em" textAnchor="middle" className="fill-text text-xs font-semibold tabular-nums">
-                      {i + 1}
-                    </text>
-                  </g>
-                )
-              })}
+              groups.map((group, i) => (
+                <g key={`${group.markers[0]!.x}-${group.markers[0]!.label}`} data-marker>
+                  {group.markers.map((marker) => (
+                    <line
+                      key={`${marker.x}-${marker.label}`}
+                      x1={xScale(marker.x)}
+                      x2={xScale(marker.x)}
+                      y1={plot.top}
+                      y2={plot.bottom}
+                      strokeWidth={1.5}
+                      strokeDasharray="2 2"
+                      className="stroke-text"
+                    />
+                  ))}
+                  <text
+                    x={group.at}
+                    y={PAD.top + ROW / 2}
+                    dy="0.32em"
+                    textAnchor="middle"
+                    className="fill-text text-xs font-semibold tabular-nums"
+                  >
+                    {i + 1}
+                  </text>
+                </g>
+              ))}
 
             {xScale && (
               <g data-x-ticks>
@@ -399,10 +412,14 @@ export function Chart({
 
       {(shownMarkers.length > 0 || shownSpans.length > 0) && !empty && (
         <ul data-marker-list className="flex flex-col gap-1 text-xs text-text [overflow-wrap:anywhere]">
-          {shownMarkers.map((marker, i) => (
-            <li key={`m-${marker.x}-${marker.label}`} className="flex gap-2">
+          {groups.map((group, i) => (
+            <li key={`m-${group.markers[0]!.x}-${group.markers[0]!.label}`} className="flex gap-2">
               <span className="w-6 shrink-0 text-right font-semibold tabular-nums">{i + 1}</span>
-              <span>{marker.label}</span>
+              <span className="flex min-w-0 flex-col">
+                {group.markers.map((marker) => (
+                  <span key={`${marker.x}-${marker.label}`}>{marker.label}</span>
+                ))}
+              </span>
             </li>
           ))}
           {shownSpans.map((span, i) => (

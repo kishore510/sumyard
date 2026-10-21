@@ -59,7 +59,7 @@ import {
 import { calculateOptimise, carryForwardYears, type OptimiserPageResult } from './optimiserInputs'
 import { annualAmount, annualBenefit, type BenefitItem, CONTRIBUTION_MODES, ITEM_PERIODS, type ListItem } from './pageInputs'
 import { parseTaxCode } from './paye'
-import { changeVsNow, currentPoint, nearestPoint } from './reading'
+import { changeVsNow, currentPoint, nearestPoint, pointsIn, zoomRange } from './reading'
 import { payslipNet, splitSegments } from './results'
 import { NEEDS_FIXING, SECTION_IDS, SECTION_TITLES, type SectionId, sectionForField, sectionSummary, sectionsSet } from './sections'
 import {
@@ -1177,6 +1177,7 @@ function OptimiserChart({
 }) {
   const [view, setView] = useState<ChartView>('spendable')
   const [chosen, setChosen] = useState<Money | null>(null)
+  const [fullRange, setFullRange] = useState(false)
   if (isInputProblem(sweep)) return null
   return (
     <section
@@ -1196,6 +1197,8 @@ function OptimiserChart({
           setView={setView}
           chosen={chosen}
           setChosen={setChosen}
+          fullRange={fullRange}
+          setFullRange={setFullRange}
           inputs={inputs}
           resolved={resolved}
           gbp={gbp}
@@ -1214,6 +1217,8 @@ function ChartBody({
   setView,
   chosen,
   setChosen,
+  fullRange,
+  setFullRange,
   inputs,
   resolved,
   gbp,
@@ -1224,14 +1229,18 @@ function ChartBody({
   setView: (view: ChartView) => void
   chosen: Money | null
   setChosen: (contribution: Money) => void
+  fullRange: boolean
+  setFullRange: (full: boolean) => void
   inputs: OptimiserPageInputs
   resolved: ResolvedInputs
   gbp: Gbp
   period: BreakdownPeriod
 }) {
   const percentBase = inputs.employeeContribution.mode === 'percentOfPay' ? resolved.pensionablePay : null
-  const points = sweep.points
-  const data = optimiserChartData(sweep, view, { gbp, percentBase, period })
+  const range = zoomRange(sweep)
+  const shown = pointsIn(sweep, fullRange ? null : range)
+  const points = shown.points
+  const data = optimiserChartData({ ...sweep, ...shown }, view, { gbp, percentBase, period })
   const yLabel = viewLabel(view, period)
   const money = (pence: number) => gbp(fromPence(pence))
   const compact = (pence: number) => formatGBPCompact(fromPence(pence))
@@ -1253,6 +1262,22 @@ function ChartBody({
         recommendation. Spendable is take-home with any Child Benefit, less any annual allowance charge.
       </p>
       <Segmented id="opt-chart-view" label="Show" value={view} options={VIEW_OPTIONS} onChange={setView} />
+      {range && (
+        <Toggle
+          id="opt-full-range"
+          label="Full range"
+          hint="From nothing up to the most the engine models, instead of around your contribution now and the thresholds ahead of it."
+          checked={fullRange}
+          onChange={setFullRange}
+        />
+      )}
+      <p data-range-note className="text-xs text-text-muted">
+        {range === null
+          ? 'Showing the full range: no threshold lies ahead of your contribution now.'
+          : fullRange
+            ? 'Showing the full range.'
+            : `Showing ${per(range.from)} to ${per(range.to)}: around your contribution now and the thresholds ahead of it.`}
+      </p>
       <Select
         id="opt-chosen"
         label="Contribution to look at"

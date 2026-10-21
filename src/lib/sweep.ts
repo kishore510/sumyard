@@ -1,4 +1,4 @@
-import { fromPence, fromPounds, type Money, toPence } from './money'
+import { fromPence, fromPounds, type Money, type Ratio, ratio, toPence } from './money'
 import { MONTHS_PER_YEAR } from './periods'
 
 /*
@@ -13,6 +13,9 @@ export const DEFAULT_SWEEP_STEP: Money = fromPounds(500)
 
 /** The sweep step in the take-home page's month view, a month: a round monthly amount (1b-ii-b). */
 export const DEFAULT_MONTHLY_SWEEP_STEP: Money = fromPounds(50)
+
+/** The take-home page's zoomed chart: the share of the zoomed span added on each side (1b-ii-b). A display choice. */
+export const ZOOM_MARGIN: Ratio = ratio(1, 10)
 
 /** The most sweep points one call may produce. */
 export const MAX_SWEEP_POINTS = 10_000

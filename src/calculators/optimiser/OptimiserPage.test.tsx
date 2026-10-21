@@ -1026,6 +1026,7 @@ describe('Optimiser chart (1b-ii-a)', () => {
     type(box('opt-salary'), '110,000')
     type(box('opt-children'), '2')
     const result = sweep()
+    click($('#opt-full-range'))
     const tableValues = () => [...$('[data-optimiser] tbody')!.querySelectorAll('tr')].map((tr) => tr.children[1]!.textContent)
     expect($('[data-optimiser] thead')!.textContent).toMatch(/Spendable/)
     expect(tableValues()).toEqual(result.points.map((p) => money(p.spendable)))
@@ -1038,6 +1039,7 @@ describe('Optimiser chart (1b-ii-a)', () => {
     type(box('opt-salary'), '125,000')
     type(box('opt-employee'), '4,000')
     const result = sweep()
+    click($('#opt-full-range'))
     const list = $('[data-optimiser] [data-marker-list]')!.textContent!
     expect(list).toContain(`${REASON_LABELS.current}: ${money(result.currentContribution)}`)
     expect(list).toContain(REASON_LABELS.maximum)
@@ -1116,7 +1118,7 @@ describe('Change vs now (1b-ii-b)', () => {
 
 describe('Zoom (1b-ii-b)', () => {
   const rows = () => [...$('[data-optimiser] tbody')!.querySelectorAll('tr')]
-  const yTicks = () => [...$('[data-optimiser] svg')!.querySelectorAll('text.tabular-nums')].map((t) => t.textContent ?? '')
+  const yTicks = () => [...$('[data-optimiser] svg[role="img"]')!.querySelectorAll('text.tabular-nums')].map((t) => t.textContent ?? '')
 
   it('shows the range around the current contribution by default, and every point with Full range', () => {
     type(box('opt-salary'), '120,000')
