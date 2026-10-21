@@ -1,6 +1,6 @@
 # PHASE-BRIEF: Slice 2 Compound interest
 
-Status: 2a (engine) built, awaiting merge (0.15.0); 2b (page) next. Slice 1b is built (to 0.14.0) and stays open in `PLAN.md` until the owner's checks below are done. Status per part lives only in `PLAN.md`. Finished part scopes are in `docs/history/phase-brief-archive.md`.
+Status: 2a (engine) Done (0.15.0, PR #19); 2b (page) next. Slice 1b is built (to 0.14.0) and stays open in `PLAN.md` until the owner's checks below are done. Status per part lives only in `PLAN.md`. Finished part scopes are in `docs/history/phase-brief-archive.md`.
 
 ## Docs rule
 
@@ -33,9 +33,9 @@ Confirm the benefit value from an annual statement (B1) and run the payslip chec
 
 ## Last session
 
-- 21 October 2026, part 2a (0.15.0, internal): the compound interest engine (`src/calculators/compound-interest/`): effective and equivalent period rates, yearly rows with and without the fee, nominal and real (Fisher), fee drag, typed refusals; `FinePence` / `Factor` fixed point in `money.ts`; decisions C1 to C9 (`docs/modelling-decisions-compound.md`); published examples GB-1, GB-2 (Green Book Table 8); 300-case closed-form reference; mutation spot-checks all caught.
+- 21 October 2026, part 2a (0.15.0, PR #19, internal): the compound interest engine (`src/calculators/compound-interest/`): effective and equivalent period rates, yearly rows with and without the fee, nominal and real (Fisher), fee drag, typed refusals; `FinePence` / `Factor` fixed point in `money.ts`; decisions C1 to C9 (`docs/modelling-decisions-compound.md`); published examples GB-1, GB-2 (Green Book Table 8); 300-case closed-form reference; mutation spot-checks all caught.
 - Differs from the brief: C9 added (fixed point, not `ExactPence`: C2's equivalent rate can be irrational); the literal guard's scanner moved to `src/calculators/fixtures/literalGuard.ts`, shared with the optimiser; no MoneyHelper example (network policy refused it), so the closed-form reference carries the annuity checks.
 - Not verified: any external calculator's figures for regular contributions; the deployed site; no UI to check in a browser.
-- Next: 2b (the page), its brief first; PLAN.md 2a becomes Done with the PR number when it merges.
+- Next: 2b (the page), its brief first.
 
 Full history (progress logs, finished part scopes, slice archives): `docs/history/` (grep it, don't read it whole).
