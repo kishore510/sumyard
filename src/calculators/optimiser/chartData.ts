@@ -1,6 +1,8 @@
 import type { ChartMarker, ChartSpan } from '@/components/Chart/types'
 import { formatPercent } from '@/lib/format'
 import { compare, type Money, ratio, toPence, ZERO } from '@/lib/money'
+import { MONTHS_PER_YEAR } from '@/lib/periods'
+import { type BreakdownPeriod, perPeriod } from './breakdown'
 import type { Cliff, CliffKind, OptimiseResult, OptimiserPoint, PointReason, ThresholdId } from './types'
 
 /*
@@ -11,13 +13,24 @@ import type { Cliff, CliffKind, OptimiseResult, OptimiserPoint, PointReason, Thr
  * of one kind as one labelled range. Pure; amounts are formatted by the
  * caller's `gbp`. No point is called the best, and nothing here says which
  * way the curve goes: between neighbouring points it can move a little
- * either way.
+ * either way. 1b-ii-b: the page's Year / Month choice; a month is each
+ * annual figure divided by MONTHS_PER_YEAR to the nearest penny.
  */
 
 export const CHART_VIEWS = ['spendable', 'takeHome'] as const
 export type ChartView = (typeof CHART_VIEWS)[number]
 
-export const VIEW_LABELS: Record<ChartView, string> = { spendable: 'Spendable a year', takeHome: 'Take-home a year' }
+const VIEW_NAMES: Record<ChartView, string> = { spendable: 'Spendable', takeHome: 'Take-home' }
+const PERIOD_WORDS: Record<BreakdownPeriod, string> = { year: 'a year', month: 'a month' }
+
+/** The y axis and table heading: "Spendable a year", "Take-home a month". */
+export const viewLabel = (view: ChartView, period: BreakdownPeriod) => `${VIEW_NAMES[view]} ${PERIOD_WORDS[period]}`
+
+/** The x axis and the table's first heading. */
+export const X_LABELS: Record<BreakdownPeriod, string> = { year: 'Pension a year', month: 'Pension a month' }
+
+/** Shown under the chart in the month view. */
+export const MONTH_NOTE = `A month here is the year’s figure divided by ${MONTHS_PER_YEAR}, assuming level pay all year; for what a payslip would show, the PAYE estimate is closer.`
 
 export const REASON_LABELS: Record<Exclude<PointReason['kind'], 'sweep' | 'threshold'>, string> = {
   current: 'Your contribution now',
@@ -84,34 +97,45 @@ function reasonLabels(point: OptimiserPoint): string[] {
   )
 }
 
-/**
- * The chart for one view. `percentBase` is pensionable pay when the
- * contribution was entered as a percentage of it (each marker then says its
- * share too), otherwise null.
- */
+export interface ChartOptions {
+  readonly gbp: (amount: Money) => string
+  /** Pensionable pay when the contribution was entered as a percentage of it (each marker then says its share too), otherwise null. */
+  readonly percentBase: Money | null
+  /** The page's Year / Month choice; the year by default. */
+  readonly period?: BreakdownPeriod
+}
+
+/** The chart for one view, in the period chosen. */
 export function optimiserChartData(
   result: OptimiseResult,
   view: ChartView,
-  { gbp, percentBase }: { gbp: (amount: Money) => string; percentBase: Money | null },
+  { gbp, percentBase, period = 'year' }: ChartOptions,
 ): OptimiserChartData {
   const share = (amount: Money) =>
     percentBase !== null && compare(percentBase, ZERO) > 0
       ? ` (${formatPercent(ratio(toPence(amount), toPence(percentBase)))} of pensionable pay)`
       : ''
+  const at = (amount: Money) => perPeriod(amount, period)
+  const amount = (annual: Money) => (period === 'year' ? gbp(annual) : `${gbp(at(annual))} a month`)
   const labelled = result.points.map((point) => {
     const reasons = reasonLabels(point)
-    return reasons.length === 0 ? '' : `${reasons.join('; ')}: ${gbp(point.contribution)}${share(point.contribution)}`
+    return reasons.length === 0 ? '' : `${reasons.join('; ')}: ${amount(point.contribution)}${share(point.contribution)}`
   })
   const runs = cliffRuns(result.cliffs)
-  const between = (run: CliffRun) => `between ${gbp(run.from)} and ${gbp(run.to)}`
+  const between = (run: CliffRun) =>
+    period === 'year' ? `between ${gbp(run.from)} and ${gbp(run.to)}` : `between ${gbp(at(run.from))} and ${gbp(at(run.to))} a month`
   return {
-    categories: result.points.map((point) => gbp(point.contribution)),
-    xValues: result.points.map((point) => toPence(point.contribution)),
-    values: result.points.map((point) => toPence(view === 'spendable' ? point.spendable : point.takeHome)),
-    markers: result.points.flatMap((point, i) => (labelled[i] ? [{ x: toPence(point.contribution), label: labelled[i] }] : [])),
+    categories: result.points.map((point) => gbp(at(point.contribution))),
+    xValues: result.points.map((point) => toPence(at(point.contribution))),
+    values: result.points.map((point) => toPence(at(view === 'spendable' ? point.spendable : point.takeHome))),
+    markers: result.points.flatMap((point, i) => (labelled[i] ? [{ x: toPence(at(point.contribution)), label: labelled[i] }] : [])),
     spans: runs
       .filter((run) => run.kind !== 'studentLoanWholePounds')
-      .map((run) => ({ from: toPence(run.from), to: toPence(run.to), label: `${CLIFF_LABELS[run.kind]}: ${between(run)}` })),
+      .map((run) => ({
+        from: toPence(at(run.from)),
+        to: toPence(at(run.to)),
+        label: `${CLIFF_LABELS[run.kind]}: ${between(run)}`,
+      })),
     notes: runs
       .filter((run) => run.kind === 'studentLoanWholePounds')
       .map((run) => `${CLIFF_LABELS[run.kind]}, so the line moves in small steps ${between(run)}.`),

@@ -30,7 +30,7 @@ import { toasts } from '@/toast/toasts'
 import { configFor, sessionFor } from '../session'
 import { BREAKDOWN_PERIODS, type Breakdown, type BreakdownPeriod, breakdown } from './breakdown'
 import { benefitTaxable } from './calc'
-import { CHART_VIEWS, type ChartView, CURVE_NOTE, optimiserChartData, VIEW_LABELS } from './chartData'
+import { CHART_VIEWS, type ChartView, CURVE_NOTE, MONTH_NOTE, optimiserChartData, viewLabel, X_LABELS } from './chartData'
 import {
   type ContributionField,
   calculatePaye,
@@ -167,7 +167,10 @@ export default function OptimiserPage() {
   const value = ok ? gbp(breakdown(ok.annual, period).takeHome) : null
   // The sweep needs pay and a take-home result; it is the slowest part of the page, so only redone when inputs change.
   const hasPay = compare(add(inputs.salary, inputs.bonus), ZERO) > 0
-  const sweep = useMemo(() => (!invalid && hasPay ? calculateOptimise(inputs, config) : null), [invalid, hasPay, inputs, config])
+  const sweep = useMemo(
+    () => (!invalid && hasPay ? calculateOptimise(inputs, config, period) : null),
+    [invalid, hasPay, inputs, config, period],
+  )
 
   return (
     <div className="flex flex-col gap-6">
@@ -980,7 +983,7 @@ function Results({
           highlight="takeHome"
         />
       </section>
-      {sweep && <OptimiserChart sweep={sweep} inputs={inputs} resolved={resolved} gbp={gbp} />}
+      {sweep && <OptimiserChart sweep={sweep} inputs={inputs} resolved={resolved} gbp={gbp} period={period} />}
 
       <div className="flex flex-col gap-3" data-breakdown={period}>
         <Segmented
@@ -1161,11 +1164,13 @@ function OptimiserChart({
   inputs,
   resolved,
   gbp,
+  period,
 }: {
   sweep: OptimiserPageResult
   inputs: OptimiserPageInputs
   resolved: ResolvedInputs
   gbp: Gbp
+  period: BreakdownPeriod
 }) {
   const [view, setView] = useState<ChartView>('spendable')
   if (isInputProblem(sweep)) return null
@@ -1181,7 +1186,7 @@ function OptimiserChart({
       {!sweep.ok ? (
         <RefusalNotice refusal={sweep} />
       ) : (
-        <ChartBody sweep={sweep} view={view} setView={setView} inputs={inputs} resolved={resolved} gbp={gbp} />
+        <ChartBody sweep={sweep} view={view} setView={setView} inputs={inputs} resolved={resolved} gbp={gbp} period={period} />
       )}
     </section>
   )
@@ -1194,6 +1199,7 @@ function ChartBody({
   inputs,
   resolved,
   gbp,
+  period,
 }: {
   sweep: OptimiseResult
   view: ChartView
@@ -1201,9 +1207,11 @@ function ChartBody({
   inputs: OptimiserPageInputs
   resolved: ResolvedInputs
   gbp: Gbp
+  period: BreakdownPeriod
 }) {
   const percentBase = inputs.employeeContribution.mode === 'percentOfPay' ? resolved.pensionablePay : null
-  const data = optimiserChartData(sweep, view, { gbp, percentBase })
+  const data = optimiserChartData(sweep, view, { gbp, percentBase, period })
+  const yLabel = viewLabel(view, period)
   const money = (pence: number) => gbp(fromPence(pence))
   const compact = (pence: number) => formatGBPCompact(fromPence(pence))
   return (
@@ -1214,17 +1222,17 @@ function ChartBody({
       </p>
       <Segmented id="opt-chart-view" label="Show" value={view} options={VIEW_OPTIONS} onChange={setView} />
       <Chart
-        title={`${VIEW_LABELS[view]} against your pension contribution`}
+        title={`${yLabel} against your pension contribution`}
         categories={data.categories}
-        series={[{ id: view, label: VIEW_LABELS[view], kind: 'line', values: data.values }]}
+        series={[{ id: view, label: yLabel, kind: 'line', values: data.values }]}
         xValues={data.xValues}
         formatXTick={compact}
         markers={data.markers}
         spans={data.spans}
         pointMarkers={false}
         rowNotes={{ label: 'Marked', values: data.rowNotes }}
-        xLabel="Your contribution for the year"
-        yLabel={VIEW_LABELS[view]}
+        xLabel={X_LABELS[period]}
+        yLabel={yLabel}
         formatTick={compact}
         formatValue={money}
         integer
@@ -1234,6 +1242,7 @@ function ChartBody({
           <p key={note}>{note}</p>
         ))}
         <p>{CURVE_NOTE}</p>
+        {period === 'month' && <p data-month-note>{MONTH_NOTE}</p>}
       </div>
     </>
   )

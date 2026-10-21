@@ -2,6 +2,7 @@ import type { TaxYearConfig } from '@/config/tax/schema'
 import { type Refusal, requireVerified } from '@/config/tax/sourced'
 import { add } from '@/lib/money'
 import { MAX_SWEEP_POINTS, pageSweepStep } from '@/lib/sweep'
+import type { BreakdownPeriod } from './breakdown'
 import { EngineInputError, optimise } from './calc'
 import { type InputProblem, type OptimiserPageInputs, resolveInputs, toTaxInputs } from './definition'
 import { DEFAULT_POLICY, type OptimiseResult, type OptimiserInputs } from './types'
@@ -35,10 +36,15 @@ export type OptimiserPageResult = OptimiseResult | Refusal | InputProblem
 /**
  * The sweep for the page: optimise() at the page's step (gross pay bounds the
  * range), its refusal, or the take-home page's input problem when the
- * contribution is above pay. Never throws on valid inputs.
+ * contribution is above pay. Never throws on valid inputs. In the month view
+ * the step is a round amount a month (1b-ii-b).
  */
-export function calculateOptimise(inputs: OptimiserPageInputs, config: TaxYearConfig): OptimiserPageResult {
-  const step = pageSweepStep(add(inputs.salary, inputs.bonus))
+export function calculateOptimise(
+  inputs: OptimiserPageInputs,
+  config: TaxYearConfig,
+  period: BreakdownPeriod = 'year',
+): OptimiserPageResult {
+  const step = pageSweepStep(add(inputs.salary, inputs.bonus), period)
   try {
     return optimise(toOptimiserInputs(inputs), config, DEFAULT_POLICY, { step, maxPoints: MAX_SWEEP_POINTS })
   } catch (error) {
