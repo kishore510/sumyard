@@ -4,6 +4,11 @@ All notable changes to Sumyard are listed here, newest first. The format follows
 
 ## [Unreleased]
 
+## [0.15.0] - 2026-10-21
+
+### Added
+- **Internal only: the compound interest engine.** Nothing you can see in the app has changed. The behind-the-scenes calculations for the coming compound interest calculator now project a lump sum and regular contributions (weekly, monthly, quarterly or yearly, at the start or end of each period, rising each year if you like) at a growth rate compounded daily to yearly, year by year, with an annual fee as a percentage of the balance and without it, so the cost of the fee shows, and in today's money after inflation. They are tested against the Green Book's published table of growth, inflation and discounting, and against the standard formulas. The calculator page comes in the next release.
+
 ## [0.14.0] - 2026-10-21
 
 ### Added

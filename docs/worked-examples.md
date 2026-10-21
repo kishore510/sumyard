@@ -4,7 +4,7 @@ Examples that GOV.UK and HMRC publish for the rules Sumyard models, copied as pu
 
 Collected in slice 1a session E from pages read on 17 October 2026. Each example says which tax year its figures belong to. Where that is not 2026 to 2027, the example tests the method with that year's figures passed in as test inputs (a fake config), never as 2026 to 2027 values. Two published examples are internally inconsistent; they are listed so nobody mirrors them by mistake.
 
-**Count:** 23 published examples collected in session E, plus 3 added in session F for income tax (IT-1, IT-2, PA-1), plus 5 added in session G1 (PEN-1, PEN-2, PEN-3, ANI-3, HICBC-3), plus 6 added in session G2 (CF-1, AAC-1, AAC-2, AAC-3, CB-1, CC-3; AA-1 to AA-4 were collected in E and are now mirrored). 5 are stated for 2026 to 2027 and 7 more use current thresholds that match 2026 to 2027; the rest illustrate a method with another year's figures. More than five in total, but the **personal allowance taper has no published numeric example** on the pages read, and both HICBC examples need the owner's check (O4). The owner's HMRC-calculator cross-checks fill those gaps.
+**Count:** 23 published examples collected in session E, plus 3 added in session F for income tax (IT-1, IT-2, PA-1), plus 5 added in session G1 (PEN-1, PEN-2, PEN-3, ANI-3, HICBC-3), plus 6 added in session G2 (CF-1, AAC-1, AAC-2, AAC-3, CB-1, CC-3; AA-1 to AA-4 were collected in E and are now mirrored), plus 2 added in slice 2a for compound growth and deflation (GB-1, GB-2). 5 are stated for 2026 to 2027 and 7 more use current thresholds that match 2026 to 2027; the rest illustrate a method with another year's figures. More than five in total, but the **personal allowance taper has no published numeric example** on the pages read, and both HICBC examples need the owner's check (O4). The owner's HMRC-calculator cross-checks fill those gaps.
 
 ## Income tax and the personal allowance (added in session F)
 
@@ -129,6 +129,17 @@ Mirrored in `published.test.ts`. The figures are each page's own; none is a 2026
 | TC-3 | Names 2025 to 2026 | Code K475; salary £27,000 | "has taxable income of £31,750" | Understanding your employees' tax codes | **No** for the figure (K codes are not modelled); the code is mirrored as not modelled. |
 
 No GOV.UK HTML page read gives a worked PAYE deduction for a month; the tables that do (Tables B to D) are PDFs not read (O11).
+
+## Compound growth and deflation (slice 2a)
+
+Read on 21 October 2026. No GOV.UK page read gives a worked example of savings with regular contributions. MoneyHelper's savings pages and university maths resources were refused by this environment's network policy, and commercial calculators are not authoritative, so the annuity formulas are checked against the independent closed-form reference instead (`src/calculators/compound-interest/fixtures/reference.ts`, 300 seeded cases; `docs/money.md`, "Compound interest (slice 2a)"). The Green Book's discounting table is a published worked example of compound growth, deflation and discounting, and is mirrored.
+
+| Id | Year | Inputs | Published result | Source | Mirrored |
+|---|---|---|---|---|---|
+| GB-1 | Illustration, not tied to a year | "social benefits of £1,000 in nominal terms in year 0, rising by 2% per year in nominal terms. Assume the GDP deflator is 2% each year." | Nominal: "£1,000 £1,020 £1,040 £1,061 £1,082 £1,104"; "GDP deflator factor 1.000 0.9804 0.9612 0.9423 0.9238 0.9057"; "Social benefits in real terms £1,000 £1,000 £1,000 £1,000 £1,000 £1,000". Also: "The inflation rate and discount rate should not be added together and applied to social costs and social benefits because this will produce a mathematically incorrect result." | HM Treasury, The Green Book (2026), Table 8, https://www.gov.uk/government/publications/the-green-book--2/the-green-book-2026 | **Yes** (`published.test.ts`): a £1,000 lump sum growing 2% a year, nominal values to the pound; real values with 2% inflation; the deflator factors as the real value of £10,000 to four places. The rule against adding the rates supports the Fisher relation (C5). |
+| GB-2 | As GB-1 | The STPR, "set at 3.50% in real terms for years 1 to 30", applied to GB-1 | "Discount factor 1.000 0.9662 0.9335 0.9019 0.8714 0.8420"; "Present values £1,000 £966 £934 £902 £871 £842" | Same page | **Yes**: the discount factors as 3.5% deflation of £10,000 to four places; the present values as 2% growth deflated once by (1.02 × 1.035) − 1 = 5.57%, the Fisher composition of the deflator and the discount rate. |
+
+The STPR is quoted as the page's own example rate; it is not a tax figure and nothing in the app stores it.
 
 ## HMRC cross-check harness
 
