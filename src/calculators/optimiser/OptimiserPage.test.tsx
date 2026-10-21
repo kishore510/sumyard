@@ -1168,6 +1168,22 @@ describe('Cost of more pension (1b-ii-b)', () => {
   })
 })
 
+describe('Thresholds in words (1b-ii-b)', () => {
+  it('lists every threshold optimise() gives, each with its status in words', () => {
+    type(box('opt-salary'), '120,000')
+    type(box('opt-children'), '2')
+    type(box('opt-employee'), '2,000')
+    const result = sweep()
+    const items = [...$('[data-thresholds]')!.querySelectorAll('[data-threshold]')]
+    expect(items.map((li) => li.getAttribute('data-threshold'))).toEqual(result.thresholds.map((t) => t.threshold))
+    const statuses = new Set(items.map((li) => li.getAttribute('data-status')))
+    expect(statuses.has('contributeMore')).toBe(true)
+    expect($('[data-thresholds]')!.textContent).toMatch(/first falls a penny below/)
+    choose('opt-period', 'month')
+    expect($('[data-thresholds]')!.textContent).toMatch(/more a month/)
+  })
+})
+
 describe('Pension allowances section (inputs version 4)', () => {
   it('starts closed and not set, and is placed after Pension', () => {
     expect($('#opt-section-allowances-button')!.getAttribute('aria-expanded')).toBe('false')
