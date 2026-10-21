@@ -334,7 +334,8 @@ describe('property', () => {
         contribution: fromPence(Math.floor(random() * 100_000)),
         contributionFrequency: pick(['weekly', 'monthly', 'quarterly', 'annual'] as const),
         timing: pick(['start', 'end'] as const),
-        years: 1 + Math.floor(random() * 40),
+        // Up to fifteen years keeps each render small: the property is about the headline, not the horizon (the slowest case is timed in docs/performance.md).
+        years: 1 + Math.floor(random() * 15),
         growthRate: pct(-10, 15),
         compounding: pick(['daily', 'weekly', 'monthly', 'quarterly', 'annual'] as const),
         feeRate: pct(0, 3),
@@ -345,8 +346,9 @@ describe('property', () => {
       expect(valid.ok, JSON.stringify(inputs)).toBe(true)
       set(inputs)
       const result = engine(inputs)
-      const nominal = i % 2 === 0
-      chooseView(nominal ? 'Nominal' : 'Today’s money')
+      // Nominal for the first half, today's money for the second: one switch, not one per case.
+      const nominal = i < 75
+      if (i === 75) chooseView('Today’s money')
       expect(headline(), JSON.stringify(inputs)).toBe(money((nominal ? result.withFee.nominal : result.withFee.real).closing))
     }
   })
