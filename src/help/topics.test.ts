@@ -58,7 +58,7 @@ describe('content/help', () => {
       /effective annual rate/i,
       /after .*growth/i,
       /start/i,
-      /today’s money/i,
+      /today.s money/i,
       /fee drag/i,
       /yearly table/i,
       /not a forecast/i,

@@ -119,7 +119,7 @@ describe('validateInputs', () => {
     ['compounding', 'hourly'],
     ['feeRate', ''],
     ['contributionIncrease', '-0'],
-    ['inflationRate', undefined],
+    ['inflationRate', 7],
   ])('refuses a bad %s (%j), naming that field', (field, value) => {
     const errors = errorsOf(valid({ [field]: value }))
     expect(errors).toHaveLength(1)
@@ -211,8 +211,8 @@ describe('summarise (compare)', () => {
     expect(compoundCalculator.summarise(example, taxYear).inputs.map((r) => r.label)).toEqual([
       'Lump sum',
       'Regular contribution',
-      'Contributions',
-      'Paid in at the',
+      'Contribution frequency',
+      'Contribution timing',
       'Years',
       'Growth rate (nominal, a year)',
       'Compounding',

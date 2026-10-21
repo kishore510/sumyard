@@ -244,21 +244,21 @@ describe('refusals and input errors', () => {
 describe('inputs and hints', () => {
   it('has every input, the essentials always visible and the rest in two sections', () => {
     for (const id of ['ci-lump-sum', 'ci-contribution', 'ci-years']) expect(box(id).closest('[hidden]'), id).toBeNull()
-    expect($$('[data-section]').map((s) => s.getAttribute('data-section'))).toEqual(['growth', 'time'])
-    for (const id of ['ci-growth', 'ci-fee']) expect(box(id).closest('[data-section="growth"]'), id).not.toBeNull()
-    for (const id of ['ci-increase', 'ci-inflation']) expect(box(id).closest('[data-section="time"]'), id).not.toBeNull()
-    expect($('#ci-compounding')?.closest('[data-section="growth"]')).not.toBeNull()
+    expect($$('[data-section]').map((s) => s.getAttribute('data-section'))).toEqual(['ci-section-growth', 'ci-section-time'])
+    for (const id of ['ci-growth', 'ci-fee']) expect(box(id).closest('[data-section="ci-section-growth"]'), id).not.toBeNull()
+    for (const id of ['ci-increase', 'ci-inflation']) expect(box(id).closest('[data-section="ci-section-time"]'), id).not.toBeNull()
+    expect($('#ci-compounding')?.closest('[data-section="ci-section-growth"]')).not.toBeNull()
     expect($('#ci-frequency')?.closest('[data-section]')).toBeNull()
     expect($$('input[name="ci-timing"]')).toHaveLength(2)
   })
 
   it('sections open on load only when set, with live summaries', () => {
-    expect($('[data-section="growth"] button')?.getAttribute('aria-expanded')).toBe('false')
-    expect($('#growth-summary')?.textContent).toBe('Not set')
+    expect($('[data-section="ci-section-growth"] button')?.getAttribute('aria-expanded')).toBe('false')
+    expect($('#ci-section-growth-summary')?.textContent).toBe('Not set')
     set(example)
-    expect($('#growth-summary')?.textContent).toContain('5%')
-    expect($('#growth-summary')?.textContent).toContain('0.75%')
-    expect($('#time-summary')?.textContent).toContain('2.5%')
+    expect($('#ci-section-growth-summary')?.textContent).toContain('5%')
+    expect($('#ci-section-growth-summary')?.textContent).toContain('0.75%')
+    expect($('#ci-section-time-summary')?.textContent).toContain('2.5%')
   })
 
   it('hints say the conventions in words, with no figures', () => {
@@ -281,7 +281,7 @@ describe('scenarios', () => {
     const stored = JSON.parse(localStorage.getItem(STORAGE_KEYS.scenarios.key)!)
     expect(stored.scenarios[0]).toMatchObject({ calculatorId: 'compound-interest', inputsVersion: 1, inputs: example })
     expect(Object.hasOwn(stored.scenarios[0], 'taxYear')).toBe(false)
-    expect($('[data-unsaved]')).toBeNull()
+    expect($('[data-unsaved]')?.getAttribute('data-unsaved')).toBe('false')
     expect(view.host.textContent).toContain('Saved')
 
     act(() => session.startNew())

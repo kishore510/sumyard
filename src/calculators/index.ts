@@ -1,3 +1,4 @@
+import { compoundCalculator } from './compound-interest/definition'
 import { optimiserCalculator } from './optimiser/definition'
 import { createCalculatorRegistry } from './registry'
 
@@ -7,4 +8,4 @@ import { createCalculatorRegistry } from './registry'
  * here; a scenario for an id not listed is refused on import, and a stored
  * one is kept but hidden (the Hello placeholder's, since 0.9.0).
  */
-export const CALCULATORS = createCalculatorRegistry([optimiserCalculator])
+export const CALCULATORS = createCalculatorRegistry([optimiserCalculator, compoundCalculator])
