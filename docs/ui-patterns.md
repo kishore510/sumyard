@@ -42,7 +42,7 @@ One horizontal bar of gross pay for the chosen period, split into income tax, Na
 
 ### U8. Two net pay lines with a tax code
 
-With a supported tax code, the take-home card shows "Estimated payslip net pay" (take-home with the PAYE estimate in place of the year's income tax; for a month, the first month's PAYE) and "Take-home after the year-end adjustment" (the year's liability, the existing take-home), with one sentence of explanation and no figures. Without a code, or with one not modelled, one take-home line as before. Both are sums of existing engine outputs (`src/calculators/optimiser/results.ts`). Only income tax is swapped: the Child Benefit charge and a relief at source contribution stay in both lines (see `PLAN.md`, Open questions).
+With a supported tax code, the take-home card shows "Estimated payslip net pay" (take-home with the PAYE estimate in place of the year's income tax; for a month, the first month's PAYE) and "Take-home after the year-end adjustment" (the year's liability, the existing take-home), with one sentence of explanation and no figures. Without a code, or with one not modelled, one take-home line as before. Both are sums of existing engine outputs (`src/calculators/optimiser/results.ts`). Only income tax is swapped: the Child Benefit charge and a relief at source contribution stay in both lines (see `docs/open-questions.md`).
 
 ### U9. Item cards
 
