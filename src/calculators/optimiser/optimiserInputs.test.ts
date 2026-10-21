@@ -3,7 +3,8 @@ import { taxYear } from '@/config/tax/2026-27'
 import { FAKE_TODO_YEAR } from '@/config/tax/fixtures/fakeTaxYears'
 import { requireVerified } from '@/config/tax/sourced'
 import { add, compare, fromPence, fromPounds, ZERO } from '@/lib/money'
-import { MAX_SWEEP_POINTS, PAGE_SWEEP_POINTS, pageSweepStep } from '@/lib/sweep'
+import { MONTHS_PER_YEAR } from '@/lib/periods'
+import { DEFAULT_MONTHLY_SWEEP_STEP, MAX_SWEEP_POINTS, PAGE_SWEEP_POINTS, pageSweepStep } from '@/lib/sweep'
 import { optimise } from './calc'
 import { calculateTakeHome, type OptimiserPageInputs, optimiserCalculator, resolveInputs, toTaxInputs } from './definition'
 import { calculateOptimise, carryForwardYears, toOptimiserInputs } from './optimiserInputs'
@@ -147,6 +148,27 @@ describe('pageSweepStep', () => {
       const less = Number(step) - Number(small)
       if (less > 0) expect(Math.floor(Number(range) / less) + 1, String(pounds)).toBeGreaterThan(PAGE_SWEEP_POINTS)
     }
+  })
+})
+
+describe('pageSweepStep by month (1b-ii-b)', () => {
+  it('in the month view is a whole multiple of the round monthly step, for the year, within the same budget', () => {
+    const monthly = Number(DEFAULT_MONTHLY_SWEEP_STEP) * MONTHS_PER_YEAR
+    expect(pageSweepStep(ZERO, 'month')).toBe(fromPence(monthly))
+    for (const pounds of [0, 150_000, 300_000, 5_000_000]) {
+      const range = fromPounds(pounds)
+      const step = pageSweepStep(range, 'month')
+      expect(Number(step) % monthly, String(pounds)).toBe(0)
+      expect(Math.floor(Number(range) / Number(step)) + 1, String(pounds)).toBeLessThanOrEqual(PAGE_SWEEP_POINTS)
+    }
+    expect(pageSweepStep(fromPounds(150_000), 'year')).toBe(pageSweepStep(fromPounds(150_000)))
+  })
+
+  it('calculateOptimise sweeps at the month step in the month view', () => {
+    const inputs = { ...defaults, salary: fromPounds(120_000) }
+    const result = calculateOptimise(inputs, taxYear, 'month')
+    if (!result.ok || 'problem' in result) throw new Error('no result')
+    expect(result.step).toBe(pageSweepStep(inputs.salary, 'month'))
   })
 })
 

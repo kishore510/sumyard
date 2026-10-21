@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { SETTLE_MS } from '@/components/StickyResult'
 import { taxYear } from '@/config/tax/2026-27'
 import { formatGBP } from '@/lib/format'
-import { fromPence, fromPounds, type Money, mulRound, ZERO } from '@/lib/money'
+import { fromPence, fromPounds, type Money, mulRound, ratio, ZERO } from '@/lib/money'
 import { percentRatio } from '@/lib/parse'
 import { MONTHS_PER_YEAR } from '@/lib/periods'
 import { STORAGE_KEYS } from '@/lib/storageKeys'
@@ -1059,6 +1059,22 @@ describe('Optimiser chart (1b-ii-a)', () => {
     expect($('[data-optimiser] [data-span]')).not.toBeNull()
     expect($('[data-optimiser] [data-marker-list]')!.textContent).toMatch(/Child Benefit charge/)
     expect($('[data-optimiser]')!.textContent).toMatch(/either way/)
+  })
+})
+
+describe('Optimiser chart by period (1b-ii-b)', () => {
+  it('follows the page’s Year / Month switch: axes, values and the month note', () => {
+    type(box('opt-salary'), '120,000')
+    expect($('[data-optimiser] thead')!.textContent).toMatch(/Spendable a year/)
+    expect($('[data-optimiser] [data-month-note]')).toBeNull()
+    choose('opt-period', 'month')
+    const result = calculateOptimise(session.get().inputs, taxYear, 'month')
+    if (!result.ok || 'problem' in result) throw new Error('no result')
+    expect($('[data-optimiser] thead')!.textContent).toMatch(/Pension a month/)
+    expect($('[data-optimiser] thead')!.textContent).toMatch(/Spendable a month/)
+    const first = $('[data-optimiser] tbody tr')!.children[1]!.textContent
+    expect(first).toBe(money(mulRound(result.points[0]!.spendable, ratio(1, MONTHS_PER_YEAR), 'nearest')))
+    expect($('[data-optimiser] [data-month-note]')!.textContent).toMatch(/PAYE estimate/)
   })
 })
 

@@ -1,8 +1,19 @@
 import { describe, expect, it } from 'vitest'
 import { taxYear } from '@/config/tax/2026-27'
 import { formatGBP, formatPercent } from '@/lib/format'
-import { fromPence, fromPounds, type Money, ratio, toPence, ZERO } from '@/lib/money'
-import { CHART_VIEWS, CLIFF_LABELS, cliffRuns, optimiserChartData, REASON_LABELS, THRESHOLD_LABELS } from './chartData'
+import { fromPence, fromPounds, type Money, mulRound, ratio, toPence, ZERO } from '@/lib/money'
+import { MONTHS_PER_YEAR } from '@/lib/periods'
+import {
+  CHART_VIEWS,
+  CLIFF_LABELS,
+  cliffRuns,
+  MONTH_NOTE,
+  optimiserChartData,
+  REASON_LABELS,
+  THRESHOLD_LABELS,
+  viewLabel,
+  X_LABELS,
+} from './chartData'
 import { type OptimiserPageInputs, optimiserCalculator } from './definition'
 import { calculateOptimise } from './optimiserInputs'
 import type { Cliff, OptimiseResult } from './types'
@@ -104,6 +115,42 @@ describe('optimiserChartData', () => {
     expect(text).not.toMatch(/\b(best|optimal|optimum|recommended|always (falls|rises)|never (falls|rises))\b/i)
     for (const label of [...Object.values(REASON_LABELS), ...Object.values(THRESHOLD_LABELS), ...Object.values(CLIFF_LABELS)])
       expect(label).not.toMatch(/\b(best|optimal|recommended)\b/i)
+  })
+})
+
+describe('optimiserChartData by period (1b-ii-b)', () => {
+  const month = (amount: Money) => mulRound(amount, ratio(1, MONTHS_PER_YEAR), 'nearest')
+
+  it('in the month view shows each point’s value and contribution a month, through money.ts', () => {
+    const r = result()
+    for (const view of CHART_VIEWS) {
+      const data = optimiserChartData(r, view, { gbp, percentBase: null, period: 'month' })
+      expect(data.values).toEqual(r.points.map((p) => toPence(month(view === 'spendable' ? p.spendable : p.takeHome))))
+      expect(data.xValues).toEqual(r.points.map((p) => toPence(month(p.contribution))))
+      expect(data.categories).toEqual(r.points.map((p) => gbp(month(p.contribution))))
+    }
+  })
+
+  it('labels the axes for the period', () => {
+    expect(viewLabel('takeHome', 'month')).toBe('Take-home a month')
+    expect(viewLabel('spendable', 'month')).toBe('Spendable a month')
+    expect(viewLabel('takeHome', 'year')).toBe('Take-home a year')
+    expect(X_LABELS.month).toBe('Pension a month')
+    expect(X_LABELS.year).toBe('Pension a year')
+  })
+
+  it('says amounts in markers and ranges a month in the month view', () => {
+    const r = result()
+    const data = optimiserChartData(r, 'spendable', { gbp, percentBase: null, period: 'month' })
+    const current = data.markers.find((m) => m.x === toPence(month(r.currentContribution)))!
+    expect(current.label).toContain(`${gbp(month(r.currentContribution))} a month`)
+    for (const span of data.spans) expect(span.label).toMatch(/ a month$/)
+  })
+
+  it('the month note says a month is the year divided evenly, assuming level pay, and points to the PAYE estimate', () => {
+    expect(MONTH_NOTE).toContain(String(MONTHS_PER_YEAR))
+    expect(MONTH_NOTE).toMatch(/level pay/)
+    expect(MONTH_NOTE).toMatch(/PAYE estimate/)
   })
 })
 
