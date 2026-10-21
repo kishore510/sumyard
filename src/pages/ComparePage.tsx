@@ -1,7 +1,14 @@
 import { ArrowLeft } from 'lucide-react'
 import { useId } from 'react'
 import { CALCULATORS } from '@/calculators/index'
-import type { CalculatorDefinition, InputRefusal, RowValue, Summary, SummaryRow } from '@/calculators/registry'
+import {
+  type CalculatorDefinition,
+  type InputRefusal,
+  isInputRefusal,
+  type RowValue,
+  type Summary,
+  type SummaryRow,
+} from '@/calculators/registry'
 import { configFor } from '@/calculators/session'
 import { NO_TAX_RULES } from '@/components/NoTaxRulesBadge'
 import { refusedGroups } from '@/components/RefusalNotice'
@@ -32,7 +39,8 @@ export const MAX_COMPARE = 3
 const selection = createStore<Readonly<Record<string, readonly string[]>>>({})
 
 /** What a compare cell says for a scenario with no results. */
-export function refusedCellText(_refusal: Refusal | InputRefusal): string {
+export function refusedCellText(refusal: Refusal | InputRefusal): string {
+  if (isInputRefusal(refusal)) return `No results: ${refusal.problems.map((p) => p.label).join(', ')}`
   return 'No results: tax figures not verified'
 }
 
@@ -90,7 +98,7 @@ function CompareTable({ calculator, picked }: { calculator: CalculatorDefinition
   const labels = (pick: (s: Summary) => readonly SummaryRow[]) => [...new Set(summaries.flatMap((s) => pick(s).map((r) => r.label)))]
   const inputLabels = labels((s) => s.inputs)
   const resultLabels = labels((s) => (s.results.ok ? s.results.rows : []))
-  const refused = summaries.flatMap((s) => (s.results.ok ? [] : [s.results as Refusal]))
+  const refused = summaries.flatMap((s) => (s.results.ok || isInputRefusal(s.results) ? [] : [s.results]))
   const sectionRow = (title: string) => (
     <tr className="border-t border-border bg-surface-muted">
       <th
@@ -207,7 +215,7 @@ function CompareTable({ calculator, picked }: { calculator: CalculatorDefinition
                       />
                     ) : (
                       <td key={picked[i]!.id} className="px-3 py-2 text-right text-xs text-text-muted">
-                        No results: tax figures not verified
+                        {refusedCellText(summary.results)}
                       </td>
                     ),
                   )}
