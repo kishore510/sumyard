@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import { taxYear } from '@/config/tax/2026-27'
-import { compare, fromPounds, subtract, ZERO } from '@/lib/money'
+import { add, compare, fromPounds, max, subtract, ZERO } from '@/lib/money'
 import { perPeriod } from './breakdown'
 import { type OptimiserPageInputs, optimiserCalculator } from './definition'
 import { calculateOptimise } from './optimiserInputs'
-import { changeVsNow, currentPoint, nearestPoint } from './reading'
+import { changeVsNow, currentPoint, nearestPoint, pointsIn, zoomRange } from './reading'
 import type { OptimiseResult } from './types'
 
 /*
@@ -64,5 +64,47 @@ describe('changeVsNow', () => {
         expect(changes.some((c) => compare(c, ZERO) < 0)).toBe(true)
       }
     }
+  })
+})
+
+describe('zoomRange and pointsIn', () => {
+  /** Threshold points the zoom is drawn around: above the current contribution, within the modelled range. */
+  const ahead = (r: OptimiseResult) =>
+    r.thresholds.flatMap((t) =>
+      t.contribution !== null && compare(t.contribution, r.currentContribution) > 0 && compare(t.contribution, r.maximumContribution) <= 0
+        ? [t.contribution]
+        : [],
+    )
+
+  it('runs from around the current contribution to past the furthest threshold point that lies ahead, inside the range', () => {
+    for (const period of ['year', 'month'] as const) {
+      const r = result({}, period)
+      const range = zoomRange(r)!
+      expect(range).not.toBeNull()
+      const top = max(ahead(r)[0]!, ...ahead(r))
+      expect(compare(range.from, r.currentContribution)).toBeLessThanOrEqual(0)
+      expect(compare(range.from, ZERO)).toBeGreaterThanOrEqual(0)
+      // A margin past the furthest point: at least two steps, unless the range ends first.
+      const margin = add(top, add(r.step, r.step))
+      expect(compare(range.to, margin) >= 0 || range.to === r.maximumContribution).toBe(true)
+      expect(compare(range.to, r.maximumContribution)).toBeLessThanOrEqual(0)
+      expect(compare(range.to, r.maximumContribution)).toBeLessThan(0)
+      const shown = pointsIn(r, range)
+      expect(shown.points).toContain(currentPoint(r))
+      expect(shown.points.length).toBeLessThan(r.points.length)
+      expect(shown.points.every((p) => compare(p.contribution, range.from) >= 0 && compare(p.contribution, range.to) <= 0)).toBe(true)
+      expect(shown.points).toEqual(
+        r.points.filter((p) => compare(p.contribution, range.from) >= 0 && compare(p.contribution, range.to) <= 0),
+      )
+      for (const c of shown.cliffs) expect(compare(c.from, range.from) >= 0 && compare(c.to, range.to) <= 0).toBe(true)
+    }
+  })
+
+  it('is null (the full range) when no threshold point lies ahead', () => {
+    const r = result({ salary: fromPounds(40_000), bonus: ZERO, children: 0, checkChildcare: false })
+    expect(ahead(r)).toEqual([])
+    expect(zoomRange(r)).toBeNull()
+    expect(pointsIn(r, null).points).toEqual(r.points)
+    expect(pointsIn(r, null).cliffs).toEqual(r.cliffs)
   })
 })

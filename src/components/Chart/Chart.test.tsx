@@ -148,6 +148,25 @@ describe('Chart', () => {
       expect(view.host.querySelector('thead')!.textContent).toContain('Marked')
     })
 
+    it('merges markers closer than a label’s width into one number, listing every label under it', () => {
+      const close = [...numeric.markers!, { x: 11, label: 'Close: 11p' }].sort((a, b) => a.x - b.x)
+      view = mount(<Chart {...numeric} markers={close} />)
+      const markers = [...view.host.querySelectorAll('[data-marker]')]
+      expect(markers.map((m) => m.querySelector('text')!.textContent)).toEqual(['1', '2'])
+      const items = [...view.host.querySelectorAll('[data-marker-list] li')].map((li) => li.textContent)
+      expect(items[0]).toBe('1Now: 10pClose: 11p')
+      expect(items[1]).toBe('2Most: 50p')
+      const svg = view.host.querySelector('svg[role="img"]')!
+      const desc = document.getElementById(svg.getAttribute('aria-describedby')!)!.textContent!
+      expect(desc).toContain('Marked 1: Now: 10p; Close: 11p.')
+    })
+
+    it('keeps the y axis at or above zero when no value is below it', () => {
+      view = mount(<Chart {...numeric} series={[{ id: 'a', label: 'Amount', kind: 'line', values: [0, 1, 1, 0] }]} />)
+      const ticks = [...view.host.querySelectorAll('svg text.tabular-nums')].map((t) => t.textContent)
+      expect(ticks.some((t) => t?.startsWith('-'))).toBe(false)
+    })
+
     it('puts every extra column in the table, in order', () => {
       view = mount(
         <Chart {...numeric} columns={[...numeric.columns!, { label: 'Change', values: ['+1p', '0p', '-1p', '-2p'], numeric: true }]} />,

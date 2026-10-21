@@ -1114,6 +1114,40 @@ describe('Change vs now (1b-ii-b)', () => {
   })
 })
 
+describe('Zoom (1b-ii-b)', () => {
+  const rows = () => [...$('[data-optimiser] tbody')!.querySelectorAll('tr')]
+  const yTicks = () => [...$('[data-optimiser] svg')!.querySelectorAll('text.tabular-nums')].map((t) => t.textContent ?? '')
+
+  it('shows the range around the current contribution by default, and every point with Full range', () => {
+    type(box('opt-salary'), '120,000')
+    type(box('opt-children'), '2')
+    const result = sweep()
+    expect(rows().length).toBeLessThan(result.points.length)
+    expect($('[data-optimiser] [data-marker-list]')!.textContent).not.toContain(REASON_LABELS.maximum)
+    click($('#opt-full-range'))
+    expect(rows()).toHaveLength(result.points.length)
+    expect($('[data-optimiser] [data-marker-list]')!.textContent).toContain(REASON_LABELS.maximum)
+  })
+
+  it('leaves the negative part of the y axis out unless the points shown go there', () => {
+    type(box('opt-salary'), '120,000')
+    type(box('opt-children'), '2')
+    addItem('deductions', 'Cover', '6,000')
+    const result = sweep()
+    expect(result.points.some((p) => p.spendable < 0)).toBe(true)
+    expect(yTicks().some((t) => t.startsWith('-'))).toBe(false)
+    click($('#opt-full-range'))
+    expect(yTicks().some((t) => t.startsWith('-'))).toBe(true)
+  })
+
+  it('has no range switch when no threshold lies ahead, and says the full range is shown', () => {
+    type(box('opt-salary'), '40,000')
+    expect($('#opt-full-range')).toBeNull()
+    expect(rows()).toHaveLength(sweep().points.length)
+    expect($('[data-optimiser] [data-range-note]')!.textContent).toMatch(/full range/i)
+  })
+})
+
 describe('Pension allowances section (inputs version 4)', () => {
   it('starts closed and not set, and is placed after Pension', () => {
     expect($('#opt-section-allowances-button')!.getAttribute('aria-expanded')).toBe('false')
