@@ -1078,6 +1078,39 @@ describe('Optimiser chart by period (1b-ii-b)', () => {
   })
 })
 
+describe('Change vs now (1b-ii-b)', () => {
+  it('adds a signed change against the current contribution to the table, nothing on the current row', () => {
+    type(box('opt-salary'), '120,000')
+    type(box('opt-employee'), '6,000')
+    expect($('[data-optimiser] thead')!.textContent).toContain('Change vs now')
+    const rows = [...$('[data-optimiser] tbody')!.querySelectorAll('tr')]
+    const now = rows.find((tr) => tr.textContent!.includes(REASON_LABELS.current))!
+    expect(now.lastElementChild!.textContent).toBe(money(ZERO))
+    expect(rows.some((tr) => tr.lastElementChild!.textContent!.startsWith('+'))).toBe(true)
+    expect(rows.some((tr) => tr.lastElementChild!.textContent!.startsWith('-'))).toBe(true)
+  })
+
+  it('reads out the chosen point above the chart, the current contribution until another is chosen', () => {
+    type(box('opt-salary'), '120,000')
+    type(box('opt-employee'), '6,000')
+    const result = sweep()
+    const readout = () => $('[data-optimiser] [data-readout]')!.textContent!
+    expect(readout()).toContain(money(result.currentContribution))
+    expect(readout()).toMatch(/your contribution now/i)
+    const select = box('opt-chosen') as unknown as HTMLSelectElement
+    const other = result.points.find((p) => p.contribution > result.currentContribution)!
+    act(() => {
+      select.value = String(other.contribution)
+      select.dispatchEvent(new Event('change', { bubbles: true }))
+    })
+    expect(readout()).toContain(money(other.contribution))
+    expect(readout()).toMatch(/[+-]£/)
+    // The readout precedes the chart.
+    const chart = $('[data-optimiser] [data-chart]')!
+    expect($('[data-optimiser] [data-readout]')!.compareDocumentPosition(chart) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+})
+
 describe('Pension allowances section (inputs version 4)', () => {
   it('starts closed and not set, and is placed after Pension', () => {
     expect($('#opt-section-allowances-button')!.getAttribute('aria-expanded')).toBe('false')

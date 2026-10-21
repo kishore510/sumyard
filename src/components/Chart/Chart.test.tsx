@@ -98,7 +98,7 @@ describe('Chart', () => {
       ],
       spans: [{ from: 10, to: 40, label: 'A jump lies here' }],
       pointMarkers: false,
-      rowNotes: { label: 'Marked', values: ['', 'Now: 10p', '', 'Most: 50p'] },
+      columns: [{ label: 'Marked', values: ['', 'Now: 10p', '', 'Most: 50p'] }],
     }
 
     it('places points by value, not evenly: the gap between 10 and 40 is three times that between 0 and 10', () => {
@@ -146,6 +146,23 @@ describe('Chart', () => {
       const rows = [...view.host.querySelectorAll('tbody tr')].map((tr) => [...tr.children].map((c) => c.textContent))
       expect(rows[1]).toEqual(['10p', '90 pence', 'Now: 10p'])
       expect(view.host.querySelector('thead')!.textContent).toContain('Marked')
+    })
+
+    it('puts every extra column in the table, in order', () => {
+      view = mount(<Chart {...numeric} columns={[...numeric.columns!, { label: 'Change', values: ['+1p', '0p', '-1p', '-2p'], numeric: true }]} />)
+      const rows = [...view.host.querySelectorAll('tbody tr')].map((tr) => [...tr.children].map((c) => c.textContent))
+      expect(rows[2]).toEqual(['40p', '60 pence', '', '-1p'])
+      expect(view.host.querySelector('thead')!.textContent).toMatch(/Marked.*Change/)
+    })
+
+    it('highlights the selected point on the line and its table row', () => {
+      view = mount(<Chart {...numeric} selectedX={40} />)
+      expect(view.host.querySelectorAll('[data-selected]')).toHaveLength(1)
+      const rows = [...view.host.querySelectorAll('tbody tr')]
+      expect(rows.map((r) => r.hasAttribute('data-selected-row'))).toEqual([false, false, true, false])
+      view.unmount()
+      view = mount(<Chart {...numeric} />)
+      expect(view.host.querySelectorAll('[data-selected]')).toHaveLength(0)
     })
 
     it('says the markers and ranges in the text summary', () => {
