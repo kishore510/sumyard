@@ -1,7 +1,7 @@
 ---
 title: Take-home pay
 order: 2
-summary: What the take-home calculator works out, what it doesn't yet, how the page is laid out, how to read the pension contributions chart, and how to enter pension percentages, carry forward, benefits, deductions and your tax code.
+summary: What the take-home calculator works out, what it doesn't, how the page is laid out, and how to enter pension percentages, carry forward, benefits, deductions and your tax code.
 ---
 The **Take-home pay** calculator works out your pay after tax for one tax year, from your salary, bonus, pension, student loans, benefits from your job and Child Benefit. With the pension contributions chart, it is the pension optimiser.
 
@@ -20,28 +20,18 @@ The **Take-home pay** calculator works out your pay after tax for one tax year, 
 
 - **Your pay** is always shown: salary, bonus, where you live and the tax year. Everything else is in sections you open and close: **Pension**, **Pension allowances**, **Benefits and deductions**, **Student loans**, **Child Benefit** and **Tax code**. Each closed section shows a one-line summary of what is in it, or "Not set". Sections you have filled in open by themselves, including when you load a saved scenario; which sections are open is not saved.
 - **Your result stays in view.** On a phone, a bar at the top shows your take-home for the year or a month (choose **Year** or **Month**) and the tax year. Once you scroll down it shrinks to one line; tap it to see the choice again. On a wider screen the results sit beside the inputs and stay put as you scroll. Screen readers hear the take-home figure once you stop typing, not on every key.
-- **Results, top to bottom:** your take-home; a bar showing where your gross pay goes (tax, National Insurance, student loan, pension, benefits, deductions and take-home), with the same figures as text and as a table; the **Pension contributions** chart; the breakdown by year or month; and, with a tax code, the PAYE estimate.
+- **Results, top to bottom:** your take-home; a bar showing where your gross pay goes (tax, National Insurance, student loan, pension, benefits, deductions and take-home), with the same figures as text and as a table; the **Pension contributions** chart and the cards that read it; the breakdown by year or month; and, with a tax code, the PAYE estimate.
 - **With a tax code**, the take-home card shows two lines: **Estimated payslip net pay** uses the PAYE estimate for income tax, which is roughly what your payslips add up to; **Take-home after the year-end adjustment** uses the year's tax, once any difference has been refunded or collected. Only income tax differs between them: the Child Benefit charge, if any, is in both.
 - **Benefits and deductions** show as compact cards with their name and amounts. Use **Edit** to change one and **Done** to fold it away. **Remove** takes it out, with **Undo** for a few seconds; Undo won't work once you have loaded another scenario or filled the list.
 
-## What it doesn't do yet
+## What it doesn't do
 
-- **Coming in the next release**, to help read the chart: the cost of one pound more into your pension, each threshold in words (already under it, how much more to contribute, or out of reach and why), the warnings at each contribution (annual allowance, taper, carry forward, childcare), and comparing your contribution now with another.
 - It doesn't work out each payslip: the PAYE estimate assumes the same pay every month. See below.
 - Employment income only: no savings, dividends, property or self-employment income.
 
 ## The pension contributions chart
 
-Once you enter your pay, the chart below the split bar shows what you would have to spend at each candidate pension contribution, by the method chosen in **Pension**, from nothing up to the most Sumyard models (everything you earn into the pension). It is a set of candidates, not advice: no point is called the best.
-
-- **Spendable** is your take-home with any Child Benefit, less any annual allowance charge. Switch to **Take-home** to see take-home alone. Childcare support is not counted in either.
-- **Numbered lines** mark your contribution now, the most modelled, and each threshold point: the smallest contribution that brings your adjusted net income (or, for the annual allowance taper, your threshold income) down to that threshold. The list under the chart says what each number is. If you entered your contribution as a percentage, each marked amount also shows as a share of your pensionable pay.
-- **Lettered ranges** are where the line jumps rather than moving smoothly, for example where the Child Benefit charge changes in whole steps. The line across a range is dashed: the jump lies somewhere inside it. With salary sacrifice and a student loan, the note under the chart says that repayments move in whole pounds.
-- The line joins the points worked out. Between two neighbouring points the figure can move a little either way, from rounding.
-- **Show the data as a table** lists every point, with what each marked one is.
-- **Pension allowances** holds what the chart needs beyond your pay: unused annual allowance from earlier years (carry forward, as on your pension statements; it is taken as entered), whether the money purchase annual allowance applies to you, and whether to check the childcare support income limits. None of these changes your take-home.
-
-The chart is worked out for the whole year: when in the year you pay in (before or after a bonus, say) is not modelled. See the assumptions on the page for everything it leaves out.
+Once you enter your pay, the chart below the split bar shows what you would have to spend at each candidate pension contribution, with cards below it for the cost of a pound more, the thresholds in words, the warnings and a comparison with your contribution now. See [Pension contributions and the optimiser](help:pension-optimiser) for how to read them.
 
 ## Annual figures, not payslips
 

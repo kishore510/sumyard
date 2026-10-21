@@ -165,6 +165,19 @@ const CHART_ASSUMPTIONS = [
   'Contribution chart: each point changes only your own contribution, by the method chosen, from nothing up to the most the engine models; the sweep is in amounts, so a contribution entered as a percentage shows as its amount, with its share of pensionable pay beside the marked points.',
 ]
 
+/** How the page reads the sweep (1b-ii-b). No figures. */
+const READING_ASSUMPTIONS = [
+  'Contribution chart: the page’s Year / Month choice drives the chart, its table and the cards below; a month is each year’s figure divided by the months in a year, to the nearest penny, assuming level pay all year, and the sweep steps by a round amount a month.',
+  'Contribution chart: by default it shows a range around your contribution now and the thresholds ahead of it, with a margin either side; Full range shows every point. Warnings are listed for every point, whatever the range shown.',
+  'Change vs now: each point’s figure for the period less the figure at your contribution now, each rounded first.',
+  'Cost of more pension: the engine’s net cost per pound (against no contribution) and marginal rate (since the previous point), as pence of a pound to the nearest penny.',
+  'Thresholds in words are measured from your contribution now; in the month view the extra a month is rounded up to the penny, so that much a month is enough. Each limit is a year’s figure, as adjusted net income and threshold income are.',
+  'The contribution you look at is your contribution now until you choose another; it is not saved.',
+]
+
+/** What the optimiser leaves out, gathered from optimise()'s assumptions and the chart's own. */
+const NOT_MODELLED = /not modelled|not checked|not valued/i
+
 /** The engine lists the taper rounding with its results; without results the page says it. */
 const TAPER_ASSUMPTION = 'Personal allowance taper: the reduction is worked out exactly, with nothing rounded until the result.'
 
@@ -245,10 +258,20 @@ export default function OptimiserPage() {
             ...(result?.ok ? result.assumptions : [TAPER_ASSUMPTION]),
             ...payeAssumptions(inputs, result),
             ...PAGE_ASSUMPTIONS,
-            ...(ok && sweep?.ok ? [...sweep.assumptions, ...CHART_ASSUMPTIONS] : []),
+            ...(ok && sweep?.ok ? [...sweep.assumptions, ...CHART_ASSUMPTIONS, ...READING_ASSUMPTIONS] : []),
           ]),
         ]}
       >
+        {ok && sweep?.ok && (
+          <div data-not-modelled className="flex flex-col gap-1.5">
+            <h3 className="font-semibold">Not modelled by the optimiser</h3>
+            <ul className="flex list-disc flex-col gap-1.5 pl-5">
+              {[...new Set([...sweep.assumptions, ...CHART_ASSUMPTIONS].filter((line) => NOT_MODELLED.test(line)))].map((line) => (
+                <li key={line}>{line}</li>
+              ))}
+            </ul>
+          </div>
+        )}
         <p className="text-text-muted">Illustrative only, not financial advice. {DISCLAIMER}</p>
       </AssumptionsPanel>
     </div>
