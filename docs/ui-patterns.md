@@ -63,3 +63,20 @@ A chart of candidates opens on the range around the current value and the thresh
 ### U12. One chosen point
 
 A select of the points shown picks one point (the current value until another is chosen; never stored). It is read out above the chart, highlighted on the line and in the table, and is what the cards below measure; the table's "Change vs now" column compares every point with now. No point is called the best.
+
+## 2b: the compound interest page
+
+Patterns from part 2b. Not owner decisions; change them with a note here.
+
+### U13. One view for the page
+
+A page with nominal and real figures has one Nominal / Today's money choice (in the phone bar and above the headline, the same state). It drives the headline, the rows, the chart and the table. It is never stored. Figures that have no view (rates) say what they are.
+
+### U14. A long table below the columns
+
+A table with a row per year goes below the two columns at full width, not in the sticky results column. It scrolls sideways in its own focusable region named by its heading, with the first column sticky, and a totals row that is the engine's totals. The shared Chart's data table also scrolls in a focusable region (0.16.0).
+
+### U15. A calculator that uses no tax rules
+
+It sets `taxRules: 'none'` in the registry. Its page shows `NoTaxRulesBadge` ("Uses no tax rules") where the VerifiedBadge would be, and nowhere mentions a tax year. Its scenarios carry no tax year, and the scenario list, the import preview and compare say "Uses no tax rules" instead.
+

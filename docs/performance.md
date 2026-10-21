@@ -87,3 +87,26 @@ Not checked: 768 px, a real phone, Safari, Firefox, a screen reader, the deploye
 ## Browser checks, part 1b-ii-b, 21 October 2026
 
 The same scratch Playwright and axe-core 4.10 setup against `vite preview`, on the take-home page at 360 and 1280 px in light and dark (system colour scheme), filled (salary, a contribution, two children, the childcare check on) in four states: as loaded, Month, Full range, and a chosen contribution with the cards below the chart. 16 runs. axe (WCAG 2.0/2.1 A and AA, best practice) found no violations; no horizontal page scroll; no external requests; no console errors; every visible control in the chart section at least 44 px tall (Segmented's visually hidden radios aside; their labels are the targets). Fix that came out of it: the zoomed chart at 360 px had one x tick; the shared `Chart` now asks for more until at least two round ticks fall inside the range (`ticksWithin`). Lighthouse not re-run.
+
+## Browser checks (slice 2, part 2b, 0.16.0)
+
+The same scratch Playwright (1.56) and axe-core 4.10 setup against `vite preview`, on the compound interest page at 360, 768, 1024 and 1280 px in light and dark (system theme). Five states each: empty; filled (every section set, assumptions and the chart's table open); today's money; the too-large refusal; an invalid input. Then, at 360 and 1280 in both themes, two scenarios saved and the list open, and compare. Also 200% text at 360 px in both themes. 290 checks passed and none failed. axe (WCAG 2.0/2.1 A and AA, best practice) found no violations, with no horizontal page scroll, no external requests, no console errors, and every visible control at least 44 px tall. Saved scenarios have no `taxYear`, and compare shows the brief's rows and no tax year. At 360 px the yearly table is 458 px wide in a 326 px region; after scrolling it 150 px, the year column stays at the region's left edge.
+
+Fixes that came out of it (first run, 10 failures, all at 360 px):
+- The shared Chart's data table scrolled in a region that could not be focused (axe scrollable-region-focusable). It is now a focusable section named by the chart's title.
+- The phone bar and the headline card were both regions named "Final balance" (landmark-unique). The card is now titled by the years.
+
+Compute time for a 100-year projection with weekly contributions and daily compounding (the slowest case: 5,200 steps, with and without the fee), from the input event to the rendered page with all 100 rows: 27 to 33 ms in headless Chromium on this machine (six runs). The engine alone takes about 30 ms in Node. Bundle (gzip): the compound interest page about 4 KB. The definition and engine are in the main script, which is about 122 KB.
+
+Not checked: a real phone, Safari, Firefox, a screen reader, the deployed site.
+
+## Lighthouse (mobile), 0.16.0, 21 October 2026
+
+Lighthouse 12.8.2, mobile form factor, headless Chromium 1194, against `vite preview` on this machine, `#/c/compound-interest` with its default inputs.
+
+| Page | Performance | Accessibility | Best practices | SEO | FCP | LCP | TBT | CLS |
+|---|---|---|---|---|---|---|---|---|
+| Compound interest | 97 | 100 | 100 | 91 | 2.0 s | 2.2 s | 10 ms | 0 |
+
+SEO's one failure is robots.txt, as before (`vite preview` answers it with the app's HTML).
+

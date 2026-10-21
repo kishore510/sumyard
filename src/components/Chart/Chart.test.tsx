@@ -64,6 +64,16 @@ describe('Chart', () => {
     expect(view.host.querySelector('details summary')!.textContent).toMatch(/Show the data as a table/)
   })
 
+  it('the table scrolls sideways in a keyboard-focusable region named by the chart title (axe scrollable-region-focusable)', () => {
+    view = mount(<Chart {...props} />)
+    const region = view.host.querySelector('details table')!.parentElement!
+    expect(region.className).toContain('overflow-x-auto')
+    expect(region.getAttribute('tabindex')).toBe('0')
+    expect(region.tagName).toBe('SECTION')
+    const name = view.host.querySelector(`#${region.getAttribute('aria-labelledby')}`)?.textContent
+    expect(name).toBe(props.title)
+  })
+
   it('says when there is nothing to show', () => {
     view = mount(<Chart {...props} categories={[]} series={[]} references={[]} />)
     expect(view.host.querySelector('svg[role="img"]')).toBeNull()

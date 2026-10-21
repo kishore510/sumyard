@@ -56,6 +56,39 @@ export const echo: CalculatorDefinition<{ text: string }> = defineCalculator<{ t
   summarise: (inputs) => ({ inputs: [{ label: 'Text', value: { kind: 'text', text: inputs.text } }], results: { ok: true, rows: [] } }),
 })
 
+/** A calculator that uses no tax rules: its scenarios carry no tax year. */
+export const plain: CalculatorDefinition<{ amount: number }> = defineCalculator<{ amount: number }>({
+  id: 'plain',
+  name: 'Plain',
+  summary: 'Uses no tax rules (test only).',
+  taxRules: 'none',
+  inputsVersion: 1,
+  defaultInputs: () => ({ amount: 0 }),
+  validateInputs: (raw) =>
+    isRecord(raw) && typeof raw.amount === 'number' && Number.isSafeInteger(raw.amount) && raw.amount >= 0
+      ? { ok: true, inputs: { amount: raw.amount } }
+      : { ok: false, errors: ['amount must be a whole number from 0.'] },
+  migrateInputs: (from) => {
+    throw new Error(`no migration from version ${from}`)
+  },
+  summarise: (inputs) => ({
+    inputs: [{ label: 'Amount', value: { kind: 'count', count: inputs.amount } }],
+    results: { ok: true, rows: [] },
+  }),
+})
+
+/** A valid plain scenario (no tax year), with fields overridden by `patch`. */
+export const plainScenario = (patch: Partial<Scenario> = {}): Scenario => ({
+  id: 'p1',
+  calculatorId: 'plain',
+  name: 'My plain',
+  inputs: { amount: 5 },
+  inputsVersion: 1,
+  createdAt: '2026-10-17T10:00:00.000Z',
+  updatedAt: '2026-10-17T11:00:00.000Z',
+  ...patch,
+})
+
 /** A valid tally scenario (made-up values), with fields overridden by `patch`. */
 export const sampleScenario = (patch: Partial<Scenario> = {}): Scenario => ({
   id: 'a1b2c3',

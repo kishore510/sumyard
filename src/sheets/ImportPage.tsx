@@ -2,6 +2,7 @@ import { Download, Upload } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { CALCULATORS } from '@/calculators/index'
 import { Segmented } from '@/components/inputs/Segmented'
+import { NO_TAX_RULES } from '@/components/NoTaxRulesBadge'
 import { EmptyState, InlineNotice } from '@/components/states'
 import { Button } from '@/components/ui/button'
 import { getTaxYear, taxYearLabel } from '@/config/tax/index'
@@ -52,8 +53,10 @@ function ScenarioNames({ scenarios }: { scenarios: readonly Scenario[] }) {
         <li key={s.id} className="flex flex-col">
           <span className="font-medium break-words">{s.name}</span>
           <span className="text-xs text-text-muted">
-            {CALCULATORS.get(s.calculatorId)?.name} · {taxYearLabel(s.taxYear)} tax year
-            {getTaxYear(s.taxYear) ? '' : ' (not in this version: it will open with a warning)'}
+            {CALCULATORS.get(s.calculatorId)?.name} ·{' '}
+            {s.taxYear === undefined
+              ? NO_TAX_RULES
+              : `${taxYearLabel(s.taxYear)} tax year${getTaxYear(s.taxYear) ? '' : ' (not in this version: it will open with a warning)'}`}
           </span>
         </li>
       ))}

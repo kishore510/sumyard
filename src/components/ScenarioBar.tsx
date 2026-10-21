@@ -1,7 +1,7 @@
 import { ChevronDown, Columns3, Download, FilePlus2, Save, Upload } from 'lucide-react'
 import { useId, useRef, useState } from 'react'
 import type { CalculatorDefinition } from '@/calculators/registry'
-import { type CalculatorSession, hasUnsavedChanges } from '@/calculators/session'
+import { type CalculatorSession, hasUnsavedChanges, scenarioTaxYear } from '@/calculators/session'
 import { useStore } from '@/lib/store'
 import { formatPage } from '@/pages/route'
 import { exportScenarios, quote, reportSaved, startImport } from '@/scenarios/actions'
@@ -79,7 +79,8 @@ export function ScenarioBar<I>({ calculator, session }: { calculator: Calculator
   const all = useStore(scenarioStore, (s) => s.scenarios)
   const mine = scenariosFor({ scenarios: all }, calculator.id)
   const loaded = mine.find((s) => s.id === state.loadedId)
-  const unsaved = hasUnsavedChanges(state, loaded)
+  const taxYear = scenarioTaxYear(calculator, state)
+  const unsaved = hasUnsavedChanges({ taxYear, inputs: state.inputs }, loaded)
   const invalid = state.invalid.length > 0
   const [naming, setNaming] = useState<'new' | 'copy' | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
@@ -87,7 +88,7 @@ export function ScenarioBar<I>({ calculator, session }: { calculator: Calculator
   const listId = useId()
 
   const create = (name: string): string | null => {
-    const result = scenarioStore.create({ calculatorId: calculator.id, taxYear: state.taxYear, name, inputs: state.inputs })
+    const result = scenarioStore.create({ calculatorId: calculator.id, taxYear, name, inputs: state.inputs })
     if (!result.ok) return result.error
     session.linkSaved(result.scenario.id, result.scenario.taxYear)
     setNaming(null)
@@ -97,9 +98,9 @@ export function ScenarioBar<I>({ calculator, session }: { calculator: Calculator
 
   const saveChanges = () => {
     if (!loaded) return setNaming('new')
-    const result = scenarioStore.update(loaded.id, { taxYear: state.taxYear, inputs: state.inputs })
+    const result = scenarioStore.update(loaded.id, { taxYear, inputs: state.inputs })
     if (!result.ok) return toasts.show({ message: result.error })
-    session.linkSaved(loaded.id, state.taxYear)
+    session.linkSaved(loaded.id, taxYear)
     reportSaved(result.saved, `Saved changes to ${quote(loaded.name)}.`)
   }
 

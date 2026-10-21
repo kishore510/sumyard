@@ -1,0 +1,175 @@
+{
+  "about": "Cross-check cases for the compound interest calculator (src/calculators/compound-interest). The inputs are seeded here as the page stores them (amounts as pounds strings, rates as percentage text), with no contribution increase and no inflation, so a spreadsheet's FV function can reproduce them. Expected results are null until the owner fills them from an independent source. Never fill them from Sumyard's own engine or from memory. crossChecks.test.ts shows an unfilled case as a todo and compares a filled one with the engine.",
+  "howToFill": "For a case, enter the final balance after the years given, with the fee, in nominal pounds as a string (\"12345.67\"), from a spreadsheet FV formula or a reputable online calculator. For a spreadsheet: the rate per period is the equivalent effective rate per contribution period, (1 + growth/m)^(m/p) - 1, and with a fee multiply each period's factor by (1 - fee/m)^(m/p), where m is the compounding periods a year and p the contribution periods (weekly 52, monthly 12, quarterly 4, annual 1, daily 365; docs/modelling-decisions-compound.md, C2, C4, C7); the type is 1 for start of period and 0 for end; the lump sum is the present value. Add source (the spreadsheet and formula, or the calculator's page) and checkedOn (YYYY-MM-DD); both are required once a value is filled. tolerancePence is the largest difference accepted; change it only with a note in docs/worked-examples.md.",
+  "tolerancePence": 1,
+  "cases": [
+    {
+      "id": "monthly-end-no-fee",
+      "description": "Monthly contributions at the end of each month, monthly compounding, no fee",
+      "inputs": {
+        "lumpSum": "1000.00",
+        "contribution": "100.00",
+        "contributionFrequency": "monthly",
+        "timing": "end",
+        "years": 10,
+        "growthRate": "5",
+        "compounding": "monthly",
+        "feeRate": "0",
+        "contributionIncrease": "0",
+        "inflationRate": "0"
+      },
+      "expected": {
+        "finalBalance": null
+      },
+      "source": null,
+      "checkedOn": null
+    },
+    {
+      "id": "monthly-start-fee",
+      "description": "Monthly contributions at the start of each month, monthly compounding, with a fee",
+      "inputs": {
+        "lumpSum": "1000.00",
+        "contribution": "100.00",
+        "contributionFrequency": "monthly",
+        "timing": "start",
+        "years": 10,
+        "growthRate": "5",
+        "compounding": "monthly",
+        "feeRate": "1",
+        "contributionIncrease": "0",
+        "inflationRate": "0"
+      },
+      "expected": {
+        "finalBalance": null
+      },
+      "source": null,
+      "checkedOn": null
+    },
+    {
+      "id": "weekly-end-no-fee",
+      "description": "Weekly contributions at the end of each week, weekly compounding, no fee",
+      "inputs": {
+        "lumpSum": "0.00",
+        "contribution": "25.00",
+        "contributionFrequency": "weekly",
+        "timing": "end",
+        "years": 5,
+        "growthRate": "4",
+        "compounding": "weekly",
+        "feeRate": "0",
+        "contributionIncrease": "0",
+        "inflationRate": "0"
+      },
+      "expected": {
+        "finalBalance": null
+      },
+      "source": null,
+      "checkedOn": null
+    },
+    {
+      "id": "weekly-start-fee",
+      "description": "Weekly contributions at the start of each week, weekly compounding, with a fee",
+      "inputs": {
+        "lumpSum": "0.00",
+        "contribution": "25.00",
+        "contributionFrequency": "weekly",
+        "timing": "start",
+        "years": 5,
+        "growthRate": "4",
+        "compounding": "weekly",
+        "feeRate": "0.5",
+        "contributionIncrease": "0",
+        "inflationRate": "0"
+      },
+      "expected": {
+        "finalBalance": null
+      },
+      "source": null,
+      "checkedOn": null
+    },
+    {
+      "id": "annual-end-no-fee",
+      "description": "Annual contributions at the end of each year, annual compounding, no fee",
+      "inputs": {
+        "lumpSum": "10000.00",
+        "contribution": "1200.00",
+        "contributionFrequency": "annual",
+        "timing": "end",
+        "years": 20,
+        "growthRate": "6",
+        "compounding": "annual",
+        "feeRate": "0",
+        "contributionIncrease": "0",
+        "inflationRate": "0"
+      },
+      "expected": {
+        "finalBalance": null
+      },
+      "source": null,
+      "checkedOn": null
+    },
+    {
+      "id": "annual-start-fee",
+      "description": "Annual contributions at the start of each year, annual compounding, with a fee",
+      "inputs": {
+        "lumpSum": "10000.00",
+        "contribution": "1200.00",
+        "contributionFrequency": "annual",
+        "timing": "start",
+        "years": 20,
+        "growthRate": "6",
+        "compounding": "annual",
+        "feeRate": "0.75",
+        "contributionIncrease": "0",
+        "inflationRate": "0"
+      },
+      "expected": {
+        "finalBalance": null
+      },
+      "source": null,
+      "checkedOn": null
+    },
+    {
+      "id": "monthly-end-annual-compounding",
+      "description": "Monthly contributions at the end of each month, annual compounding (the equivalent monthly rate), no fee",
+      "inputs": {
+        "lumpSum": "0.00",
+        "contribution": "200.00",
+        "contributionFrequency": "monthly",
+        "timing": "end",
+        "years": 15,
+        "growthRate": "6",
+        "compounding": "annual",
+        "feeRate": "0",
+        "contributionIncrease": "0",
+        "inflationRate": "0"
+      },
+      "expected": {
+        "finalBalance": null
+      },
+      "source": null,
+      "checkedOn": null
+    },
+    {
+      "id": "weekly-start-monthly-compounding-fee",
+      "description": "Weekly contributions at the start of each week, monthly compounding (the equivalent weekly rate), with a fee",
+      "inputs": {
+        "lumpSum": "500.00",
+        "contribution": "20.00",
+        "contributionFrequency": "weekly",
+        "timing": "start",
+        "years": 8,
+        "growthRate": "5",
+        "compounding": "monthly",
+        "feeRate": "0.25",
+        "contributionIncrease": "0",
+        "inflationRate": "0"
+      },
+      "expected": {
+        "finalBalance": null
+      },
+      "source": null,
+      "checkedOn": null
+    }
+  ]
+}

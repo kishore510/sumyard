@@ -566,3 +566,12 @@ Moved verbatim from `PHASE-BRIEF.md` on 21 October 2026, replaced by slice 2a's.
 - Differs from the brief: the chosen point is a select of the points shown (no tapping the chart); thresholds are measured from now, not the chosen point; Chart's `rowNotes` became generic `columns`.
 - Not verified: 768 px, a real phone, Safari, Firefox, a screen reader, the deployed site.
 - Next: slice 2 (compound interest), brief first.
+
+## Archive: last-session entry, part 2a
+
+Moved verbatim from `PHASE-BRIEF.md` on 21 October 2026, replaced by part 2b's.
+
+- 21 October 2026, part 2a (0.15.0, PR #19, internal): the compound interest engine (`src/calculators/compound-interest/`): effective and equivalent period rates, yearly rows with and without the fee, nominal and real (Fisher), fee drag, typed refusals; `FinePence` / `Factor` fixed point in `money.ts`; decisions C1 to C9 (`docs/modelling-decisions-compound.md`); published examples GB-1, GB-2 (Green Book Table 8); 300-case closed-form reference; mutation spot-checks all caught.
+- Differs from the brief: C9 added (fixed point, not `ExactPence`: C2's equivalent rate can be irrational); the literal guard's scanner moved to `src/calculators/fixtures/literalGuard.ts`, shared with the optimiser; no MoneyHelper example (network policy refused it), so the closed-form reference carries the annuity checks.
+- Not verified: any external calculator's figures for regular contributions; the deployed site; no UI to check in a browser.
+- Next: 2b (the page), its brief first.

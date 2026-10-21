@@ -39,15 +39,33 @@ describe('buildTopics', () => {
 })
 
 describe('content/help', () => {
-  it('has Quick start first, then the take-home topic (1b-i) and the optimiser topic (1b-ii-b), then the slice 0 topics', () => {
+  it('has Quick start first, then the take-home topic (1b-i), the optimiser topic (1b-ii-b) and compound interest (2b), then the slice 0 topics', () => {
     expect(HELP_TOPICS.map((t) => t.id)).toEqual([
       'quick-start',
       'take-home-pay',
       'pension-optimiser',
+      'compound-interest',
       'scenarios-and-saving',
       'tax-data-and-last-verified',
       'troubleshooting',
     ])
+  })
+
+  it('the compound interest topic covers the conventions, both views, fee drag, the table and chart, and what is not modelled', () => {
+    const text = JSON.stringify(topicById('compound-interest')!.blocks)
+    for (const word of [
+      /nominal/i,
+      /effective annual rate/i,
+      /after .*growth/i,
+      /start/i,
+      /today.s money/i,
+      /fee drag/i,
+      /yearly table/i,
+      /not a forecast/i,
+      /uses no tax rules/i,
+      /not modelled/i,
+    ])
+      expect(text).toMatch(word)
   })
 
   it('the take-home topic covers the payslip caveat, flex cash, benefits and deductions, and links to the optimiser topic', () => {

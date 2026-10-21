@@ -28,3 +28,5 @@ Moved verbatim from `PLAN.md` on 21 October 2026. New ideas go here.
 - Show the source page's title next to "Source: GOV.UK" on Tax data, so identical link texts are told apart by sight (they differ only in their accessible names today).
 - Optimiser: choose the contribution to look at by tapping the chart or a table row (today a select of the points shown), and measure thresholds from the chosen contribution as well as from now.
 - Compound interest: flat fees and charges on contributions; tax wrappers (ISA, pension) on the projection; sequence-of-returns or Monte Carlo ranges instead of a steady rate (all out of scope for slice 2).
+- Compound interest: on a laptop the results column (headline, fee, rates, chart) is taller than the screen and scrolls on its own; consider moving the chart below the columns with the yearly table.
+- Chart: only three series styles (solid, dashed, dotted); a fourth series would reuse one. The compound interest chart uses all three, with the danger colour for "Paid in".

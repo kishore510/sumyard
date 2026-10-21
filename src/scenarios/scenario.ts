@@ -11,8 +11,11 @@ import { canonicalJson, cleanText, isRecord } from '@/lib/validate'
 export interface Scenario {
   readonly id: string
   readonly calculatorId: string
-  /** The tax year it was saved against ("2026-27"). May be one this version doesn't have: the page then warns. */
-  readonly taxYear: string
+  /**
+   * The tax year it was saved against ("2026-27"). May be one this version doesn't have: the page then warns.
+   * Absent, and only absent, for a calculator that uses no tax rules (`taxRules: 'none'`).
+   */
+  readonly taxYear?: string
   readonly name: string
   /** Validated by the calculator (registry), at inputsVersion. */
   readonly inputs: unknown
@@ -84,7 +87,9 @@ export function readScenario(raw: unknown, registry: CalculatorRegistry): ReadSc
   if (!isScenarioId(raw.id)) return failed('has no valid id')
   if (typeof raw.calculatorId !== 'string' || !raw.calculatorId) return failed('doesn’t say which calculator it is for')
   if (!isCalculatorId(raw.calculatorId) || !registry.get(raw.calculatorId)) return failed(unknownCalculator(raw.calculatorId))
-  if (!isTaxYearText(raw.taxYear)) return failed('has no valid tax year')
+  const noTaxRules = registry.get(raw.calculatorId)!.taxRules === 'none'
+  if (noTaxRules ? raw.taxYear !== undefined : !isTaxYearText(raw.taxYear))
+    return failed(noTaxRules ? 'has a tax year, but its calculator uses no tax rules' : 'has no valid tax year')
   if (!nameCheck.ok) return failed(`has no valid name (${nameCheck.error.replace(/\.$/, '').toLowerCase()})`)
   if (!isTimestamp(raw.createdAt) || !isTimestamp(raw.updatedAt)) return failed('has no valid saved date')
   let inputsText: string | undefined
@@ -103,7 +108,7 @@ export function readScenario(raw: unknown, registry: CalculatorRegistry): ReadSc
     scenario: {
       id: raw.id,
       calculatorId: raw.calculatorId,
-      taxYear: raw.taxYear,
+      ...(noTaxRules ? {} : { taxYear: raw.taxYear as string }),
       name: nameCheck.value,
       inputs: inputs.inputs,
       inputsVersion: definition.inputsVersion,

@@ -4,6 +4,16 @@ All notable changes to Sumyard are listed here, newest first. The format follows
 
 ## [Unreleased]
 
+## [0.16.0] - 2026-10-21
+
+### Added
+- **Compound interest calculator.** See how a lump sum and regular contributions (weekly, monthly, quarterly or yearly, at the start or end of each period) could grow at a steady rate. Choose how often growth is compounded, add an annual fee as a percentage of the balance, let your contributions rise each year, and set inflation. You get the final balance, what you paid in, the growth and the fees. **What the fee costs** shows the balance with and without the fee (fee drag). The rates show the effective annual rate before fees, after fees and after inflation. A chart by year has a table of every value, and a year-by-year table adds up to the final balance. A switch shows everything in pounds of the day or in today's money. It is an illustration, not a forecast: returns are assumed steady. It uses no tax rules, so it shows "Uses no tax rules" where other pages show a tax year.
+- Scenarios, export, import and compare work for it, with the final balance (both ways), paid in, growth, fees, fee drag and the effective annual rate side by side.
+- A Help topic, **Compound interest**.
+
+### Fixed
+- A chart's "Show the data as a table" can now be scrolled sideways with the keyboard when it is wider than the screen.
+
 ## [0.15.0] - 2026-10-21
 
 ### Added

@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { echo, sampleScenario as sample, tally } from '@/calculators/fixtures/fakeCalculators'
+import { echo, plain, plainScenario, sampleScenario as sample, tally } from '@/calculators/fixtures/fakeCalculators'
 import { createCalculatorRegistry } from '@/calculators/registry'
 import { cleanName, isScenarioId, isTaxYearText, isTimestamp, readScenario, SCENARIO_LIMITS, sameContent } from './scenario'
 
-const registry = createCalculatorRegistry([tally, echo])
+const registry = createCalculatorRegistry([tally, echo, plain])
 
 describe('field checks', () => {
   it('ids are short and plain', () => {
@@ -87,5 +87,31 @@ describe('sameContent', () => {
     expect(sameContent(a, sample({ name: 'Other' }))).toBe(false)
     expect(sameContent(a, sample({ taxYear: '2027-28' }))).toBe(false)
     expect(sameContent(a, sample({ inputs: { count: 4, label: 'x' } }))).toBe(false)
+  })
+})
+
+describe('a calculator that uses no tax rules (taxRules: none)', () => {
+  it('reads its scenario with no tax year, building a fresh one without the key', () => {
+    const result = readScenario({ ...plainScenario(), extra: 'dropped' }, registry)
+    expect(result).toEqual({ ok: true, scenario: plainScenario(), migrated: false })
+    expect(result.ok && Object.hasOwn(result.scenario, 'taxYear')).toBe(false)
+  })
+
+  it('refuses its scenario with a tax year, null or otherwise', () => {
+    for (const taxYear of ['2026-27', null, '']) {
+      const result = readScenario({ ...plainScenario(), taxYear }, registry)
+      expect(result.ok, String(taxYear)).toBe(false)
+      expect(!result.ok && result.message).toMatch(/uses no tax rules/)
+    }
+  })
+
+  it('still refuses a tax calculator’s scenario with no tax year', () => {
+    const { taxYear: _drop, ...raw } = sample()
+    expect(readScenario(raw, registry)).toMatchObject({ ok: false, message: 'has no valid tax year' })
+  })
+
+  it('sameContent treats two such scenarios alike', () => {
+    expect(sameContent(plainScenario(), plainScenario({ id: 'p2' }))).toBe(true)
+    expect(sameContent(plainScenario(), plainScenario({ inputs: { amount: 6 } }))).toBe(false)
   })
 })

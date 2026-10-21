@@ -132,7 +132,7 @@ No GOV.UK HTML page read gives a worked PAYE deduction for a month; the tables t
 
 ## Compound growth and deflation (slice 2a)
 
-Read on 21 October 2026. No GOV.UK page read gives a worked example of savings with regular contributions. MoneyHelper's savings pages and university maths resources were refused by this environment's network policy, and commercial calculators are not authoritative, so the annuity formulas are checked against the independent closed-form reference instead (`src/calculators/compound-interest/fixtures/reference.ts`, 300 seeded cases; `docs/money.md`, "Compound interest (slice 2a)"). The Green Book's discounting table is a published worked example of compound growth, deflation and discounting, and is mirrored.
+Read on 21 October 2026. No GOV.UK page read gives a worked example of savings with regular contributions. MoneyHelper's savings pages and university maths resources were refused by this environment's network policy, and commercial calculators are not authoritative, so the annuity formulas are checked against the independent closed-form reference instead (`src/calculators/compound-interest/fixtures/reference.ts`, 300 seeded cases; `docs/money.md`, "Compound interest (slice 2a)"). The Green Book's discounting table is a published worked example of compound growth, deflation and discounting, and is mirrored. Slice 2b adds `docs/compound-cross-checks.json`: eight seeded cases (weekly, monthly and annual; start and end; with and without a fee) for the owner to fill from a spreadsheet FV formula or a reputable calculator, with the source and date; until then they run as todo tests (`crossChecks.test.ts`).
 
 | Id | Year | Inputs | Published result | Source | Mirrored |
 |---|---|---|---|---|---|

@@ -27,10 +27,26 @@ export interface SummaryRow {
   readonly value: RowValue
 }
 
-/** A scenario's inputs and results as rows, for compare. Results are a refusal while tax values they need are unverified. */
+/**
+ * Inputs a calculator's engine refuses to work out (outside what it models, or a result too large to hold), each by
+ * field: its label and why, in words with no figures. The non-tax counterpart of a tax Refusal.
+ */
+export interface InputRefusal {
+  readonly ok: false
+  readonly kind: 'inputs'
+  readonly problems: readonly { readonly field: string; readonly label: string; readonly message: string }[]
+}
+
+/** True for an input refusal, false for a tax Refusal. */
+export const isInputRefusal = (refusal: Refusal | InputRefusal): refusal is InputRefusal => 'kind' in refusal
+
+/**
+ * A scenario's inputs and results as rows, for compare. Results are a refusal while tax values they need are
+ * unverified, or an input refusal when the engine refuses the inputs.
+ */
 export interface Summary {
   readonly inputs: readonly SummaryRow[]
-  readonly results: { readonly ok: true; readonly rows: readonly SummaryRow[] } | Refusal
+  readonly results: { readonly ok: true; readonly rows: readonly SummaryRow[] } | Refusal | InputRefusal
 }
 
 export interface CalculatorDefinition<I = unknown> {
@@ -39,6 +55,12 @@ export interface CalculatorDefinition<I = unknown> {
   readonly name: string
   /** One line for the home page. */
   readonly summary: string
+  /**
+   * 'none' for a calculator that reads no tax config: its scenarios carry no
+   * tax year, its page shows "Uses no tax rules" in place of the verified
+   * badge, and `summarise` ignores the config it is given. Omitted for a tax calculator.
+   */
+  readonly taxRules?: 'none'
   /** Set on a placeholder, with what to tell people about it. */
   readonly placeholder?: string
   /** Version of the inputs shape. Bump it, and handle the old one in migrateInputs, when the shape changes. */
@@ -73,6 +95,8 @@ export function createCalculatorRegistry(definitions: readonly CalculatorDefinit
   for (const definition of definitions) {
     if (!isCalculatorId(definition.id)) throw new Error(`Calculator id ${JSON.stringify(definition.id)} must be lower-case kebab-case`)
     if (byId.has(definition.id)) throw new Error(`Calculator ${definition.id} is registered twice`)
+    if (definition.taxRules !== undefined && definition.taxRules !== 'none')
+      throw new Error(`Calculator ${definition.id}: its tax rules must be 'none' or left out`)
     if (!isVersion(definition.inputsVersion))
       throw new Error(`Calculator ${definition.id}: its inputs version must be a whole number from 1`)
     if (!definition.validateInputs(definition.defaultInputs()).ok)

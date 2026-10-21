@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { echo, sampleScenario as sample, tally } from '@/calculators/fixtures/fakeCalculators'
+import { echo, plain, sampleScenario as sample, tally } from '@/calculators/fixtures/fakeCalculators'
 import { createCalculatorRegistry } from '@/calculators/registry'
 import { STORAGE_KEYS } from '@/lib/storageKeys'
 import { SCENARIO_LIMITS } from './scenario'
-import { createScenarioStore, parseStoredScenarios, SCENARIOS_KEY, scenariosFor } from './store'
+import { createScenarioStore, parseStoredScenarios, SCENARIOS_KEY, scenariosFor, serializeScenarios } from './store'
 
-const registry = createCalculatorRegistry([tally, echo])
+const registry = createCalculatorRegistry([tally, echo, plain])
 
 function memory(initial: Record<string, string> = {}) {
   const data = new Map(Object.entries(initial))
@@ -280,5 +280,38 @@ describe('reading the stored record', () => {
     storage.data.set(SCENARIOS_KEY, record([sample()]))
     store.reload()
     expect(store.get().scenarios).toHaveLength(1)
+  })
+})
+
+describe('a calculator that uses no tax rules', () => {
+  const plainDraft = { calculatorId: 'plain', name: 'Plain A', inputs: { amount: 2 } }
+
+  it('saves and updates its scenarios with no tax year key', () => {
+    const { storage, store } = setup()
+    const created = store.create(plainDraft)
+    expect(created).toMatchObject({ ok: true })
+    expect(Object.hasOwn(stored(storage).scenarios[0], 'taxYear')).toBe(false)
+    const id = created.ok ? created.scenario.id : ''
+    expect(store.update(id, { inputs: { amount: 3 } })).toMatchObject({ ok: true, scenario: { inputs: { amount: 3 } } })
+    expect(Object.hasOwn(stored(storage).scenarios[0], 'taxYear')).toBe(false)
+  })
+
+  it('refuses a tax year for it, and still requires one for a tax calculator', () => {
+    const { store } = setup()
+    expect(store.create({ ...plainDraft, taxYear: '2026-27' })).toMatchObject({ ok: false })
+    expect(store.create({ calculatorId: 'tally', name: 'No year', inputs: { count: 2, label: '' } })).toEqual({
+      ok: false,
+      error: 'Choose a tax year.',
+    })
+  })
+
+  it('leaves existing tax-year scenarios exactly as stored', () => {
+    const text = JSON.stringify({
+      schemaVersion: 1,
+      scenarios: [sample(), sample({ id: 'b2', calculatorId: 'echo', inputsVersion: 1, inputs: { text: 'x' } })],
+    })
+    const parsed = parseStoredScenarios(text, registry)
+    expect(parsed.preserved).toEqual([])
+    expect(serializeScenarios(parsed)).toBe(text)
   })
 })

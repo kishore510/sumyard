@@ -28,6 +28,11 @@ describe('createCalculatorRegistry', () => {
     )
   })
 
+  it('accepts taxRules none and refuses any other value', () => {
+    expect(() => createCalculatorRegistry([{ ...echo, taxRules: 'none' }])).not.toThrow()
+    expect(() => createCalculatorRegistry([{ ...echo, taxRules: 'some' as 'none' }])).toThrow(/tax rules/)
+  })
+
   it('defineCalculator returns the definition as given', () => {
     expect(defineCalculator(echo)).toBe(echo)
   })
@@ -75,8 +80,8 @@ describe('readInputs', () => {
 })
 
 describe('the app registry', () => {
-  it('has the optimiser, the first real calculator; the Hello placeholder is gone (removed in 1b-i)', () => {
-    expect(CALCULATORS.list().map((c) => c.id)).toEqual(['optimiser'])
+  it('has the optimiser and compound interest (2b); the Hello placeholder is gone (removed in 1b-i)', () => {
+    expect(CALCULATORS.list().map((c) => c.id)).toEqual(['optimiser', 'compound-interest'])
     expect(CALCULATORS.get('optimiser')?.placeholder).toBeUndefined()
     expect(CALCULATORS.get('hello')).toBeUndefined()
   })
