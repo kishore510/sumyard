@@ -2,7 +2,7 @@ import { add, compare, fromPounds, type Money, max, min, mulRound, subtract, toP
 import { ZOOM_MARGIN } from '@/lib/sweep'
 import { type BreakdownPeriod, perPeriod } from './breakdown'
 import type { ChartView } from './chartData'
-import type { Cliff, OptimiseResult, OptimiserPoint } from './types'
+import type { Cliff, OptimiseResult, OptimiserPoint, PensionMethod, ThresholdContribution, ThresholdId } from './types'
 
 /*
  * Reading optimise()'s result on the take-home page (part 1b-ii-b): the
@@ -98,4 +98,76 @@ export function costOfMore(points: readonly OptimiserPoint[], point: OptimiserPo
     sinceNothing: point.netCostPerPound === null ? null : mulRound(ONE_POUND, point.netCostPerPound, 'nearest'),
     sincePrevious: kept === null || previous === null ? null : { from: previous.contribution, kept, cost: subtract(ONE_POUND, kept) },
   }
+}
+
+/** Each threshold's name, for the list in words. */
+export const THRESHOLD_NAMES: Record<ThresholdId, string> = {
+  personalAllowanceTaperStart: 'Personal allowance taper start',
+  personalAllowanceTaperEnd: 'Personal allowance taper end (no allowance left)',
+  hicbcThreshold: 'Child Benefit charge threshold',
+  hicbcFullCharge: 'Child Benefit charge full-charge point',
+  taxFreeChildcareLimit: 'Tax-Free Childcare income limit',
+  thirtyHoursLimit: 'Free Childcare for Working Parents income limit',
+  annualAllowanceThresholdIncome: 'Annual allowance taper: threshold income limit',
+}
+
+const MEASURE_WORDS: Record<ThresholdContribution['measure'], string> = {
+  adjustedNetIncome: 'adjusted net income',
+  thresholdIncome: 'threshold income',
+}
+
+const METHOD_WORDS: Record<PensionMethod, string> = {
+  salarySacrifice: 'salary sacrifice',
+  netPay: 'a net pay arrangement',
+  reliefAtSource: 'relief at source',
+}
+
+export interface ThresholdWords {
+  readonly name: string
+  readonly status: 'alreadyUnder' | 'contributeMore' | 'outOfReach'
+  readonly text: string
+}
+
+/**
+ * A threshold from optimise() in words, for the period: already under at
+ * the contribution now, the extra to contribute (a month, rounded up to the
+ * penny, so that much a month is enough), or out of reach with the reason.
+ * The limit is the engine's, a year's figure as the measure is.
+ */
+export function thresholdWords(
+  threshold: ThresholdContribution,
+  method: PensionMethod,
+  period: BreakdownPeriod,
+  gbp: (amount: Money) => string,
+): ThresholdWords {
+  const name = THRESHOLD_NAMES[threshold.threshold]
+  const measure = MEASURE_WORDS[threshold.measure]
+  const limit = `${gbp(threshold.limit)} for the year`
+  const suffix = period === 'year' ? ' a year' : ' a month'
+  const more = (extra: Money) => `${gbp(perPeriod(extra, period, 'up'))} more${suffix}`
+  const fullCharge =
+    threshold.threshold === 'hicbcFullCharge'
+      ? ' At the full-charge point the whole charge still applies: it first falls a penny below it.'
+      : ''
+  if (threshold.status === 'alreadyMet')
+    return {
+      name,
+      status: 'alreadyUnder',
+      text: `Already under: at your contribution now, ${measure} is at or under ${limit}.${fullCharge}`,
+    }
+  if (threshold.status === 'reachable' && threshold.extra !== null)
+    return {
+      name,
+      status: 'contributeMore',
+      text: `Contribute ${more(threshold.extra)} to bring ${measure} down to ${limit}.${fullCharge}`,
+    }
+  const reason =
+    threshold.reason === 'notLoweredByMethod'
+      ? `${METHOD_WORDS[method]} does not lower ${measure} (a salary sacrifice is added back to it).`
+      : threshold.reason === 'overAllowance' && threshold.extra !== null
+        ? `${more(threshold.extra)} would bring ${measure} down to ${limit}, but your pension savings would then be over the annual allowance available, with a charge (shown in the warnings, not stopped).`
+        : threshold.extra !== null
+          ? `it would take ${more(threshold.extra)}: going into your pension, gross, that is more than your pay.`
+          : 'going into your pension, gross, it would take more than your pay.'
+  return { name, status: 'outOfReach', text: `Out of reach: ${reason}${fullCharge}` }
 }

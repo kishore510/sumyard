@@ -59,7 +59,18 @@ import {
 import { calculateOptimise, carryForwardYears, type OptimiserPageResult } from './optimiserInputs'
 import { annualAmount, annualBenefit, type BenefitItem, CONTRIBUTION_MODES, ITEM_PERIODS, type ListItem } from './pageInputs'
 import { parseTaxCode } from './paye'
-import { changeVsNow, costOfMore, currentPoint, nearestPoint, ONE_POUND, pointsIn, type ZoomRange, zoomRange } from './reading'
+import {
+  changeVsNow,
+  costOfMore,
+  currentPoint,
+  nearestPoint,
+  ONE_POUND,
+  pointsIn,
+  type ThresholdWords,
+  thresholdWords,
+  type ZoomRange,
+  zoomRange,
+} from './reading'
 import { payslipNet, splitSegments } from './results'
 import { NEEDS_FIXING, SECTION_IDS, SECTION_TITLES, type SectionId, sectionForField, sectionSummary, sectionsSet } from './sections'
 import {
@@ -1358,7 +1369,52 @@ function ReadingCards({
   gbp: Gbp
   period: BreakdownPeriod
 }) {
-  return <CostCard sweep={sweep} choice={reading.choice} gbp={gbp} period={period} />
+  return (
+    <>
+      <CostCard sweep={sweep} choice={reading.choice} gbp={gbp} period={period} />
+      <ThresholdsCard sweep={sweep} gbp={gbp} period={period} />
+    </>
+  )
+}
+
+const STATUS_LABELS: Record<ThresholdWords['status'], string> = {
+  alreadyUnder: 'Already under',
+  contributeMore: 'Reachable',
+  outOfReach: 'Out of reach',
+}
+
+/** Each threshold optimise() gives, in words, for the period (from your contribution now, not the chosen one). */
+function ThresholdsCard({ sweep, gbp, period }: { sweep: OptimiseResult; gbp: Gbp; period: BreakdownPeriod }) {
+  return (
+    <section
+      data-thresholds
+      aria-labelledby="opt-thresholds-heading"
+      className="flex min-w-0 flex-col gap-3 rounded-lg border border-border bg-surface p-5 shadow-sm"
+    >
+      <h2 id="opt-thresholds-heading" className="text-base font-semibold">
+        Thresholds from your contribution now
+      </h2>
+      <ul className="flex flex-col">
+        {sweep.thresholds.map((threshold) => {
+          const words = thresholdWords(threshold, sweep.method, period, gbp)
+          return (
+            <li
+              key={threshold.threshold}
+              data-threshold={threshold.threshold}
+              data-status={words.status}
+              className="flex flex-col gap-0.5 border-t border-border py-2 text-sm first:border-t-0 first:pt-0"
+            >
+              <span className="flex flex-wrap items-baseline justify-between gap-x-3">
+                <span className="font-medium text-text">{words.name}</span>
+                <span className="text-xs text-text-muted">{STATUS_LABELS[words.status]}</span>
+              </span>
+              <span className="text-text-muted">{words.text}</span>
+            </li>
+          )
+        })}
+      </ul>
+    </section>
+  )
 }
 
 /** The cost of a pound more pension at the chosen point, from netCostPerPound and marginalRate, each with what it is measured against. */
