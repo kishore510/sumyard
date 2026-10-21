@@ -59,7 +59,7 @@ import {
 import { calculateOptimise, carryForwardYears, type OptimiserPageResult } from './optimiserInputs'
 import { annualAmount, annualBenefit, type BenefitItem, CONTRIBUTION_MODES, ITEM_PERIODS, type ListItem } from './pageInputs'
 import { parseTaxCode } from './paye'
-import { changeVsNow, currentPoint, nearestPoint, pointsIn, zoomRange } from './reading'
+import { changeVsNow, costOfMore, currentPoint, nearestPoint, ONE_POUND, pointsIn, type ZoomRange, zoomRange } from './reading'
 import { payslipNet, splitSegments } from './results'
 import { NEEDS_FIXING, SECTION_IDS, SECTION_TITLES, type SectionId, sectionForField, sectionSummary, sectionsSet } from './sections'
 import {
@@ -67,6 +67,7 @@ import {
   CHILD_BENEFIT_PAYMENTS,
   DEFAULT_POLICY,
   type OptimiseResult,
+  type OptimiserPoint,
   type PayeEstimate,
   PENSION_METHODS,
   REGIONS,
@@ -1179,43 +1180,67 @@ function OptimiserChart({
   const [chosen, setChosen] = useState<Money | null>(null)
   const [fullRange, setFullRange] = useState(false)
   if (isInputProblem(sweep)) return null
+  const reading = sweep.ok ? readSweep(sweep, chosen, fullRange) : null
   return (
-    <section
-      data-optimiser
-      aria-labelledby="opt-chart-heading"
-      className="flex min-w-0 flex-col gap-4 rounded-lg border border-border bg-surface p-5 shadow-sm"
-    >
-      <h2 id="opt-chart-heading" className="text-base font-semibold">
-        Pension contributions
-      </h2>
-      {!sweep.ok ? (
-        <RefusalNotice refusal={sweep} />
-      ) : (
-        <ChartBody
-          sweep={sweep}
-          view={view}
-          setView={setView}
-          chosen={chosen}
-          setChosen={setChosen}
-          fullRange={fullRange}
-          setFullRange={setFullRange}
-          inputs={inputs}
-          resolved={resolved}
-          gbp={gbp}
-          period={period}
-        />
-      )}
-    </section>
+    <>
+      <section
+        data-optimiser
+        aria-labelledby="opt-chart-heading"
+        className="flex min-w-0 flex-col gap-4 rounded-lg border border-border bg-surface p-5 shadow-sm"
+      >
+        <h2 id="opt-chart-heading" className="text-base font-semibold">
+          Pension contributions
+        </h2>
+        {!sweep.ok ? (
+          <RefusalNotice refusal={sweep} />
+        ) : (
+          reading && (
+            <ChartBody
+              sweep={sweep}
+              reading={reading}
+              view={view}
+              setView={setView}
+              setChosen={setChosen}
+              fullRange={fullRange}
+              setFullRange={setFullRange}
+              inputs={inputs}
+              resolved={resolved}
+              gbp={gbp}
+              period={period}
+            />
+          )
+        )}
+      </section>
+      {sweep.ok && reading && <ReadingCards sweep={sweep} reading={reading} gbp={gbp} period={period} />}
+    </>
   )
+}
+
+/** What the page reads from the sweep: the range shown (zoomed or full), its points and cliffs, the point now and the chosen one. */
+interface SweepReading {
+  readonly range: ZoomRange | null
+  readonly shown: ReturnType<typeof pointsIn>
+  readonly now: OptimiserPoint
+  readonly choice: OptimiserPoint
+}
+
+function readSweep(sweep: OptimiseResult, chosen: Money | null, fullRange: boolean): SweepReading {
+  const range = zoomRange(sweep)
+  const shown = pointsIn(sweep, fullRange ? null : range)
+  const now = currentPoint(sweep)
+  return { range, shown, now, choice: nearestPoint(shown.points, chosen ?? now.contribution) }
 }
 
 const PERIOD_SUFFIX: Record<BreakdownPeriod, string> = { year: ' a year', month: ' a month' }
 
+/** An annual amount said for the period: the year's amount "a year", or a twelfth of it "a month". */
+const perText = (gbp: Gbp, period: BreakdownPeriod) => (annual: Money) => `${gbp(perPeriod(annual, period))}${PERIOD_SUFFIX[period]}`
+
 function ChartBody({
   sweep,
+  reading,
   view,
   setView,
-  chosen,
   setChosen,
   fullRange,
   setFullRange,
@@ -1225,9 +1250,9 @@ function ChartBody({
   period,
 }: {
   sweep: OptimiseResult
+  reading: SweepReading
   view: ChartView
   setView: (view: ChartView) => void
-  chosen: Money | null
   setChosen: (contribution: Money) => void
   fullRange: boolean
   setFullRange: (full: boolean) => void
@@ -1237,16 +1262,13 @@ function ChartBody({
   period: BreakdownPeriod
 }) {
   const percentBase = inputs.employeeContribution.mode === 'percentOfPay' ? resolved.pensionablePay : null
-  const range = zoomRange(sweep)
-  const shown = pointsIn(sweep, fullRange ? null : range)
+  const { range, shown, now, choice } = reading
   const points = shown.points
   const data = optimiserChartData({ ...sweep, ...shown }, view, { gbp, percentBase, period })
   const yLabel = viewLabel(view, period)
   const money = (pence: number) => gbp(fromPence(pence))
   const compact = (pence: number) => formatGBPCompact(fromPence(pence))
-  const per = (annual: Money) => `${gbp(perPeriod(annual, period))}${PERIOD_SUFFIX[period]}`
-  const now = currentPoint(sweep)
-  const choice = nearestPoint(points, chosen ?? now.contribution)
+  const per = perText(gbp, period)
   const changes = changeVsNow(points, now, view, period)
   const delta = (amount: Money) => formatGBPDelta(amount, 'pence')
   const index = points.indexOf(choice)
@@ -1323,3 +1345,55 @@ function ChartBody({
 }
 
 const VIEW_LABELS_LOWER: Record<ChartView, string> = { spendable: 'spendable', takeHome: 'take-home' }
+
+/** Below the chart, for the chosen point (1b-ii-b): the cost of more pension. */
+function ReadingCards({
+  sweep,
+  reading,
+  gbp,
+  period,
+}: {
+  sweep: OptimiseResult
+  reading: SweepReading
+  gbp: Gbp
+  period: BreakdownPeriod
+}) {
+  return <CostCard sweep={sweep} choice={reading.choice} gbp={gbp} period={period} />
+}
+
+/** The cost of a pound more pension at the chosen point, from netCostPerPound and marginalRate, each with what it is measured against. */
+function CostCard({ sweep, choice, gbp, period }: { sweep: OptimiseResult; choice: OptimiserPoint; gbp: Gbp; period: BreakdownPeriod }) {
+  const cost = costOfMore(sweep.points, choice)
+  const per = perText(gbp, period)
+  // Always in pence: a cost of part of a pound would round away in whole pounds.
+  const pence = (amount: Money) => formatGBP(amount, 'pence')
+  const more = `${pence(ONE_POUND)} more${period === 'month' ? ' a month' : ''}`
+  return (
+    <div data-cost>
+      <ResultCard title={`Cost of ${pence(ONE_POUND)} more pension`}>
+        <StatRow
+          label="Against no contribution"
+          value={cost.sinceNothing === null ? '–' : pence(cost.sinceNothing)}
+          detail={
+            cost.sinceNothing === null
+              ? 'No contribution to measure against yet: choose a larger contribution to see its cost.'
+              : `Spendable given up for each ${more} going into your pension, from no contribution to ${per(choice.contribution)}`
+          }
+        />
+        <StatRow
+          label="Since the previous point"
+          value={cost.sincePrevious === null ? '–' : pence(cost.sincePrevious.cost)}
+          detail={
+            cost.sincePrevious === null
+              ? 'This is the first point: there is no previous point to measure from.'
+              : `Of each ${more} into your pension since ${per(cost.sincePrevious.from)}: ${pence(cost.sincePrevious.cost)} came out of spendable and ${pence(cost.sincePrevious.kept)} did not`
+          }
+        />
+      </ResultCard>
+      <p className="mt-2 text-xs text-text-muted">
+        Into your pension means your contribution, any relief your provider adds and any salary sacrificed. A jump between points (a
+        lettered range on the chart) can make either figure very different from its neighbours’.
+      </p>
+    </div>
+  )
+}

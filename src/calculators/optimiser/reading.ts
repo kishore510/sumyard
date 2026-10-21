@@ -1,4 +1,4 @@
-import { add, compare, type Money, max, min, mulRound, subtract, toPence, ZERO } from '@/lib/money'
+import { add, compare, fromPounds, type Money, max, min, mulRound, subtract, toPence, ZERO } from '@/lib/money'
 import { ZOOM_MARGIN } from '@/lib/sweep'
 import { type BreakdownPeriod, perPeriod } from './breakdown'
 import type { ChartView } from './chartData'
@@ -72,5 +72,30 @@ export function pointsIn(
   return {
     points: result.points.filter((point) => inside(point.contribution)),
     cliffs: result.cliffs.filter((cliff) => inside(cliff.from) && inside(cliff.to)),
+  }
+}
+
+/** The unit the cost of more pension is said in. */
+export const ONE_POUND: Money = fromPounds(1)
+
+export interface CostOfMore {
+  /** Spendable given up per pound into the pension, against no contribution (the engine's net cost per pound); null at none. */
+  readonly sinceNothing: Money | null
+  /** Since the previous point (from): of each extra pound into the pension, what did not come out of spendable (kept) and what did (cost). */
+  readonly sincePrevious: { readonly from: Money; readonly kept: Money; readonly cost: Money } | null
+}
+
+/**
+ * The cost of a pound more pension at a point, from the engine's
+ * netCostPerPound and marginalRate, as pence of a pound to the nearest penny.
+ * `points` is the whole sweep, so "previous" is the engine's previous point.
+ */
+export function costOfMore(points: readonly OptimiserPoint[], point: OptimiserPoint): CostOfMore {
+  const index = points.indexOf(point)
+  const previous = index > 0 ? points[index - 1]! : null
+  const kept = point.marginalRate === null ? null : mulRound(ONE_POUND, point.marginalRate, 'nearest')
+  return {
+    sinceNothing: point.netCostPerPound === null ? null : mulRound(ONE_POUND, point.netCostPerPound, 'nearest'),
+    sincePrevious: kept === null || previous === null ? null : { from: previous.contribution, kept, cost: subtract(ONE_POUND, kept) },
   }
 }
