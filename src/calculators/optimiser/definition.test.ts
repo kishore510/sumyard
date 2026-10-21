@@ -273,7 +273,13 @@ describe('optimiser definition', () => {
     ['carryForward', [{ yearsAgo: 1, amount: -1 }]],
     ['carryForward', [{ yearsAgo: 1, amount: 0.5 }]],
     ['carryForward', [{ yearsAgo: 1 }]],
-    ['carryForward', [{ yearsAgo: 2, amount: 1 }, { yearsAgo: 2, amount: 5 }]],
+    [
+      'carryForward',
+      [
+        { yearsAgo: 2, amount: 1 },
+        { yearsAgo: 2, amount: 5 },
+      ],
+    ],
     ['carryForward', [5]],
     ['moneyPurchaseAnnualAllowance', 'yes'],
     ['moneyPurchaseAnnualAllowance', 1],
@@ -667,7 +673,10 @@ describe('migration from inputs version 3 (1b-ii-a)', () => {
 
   it.each([
     ['the example', {}],
-    ['no pension, benefits or children', { employeeContribution: amount(0), employerContribution: amount(0), taxableBenefits: [], children: 0 }],
+    [
+      'no pension, benefits or children',
+      { employeeContribution: amount(0), employerContribution: amount(0), taxableBenefits: [], children: 0 },
+    ],
     ['Scotland, salary sacrifice', { region: 'scotland', pensionMethod: 'salarySacrifice', taxCode: 'S1257L' }],
     ['relief at source, opted out', { pensionMethod: 'reliefAtSource', childBenefit: 'optedOut' }],
     ['contribution above pay', { salary: fromPounds(1_000), bonus: 0, employeeContribution: amount(fromPounds(2_000)) }],
@@ -737,7 +746,12 @@ describe('pension allowance inputs (version 4)', () => {
 
   it('changes no take-home figure: the new inputs are for the pension sweep only', () => {
     const base = valid({ salary: fromPounds(120_000), children: 1 }) as OptimiserPageInputs
-    const set = { ...base, carryForward: [{ yearsAgo: 1, amount: fromPounds(9_000) }], moneyPurchaseAnnualAllowance: true, checkChildcare: true }
+    const set = {
+      ...base,
+      carryForward: [{ yearsAgo: 1, amount: fromPounds(9_000) }],
+      moneyPurchaseAnnualAllowance: true,
+      checkChildcare: true,
+    }
     expect(views(calculateTakeHome(set, taxYear))).toEqual(views(calculateTakeHome(base, taxYear)))
   })
 })

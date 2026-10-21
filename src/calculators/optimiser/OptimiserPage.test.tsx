@@ -17,13 +17,13 @@ import { toasts } from '@/toast/toasts'
 import { sessionFor } from '../session'
 import { breakdown, DEDUCTION_ROWS } from './breakdown'
 import { takeHome } from './calc'
+import { REASON_LABELS, THRESHOLD_LABELS } from './chartData'
 import { INPUT_LIMITS, type OptimiserPageInputs, optimiserCalculator, resolveInputs, toTaxInputs } from './definition'
 import OptimiserPage from './OptimiserPage'
+import { calculateOptimise } from './optimiserInputs'
 import { payeEstimate } from './paye'
 import { payslipNet, splitSegments } from './results'
 import { NOT_SET, SECTION_IDS, type SectionId, sectionSummary } from './sections'
-import { REASON_LABELS, THRESHOLD_LABELS } from './chartData'
-import { calculateOptimise } from './optimiserInputs'
 import { DEFAULT_POLICY, type OptimiseResult, type PayeEstimate, type TakeHomeResult } from './types'
 
 /*
@@ -993,7 +993,7 @@ describe('Optimiser page layout (0.12.0): item cards', () => {
 
 describe('page code', () => {
   it('holds no tax figure: no amounts in pounds, no percentages, no config reads', () => {
-    for (const name of ['OptimiserPage.tsx', 'definition.ts', 'pageInputs.ts', 'breakdown.ts']) {
+    for (const name of ['OptimiserPage.tsx', 'definition.ts', 'pageInputs.ts', 'breakdown.ts', 'chartData.ts']) {
       const source = readFileSync(join(__dirname, name), 'utf8')
       // "per cent" or "percent" as a word, not inside a name like PercentInput or percentRatio.
       expect(source, name).not.toMatch(/£\s?\d|\d\s?%|\bper ?cent\b/i)

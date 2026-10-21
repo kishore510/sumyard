@@ -1,6 +1,7 @@
 import { Plus } from 'lucide-react'
-import { Fragment, type ReactNode, useEffect, useRef, useState } from 'react'
+import { Fragment, type ReactNode, useEffect, useMemo, useRef, useState } from 'react'
 import { AssumptionsPanel } from '@/components/AssumptionsPanel'
+import { Chart } from '@/components/Chart/Chart'
 import { CurrencyInput } from '@/components/inputs/CurrencyInput'
 import { NumberInput } from '@/components/inputs/NumberInput'
 import { PercentInput } from '@/components/inputs/PercentInput'
@@ -19,8 +20,8 @@ import { InlineNotice } from '@/components/states'
 import { Button } from '@/components/ui/button'
 import { VerifiedBadge } from '@/components/VerifiedBadge'
 import { listTaxYears, taxYearLabel } from '@/config/tax/index'
-import { formatGBP } from '@/lib/format'
-import { add, compare, type Money, ratio, subtract, ZERO } from '@/lib/money'
+import { formatGBP, formatGBPCompact } from '@/lib/format'
+import { add, compare, fromPence, type Money, ratio, subtract, ZERO } from '@/lib/money'
 import type { Parsed } from '@/lib/parse'
 import { useStore } from '@/lib/store'
 import { settingsStore } from '@/settings/settings'
@@ -29,6 +30,7 @@ import { toasts } from '@/toast/toasts'
 import { configFor, sessionFor } from '../session'
 import { BREAKDOWN_PERIODS, type Breakdown, type BreakdownPeriod, breakdown } from './breakdown'
 import { benefitTaxable } from './calc'
+import { CHART_VIEWS, type ChartView, CURVE_NOTE, optimiserChartData, VIEW_LABELS } from './chartData'
 import {
   type ContributionField,
   calculatePaye,
@@ -54,6 +56,7 @@ import {
   resolveInputs,
   usesPensionablePay,
 } from './definition'
+import { calculateOptimise, carryForwardYears, type OptimiserPageResult } from './optimiserInputs'
 import { annualAmount, annualBenefit, type BenefitItem, CONTRIBUTION_MODES, ITEM_PERIODS, type ListItem } from './pageInputs'
 import { parseTaxCode } from './paye'
 import { payslipNet, splitSegments } from './results'
@@ -62,6 +65,7 @@ import {
   BENEFIT_PAYMENTS,
   CHILD_BENEFIT_PAYMENTS,
   DEFAULT_POLICY,
+  type OptimiseResult,
   type PayeEstimate,
   PENSION_METHODS,
   REGIONS,
@@ -78,8 +82,9 @@ import {
  * take-home for the chosen period, a split bar of where gross pay goes, the
  * breakdown by year or month, the PAYE card, warnings, assumptions and
  * scenarios, all from shared components and the engine's takeHome and
- * payeEstimate. No figure is written here. The pension sweep, chart and
- * threshold points (optimise()) come in 1b-ii.
+ * payeEstimate. Part 1b-ii-a adds the pension allowances section and,
+ * below the split bar, the chart of candidate contributions from optimise()
+ * (./optimiserInputs.ts, ./chartData.ts). No figure is written here.
  */
 
 const session = sessionFor(optimiserCalculator)
@@ -92,6 +97,7 @@ const MODE_OPTIONS = CONTRIBUTION_MODES.map((value) => ({ value, label: value ==
 const PERIOD_OPTIONS = ITEM_PERIODS.map((value) => ({ value, label: PERIOD_LABELS[value] }))
 const PAYMENT_OPTIONS_BENEFIT = BENEFIT_PAYMENTS.map((value) => ({ value, label: value === 'beforeTax' ? 'Before tax' : 'After tax' }))
 const BREAKDOWN_OPTIONS = BREAKDOWN_PERIODS.map((value) => ({ value, label: value === 'year' ? 'Year' : 'Month' }))
+const VIEW_OPTIONS = CHART_VIEWS.map((value) => ({ value, label: value === 'spendable' ? 'Spendable' : 'Take-home' }))
 const PERCENT_MIN = ratio(0, 1)
 
 const METHOD_HINTS: Record<OptimiserPageInputs['pensionMethod'], string> = {
@@ -103,7 +109,7 @@ const METHOD_HINTS: Record<OptimiserPageInputs['pensionMethod'], string> = {
 /** Assumptions the page adds to the engine's: what this page does and doesn't model. No figures except the policy's week count. */
 const PAGE_ASSUMPTIONS = [
   `Child Benefit is counted for ${DEFAULT_POLICY.childBenefitWeeks} weeks of the year (the modelling policy), for every child entered.`,
-  'Pension is counted as contributions only: what goes in this year. Growth, the annual allowance and tax on withdrawals are not shown here yet.',
+  'Pension is counted as contributions only: what goes in this year. Growth and tax on withdrawals are not modelled; the annual allowance is checked only in the contribution chart.',
   'Taxable benefits in kind are taken as entered: they are not checked against your employer’s annual statement of benefits or your tax code.',
   'The year’s tax (the liability) is the headline figure, worked out on the year’s figures however it is collected. A tax code is optional: with one, a PAYE estimate shows what payroll would take, assuming level monthly pay all year.',
   'With a tax code, estimated payslip net pay is take-home with the PAYE estimate in place of the year’s income tax; everything else, including the Child Benefit charge, is as in take-home. Take-home after the year-end adjustment is the take-home figure itself.',
@@ -132,6 +138,12 @@ const CONTRIBUTION_HINTS: Record<ContributionField, string> = {
   employerContribution: 'Your employer’s own contribution. It doesn’t change your take-home.',
 }
 
+/** What the contribution chart leaves out, beside optimise()'s own assumptions. */
+const CHART_ASSUMPTIONS = [
+  'Contribution chart, not modelled: defined benefit pension savings, income other than this job, relief claimed through Self Assessment, who pays an annual allowance charge (Scheme Pays), the value of childcare support, investment growth and tax on withdrawals.',
+  'Contribution chart: each point changes only your own contribution, by the method chosen, from nothing up to the most the engine models; the sweep is in amounts, so a contribution entered as a percentage shows as its amount, with its share of pensionable pay beside the marked points.',
+]
+
 /** The engine lists the taper rounding with its results; without results the page says it. */
 const TAPER_ASSUMPTION = 'Personal allowance taper: the reduction is worked out exactly, with nothing rounded until the result.'
 
@@ -153,6 +165,9 @@ export default function OptimiserPage() {
   const ok = result && !isInputProblem(result) && result.ok ? result : null
   const label = PERIOD_LABELS_HEADLINE[period]
   const value = ok ? gbp(breakdown(ok.annual, period).takeHome) : null
+  // The sweep needs pay and a take-home result; it is the slowest part of the page, so only redone when inputs change.
+  const hasPay = compare(add(inputs.salary, inputs.bonus), ZERO) > 0
+  const sweep = useMemo(() => (!invalid && hasPay ? calculateOptimise(inputs, config) : null), [invalid, hasPay, inputs, config])
 
   return (
     <div className="flex flex-col gap-6">
@@ -183,7 +198,15 @@ export default function OptimiserPage() {
         results={
           <>
             <InputWarnings warnings={warnings} />
-            <ResultsOrNotice result={result} inputs={inputs} resolved={resolved} gbp={gbp} period={period} setPeriod={setPeriod} />
+            <ResultsOrNotice
+              result={result}
+              sweep={sweep}
+              inputs={inputs}
+              resolved={resolved}
+              gbp={gbp}
+              period={period}
+              setPeriod={setPeriod}
+            />
           </>
         }
       >
@@ -193,7 +216,14 @@ export default function OptimiserPage() {
       </StickyResult>
 
       <AssumptionsPanel
-        items={[...(result?.ok ? result.assumptions : [TAPER_ASSUMPTION]), ...payeAssumptions(inputs, result), ...PAGE_ASSUMPTIONS]}
+        items={[
+          ...new Set([
+            ...(result?.ok ? result.assumptions : [TAPER_ASSUMPTION]),
+            ...payeAssumptions(inputs, result),
+            ...PAGE_ASSUMPTIONS,
+            ...(ok && sweep?.ok ? [...sweep.assumptions, ...CHART_ASSUMPTIONS] : []),
+          ]),
+        ]}
       >
         <p className="text-text-muted">Illustrative only, not financial advice. {DISCLAIMER}</p>
       </AssumptionsPanel>
@@ -262,6 +292,7 @@ function Inputs({
         {usesPensionablePay(inputs) && <PensionablePayInputs inputs={inputs} resolved={resolved} gbp={gbp} />}
       </>
     ),
+    allowances: <AllowanceInputs taxYear={taxYear} inputs={inputs} />,
     benefits: (
       <>
         <ItemList
@@ -396,6 +427,7 @@ function ResultsOrNotice({
   ...props
 }: {
   result: PageResult | null
+  sweep: OptimiserPageResult | null
   inputs: OptimiserPageInputs
   resolved: ResolvedInputs
   gbp: Gbp
@@ -868,6 +900,7 @@ function pennyNote(month: Breakdown, gbp: Gbp): string | undefined {
 
 function Results({
   result,
+  sweep,
   inputs,
   resolved,
   gbp,
@@ -875,6 +908,7 @@ function Results({
   setPeriod,
 }: {
   result: TakeHomeResult
+  sweep: OptimiserPageResult | null
   inputs: OptimiserPageInputs
   resolved: ResolvedInputs
   gbp: Gbp
@@ -946,6 +980,7 @@ function Results({
           highlight="takeHome"
         />
       </section>
+      {sweep && <OptimiserChart sweep={sweep} inputs={inputs} resolved={resolved} gbp={gbp} />}
 
       <div className="flex flex-col gap-3" data-breakdown={period}>
         <Segmented
@@ -1050,5 +1085,156 @@ function PayeCard({ estimate, gbp }: { estimate: PayeEstimate; gbp: Gbp }) {
         </p>
       </InlineNotice>
     </div>
+  )
+}
+
+/** Earlier years' unused allowance, named by how long ago: "the tax year before", then "n tax years before". */
+const yearsAgoLabel = (yearsAgo: number) => (yearsAgo === 1 ? 'the tax year before' : `${yearsAgo} tax years before`)
+
+/**
+ * The pension allowances section (1b-ii-a): unused allowance for each earlier year carry forward looks back (from the
+ * year's config, plus any stored year beyond it), the money purchase annual allowance and the childcare check. Change
+ * no take-home figure; they are optimise()'s.
+ */
+function AllowanceInputs({ taxYear, inputs }: { taxYear: string; inputs: OptimiserPageInputs }) {
+  const lookBack = carryForwardYears(configFor(taxYear))
+  const years = [
+    ...new Set([...Array.from({ length: lookBack ?? 0 }, (_, i) => i + 1), ...inputs.carryForward.map((y) => y.yearsAgo)]),
+  ].sort((a, b) => a - b)
+  const amountFor = (yearsAgo: number) => inputs.carryForward.find((y) => y.yearsAgo === yearsAgo)?.amount ?? ZERO
+  const setYear = (yearsAgo: number, amount: Money) =>
+    set({
+      carryForward: years.flatMap((year) => {
+        const value = year === yearsAgo ? amount : amountFor(year)
+        return compare(value, ZERO) > 0 ? [{ yearsAgo: year, amount: value }] : []
+      }),
+    })
+  return (
+    <>
+      <fieldset className="flex min-w-0 flex-col gap-3">
+        <legend className="pb-1.5 text-sm font-medium text-text">Unused annual allowance (carry forward)</legend>
+        <p className="text-sm text-text-muted">
+          From your pension statements or provider: allowance an earlier year’s pension savings did not use. Taken as entered, not checked.
+          Leave a year at nothing if there is none.
+        </p>
+        {lookBack === null && (
+          <p className="text-sm text-text-muted">The carry forward period for this tax year is not verified yet, so no years are listed.</p>
+        )}
+        {years.map((yearsAgo) => (
+          <CurrencyInput
+            key={yearsAgo}
+            id={`opt-carry-${yearsAgo}`}
+            label={`Unused allowance from ${yearsAgoLabel(yearsAgo)}`}
+            value={amountFor(yearsAgo)}
+            min={ZERO}
+            max={INPUT_LIMITS.maxAmount}
+            onChange={(amount) => setYear(yearsAgo, amount)}
+            onValidityChange={valid(`carryForward-${yearsAgo}`)}
+          />
+        ))}
+      </fieldset>
+      <Toggle
+        id="opt-mpaa"
+        label="The money purchase annual allowance applies to me"
+        hint="If you have taken money from a defined contribution pension flexibly in an earlier tax year. Carry forward can’t be added to it."
+        checked={inputs.moneyPurchaseAnnualAllowance}
+        onChange={(moneyPurchaseAnnualAllowance) => set({ moneyPurchaseAnnualAllowance })}
+      />
+      <Toggle
+        id="opt-childcare"
+        label="Check the childcare support income limits"
+        hint="Tax-Free Childcare and Free Childcare for Working Parents: your adjusted net income against each limit, marked on the chart. Other conditions are not checked."
+        checked={inputs.checkChildcare}
+        onChange={(checkChildcare) => set({ checkChildcare })}
+      />
+    </>
+  )
+}
+
+/**
+ * The contribution chart (1b-ii-a), below the split bar: spendable (or take-home) against the contribution by the
+ * chosen method, from optimise()'s points, with the current contribution, the maximum and each threshold point marked,
+ * cliffs as lettered ranges, and the table. A refusal takes its place; an input problem is already shown above.
+ */
+function OptimiserChart({
+  sweep,
+  inputs,
+  resolved,
+  gbp,
+}: {
+  sweep: OptimiserPageResult
+  inputs: OptimiserPageInputs
+  resolved: ResolvedInputs
+  gbp: Gbp
+}) {
+  const [view, setView] = useState<ChartView>('spendable')
+  if (isInputProblem(sweep)) return null
+  return (
+    <section
+      data-optimiser
+      aria-labelledby="opt-chart-heading"
+      className="flex min-w-0 flex-col gap-4 rounded-lg border border-border bg-surface p-5 shadow-sm"
+    >
+      <h2 id="opt-chart-heading" className="text-base font-semibold">
+        Pension contributions
+      </h2>
+      {!sweep.ok ? (
+        <RefusalNotice refusal={sweep} />
+      ) : (
+        <ChartBody sweep={sweep} view={view} setView={setView} inputs={inputs} resolved={resolved} gbp={gbp} />
+      )}
+    </section>
+  )
+}
+
+function ChartBody({
+  sweep,
+  view,
+  setView,
+  inputs,
+  resolved,
+  gbp,
+}: {
+  sweep: OptimiseResult
+  view: ChartView
+  setView: (view: ChartView) => void
+  inputs: OptimiserPageInputs
+  resolved: ResolvedInputs
+  gbp: Gbp
+}) {
+  const percentBase = inputs.employeeContribution.mode === 'percentOfPay' ? resolved.pensionablePay : null
+  const data = optimiserChartData(sweep, view, { gbp, percentBase })
+  const money = (pence: number) => gbp(fromPence(pence))
+  const compact = (pence: number) => formatGBPCompact(fromPence(pence))
+  return (
+    <>
+      <p className="text-sm text-text-muted">
+        Candidate contributions by {METHOD_LABELS[sweep.method].toLowerCase()}, from nothing up to the most the engine models. None is a
+        recommendation. Spendable is take-home with any Child Benefit, less any annual allowance charge.
+      </p>
+      <Segmented id="opt-chart-view" label="Show" value={view} options={VIEW_OPTIONS} onChange={setView} />
+      <Chart
+        title={`${VIEW_LABELS[view]} against your pension contribution`}
+        categories={data.categories}
+        series={[{ id: view, label: VIEW_LABELS[view], kind: 'line', values: data.values }]}
+        xValues={data.xValues}
+        formatXTick={compact}
+        markers={data.markers}
+        spans={data.spans}
+        pointMarkers={false}
+        rowNotes={{ label: 'Marked', values: data.rowNotes }}
+        xLabel="Your contribution for the year"
+        yLabel={VIEW_LABELS[view]}
+        formatTick={compact}
+        formatValue={money}
+        integer
+      />
+      <div className="flex flex-col gap-1 text-xs text-text-muted">
+        {data.notes.map((note) => (
+          <p key={note}>{note}</p>
+        ))}
+        <p>{CURVE_NOTE}</p>
+      </div>
+    </>
   )
 }

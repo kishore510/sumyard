@@ -26,3 +26,6 @@ export const MAX_TAX_CODE_LENGTH = 16
 
 /** The largest number a tax code may carry, so its allowance stays a safe amount. Not a tax figure. */
 export const MAX_TAX_CODE_NUMBER = 999_999
+
+/** The most earlier tax years a carry forward entry can name. An input bound, not the carry forward period (that is config). */
+export const MAX_CARRY_FORWARD_YEARS = 10

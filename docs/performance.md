@@ -65,3 +65,21 @@ Lighthouse 12.8.2, mobile form factor, headless Chromium 1194, against `vite pre
 - Bundle (gzip): the take-home page about 14.5 KB (from about 10.2 KB); CSS about 7.4 KB.
 
 Not checked: a real phone, Safari (it has no scroll anchoring, so the bar's collapse moves the content; the hysteresis still prevents flicker), Firefox, a screen reader, the deployed site.
+
+## Browser checks and Lighthouse (mobile), part 1b-ii-a, 21 October 2026
+
+The same scratch Playwright and axe-core 4.10 setup against `vite preview`, on the take-home page at 360 and 1280 px in light and dark (system colour scheme), empty and filled (salary and bonus, a percentage contribution, two children, carry forward for one year, the childcare check on and the money purchase toggle on and off, the chart's table and the assumptions open). 8 runs. axe (WCAG 2.0/2.1 A and AA, best practice) found no violations; no horizontal page scroll and nothing wider than the viewport; the chart fits at 360 px, takes the theme and uses token colours; no external requests; no console errors; every visible control at least 44 px tall. Fixes that came out of it: the numeric x axis ran past the data to a rounded end (it now ends at the most modelled contribution, with ticks inside it); the chart's text summary repeated the marker list on screen, so with markers it is for screen readers only.
+
+Lighthouse 12.8.2, mobile form factor, headless Chromium 1194, `#/c/optimiser`:
+
+| Build | Performance | Accessibility | Best practices | SEO | FCP | LCP | TBT | CLS |
+|---|---|---|---|---|---|---|---|---|
+| 0.12.0 | 92 | 100 | 100 | 91 | 1.9 s | 2.1 s | 10 ms | 0.137 |
+| 1b-ii-a | 97 | 100 | 100 | 91 | 2.0 s | 2.2 s | 0 ms | 0 |
+
+- CLS: the loading state now holds the screen's height (`PageLoadingState`), so the footer starts below the fold.
+- Label-in-name and robots.txt as before (VerifiedBadge's link, in the Backlog; `vite preview` serves HTML for robots.txt).
+- Bundle (gzip): the take-home page about 20 KB (from about 14.5 KB): `optimise()`, the chart and the new section.
+- The sweep for £150,000 of pay (302 points) takes about 20 ms in Node; the page caps the sweep at 400 points (`pageSweepStep`).
+
+Not checked: 768 px, a real phone, Safari, Firefox, a screen reader, the deployed site.

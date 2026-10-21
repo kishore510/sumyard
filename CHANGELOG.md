@@ -4,6 +4,13 @@ All notable changes to Sumyard are listed here, newest first. The format follows
 
 ## [Unreleased]
 
+### Added
+- **Pension contributions chart** on the take-home page, below the split bar: what you would have to spend (or take home) at each candidate contribution by your pension method, from nothing up to all of your pay. Numbered lines mark your contribution now, the most modelled and each threshold point; lettered ranges show where the line jumps, such as the Child Benefit charge's steps. A percentage contribution also shows as a share of pensionable pay. No point is called the best. With a table of every point.
+- **Pension allowances** section: unused allowance carried forward from earlier years, the money purchase annual allowance, and a check of the childcare support income limits. None of them changes your take-home. Saved scenarios move to the new inputs with the same results.
+
+### Fixed
+- The footer no longer jumps while a calculator page loads.
+
 ## [0.12.0] - 2026-10-18
 
 ### Changed

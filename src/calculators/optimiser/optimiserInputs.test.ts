@@ -90,6 +90,15 @@ describe('calculateOptimise', () => {
     expect(calculateOptimise(inputs, taxYear)).toEqual(expected)
   })
 
+  it('sizes the sweep step on salary plus bonus (gross pay bounds the range)', () => {
+    // Salary alone fits the budget at the default step; with the bonus it needs a larger one.
+    const inputs = page({ salary: fromPounds(190_000), bonus: fromPounds(20_000) })
+    expect(pageSweepStep(inputs.salary)).not.toBe(pageSweepStep(add(inputs.salary, inputs.bonus)))
+    const result = calculateOptimise(inputs, taxYear)
+    if (!result.ok || 'problem' in result) throw new Error('no result')
+    expect(result.step).toBe(pageSweepStep(add(inputs.salary, inputs.bonus)))
+  })
+
   it('its current point is the take-home page’s own result', () => {
     const inputs = page({ pensionMethod: 'salarySacrifice', employeeContribution: amount(fromPounds(7_250)), children: 2 })
     const result = calculateOptimise(inputs, taxYear)
@@ -115,7 +124,10 @@ describe('calculateOptimise', () => {
   })
 
   it('gives the input problem, not an exception, when the contribution is above pay', () => {
-    const result = calculateOptimise(page({ salary: fromPounds(1_000), bonus: ZERO, employeeContribution: amount(fromPounds(2_000)) }), taxYear)
+    const result = calculateOptimise(
+      page({ salary: fromPounds(1_000), bonus: ZERO, employeeContribution: amount(fromPounds(2_000)) }),
+      taxYear,
+    )
     expect(result).toMatchObject({ ok: false, problem: expect.any(String) })
   })
 })

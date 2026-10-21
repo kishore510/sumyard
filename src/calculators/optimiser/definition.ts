@@ -1,6 +1,7 @@
 import type { TaxYearConfig } from '@/config/tax/schema'
 import type { Refusal } from '@/config/tax/sourced'
 import {
+  MAX_CARRY_FORWARD_YEARS,
   MAX_CHILDREN,
   MAX_INPUT_AMOUNT,
   MAX_ITEM_NAME_LENGTH,
@@ -45,14 +46,17 @@ import {
   type StudentLoanPlanId,
   type TakeHomeResult,
   type TaxInputs,
+  type UnusedAllowance,
 } from './types'
 
 /*
  * The optimiser page's registry entry (slice 1b; the inputs version is one
  * more than the migrations below): the inputs a scenario stores, their defaults, validation and
  * migration, how they map to the engine's TaxInputs, and the compare
- * summary. Take-home only for now; the pension sweep (optimise()) arrives in
- * 1b-ii. No tax figure here: every figure comes from the engine, which reads
+ * summary. Version 4 (1b-ii-a) adds the pension sweep's own inputs: carry
+ * forward, the money purchase annual allowance and the childcare check, which
+ * change no take-home figure (optimise()'s mapping is ./optimiserInputs.ts).
+ * No tax figure here: every figure comes from the engine, which reads
  * the year's verified config. How percentages and item lists become annual
  * amounts is in ./pageInputs.ts; the PAYE estimate is ./paye.ts's.
  */
@@ -65,7 +69,7 @@ export interface OptimiserPageInputs {
   readonly pensionMethod: PensionMethod
   /** The employee's contribution by `pensionMethod`, as an amount or a percentage of pensionable pay; nothing for none. */
   readonly employeeContribution: ContributionEntry
-  /** Other employer contributions (not a salary sacrifice). Changes no take-home figure; kept for 1b-ii's annual allowance view. */
+  /** Other employer contributions (not a salary sacrifice). Changes no take-home figure; counts for the annual allowance in the sweep. */
   readonly employerContribution: ContributionEntry
   /** What a percentage contribution applies to (decision B6). */
   readonly pensionablePay: PensionablePayEntry
@@ -78,6 +82,12 @@ export interface OptimiserPageInputs {
   readonly childBenefit: ChildBenefitPayments
   /** The tax code in its canonical form (parseTaxCode), or empty for none (B11). */
   readonly taxCode: string
+  /** Unused annual allowance from earlier tax years, as the person states it: one entry per year at most, in year order. */
+  readonly carryForward: readonly UnusedAllowance[]
+  /** The money purchase annual allowance applies (a pension flexibly accessed in an earlier tax year). */
+  readonly moneyPurchaseAnnualAllowance: boolean
+  /** Check the childcare support income limits in the sweep. */
+  readonly checkChildcare: boolean
 }
 
 /** Input bounds that keep every sum a safe whole number of pence. Not tax figures. */
@@ -88,6 +98,7 @@ export const INPUT_LIMITS = {
   maxNameLength: MAX_ITEM_NAME_LENGTH,
   maxPercent: MAX_PERCENT_INPUT,
   maxTaxCodeLength: MAX_TAX_CODE_LENGTH,
+  maxCarryForwardYears: MAX_CARRY_FORWARD_YEARS,
 }
 
 const MONEY_FIELDS = ['salary', 'bonus'] as const
@@ -204,6 +215,22 @@ function isStoredTaxCode(raw: unknown): raw is string {
   return parsed.ok ? parsed.code.text === raw : parsed.reason === 'unsupported' && parsed.text === raw
 }
 
+/** Stored carry forward, checked and rebuilt in year order; or the problem in words. */
+function carryForwardEntries(raw: unknown): UnusedAllowance[] | string {
+  const rule = `Carry forward must be a list of earlier years (1 to ${INPUT_LIMITS.maxCarryForwardYears} years ago, each at most once) with an amount in whole pence from nothing up to the input limit.`
+  if (!Array.isArray(raw) || raw.length > INPUT_LIMITS.maxCarryForwardYears) return rule
+  const entries: UnusedAllowance[] = []
+  for (const entry of raw) {
+    if (!isRecord(entry)) return rule
+    const { yearsAgo } = entry
+    if (typeof yearsAgo !== 'number' || !Number.isSafeInteger(yearsAgo) || yearsAgo < 1 || yearsAgo > INPUT_LIMITS.maxCarryForwardYears)
+      return rule
+    if (!isAmount(entry.amount) || entries.some((e) => e.yearsAgo === yearsAgo)) return rule
+    entries.push({ yearsAgo, amount: fromPence(entry.amount) })
+  }
+  return entries.sort((a, b) => a.yearsAgo - b.yearsAgo)
+}
+
 function validate(raw: unknown): { ok: true; inputs: OptimiserPageInputs } | { ok: false; errors: string[] } {
   if (!isRecord(raw)) return { ok: false, errors: ['Inputs are not an object.'] }
   const hostile = checkUntrustedJson(raw)
@@ -217,7 +244,9 @@ function validate(raw: unknown): { ok: true; inputs: OptimiserPageInputs } | { o
   const pensionable = pensionablePayEntry(raw.pensionablePay)
   const benefits = benefitItems(raw.taxableBenefits, MONEY_LABELS.taxableBenefits)
   const deductions = listItems(raw.postTaxDeductions, MONEY_LABELS.postTaxDeductions)
-  for (const checked of [employee, employer, pensionable, benefits, deductions]) if (typeof checked === 'string') errors.push(checked)
+  const carryForward = carryForwardEntries(raw.carryForward)
+  for (const checked of [employee, employer, pensionable, benefits, deductions, carryForward])
+    if (typeof checked === 'string') errors.push(checked)
   if (!PENSION_METHODS.includes(raw.pensionMethod as PensionMethod)) errors.push('The pension method is not one Sumyard knows.')
   const plans = raw.studentLoans
   if (
@@ -232,13 +261,17 @@ function validate(raw: unknown): { ok: true; inputs: OptimiserPageInputs } | { o
   if (!CHILD_BENEFIT_PAYMENTS.includes(raw.childBenefit as ChildBenefitPayments))
     errors.push('Child Benefit must be claimed or opted out of.')
   if (!isStoredTaxCode(raw.taxCode)) errors.push('The tax code must be empty or a tax code Sumyard recognises.')
+  if (typeof raw.moneyPurchaseAnnualAllowance !== 'boolean')
+    errors.push('Whether the money purchase annual allowance applies must be yes or no.')
+  if (typeof raw.checkChildcare !== 'boolean') errors.push('Whether to check the childcare limits must be yes or no.')
   if (
     errors.length > 0 ||
     typeof employee === 'string' ||
     typeof employer === 'string' ||
     typeof pensionable === 'string' ||
     typeof benefits === 'string' ||
-    typeof deductions === 'string'
+    typeof deductions === 'string' ||
+    typeof carryForward === 'string'
   )
     return { ok: false, errors }
   const amount = (field: (typeof MONEY_FIELDS)[number]) => fromPence(raw[field] as number)
@@ -259,6 +292,9 @@ function validate(raw: unknown): { ok: true; inputs: OptimiserPageInputs } | { o
       children: children as number,
       childBenefit: raw.childBenefit as ChildBenefitPayments,
       taxCode: raw.taxCode as string,
+      carryForward,
+      moneyPurchaseAnnualAllowance: raw.moneyPurchaseAnnualAllowance as boolean,
+      checkChildcare: raw.checkChildcare as boolean,
     },
   }
 }
@@ -370,7 +406,8 @@ export interface InputProblem {
 
 export type PageResult = TakeHomeResult | Refusal | InputProblem
 
-export const isInputProblem = (result: PageResult): result is InputProblem => !result.ok && 'problem' in result
+export const isInputProblem = <T extends { readonly ok: boolean }>(result: T | InputProblem): result is InputProblem =>
+  !result.ok && 'problem' in result
 
 /** Take-home for the page and compare: the engine's result, its refusal, or an input problem. Never throws on valid inputs. */
 export function calculateTakeHome(inputs: OptimiserPageInputs, config: TaxYearConfig): PageResult {
@@ -400,6 +437,18 @@ const money = (label: string, amount: Money): SummaryRow => ({ label, value: { k
 const text = (label: string, value: string): SummaryRow => ({ label, value: { kind: 'text', text: value } })
 
 const noContribution = (): ContributionEntry => ({ mode: 'amount', amount: ZERO, percentOfPay: '0' })
+
+/**
+ * Version 3 to 4 (1b-ii-a): no carry forward, no money purchase annual
+ * allowance and no childcare check; everything else as it was, so take-home
+ * is unchanged. Untrusted: hostile keys refuse it; the result is validated after.
+ */
+function migrateFromVersion3(old: unknown): unknown {
+  if (!isRecord(old)) throw new Error('Version 3 inputs are not an object')
+  const hostile = checkUntrustedJson(old)
+  if (hostile) throw new Error(`Version 3 inputs are not safe to read: ${hostile}`)
+  return { ...old, carryForward: [], moneyPurchaseAnnualAllowance: false, checkChildcare: false }
+}
 
 /**
  * Version 2 to 3 (decision B16): each benefit item keeps its name and period,
@@ -448,8 +497,8 @@ function migrateFromVersion1(old: unknown): unknown {
   }
 }
 
-/** Each migration takes inputs from its version (its place in the list, from one) to the next: B9, then B16. */
-const MIGRATIONS = [migrateFromVersion1, migrateFromVersion2] as const
+/** Each migration takes inputs from its version (its place in the list, from one) to the next: B9, B16, then 1b-ii-a. */
+const MIGRATIONS = [migrateFromVersion1, migrateFromVersion2, migrateFromVersion3] as const
 
 /** Older inputs, one version at a time, up to the current one. */
 function migrate(from: number, old: unknown): unknown {
@@ -475,7 +524,7 @@ export const optimiserCalculator: CalculatorDefinition<OptimiserPageInputs> = de
   id: 'optimiser',
   name: 'Take-home pay',
   summary:
-    'Your take-home pay for the year, with pension, student loans, benefits in kind, Child Benefit and a PAYE estimate from your tax code. The pension optimiser is coming.',
+    'Your take-home pay for the year, with pension, student loans, benefits in kind, Child Benefit and a PAYE estimate from your tax code, and a chart of what you keep at each candidate pension contribution.',
   inputsVersion: MIGRATIONS.length + 1,
   defaultInputs: () => ({
     region: 'rUK',
@@ -491,6 +540,9 @@ export const optimiserCalculator: CalculatorDefinition<OptimiserPageInputs> = de
     children: 0,
     childBenefit: 'claimed',
     taxCode: '',
+    carryForward: [],
+    moneyPurchaseAnnualAllowance: false,
+    checkChildcare: false,
   }),
   applySettings: (inputs, settings) => ({ ...inputs, region: settings.region === 'scotland' ? 'scotland' : 'rUK' }),
   validateInputs: validate,

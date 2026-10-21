@@ -1,5 +1,5 @@
 import { formatPercent } from '@/lib/format'
-import { compare, type Money, ZERO } from '@/lib/money'
+import { add, compare, type Money, ZERO } from '@/lib/money'
 import { percentRatio } from '@/lib/parse'
 import { canonicalJson } from '@/lib/validate'
 import {
@@ -22,11 +22,12 @@ import {
  * figure here.
  */
 
-export const SECTION_IDS = ['pension', 'benefits', 'studentLoans', 'childBenefit', 'taxCode'] as const
+export const SECTION_IDS = ['pension', 'allowances', 'benefits', 'studentLoans', 'childBenefit', 'taxCode'] as const
 export type SectionId = (typeof SECTION_IDS)[number]
 
 export const SECTION_TITLES: Record<SectionId, string> = {
   pension: 'Pension',
+  allowances: 'Pension allowances',
   benefits: 'Benefits and deductions',
   studentLoans: 'Student loans',
   childBenefit: 'Child Benefit',
@@ -42,6 +43,7 @@ export const NEEDS_FIXING = 'An input here needs fixing'
 /** The stored inputs each section holds. Salary, bonus and region are in "Your pay", always visible. */
 const SECTION_FIELDS: Record<SectionId, readonly (keyof OptimiserPageInputs)[]> = {
   pension: ['pensionMethod', 'employeeContribution', 'employerContribution', 'pensionablePay'],
+  allowances: ['carryForward', 'moneyPurchaseAnnualAllowance', 'checkChildcare'],
   benefits: ['taxableBenefits', 'postTaxDeductions'],
   studentLoans: ['studentLoans'],
   childBenefit: ['children', 'childBenefit'],
@@ -51,6 +53,7 @@ const SECTION_FIELDS: Record<SectionId, readonly (keyof OptimiserPageInputs)[]> 
 /** The page's names for fields it tracks as invalid (session.setFieldValid), by section. */
 const INVALID_FIELDS: Record<SectionId, RegExp> = {
   pension: /^(?:(?:employee|employer)Contribution(?:-pct)?|pensionablePay)$/,
+  allowances: /^carryForward-\d+$/,
   benefits: /^(?:taxableBenefits|postTaxDeductions)-/,
   studentLoans: /^$/,
   childBenefit: /^children$/,
@@ -105,6 +108,17 @@ export function sectionSummary(
       if (employer) parts.push(contribution(inputs, resolved, 'employerContribution', 'Employer', gbp))
       if (!employee && !employer) parts.push('No contribution')
       return parts.join(' · ')
+    }
+    case 'allowances': {
+      const parts: string[] = []
+      const years = inputs.carryForward.filter((year) => compare(year.amount, ZERO) > 0)
+      if (years.length > 0)
+        parts.push(
+          `Carry forward ${gbp(years.reduce((sum, year) => add(sum, year.amount), ZERO))} from ${count(years.length, 'year', 'years')}`,
+        )
+      if (inputs.moneyPurchaseAnnualAllowance) parts.push('Money purchase annual allowance')
+      if (inputs.checkChildcare) parts.push('Childcare limits checked')
+      return parts.join(' · ') || 'Carry forward: nothing entered'
     }
     case 'benefits': {
       const parts: string[] = []

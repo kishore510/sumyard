@@ -75,8 +75,7 @@ describe('optimiserChartData', () => {
     const r = result()
     const base = fromPounds(115_000)
     const data = optimiserChartData(r, 'spendable', { gbp, percentBase: base })
-    for (const m of data.markers)
-      expect(m.label).toContain(`${formatPercent(ratio(m.x, toPence(base)))} of pensionable pay`)
+    for (const m of data.markers) expect(m.label).toContain(`${formatPercent(ratio(m.x, toPence(base)))} of pensionable pay`)
     expect(optimiserChartData(r, 'spendable', { gbp, percentBase: null }).markers.some((m) => m.label.includes('pensionable'))).toBe(false)
     // No pensionable pay: no percentage, rather than a division by nothing.
     expect(optimiserChartData(r, 'spendable', { gbp, percentBase: ZERO }).markers.some((m) => m.label.includes('%'))).toBe(false)
@@ -112,7 +111,13 @@ describe('cliffRuns', () => {
   const c = (kind: Cliff['kind'], from: number, to: number): Cliff => ({ kind, from: fromPence(from), to: fromPence(to) })
 
   it('joins neighbouring cliffs of one kind, keeps kinds apart, and splits a run at a gap', () => {
-    const cliffs = [c('hicbcStep', 0, 10), c('studentLoanWholePounds', 0, 10), c('hicbcStep', 10, 20), c('hicbcStep', 30, 40), c('childcareLimit', 20, 30)]
+    const cliffs = [
+      c('hicbcStep', 0, 10),
+      c('studentLoanWholePounds', 0, 10),
+      c('hicbcStep', 10, 20),
+      c('hicbcStep', 30, 40),
+      c('childcareLimit', 20, 30),
+    ]
     expect(cliffRuns(cliffs)).toEqual([
       { kind: 'hicbcStep', from: fromPence(0), to: fromPence(20) },
       { kind: 'studentLoanWholePounds', from: fromPence(0), to: fromPence(10) },

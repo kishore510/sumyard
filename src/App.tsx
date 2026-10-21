@@ -3,7 +3,7 @@ import { CALCULATORS } from '@/calculators/index'
 import { CALCULATOR_PAGES } from '@/calculators/pages'
 import { FirstRunBanner } from '@/components/FirstRunBanner'
 import { Footer } from '@/components/Footer'
-import { ErrorBoundary, ErrorState, LoadingState } from '@/components/states'
+import { ErrorBoundary, ErrorState, PageLoadingState } from '@/components/states'
 import { TopBar } from '@/components/TopBar'
 import { STORAGE_KEYS } from '@/lib/storageKeys'
 import { ComparePage } from '@/pages/ComparePage'
@@ -51,7 +51,7 @@ function Page({ route }: { route: PageRoute }) {
         <ErrorState title="This calculator couldn’t be shown">Reload Sumyard. If it keeps happening, report it from About.</ErrorState>
       }
     >
-      <Suspense fallback={<LoadingState />}>
+      <Suspense fallback={<PageLoadingState />}>
         <Calculator />
         <PageLoaded />
       </Suspense>
