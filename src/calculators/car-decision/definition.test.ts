@@ -545,14 +545,14 @@ describe('summarise (compare)', () => {
     ])
   })
 
-  it('gives, per option by name, net cost per month of coverage, total net cost, coverage and equity at the horizon, in the case selected', () => {
+  it('gives, per option by name, average cost per month owned, total net cost, coverage and equity at the horizon, in the case selected', () => {
     const result = engine()
     const summary = carDecisionCalculator.summarise({ ...example, valueCase: 'low' }, taxYear)
     const rows = summary.results.ok ? summary.results.rows : []
     expect(rows[0]).toEqual({ label: 'End-value case', value: { kind: 'text', text: 'Low' } })
     const keepLow = result.options[0]!.cases.low
     expect(rows.slice(1, 5)).toEqual([
-      { label: 'Keep the old car: net cost per month of coverage', value: { kind: 'money', amount: keepLow.netCostPerCoverageMonth } },
+      { label: 'Keep the old car: average cost per month owned', value: { kind: 'money', amount: keepLow.netCostPerCoverageMonth } },
       { label: 'Keep the old car: total net cost', value: { kind: 'money', amount: keepLow.netCost } },
       { label: 'Keep the old car: coverage', value: { kind: 'text', text: '48 of 48 months' } },
       { label: 'Keep the old car: equity at the horizon', value: { kind: 'money', amount: keepLow.months.at(-1)!.equity } },
@@ -563,9 +563,9 @@ describe('summarise (compare)', () => {
   it('an option without results says so in its rows; same names get numbered', () => {
     const summary = carDecisionCalculator.summarise(inputs([cash({ name: 'Car' }), blank('cash'), cash({ name: 'Car' })]), taxYear)
     const labels = summary.results.ok ? summary.results.rows.map((r) => r.label) : []
-    expect(labels).toContain('Option 2: net cost per month of coverage')
+    expect(labels).toContain('Option 2: average cost per month owned')
     expect(labels).toContain('Car (option 3): total net cost')
-    const row = summary.results.ok && summary.results.rows.find((r) => r.label === 'Option 2: net cost per month of coverage')
+    const row = summary.results.ok && summary.results.rows.find((r) => r.label === 'Option 2: average cost per month owned')
     expect(row ? row.value : undefined).toEqual({ kind: 'text', text: 'No results: inputs missing' })
   })
 

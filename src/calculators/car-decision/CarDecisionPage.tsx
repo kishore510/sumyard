@@ -25,6 +25,7 @@ import { DISCLAIMER } from '@/sheets/parts'
 import { toasts } from '@/toast/toasts'
 import type { ValueCase } from '../car-ownership/types'
 import { sessionFor } from '../session'
+import { BottomLine, ScenarioTable, VerdictPanel } from './CarAnswer'
 import { type CardData, CompareTable, type FlipState, OptionCards, OrderSummary, positions, WhatChanges } from './CarResults'
 import { CrossoverView, SensitivityView, useSensitivity } from './CarViews'
 import {
@@ -46,17 +47,18 @@ import {
   uniqueNames,
   VALUE_CASES,
 } from './definition'
+import { engineNames, type NoVerdict, verdict } from './narrative'
 import { fieldName, OptionEditor } from './OptionEditor'
-import { cardOrder, flipPair, flipsFor, lowest, pairChoices } from './results'
+import { cardOrder, flipPair, flipsFor, pairChoices } from './results'
 
 /*
  * The car decision page (slice 3c-1) at #/c/car-decision, on the 3a and 3b
  * engines, laid out as docs/ui-patterns.md: the horizon and the end-value
  * case always visible, the shared assumptions in a section, then each
  * option's editor (add, duplicate, remove with Undo; up to the most
- * compared). Results first (StickyResult): the lowest net cost per month of
- * coverage under these assumptions in the phone bar, the order in the
- * results column; below the columns, a card per option (columns from md, a
+ * compared). Results first (StickyResult): the verdict in the phone bar;
+ * in the results column (3d-1) the verdict sentence and switch cost, the
+ * bottom line, the low, expected and high table, then the order; below the columns, a card per option (columns from md, a
  * snapping row on a phone) and the comparison table, then (3c-2) the
  * crossover chart with the readout at the selected month, "What changes the
  * answer" for a pair of options, and the sensitivity view. The selected
@@ -85,18 +87,29 @@ const SHARED_HINTS = {
   generalIncrease: 'How much insurance, maintenance, VED and other costs rise each year, for every option. It can be negative.',
 } as const
 
+/** The phone bar's words when there is no verdict; the reason in full is in the results. */
+const NO_VERDICT_SHORT: Record<NoVerdict, string> = {
+  'one-option': 'No verdict: one option only',
+  'no-full': 'No verdict: no option covers the horizon',
+  'partial-lower': 'No verdict: see the results',
+  'one-full': 'No verdict: one option covers the horizon',
+}
+
 /** What the page adds to the engines' assumptions. No figures. */
 const PAGE_ASSUMPTIONS = [
   'Each car’s value falls (or rises) by the same percentage every year between today’s value and the end value: an illustrative shape, not a forecast.',
   'The low, expected and high end values are your own inputs. What a car is worth at the end is the most uncertain figure here and usually moves the answer most: try all three cases.',
   'The savings return is your own after-tax assumption, the same for every option.',
   'VED, insurance and the other running costs are the amounts you enter. Sumyard holds no VED figures and models no tax rules or electric car benefit rules.',
-  'No replacement car is modelled: a car handed back at the end of a PCP leaves the rest of the horizon uncovered, so it is shown per month of coverage and not ordered against options that cover the whole horizon.',
+  'No replacement car is modelled: a car handed back at the end of a PCP leaves the rest of the horizon uncovered, so it is shown per month owned and not ordered against options that cover the whole horizon.',
   'A loan’s APR, and HP’s when there is no option to purchase fee, is worked out from the agreement’s payments under the APR rules. For a PCP, and HP with an option fee, the card shows the effective interest rate instead, which is not the lender’s APR.',
   'An optional cost or fee left empty counts as nothing. The price, the end values, the mileage, the fuel figures and the finance terms an option needs are never assumed: until they are entered, the option has no figures.',
   'The month-by-month chart shows each option’s net cost so far at the end of each month, in the end-value case chosen, from the same engine as the cards. A line stops where its car is handed back. Lines that cross are not an order: the cards are ordered at the horizon.',
   'The thresholds in “What changes the answer” are measured over the whole horizon, whatever month the chart shows.',
-  'The sensitivity view moves one input at a time by a constant percentage of its current value (the end value in the case chosen, the savings return, the annual mileage or the fuel or energy price), with every other input held at its current value, and shows the engine’s change in net cost per month of coverage. Illustrative only, not a forecast and not advice.',
+  'The sensitivity view moves one input at a time by a constant percentage of its current value (the end value in the case chosen, the savings return, the annual mileage or the fuel or energy price), with every other input held at its current value, and shows the engine’s change in average cost per month owned. Illustrative only, not a forecast and not advice.',
+  'Average cost per month owned is the engine’s net cost per month of coverage: the net cost divided by the months the option covers.',
+  'The verdict, the bottom line and the switch cost compare only options that cover the whole horizon. An option that covers less is never compared by total.',
+  'Money in and out on each card is the cash that changes hands (upfront, each month, at the end), apart from the net cost.',
   'Uses no tax rules: nothing here depends on the tax rules of any year.',
   'Illustrative only, not financial advice.',
 ]
@@ -156,23 +169,20 @@ export default function CarDecisionPage() {
   const cards: CardData[] = ok
     ? order.map((index) => ({ index, name: names[index]!, kind: inputs.options[index]!.acquisition, status: ok.statuses[index]! }))
     : []
-  const low = ok?.comparison ? lowest(ok.comparison, inputs.valueCase) : null
-  const lowNames = (() => {
-    if (!low || !ok) return ''
-    const pageOf: number[] = []
-    ok.statuses.forEach((s, i) => {
-      if (s.kind === 'ok') pageOf[s.engineIndex] = i
-    })
-    return low.options.map((o) => names[pageOf[o]!]).join(' and ')
-  })()
-  const value = low ? `${lowNames}: ${gbp(low.perMonth)} a month` : null
+  // The answer first (3d-1): the verdict from the engine's full-coverage ordering, in words, by engine index.
+  const comparison = ok?.comparison ?? null
+  const answerNames = ok ? engineNames(ok.statuses, uniques) : []
+  const said = comparison ? verdict(comparison, inputs.valueCase, answerNames, toEngineShared(inputs).savingsReturn, gbp) : null
+  const value = said && said.kind !== 'none' ? said.short : null
   const label = 'Lowest net cost under these assumptions'
   const emptyText =
     outcome === null
       ? 'Fix the highlighted inputs'
       : outcome.kind === 'missing-shared'
         ? 'Enter the shared assumptions'
-        : 'No option covers the whole horizon yet'
+        : said?.kind === 'none'
+          ? NO_VERDICT_SHORT[said.reason]
+          : 'No option covers the whole horizon yet'
 
   const assumptions = [
     ...new Set([
@@ -208,7 +218,7 @@ export default function CarDecisionPage() {
         label={label}
         value={value}
         emptyText={emptyText}
-        announcement={value === null ? null : `${label}: ${value}`}
+        announcement={said ? said.text : null}
         controls={
           <>
             <Segmented
@@ -234,7 +244,16 @@ export default function CarDecisionPage() {
           ) : outcome.kind === 'refused' ? (
             <RefusalNotice refusal={outcome.refusal} />
           ) : (
-            <OrderSummary comparison={outcome.comparison} cards={cards} valueCase={inputs.valueCase} gbp={gbp} />
+            <>
+              {comparison && said && (
+                <>
+                  <VerdictPanel verdict={said} comparison={comparison} valueCase={inputs.valueCase} names={answerNames} gbp={gbp} />
+                  <BottomLine comparison={comparison} valueCase={inputs.valueCase} names={answerNames} gbp={gbp} />
+                  <ScenarioTable comparison={comparison} valueCase={inputs.valueCase} names={answerNames} gbp={gbp} />
+                </>
+              )}
+              <OrderSummary comparison={outcome.comparison} cards={cards} valueCase={inputs.valueCase} gbp={gbp} />
+            </>
           )
         }
       >

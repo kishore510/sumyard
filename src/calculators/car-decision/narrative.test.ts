@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { MAX_CAR_OPTIONS } from '@/lib/inputLimits'
-import { add, compare, exact, fromPounds, exactMul, type Money, ratio, roundExact, subtract, toPence, ZERO } from '@/lib/money'
+import { add, compare, exact, exactMul, fromPounds, type Money, ratio, roundExact, subtract, toPence, ZERO } from '@/lib/money'
 import { percentRatio } from '@/lib/parse'
 import type { Comparison, ValueCase } from '../car-ownership/types'
 import { type CarDecisionInputs, calculate, type OptionStatus, type PageOutcome, uniqueNames } from './definition'
@@ -182,8 +182,23 @@ describe('verdict cases', () => {
   })
 
   it('a partial-coverage option with the lowest cost per month owned: no verdict, never compared by total', () => {
-    const handBack = pcp({ name: 'Hand back', pcpEnd: 'hand-back', term: 24, ...same })
-    const i = inputs([cash({ name: 'A', ...same }), cash({ name: 'B', value: add(car().value!, fromPounds(1000)), ...same }), handBack])
+    // A cheap hand-back (no deposit, no interest, a large final payment) against two cars bought outright and worth nothing at the end.
+    const handBack = pcp({
+      name: 'Hand back',
+      pcpEnd: 'hand-back',
+      term: 24,
+      deposit: ZERO,
+      rate: '0',
+      finalPayment: fromPounds(12_000),
+      excessPerMile: 0,
+      ...same,
+    })
+    const worthless = { endLow: ZERO, endExpected: ZERO, endHigh: ZERO, ...same }
+    const i = inputs([
+      cash({ name: 'A', ...worthless }),
+      cash({ name: 'B', value: add(car().value!, fromPounds(1000)), ...worthless }),
+      handBack,
+    ])
     const { comparison, names } = run(i)
     const partial = comparison.options[2]!
     expect(partial.fullCoverage).toBe(false)
@@ -382,7 +397,7 @@ describe('random cases against the engine', () => {
         }
         const term = result.finance.schedule.rows.length
         if (term >= 2 && term <= result.coverageMonths) expect(flows.monthly!.amount).toEqual(result.timeline[1]!.acquisition)
-        if (flows.final && flows.final.withinHorizon) {
+        if (flows.final?.withinHorizon) {
           finals++
           const paid = result.timeline
             .slice(1, term + 1)
