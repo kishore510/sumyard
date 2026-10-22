@@ -46,9 +46,23 @@ export interface Car {
   readonly generalIncrease: Ratio
 }
 
+/**
+ * Finance still owed on a kept car (F43 to F50). The settlement is the lender's figure to clear it today; the implied
+ * rate comes from these figures through the 3a solver. The first payment is a month from today; the final payment is
+ * paid with the last monthly payment and the car is kept.
+ */
+export interface ExistingFinance {
+  readonly settlement: Money
+  readonly monthlyPayment: Money
+  /** Whole months, from one to the finance term bound. */
+  readonly paymentsLeft: number
+  readonly finalPayment: Money
+}
+
 /** How the car is had (F16). Finance inputs go to the 3a engine with the car's value as the cash price. */
 export type Acquisition =
-  | { readonly kind: 'keep' }
+  /** Without existing finance, exactly as before 3e. */
+  | { readonly kind: 'keep'; readonly existingFinance?: ExistingFinance }
   | { readonly kind: 'cash' }
   /** The loan amount may be below the car's value: the rest is paid in cash at month 0 (F24). */
   | { readonly kind: 'loan'; readonly finance: LoanInputs }
@@ -141,9 +155,9 @@ export interface OwnershipResult {
   readonly horizonMonths: number
   readonly coverageMonths: number
   readonly fullCoverage: boolean
-  /** Keep only: the current value counted as a sale forgone at month 0 (F18). Nothing otherwise. */
+  /** Keep only: the sale given up at month 0 (F18): the current value, less the settlement with finance still owed (F44, negative when the settlement is above the value). Nothing otherwise. */
   readonly forgoneSale: Money
-  /** The 3a result for loan, HP and PCP; null for keep and cash. */
+  /** The 3a result for loan, HP and PCP, and for keep with finance still owed (its implied rate and schedule, F45); null for cash and keep without finance. */
   readonly finance: FinanceResult | null
   /** Pence per mile, exactly (F21). */
   readonly costPerMile: ExactPence
@@ -176,6 +190,10 @@ export type OwnershipField =
   | 'generalIncrease'
   | 'acquisition'
   | 'end'
+  | 'existingFinance'
+  | 'settlement'
+  | 'monthlyPayment'
+  | 'paymentsLeft'
 
 export interface OwnershipProblem {
   readonly field: OwnershipField | FinanceField | 'result'
