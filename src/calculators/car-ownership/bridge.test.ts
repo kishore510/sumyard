@@ -1,7 +1,20 @@
 import { describe, expect, it } from 'vitest'
 import { compareExact, type ExactPence, exact, exactAdd, exactMul, exactSubtract, fromPence, ratio, roundExact, toPence } from '@/lib/money'
 import { compareOptions, costBridge, ownershipCost } from './calc'
-import { CASH, flat, generator, KEEP, KINDS, keepOwing, NO_RUNNING, option, pcpOf, randomCase, randomOwingCase, shared } from './fixtures/inputs'
+import {
+  CASH,
+  flat,
+  generator,
+  KEEP,
+  KINDS,
+  keepOwing,
+  NO_RUNNING,
+  option,
+  pcpOf,
+  randomCase,
+  randomOwingCase,
+  shared,
+} from './fixtures/inputs'
 import type { Breakdown, CarOption, OwnershipResult, Shared, ValueCase } from './types'
 
 /*
