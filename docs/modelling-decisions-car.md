@@ -172,6 +172,15 @@ For two options and one value case: the horizon value of either option, the savi
 
 Results say "lowest net cost under these assumptions", never "best", "recommended" or "should". The engine's assumption strings are checked for those words.
 
+### Owner confirmation (slice 3c-1, 22 October 2026)
+
+The owner confirmed, at the start of 3c-1:
+
+- **F18** as read in 3b: net cost subtracts **equity** (the value less any balance still owed), not the value alone.
+- **Keep** counts the current value as a **sale given up** at month 0: in the net cost and the opportunity cost, not in the cash out.
+- **The mileage flip point** (F22, F29) sets the **same annual mileage for both options**, "as one driver".
+- **The 3b bounds** (F30) as proposed.
+
 ## Engine decisions (slice 3b, proposed; owner to confirm)
 
 ### F24. Time grid
