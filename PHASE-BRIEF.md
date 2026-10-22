@@ -1,6 +1,6 @@
 # PHASE-BRIEF: Slice 3 Car decision
 
-Status: 3a (finance engine) Done (0.17.0, PR #21); 3a.1 (APR) Done (0.17.1, PR #22); 3b (cost-of-ownership engine) in progress. Slices 1b and 2 are built and stay open in `PLAN.md` until the owner's checks below are done. Status per part lives only in `PLAN.md`. Finished part scopes are in `docs/history/phase-brief-archive.md`.
+Status: 3a (finance engine) Done (0.17.0, PR #21); 3a.1 (APR) Done (0.17.1, PR #22); 3b (cost-of-ownership engine) Done (0.18.0, PR #23); 3c-1 next, its brief first. Slices 1b and 2 are built and stay open in `PLAN.md` until the owner's checks below are done. Status per part lives only in `PLAN.md`. Finished part scopes are in `docs/history/phase-brief-archive.md`.
 
 ## Docs rule
 
@@ -34,13 +34,13 @@ The cumulative cost chart over the horizon with crossover points (shared Chart, 
 
 Confirm the benefit value from an annual statement (B1) and run the payslip check (B15: PAYE estimate, salary sacrifice benefits, the monthly breakdown); the 72 HMRC cross-checks; Tables A and B to D for the PAYE estimate (O10, O11); confirm `paye.codeUnit` as a standing rule; whether a benefit that attracts Class 1 needs its own input. Slice 2: fill `docs/compound-cross-checks.json` (eight cases, with source and date); confirm the C8 rate bounds and the starting years (`DEFAULT_PROJECTION_YEARS`).
 
-Slice 3a: confirm decisions F5 to F14 and the bounds (`src/calculators/car-finance/README.md`); confirm F15 (one decimal place, the drawdown, an added fee as a charge) and settle CR-10 (a PCP's optional final payment, purchase and option fees in the APR) from a source before any page shows an APR for PCP or HP with an option fee; decide whether the hand-back path should also take condition charges.
+Slice 3a: confirm decisions F5 to F14 and the bounds (`src/calculators/car-finance/README.md`); confirm F15 (one decimal place, the drawdown, an added fee as a charge) and settle CR-10 (a PCP's optional final payment, purchase and option fees in the APR) from a source before any page shows an APR for PCP or HP with an option fee; decide whether the hand-back path should also take condition charges. Slice 3b: confirm F24 to F31 and the bounds (`src/calculators/car-ownership/README.md`), and the two readings of O3 in F18 (equity rather than value when a balance is owed; keep's value as a sale forgone); confirm litres per gallon from legislation.gov.uk (CO-1).
 
 ## Last session
 
-- 22 October 2026, part 3a.1 (0.17.1, PR #22, internal): CONC App 1.2 and SI 2010/1011 read (the SI is revoked, CR-15); CR-1 to CR-3 verified, CR-10 partly (HP balloon), CR-15 to CR-18 added; `apr(flows)` (F15) with `roundRatio`/`APR_DISPLAY_DIGITS`; tests red then green; mutation spot-checks all caught (one equivalent mutant).
-- Differs from the brief: no published APR example exists on either source (CR-17), so APR-1 to APR-4 are hand-checkable; no agreement-level APR (CR-10 still OPEN); the effective-rate assumption text no longer says the APR rules could not be verified.
-- Not verified: CR-10 for PCP and purchase/option fees; what the 18/12/2025 change to CONC App 1.2.6R was (CR-18); CR-12, CR-13 (statutes not read); no UI to check.
-- Next: 3b (cost-of-ownership engine), its brief and decisions first.
+- 22 October 2026, part 3b (0.18.0, PR #23, internal): brief and decisions F16 to F31 (owner O1 to O8 as F16 to F23); bounds in `inputLimits.ts`; litres per gallon verified (CO-1, `units.ts`); the engine in `src/calculators/car-ownership/` (value curve, cost per mile, future value of flows, ownership cost, comparison, flip points); tests red then green; 300-case exact reference; mutation spot-checks all caught.
+- Differs from the brief: O3 read as minus equity (value less any balance owed) and keep's value counted as a sale forgone (F18); totals at the end of coverage; litres per gallon from legislation.gov.uk (no GOV.UK page defines it); flips on mileage set both options' mileage; no overflow reachable within the bounds, so that test checks the largest inputs.
+- Not verified: no published ownership-cost example (hand-checkable OWN-1 to OWN-6 instead); nothing in a browser (no UI). OPEN: CR-10 (APR for PCP and fees) carries over.
+- Next: 3c-1 (the page), its brief first.
 
 Full history (progress logs, finished part scopes, slice archives): `docs/history/` (grep it, don't read it whole).

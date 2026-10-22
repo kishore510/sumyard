@@ -115,6 +115,26 @@ Decisions F7 (rounding), F8 and F9 (the rate) in `docs/modelling-decisions-car.m
 | Effective rate, monthly and annual | Bisection to 10^-24, shown to fifteen decimal places (`factorToRatio`); nothing rounded for display | `solveRate`, `annualRate` | F8, F9 |
 | Statutory APR | `annual`: as the effective rate. `display`: `annual` to one decimal place of a percentage, nearest, a following five rounding up | `apr`, `roundRatio` | F15; CR-3 (verified) |
 
+## Car ownership (slice 3b)
+
+Decisions F17, F18, F21, F25 and F29 in `docs/modelling-decisions-car.md`. No tax rule is involved.
+
+| Step | Mode | Where | Basis |
+|---|---|---|---|
+| Cost per mile | Exact (`ExactPence`): price per litre × litres per gallon ÷ miles per gallon; blended price per kWh ÷ miles per kWh; or as entered | `costPerMile` | F21, CO-1 |
+| Each month's running cost and fuel | Exact: a twelfth of annual × (1 + change)^year, rounded once to the nearest penny | `monthly` | F21, F25 |
+| Value curve | q = (VH / V0)^(1/H) by bisection on the fine grid to one unit (the largest q with V0 q^H ≤ VH); V(m) = V0 q^m in fine fixed point, rounded once to the nearest penny; V(0) and V(H) exact | `valueCurve` | F17 |
+| Fitted yearly change | q^12 − 1, shown to fifteen decimal places | `valueCurve` | F17 |
+| Opportunity cost | Horner's rule in fine fixed point at (1 + s)^(1/12) (`factorRoot`), less the outflows, rounded once each month | `futureValueOfFlows`, `opportunity` | F18 |
+| Net cost, equity, breakdown | Sums and differences of whole pennies: exact, so the breakdown adds up to the net cost | `costCase` | F26 |
+| Net cost per month of coverage | Net cost ÷ coverage, nearest penny, for display; ranking compares net × the other's coverage exactly | `costCase`, `rank` | F27 |
+| Flip: horizon value | Exact crossing (a rational), to the nearest penny | `valueFlip` | F29 |
+| Flip: savings return, mileage | Grid of `FLIP_SCAN_STEPS`, then bisection to neighbours 10^-`FLIP_RATE_DIGITS` apart or one mile apart | `search` | F29 |
+
+**Reference tolerance.** `fixtures/reference.ts` works in exact fractions with the two roots (the curve's q and the monthly growth) as 256-bit binary fractions; each power is truncated to 256 bits. The engine's roots are within a unit of 10^-40, so a value or opportunity cost could differ only within about 10^-25 of a penny of a half; the test compares every one not within 10^-12 of a half penny, and fails if ten or more figures across the 300 seeded cases are skipped that way.
+
+**`futureValueOfFlows` against `project()`.** For level monthly payments the compound engine's closing balance (annual compounding with monthly contributions at the end, C2) and this function agree within a penny on 60 seeded cases (`properties.test.ts`).
+
 ## Display (`format.ts`)
 
 Locale en-GB. Formatting works from integer pence in `BigInt`, never by dividing a float, so the digits are exact at any size. **Display rounding is nearest, halves away from zero**; it is for showing results and is not a tax rule.

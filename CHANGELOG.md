@@ -4,6 +4,11 @@ All notable changes to Sumyard are listed here, newest first. The format follows
 
 ## [Unreleased]
 
+## [0.18.0] - 2026-10-22
+
+### Added
+- **Internal only: the car ownership costs.** Nothing you can see in the app has changed. The behind-the-scenes calculations for the coming car decision calculator can now cost up to four options over the same number of months: keep your car, buy outright, a loan, hire purchase, or PCP (buying the car at the end or handing it back). Each option's cost counts what you pay, less what the car is worth at the end after anything still owed, plus what that money could have earned in savings. They cover depreciation in a low, expected and high case, insurance, maintenance, vehicle tax as an amount you enter, fuel or charging (petrol or diesel by miles per gallon, electric by miles per kWh with home and public charging, or a cost per mile), and yearly price rises. The headline is the cost per month you have a car, so a PCP handed back early is shown apart rather than compared unfairly. They also find the points where two options cost the same: the value at the end, the savings return or the yearly mileage. Results say which option has the lowest cost under your assumptions; they never call one the best. The page comes in a later release.
+
 ## [0.17.1] - 2026-10-22
 
 ### Added
