@@ -4,7 +4,7 @@ import { join } from 'node:path'
 import { act } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { SETTLE_MS } from '@/components/StickyResult'
-import { formatGBP, formatGBPDelta, formatPence, formatPercentFixed } from '@/lib/format'
+import { formatGBP, formatGBPDelta, formatPence, formatPercent, formatPercentFixed } from '@/lib/format'
 import { MAX_CAR_OPTIONS, SENSITIVITY_SHIFTS } from '@/lib/inputLimits'
 import {
   APR_DISPLAY_DIGITS,
@@ -30,7 +30,7 @@ import type { Comparison, OwnershipResult, RankEntry, ValueCase } from '../car-o
 import { sessionFor } from '../session'
 import CarDecisionPage from './CarDecisionPage'
 import { type CarDecisionInputs, carDecisionCalculator, type OptionInputs, toEngineOption, toEngineShared } from './definition'
-import { blank, blankV1, cash, electric, hp, inputs, keep, loan, ownerPage, pcp, perMile } from './fixtures/inputs'
+import { blank, blankV1, cash, electric, hp, inputs, keep, keepOwing, loan, ownerPage, pcp, perMile } from './fixtures/inputs'
 import { flipSentences } from './results'
 import { DRIVERS, shiftOption } from './sensitivity'
 
@@ -1095,5 +1095,118 @@ describe('3d-1.1 fixes', () => {
     const legend = $('[data-crossover] ul')!
     expect(legend.textContent).not.toMatch(/\(line\)/)
     for (const name of example.options.map((o) => o.name)) expect(legend.textContent).toContain(name)
+  })
+})
+
+describe('finance still owed on a kept car (3e)', () => {
+  const owing = inputs([keepOwing(), cash()])
+  const box = (suffix: string) => field(0, suffix)
+  const label = (input: Element) => text($(`label[for="${input.id}"]`))
+  const hint = (input: Element) => text($(`[id="${input.id}-hint"]`))
+  const BOXES = ['settlement', 'owed-payment', 'payments-left', 'owed-final-payment']
+
+  it('the Keep option’s finance section has the switch, off, and no boxes until it is on', () => {
+    set(inputs([keep(), cash()]))
+    expect($('[data-section$="-finance"]', editor(0))).not.toBeNull()
+    expect($('[data-section$="-finance"]', editor(1))).toBeNull()
+    const toggle = box('owes-finance')
+    expect(toggle.getAttribute('role')).toBe('switch')
+    expect(toggle.getAttribute('aria-checked')).toBe('false')
+    expect(text(toggle)).toBe('Still owe finance on it?')
+    for (const suffix of BOXES) expect(box(suffix), suffix).toBeNull()
+    expect(text($('[id$="-finance-summary"]', editor(0)))).toBe('No finance owed')
+  })
+
+  it('switching on shows the four boxes after the switch, in order, with plain labels and hints with no figures', () => {
+    set(inputs([keep(), cash()]))
+    click(box('owes-finance'))
+    expect(session.get().inputs.options[0]!.owesFinance).toBe(true)
+    expect(box('owes-finance').getAttribute('aria-checked')).toBe('true')
+    const boxes = BOXES.map(box)
+    expect(boxes.map(label)).toEqual([
+      'What does the lender say you owe to clear it today?',
+      'How much do you pay each month?',
+      'How many payments are left?',
+      'Any final payment due at the end? Enter 0 if none.',
+    ])
+    expect(hint(boxes[0]!)).toMatch(/lender’s current settlement quote/i)
+    for (const b of boxes) expect(hint(b), b.id).not.toMatch(/\d/)
+    expect(hint(boxes[3]!)).toMatch(/empty box counts as nothing/i)
+    expect(boxes[3]!.getAttribute('placeholder')).toBe('0')
+    // Keyboard order: the switch, then each box, in the document's order.
+    const order = $$('button[role="switch"], input', editor(0)).map((el) => el.id)
+    const at = (id: string) => order.indexOf(id)
+    expect(at(box('owes-finance').id)).toBeLessThan(at(boxes[0]!.id))
+    for (let k = 1; k < boxes.length; k++) expect(at(boxes[k - 1]!.id)).toBeLessThan(at(boxes[k]!.id))
+  })
+
+  it('every box shown must be filled before costing, except the final payment, which reads as nothing', () => {
+    set(inputs([keep({ owesFinance: true }), cash()]))
+    const missing = $('[data-card-missing]', card(0))
+    expect(text(missing)).toContain('Settlement figure')
+    expect(text(missing)).toContain('Monthly payment')
+    expect(text(missing)).toContain('Payments left')
+    expect(text(missing)).not.toContain('Final payment')
+    set(inputs([keepOwing({ owedFinalPayment: fromPounds(0) }), cash()]))
+    expect($('[data-headline]', card(0))).not.toBeNull()
+    expect(box('owed-final-payment').value).toBe('')
+  })
+
+  it('the card: the engine’s figures, money in and out with the payments left and the final payment, the implied rate', () => {
+    set(owing)
+    const result = engine()
+    expectCard(0, result.options[0]!, 'expected')
+    const el = card(0)
+    expect(text($('[data-upfront]', el))).toBe(money(fromPounds(0)))
+    expect(text($('[data-monthly]', el))).toBe(`${money(fromPounds(260))} a month`)
+    expect(text($('[data-money-flows]', el))).toContain('24 payments left')
+    expect(text($('[data-final]', el))).toBe(money(fromPounds(1_500)))
+    const rate = $('[data-rate]', el)!
+    expect(rate.getAttribute('data-rate-kind')).toBe('implied')
+    expect(text(rate)).toContain('Implied rate from your figures, not the lender’s APR')
+    const finance = result.options[0]!.finance!
+    if (!finance.effectiveRate.ok) throw new Error('no rate')
+    expect(text($('[data-rate-value]', rate))).toBe(formatPercent(finance.effectiveRate.annual))
+    expect($('[data-negative-equity-now]', el)).toBeNull()
+  })
+
+  it('flags negative equity now when the settlement is above the car’s value', () => {
+    set(inputs([keepOwing({ settlement: fromPounds(9_500), owedPayment: fromPounds(360) }), cash()]))
+    expect(text($('[data-negative-equity-now]', card(0)))).toMatch(/more than the car is worth today/i)
+  })
+
+  it('a refusal names the box: payments that don’t cover the settlement', () => {
+    set(inputs([keepOwing({ owedPayment: fromPounds(200), owedFinalPayment: fromPounds(0) }), cash()]))
+    expect(text($('[data-option-problems]', editor(0)))).toContain('Monthly payment')
+    expect(text(card(0))).toMatch(/less than the settlement figure/)
+    expect($('[data-headline]', card(1))).not.toBeNull()
+  })
+
+  it('the verdict, the switch line, the bottom line and the three cases work with it', () => {
+    set(owing)
+    const result = engine()
+    const names = ['Keep, still paying', 'Buy outright']
+    const lowest = result.ranking.expected.full[0]!.option
+    expect(text($('[data-verdict]'))).toContain(`${names[lowest]} has the lowest net cost`)
+    expect(text($('[data-switch-cost]'))).toContain('Switching to Buy outright costs')
+    expect($$('[data-scenario-table] tbody tr')).toHaveLength(2)
+  })
+
+  it('the chart marks the end of the payments inside the horizon', () => {
+    set(owing)
+    expect(text($('[data-crossover] [data-marker-list]'))).toContain('Keep, still paying: finance term ends at month 24')
+  })
+
+  it('a section summary says what is owed', () => {
+    set(owing)
+    const summary = text($('[id$="-finance-summary"]', editor(0)))
+    expect(summary).toContain(`settle ${money(fromPounds(7_200))}`)
+    expect(summary).toContain('24 payments left')
+  })
+
+  it('saved and loaded back with the scenario', () => {
+    set(owing)
+    const stored = carDecisionCalculator.validateInputs(JSON.parse(JSON.stringify(session.get().inputs)))
+    expect(stored).toEqual({ ok: true, inputs: owing })
   })
 })

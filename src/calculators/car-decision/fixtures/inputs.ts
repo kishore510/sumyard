@@ -7,9 +7,15 @@ import type { CarDecisionInputs, OptionInputs } from '../definition'
  * market, tax or VED figure.
  */
 
+/** The fields inputs version 3 added (3e): finance still owed on a kept car. */
+export type V3Field = 'owesFinance' | 'settlement' | 'owedPayment' | 'paymentsLeft' | 'owedFinalPayment'
+
+/** An option as inputs version 2 stored it: no finance on a kept car. */
+export type V2Option = Omit<OptionInputs, V3Field>
+
 /** An option as inputs version 1 stored it: optional costs and fees could be empty (null). */
 export type V1Option = Omit<
-  OptionInputs,
+  V2Option,
   'insurance' | 'maintenance' | 'ved' | 'other' | 'deposit' | 'arrangementFee' | 'balloon' | 'optionFee' | 'purchaseFee' | 'excessPerMile'
 > & {
   readonly insurance: Money | null
@@ -24,8 +30,18 @@ export type V1Option = Omit<
   readonly excessPerMile: number | null
 }
 
-/** A fresh option (inputs version 2): every required box empty; optional costs and fees 0, as an empty box reads. */
+/** A fresh option (inputs version 3): as version 2, the switch off, the settlement, payment and payments left empty, no final payment. */
 export const blank = (acquisition: OptionInputs['acquisition'] = 'cash'): OptionInputs => ({
+  ...blankV2(acquisition),
+  owesFinance: false,
+  settlement: null,
+  owedPayment: null,
+  paymentsLeft: null,
+  owedFinalPayment: fromPounds(0),
+})
+
+/** A fresh option as inputs version 2 stored it: every required box empty; optional costs and fees 0, as an empty box reads. */
+export const blankV2 = (acquisition: OptionInputs['acquisition'] = 'cash'): V2Option => ({
   ...blankV1(acquisition),
   insurance: fromPounds(0),
   maintenance: fromPounds(0),
@@ -111,6 +127,28 @@ export const keep = (patch: Partial<OptionInputs> = {}) =>
     ...patch,
   })
 
+/** Keep with finance still owed: a settlement below the value, payments with some interest, a final payment. */
+export const keepOwing = (patch: Partial<OptionInputs> = {}) =>
+  keep({
+    name: 'Keep, still paying',
+    value: fromPounds(9_000),
+    endLow: fromPounds(3_500),
+    endExpected: fromPounds(4_500),
+    endHigh: fromPounds(5_500),
+    owesFinance: true,
+    settlement: fromPounds(7_200),
+    owedPayment: fromPounds(260),
+    paymentsLeft: 24,
+    owedFinalPayment: fromPounds(1_500),
+    ...patch,
+  })
+
+/** An option as version 2 stored it: the version 3 fields dropped. */
+export function asV2(option: OptionInputs): V2Option {
+  const { owesFinance: _a, settlement: _b, owedPayment: _c, paymentsLeft: _d, owedFinalPayment: _e, ...rest } = option
+  return rest
+}
+
 export const cash = (patch: Partial<OptionInputs> = {}) => car({ name: 'Buy outright', acquisition: 'cash', ...patch })
 
 export const loan = (patch: Partial<OptionInputs> = {}) =>
@@ -175,6 +213,9 @@ export const inputs = (options: OptionInputs[], patch: Partial<CarDecisionInputs
   options,
   ...patch,
 })
+
+/** Inputs as version 2 stored them. */
+export type V2Inputs = Omit<CarDecisionInputs, 'options'> & { readonly options: readonly V2Option[] }
 
 /** Inputs as version 1 stored them. */
 export type V1Inputs = Omit<CarDecisionInputs, 'options'> & { readonly options: readonly V1Option[] }
