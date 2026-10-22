@@ -113,6 +113,21 @@ export function formatPercentPointDelta(change: Ratio, maxDecimals = 2): string 
   return `${change.numerator > 0 ? '+' : ''}${text} ${unit}`
 }
 
+/** A change in an amount with the true minus sign (U+2212): "+£12.34", "−£12.34", or "£0.00". Stub. */
+export function formatGBPChange(_amount: Money, _style: AmountStyle): string {
+  throw new Error('not built yet')
+}
+
+/** A percentage change, signed, at most one place: "+25%", "−33.3%", "0%". Stub. */
+export function formatPercentChange(_change: Ratio): string {
+  throw new Error('not built yet')
+}
+
+/** A change in percentage points, signed: "+2.5 pts", "−1 pt", "0 pts". Stub. */
+export function formatPointsChange(_change: Ratio): string {
+  throw new Error('not built yet')
+}
+
 /** Exact pence (a cost per mile) to at most `maxDecimals` places, trailing zeros dropped: "13.64p", "12p". Nearest, halves away from zero. */
 export function formatPence(amount: { readonly numerator: bigint; readonly denominator: bigint }, maxDecimals = 2): string {
   const scale = 10n ** BigInt(maxDecimals)
