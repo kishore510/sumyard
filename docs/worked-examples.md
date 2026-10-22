@@ -166,6 +166,8 @@ No worked APR example is published in CONC App 1 or SI 2010/1011 (`docs/verifica
 
 ## Car ownership (slice 3b)
 
+Slice 3c-1 adds `docs/car-cross-checks.json`: six one-option cases on the page's inputs (cash, a loan, HP, PCP buy, PCP hand back, keep) with every expected value null, for the owner to fill from a spreadsheet or, for the payment, a real dealer or lender quote, with the source and date; until then they run as todo tests (`src/calculators/car-decision/crossChecks.test.ts`).
+
 No published worked example of a car's ownership cost was used. These are hand-checkable cases of decisions F17 to F26, not published examples. Mirrored in `src/calculators/car-ownership/calc.test.ts`.
 
 | Id | Inputs | Result by hand | Basis | Mirrored |

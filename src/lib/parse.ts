@@ -13,6 +13,8 @@ import { compare, compareRatio, fromPounds, type Money, MoneyError, type Ratio, 
  *   optional £, digits with optional thousands commas ("1,234"), at most two
  *   decimals; "5." and ".5" are fine, as are leading zeros;
  * - percentages: optional sign, digits and decimals, an optional trailing %;
+ * - decimals (miles per gallon, pence per litre): as percentages, with
+ *   thousands commas and no %;
  * - whole numbers: optional sign, digits with optional thousands commas.
  * Everything else is refused with a message; values past the safe-integer
  * range are refused, never rounded.
@@ -144,4 +146,57 @@ export function parseIntegerText(text: string, limits: IntegerLimits = {}): Pars
   if (limits.min !== undefined && value < limits.min) return fail(`Enter at least ${limits.min}.`)
   if (limits.max !== undefined && value > limits.max) return fail(`Enter no more than ${limits.max}.`)
   return { ok: true, value }
+}
+
+export interface DecimalLimits extends PercentLimits {
+  /** Refuse the minimum itself ("above nothing"). */
+  minExclusive?: boolean
+}
+
+const DECIMAL_HELP = 'Enter a number, like 45.5.'
+const plain = (r: Ratio) => formatPercent(ratio(r.numerator, r.denominator * 100), 15).replace('%', '')
+
+/** A plain decimal ("45.5", "1,234.56") as an exact Ratio and its canonical text, within the limits. */
+export function parseDecimalText(text: string, limits: DecimalLimits = {}): Parsed<PercentValue> {
+  const { maxDecimals = 2 } = limits
+  const s = normaliseMinus(text).trim()
+  if (!s) return fail('Enter a number.')
+  const match = /^([+-]?)([\d,]*)(?:\.(\d*))?$/.exec(s)
+  if (!match) return fail(DECIMAL_HELP)
+  const [, sign = '', grouped = '', fraction = ''] = match
+  const whole = wholeDigits(grouped)
+  if (whole === null || (!whole && !fraction)) return fail(DECIMAL_HELP)
+  if (fraction.length > maxDecimals) return fail(`Use at most ${decimalPlaces(maxDecimals)}.`)
+  const trimmedWhole = whole.replace(/^0+(?=\d)/, '') || '0'
+  const trimmedFraction = fraction.replace(/0+$/, '')
+  const numerator = BigInt(`${trimmedWhole}${trimmedFraction}`)
+  const denominator = 10n ** BigInt(trimmedFraction.length)
+  if (numerator > BigInt(Number.MAX_SAFE_INTEGER) || denominator > BigInt(Number.MAX_SAFE_INTEGER)) return fail('That number is too large.')
+  const negative = sign === '-' && numerator !== 0n
+  const value = ratio(Number(negative ? -numerator : numerator), Number(denominator))
+  if (limits.min) {
+    const below = compareRatio(value, limits.min)
+    if (limits.minExclusive && below <= 0) return fail(`Enter more than ${plain(limits.min)}.`)
+    if (below < 0) return fail(`Enter at least ${plain(limits.min)}.`)
+  }
+  if (limits.max && compareRatio(value, limits.max) > 0) return fail(`Enter no more than ${plain(limits.max)}.`)
+  const canonical = `${negative ? '-' : ''}${trimmedWhole}${trimmedFraction ? `.${trimmedFraction}` : ''}`
+  return { ok: true, value: { ratio: value, text: canonical } }
+}
+
+/** The Ratio for a canonical decimal text (as parseDecimalText returns). Throws on anything else. */
+export function decimalRatio(text: string): Ratio {
+  if (typeof text !== 'string' || !CANONICAL_PERCENT.test(text) || text === '-0') {
+    throw new MoneyError(`decimalRatio: ${JSON.stringify(text)} is not a canonical decimal`)
+  }
+  const parsed = parseDecimalText(text, { maxDecimals: 15 })
+  if (!parsed.ok) throw new MoneyError(`decimalRatio: ${parsed.error}`)
+  return parsed.value.ratio
+}
+
+/** True if `text` is a canonical decimal within the limits. For validating stored inputs. */
+export function isCanonicalDecimal(text: unknown, limits: DecimalLimits = {}): text is string {
+  if (typeof text !== 'string' || !CANONICAL_PERCENT.test(text) || text === '-0') return false
+  const parsed = parseDecimalText(text, limits)
+  return parsed.ok && parsed.value.text === text
 }

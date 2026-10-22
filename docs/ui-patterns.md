@@ -80,3 +80,23 @@ A table with a row per year goes below the two columns at full width, not in the
 
 It sets `taxRules: 'none'` in the registry. Its page shows `NoTaxRulesBadge` ("Uses no tax rules") where the VerifiedBadge would be, and nowhere mentions a tax year. Its scenarios carry no tax year, and the scenario list, the import preview and compare say "Uses no tax rules" instead.
 
+
+## 3c-1: the car decision page
+
+Patterns from part 3c-1. Not owner decisions; change them with a note here.
+
+### U16. Option cards: columns from md, a snapping row on a phone
+
+A result per option (up to four) is a card (`ResultCard` with an `h3` title, `tabIndex` 0 and a `footer` for notices and the split bar), in the order the engine gives. From `md` the cards sit in a grid (two columns; three or four from `lg`/`xl`); below `md` they are a row that scrolls sideways and snaps to each card, in a focusable region named by its heading, with a visible hint ("Scroll sideways, or move with Tab") and every card focusable, so nothing needs a swipe. The row and each card are `relative`, so screen-reader-only text in a card off to the side stays inside the row instead of widening the page. The cards go below the two columns at full width (as U14's table); the results column holds the order in words, with a "Go to the cards" button that moves focus to the row.
+
+### U17. A table beside the cards
+
+The same figures as the cards, a column per option in the cards' order and a row per measure, in a focusable region that scrolls sideways with the row labels sticky. It is the accessible equivalent of the cards and the quickest way to compare them on a laptop.
+
+### U18. Inputs that start empty; one option held back at a time
+
+Amount, rate, decimal and whole-number inputs can be left empty (`allowEmpty`: an empty box is null, not an error), so a page can start with no made-up figures. An item that needs inputs says which on its card and its section summaries ("needs …"); a box being typed that isn't valid yet holds back only its own item (the session tracks it as `o<key>.<field>`), and boxes a choice hides (another kind, fuel type or pricing) are cleared from that list so they can't hold an item back unseen. Shared inputs hold back everything, as before. `DecimalInput` takes a plain decimal with its unit beside the box.
+
+### U19. Slow results after the inputs settle
+
+A result that takes long enough to stall typing (the flip-point search, about 300 ms) is worked out once the inputs have stopped changing for `SETTLE_MS`, the same wait as the sticky announcement, and says "Working out … once the inputs settle" until then. Everything else stays live.

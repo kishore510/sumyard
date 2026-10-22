@@ -20,6 +20,7 @@ import { InlineNotice } from '@/components/states'
 import { Button } from '@/components/ui/button'
 import { VerifiedBadge } from '@/components/VerifiedBadge'
 import { listTaxYears, taxYearLabel } from '@/config/tax/index'
+import { useItemKeys } from '@/hooks/useItemKeys'
 import { formatGBP, formatGBPCompact, formatGBPDelta } from '@/lib/format'
 import { add, compare, fromPence, type Money, ratio, subtract, toPence, ZERO } from '@/lib/money'
 import type { Parsed } from '@/lib/parse'
@@ -608,27 +609,6 @@ function PensionablePayInputs({ inputs, resolved, gbp }: { inputs: OptimiserPage
       </p>
     </fieldset>
   )
-}
-
-/** Keys for a list's items that stay with each item as others are added, removed or restored. Held by the page only, never stored. */
-function useItemKeys(count: number) {
-  const [state, setState] = useState(() => ({ next: count, keys: Array.from({ length: count }, (_, i) => i) }))
-  let { keys } = state
-  if (keys.length !== count) {
-    // The list changed from outside (an Undo after the page was left): start the keys afresh.
-    keys = Array.from({ length: count }, (_, i) => state.next + i)
-    setState({ next: state.next + count, keys })
-  }
-  const key = state.next
-  return {
-    keys,
-    /** Adds a key at `index` (the end for a new item) and returns it. */
-    inserted: (index: number) => {
-      setState((s) => ({ next: s.next + 1, keys: [...s.keys.slice(0, index), s.next, ...s.keys.slice(index)] }))
-      return key
-    },
-    removed: (index: number) => setState((s) => ({ ...s, keys: s.keys.filter((_, i) => i !== index) })),
-  }
 }
 
 type Item = { readonly name: string; readonly period: ListItem['period'] }

@@ -16,7 +16,8 @@ import { ratio } from '@/lib/money'
  * - parts differ by more than colour: their order, a gap between each,
  *   solid or hatched fills, and a legend naming each with its value;
  * - screen readers get the title and a text summary; everyone can open the
- *   same figures, with each part's share, as a table;
+ *   same figures, with each part's share, as a table, which scrolls in a
+ *   focusable region when it is wider than its container (3c-1);
  * - no animation, so reduced motion needs nothing more.
  *
  * A part below nothing, or parts that don't add up to the total, can't be
@@ -72,6 +73,7 @@ export function SplitBar({
   totalLabel,
   formatValue,
   highlight,
+  emptyText = 'Nothing to show yet: enter your pay.',
 }: {
   title: string
   /** Every part, in order; parts of nothing are left out of the bar, legend and table. */
@@ -82,6 +84,8 @@ export function SplitBar({
   formatValue: (value: number) => string
   /** The id of the part to show in the accent (take-home). */
   highlight?: string
+  /** Shown instead of the bar when the total is nothing or below. */
+  emptyText?: string
 }) {
   const { theme } = useTheme()
   const [ref, width] = useWidth()
@@ -93,7 +97,7 @@ export function SplitBar({
   const sum = shown.reduce((a, s) => a + s.value, 0)
   const problem =
     total <= 0
-      ? 'Nothing to show yet: enter your pay.'
+      ? emptyText
       : shown.some((s) => s.value < 0) || sum !== total
         ? 'This can’t be drawn as a bar: a part is below nothing. The figures are below.'
         : null
@@ -180,7 +184,15 @@ export function SplitBar({
           <span className="flex-1">Show as a table</span>
           <ChevronDown aria-hidden="true" className="size-4 text-text-muted group-open:rotate-180" />
         </summary>
-        <div className="overflow-x-auto border-t border-border">
+        {/* A table wider than its card scrolls sideways in a region that can be focused (axe scrollable-region-focusable). */}
+        {/* biome-ignore lint/a11y/useSemanticElements: a fieldset is for form controls; this names a scrolling table. */}
+        <div
+          role="group"
+          aria-label={`${title}, as a table`}
+          // biome-ignore lint/a11y/noNoninteractiveTabindex: a scrollable region must be keyboard-focusable.
+          tabIndex={0}
+          className="overflow-x-auto border-t border-border"
+        >
           <table className="w-full text-sm">
             <caption className="sr-only">{title}</caption>
             <thead>

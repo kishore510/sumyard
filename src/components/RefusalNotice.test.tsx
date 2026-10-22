@@ -36,3 +36,19 @@ describe('RefusalNotice', () => {
     expect(notice.querySelector('h2')?.textContent).toBe('No results yet: tax figures not verified')
   })
 })
+
+describe('RefusalNotice more than once on a page (slice 3c-1: one per option card)', () => {
+  it('each notice is named by its own heading, with no repeated ids, and the heading level can be set', () => {
+    view = mount(
+      <>
+        <RefusalNotice refusal={inputs} />
+        <RefusalNotice refusal={inputs} heading="h3" />
+      </>,
+    )
+    const notices = [...view.host.querySelectorAll('[data-refusal="inputs"]')]
+    const ids = notices.map((n) => n.getAttribute('aria-labelledby'))
+    expect(new Set(ids).size).toBe(2)
+    for (const [i, notice] of notices.entries()) expect(view.host.querySelector(`[id="${ids[i]}"]`)?.closest('[data-refusal]')).toBe(notice)
+    expect(notices[1]!.querySelector('h3')?.textContent).toBe('No results for these inputs')
+  })
+})

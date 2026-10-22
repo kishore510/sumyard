@@ -69,6 +69,15 @@ export function formatPercent(rate: Ratio, maxDecimals = 2): string {
   return `${scaled < 0n ? '-' : ''}${group(whole)}${fraction ? `.${fraction}` : ''}%`
 }
 
+/** A Ratio as a percentage to exactly `decimals` places, trailing zeros kept: an APR to one place, "10.0%". */
+export function formatPercentFixed(rate: Ratio, decimals: number): string {
+  const scale = 10n ** BigInt(decimals)
+  const scaled = divideRound(BigInt(rate.numerator) * 100n * scale, BigInt(rate.denominator), 'nearest')
+  const size = scaled < 0n ? -scaled : scaled
+  const fraction = decimals > 0 ? `.${String(size % scale).padStart(decimals, '0')}` : ''
+  return `${scaled < 0n ? '-' : ''}${group(size / scale)}${fraction}%`
+}
+
 const DATE = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' })
 
 /** "2 January 2098" from "2098-01-02", the same in every time zone. */
@@ -102,4 +111,18 @@ export function formatPercentPointDelta(change: Ratio, maxDecimals = 2): string 
   if (!/[1-9]/.test(text)) return 'No change'
   const unit = text.replace('-', '') === '1' ? 'percentage point' : 'percentage points'
   return `${change.numerator > 0 ? '+' : ''}${text} ${unit}`
+}
+
+/** Exact pence (a cost per mile) to at most `maxDecimals` places, trailing zeros dropped: "13.64p", "12p". Nearest, halves away from zero. */
+export function formatPence(amount: { readonly numerator: bigint; readonly denominator: bigint }, maxDecimals = 2): string {
+  const scale = 10n ** BigInt(maxDecimals)
+  const scaled = divideRound(amount.numerator * scale, amount.denominator, 'nearest')
+  const size = scaled < 0n ? -scaled : scaled
+  const fraction =
+    maxDecimals > 0
+      ? String(size % scale)
+          .padStart(maxDecimals, '0')
+          .replace(/0+$/, '')
+      : ''
+  return `${scaled < 0n ? '-' : ''}${group(size / scale)}${fraction ? `.${fraction}` : ''}p`
 }

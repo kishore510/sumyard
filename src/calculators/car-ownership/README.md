@@ -1,6 +1,6 @@
 # Car ownership (slice 3b)
 
-The car ownership-cost engine (**3b, 0.18.0**, internal: no page yet). It costs up to four options (keep, buy outright, loan, HP, PCP buy or PCP hand back) over one fixed horizon in low, expected and high cases for the car's value, and finds the flip points between two of them. Built on the car finance engine (`../car-finance/`). Slice 3c builds the page on it. Illustrative, not financial advice; no tax.
+The car ownership-cost engine (**3b, 0.18.0**). The car decision page (`../car-decision/`, 3c-1, 0.19.0) is built on it. It costs up to four options (keep, buy outright, loan, HP, PCP buy or PCP hand back) over one fixed horizon in low, expected and high cases for the car's value, and finds the flip points between two of them. Built on the car finance engine (`../car-finance/`). Illustrative, not financial advice; no tax.
 
 Decisions: F16 to F23 (the owner's O1 to O8) and F24 to F31 (proposed) in `docs/modelling-decisions-car.md`. Sources: `docs/verification-log.md`, "Car ownership (slice 3b)" (CO-1: litres per gallon). Rounding and precision: `docs/money.md`, "Car ownership (slice 3b)".
 

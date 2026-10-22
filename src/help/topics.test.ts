@@ -39,12 +39,13 @@ describe('buildTopics', () => {
 })
 
 describe('content/help', () => {
-  it('has Quick start first, then the take-home topic (1b-i), the optimiser topic (1b-ii-b) and compound interest (2b), then the slice 0 topics', () => {
+  it('has Quick start first, then the take-home topic (1b-i), the optimiser topic (1b-ii-b), compound interest (2b) and the car decision (3c-1), then the slice 0 topics', () => {
     expect(HELP_TOPICS.map((t) => t.id)).toEqual([
       'quick-start',
       'take-home-pay',
       'pension-optimiser',
       'compound-interest',
+      'car-decision',
       'scenarios-and-saving',
       'tax-data-and-last-verified',
       'troubleshooting',
@@ -66,6 +67,30 @@ describe('content/help', () => {
       /not modelled/i,
     ])
       expect(text).toMatch(word)
+  })
+
+  it('the car decision topic covers the options, net cost per month of coverage, coverage, the cases, flip points, rates and what is not modelled', () => {
+    const text = JSON.stringify(topicById('car-decision')!.blocks)
+    for (const word of [
+      /keep/i,
+      /PCP/,
+      /hire purchase/i,
+      /net cost per month of coverage/i,
+      /coverage/i,
+      /low, expected (and|or) high/i,
+      /opportunity cost/i,
+      /equity/i,
+      /negative equity/i,
+      /lowest net cost under these assumptions/i,
+      /what changes the answer/i,
+      /as one driver/i,
+      /effective interest rate, not the lender’s APR/i,
+      /VED/,
+      /uses no tax rules/i,
+      /not modelled/i,
+    ])
+      expect(text).toMatch(word)
+    expect(text).not.toMatch(/coming/i)
   })
 
   it('the take-home topic covers the payslip caveat, flex cash, benefits and deductions, and links to the optimiser topic', () => {

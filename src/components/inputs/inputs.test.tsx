@@ -1,9 +1,10 @@
 // @vitest-environment happy-dom
 import { act, useState } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { fromPence, ratio } from '@/lib/money'
+import { fromPence, type Money, ratio } from '@/lib/money'
 import { click, mount, type } from '@/test/dom'
 import { CurrencyInput } from './CurrencyInput'
+import { DecimalInput } from './DecimalInput'
 import { NumberInput } from './NumberInput'
 import { PercentInput } from './PercentInput'
 import { Segmented } from './Segmented'
@@ -186,5 +187,105 @@ describe('Select, Toggle and Segmented', () => {
     expect(radios.map((r) => r.checked)).toEqual([true, false])
     click(radios[1]!)
     expect(onChange).toHaveBeenCalledWith('bar')
+  })
+})
+
+describe('inputs that may be left empty (allowEmpty, slice 3c-1)', () => {
+  it('CurrencyInput: an empty box is a valid null, shown empty, and a typed amount still parses', () => {
+    const onChange = vi.fn()
+    const onValidityChange = vi.fn()
+    view = mount(
+      <CurrencyInput id="a" label="A" allowEmpty value={null} min={fromPence(0)} onChange={onChange} onValidityChange={onValidityChange} />,
+    )
+    expect(input().value).toBe('')
+    type(input(), '12.50')
+    expect(onChange).toHaveBeenLastCalledWith(fromPence(1_250))
+    view.unmount()
+    view = mount(
+      <CurrencyInput id="a" label="A" allowEmpty value={fromPence(1_250)} onChange={onChange} onValidityChange={onValidityChange} />,
+    )
+    type(input(), '')
+    expect(onChange).toHaveBeenLastCalledWith(null)
+    expect(onValidityChange).toHaveBeenLastCalledWith(true)
+    expect(view.host.textContent).not.toContain('Enter an amount.')
+  })
+
+  it('without allowEmpty an empty box is still an error', () => {
+    const onValidityChange = vi.fn()
+    view = mount(<CurrencyInput id="a" label="A" value={fromPence(100)} onChange={() => {}} onValidityChange={onValidityChange} />)
+    type(input(), '')
+    expect(onValidityChange).toHaveBeenLastCalledWith(false)
+    expect(view.host.textContent).toContain('Enter an amount.')
+  })
+
+  it('PercentInput and NumberInput take allowEmpty too', () => {
+    const onPercent = vi.fn()
+    view = mount(<PercentInput id="p" label="P" allowEmpty value={'1'} onChange={onPercent} />)
+    type(input(), '4.5')
+    expect(onPercent).toHaveBeenLastCalledWith('4.5')
+    type(input(), ' ')
+    expect(onPercent).toHaveBeenLastCalledWith(null)
+    view.unmount()
+    const onNumber = vi.fn()
+    view = mount(<NumberInput id="n" label="N" allowEmpty value={5} min={1} onChange={onNumber} />)
+    type(input(), '12')
+    expect(onNumber).toHaveBeenLastCalledWith(12)
+    type(input(), '')
+    expect(onNumber).toHaveBeenLastCalledWith(null)
+  })
+
+  it('follows a value set to null from outside (a scenario loaded)', () => {
+    function Harness() {
+      const [value, setValue] = useState<Money | null>(fromPence(500))
+      return (
+        <>
+          <CurrencyInput id="a" label="A" allowEmpty value={value} onChange={setValue} />
+          <button type="button" onClick={() => setValue(null)}>
+            clear
+          </button>
+        </>
+      )
+    }
+    view = mount(<Harness />)
+    expect(input().value).toBe('5')
+    click(view.host.querySelector('button'))
+    expect(input().value).toBe('')
+  })
+})
+
+describe('DecimalInput (slice 3c-1)', () => {
+  it('holds canonical decimal text, with its unit beside the box and the decimal keypad', () => {
+    const onChange = vi.fn()
+    view = mount(<DecimalInput id="d" label="Miles per gallon" suffix="mpg" value="45.5" max={ratio(1_000, 1)} onChange={onChange} />)
+    expect(input().value).toBe('45.5')
+    expect(input().inputMode).toBe('decimal')
+    expect(view.host.textContent).toContain('mpg')
+    type(input(), '052.10')
+    expect(onChange).toHaveBeenLastCalledWith('52.1')
+    type(input(), '1000.01')
+    expect(view.host.textContent).toContain('Enter no more than 1,000.')
+  })
+
+  it('refuses nothing when the minimum is exclusive, and can be left empty', () => {
+    const onChange = vi.fn()
+    const onValidityChange = vi.fn()
+    view = mount(
+      <DecimalInput
+        id="d"
+        label="Miles per kWh"
+        allowEmpty
+        value="1"
+        min={ratio(0, 1)}
+        minExclusive
+        onChange={onChange}
+        onValidityChange={onValidityChange}
+      />,
+    )
+    type(input(), '0')
+    expect(onValidityChange).toHaveBeenLastCalledWith(false)
+    expect(view.host.textContent).toContain('Enter more than 0.')
+    type(input(), '')
+    expect(onChange).toHaveBeenLastCalledWith(null)
+    expect(onValidityChange).toHaveBeenLastCalledWith(true)
   })
 })
