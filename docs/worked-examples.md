@@ -153,6 +153,17 @@ Read on 21 October 2026 on www.gov.uk (the only host this environment could reac
 | HP-1 | Car on hire purchase over one year: "Car Price (including VAT) £10,000", "Deposit £ 1,000", "Amount financed £ 9,000", "Monthly payments £ 900" | "Total interest (A) £ 1,800"; "Total amount payable (B) £10,800" | VBDR2420 (HMRC VAT Bad Debt Relief Manual, updated 14 April 2022), https://www.gov.uk/hmrc-internal-manuals/vat-bad-debt-relief/vbdr2420 | **Yes**: HP priced by the payment: amount financed £9,000, total interest £1,800, payments £10,800. The rate behind it is not published, so none is mirrored; VBDR2430 calls it "interest of 20%", a flat figure the engine does not model (F14). |
 | R78-1 | As HP-1, interest by the "rule of 78", ended after three payments | "LESS rebate of interest granted (£ 1,038.46)" | VBDR2430, https://www.gov.uk/hmrc-internal-manuals/vat-bad-debt-relief/vbdr2430; method VATVAL13180 | **No**: early settlement is out of scope (F12, CR-13). |
 
+## Car finance APR (slice 3a.1)
+
+No worked APR example is published in CONC App 1 or SI 2010/1011 (`docs/verification-log.md`, CR-17). These are hand-checkable cases of the verified equation (CR-1), not published examples: a single repayment makes (1 + X)^(m / 12) the repayment over the credit. Mirrored in `src/calculators/car-finance/apr.test.ts`.
+
+| Id | Inputs | Result by hand | Basis | Mirrored |
+|---|---|---|---|---|
+| APR-1 | £1,000 drawn; £1,100 repaid at 12 months. Also £1,210 at 24 months | X = 1,100 / 1,000 − 1 = 10%; (1.1)^2 = 1.21, so 10% again; shown 10.0% | CR-1 (years from the first drawdown) | **Yes**, exactly |
+| APR-2 | £1,000 drawn; £1,100 repaid at 6 months | (1 + X)^(1/2) = 1.1, so X = 21% | CR-1 (a month a twelfth of a year) | **Yes**, exactly |
+| APR-3 | £1,000 drawn; a £100 charge at the drawdown; £990 repaid at 12 months | £900 net: X = 990 / 900 − 1 = 10% | CR-1, CR-2 (charges in the total charge for credit) | **Yes**, exactly |
+| APR-4 | £100,000 drawn; £112,350.00 repaid at 12 months. Also £112,349.99 | X = 12.35% exactly, shown 12.4% (a following 5 rounds up); X = 12.34999%, shown 12.3% | CR-3 | **Yes** |
+
 ## HMRC cross-check harness
 
 `docs/hmrc-cross-checks.json` holds 72 input cases derived from the verified 2026-27 config: taper start less £1, at the start, plus £1, the zone's midpoint, the zero point and £10,000 above it; for rUK and Scotland; with no student loan and with each plan alone (1, 2, 4, 5, postgraduate). Every expected result is `null`, so `crossChecks.test.ts` lists each case as a todo. The owner fills them from HMRC's own online calculators (pounds strings, the calculator's www.gov.uk page and the date checked); a filled case is then compared with the engine, within the file's `tolerancePence` (0 now). The test fails if the cases drift from the config.

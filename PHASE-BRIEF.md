@@ -1,6 +1,6 @@
 # PHASE-BRIEF: Slice 3 Car decision
 
-Status: 3a (finance engine) Done (0.17.0, PR #21); 3b next, its brief and decisions first. Slices 1b and 2 are built and stay open in `PLAN.md` until the owner's checks below are done. Status per part lives only in `PLAN.md`. Finished part scopes are in `docs/history/phase-brief-archive.md`.
+Status: 3a (finance engine) Done (0.17.0, PR #21); 3a.1 (APR) Done (0.17.1, PR #22); 3b next, its brief and decisions first. Slices 1b and 2 are built and stay open in `PLAN.md` until the owner's checks below are done. Status per part lives only in `PLAN.md`. Finished part scopes are in `docs/history/phase-brief-archive.md`.
 
 ## Docs rule
 
@@ -38,13 +38,13 @@ The cumulative cost chart over the horizon with crossover points (shared Chart, 
 
 Confirm the benefit value from an annual statement (B1) and run the payslip check (B15: PAYE estimate, salary sacrifice benefits, the monthly breakdown); the 72 HMRC cross-checks; Tables A and B to D for the PAYE estimate (O10, O11); confirm `paye.codeUnit` as a standing rule; whether a benefit that attracts Class 1 needs its own input. Slice 2: fill `docs/compound-cross-checks.json` (eight cases, with source and date); confirm the C8 rate bounds and the starting years (`DEFAULT_PROJECTION_YEARS`).
 
-Slice 3a: confirm decisions F5 to F14 and the bounds (`src/calculators/car-finance/README.md`); close the APR (CR-1 to CR-3, CR-10) by reading SI 2010/1011 and CONC App 1, or allowing this environment to reach `www.legislation.gov.uk` and `www.handbook.fca.org.uk`, before any page shows an "APR"; decide whether the hand-back path should also take condition charges.
+Slice 3a: confirm decisions F5 to F14 and the bounds (`src/calculators/car-finance/README.md`); confirm F15 (one decimal place, the drawdown, an added fee as a charge) and settle CR-10 (a PCP's optional final payment, purchase and option fees in the APR) from a source before any page shows an APR for PCP or HP with an option fee; decide whether the hand-back path should also take condition charges.
 
 ## Last session
 
-- 21 October 2026, part 3a (0.17.0, PR #21, internal): slice 3 brief, decisions F1 to F14 (`docs/modelling-decisions-car.md`), verification CR-1 to CR-14, examples EIR-1 to EIR-3, HP-1, R78-1; the engine in `src/calculators/car-finance/` (loan, HP, PCP; schedule; effective rate by bisection; outstanding balance); 300-case reference and round trip; mutation spot-checks all caught.
-- Differs from the brief: the statutory APR is **OPEN** (legislation.gov.uk, the regulator's handbook and the guidance PDF refused), so the engine solves HMRC's effective interest rate (CFM21180), not "the APR"; no flat rate (no definition found); no APR or PCP published example exists on a reachable page; priced by payment, the last month's interest takes the rounding (F7, so HP-1's totals are exact).
-- Not verified: the statutory APR, voluntary termination and early settlement rules (secondary sources only, not modelled); any lender's rounding; no UI to check in a browser.
-- Owner: the items under "Still with the owner" above. Next: 3b (cost-of-ownership engine), its brief and decisions first.
+- 22 October 2026, part 3a.1 (0.17.1, PR #22, internal): CONC App 1.2 and SI 2010/1011 read (the SI is revoked, CR-15); CR-1 to CR-3 verified, CR-10 partly (HP balloon), CR-15 to CR-18 added; `apr(flows)` (F15) with `roundRatio`/`APR_DISPLAY_DIGITS`; tests red then green; mutation spot-checks all caught (one equivalent mutant).
+- Differs from the brief: no published APR example exists on either source (CR-17), so APR-1 to APR-4 are hand-checkable; no agreement-level APR (CR-10 still OPEN); the effective-rate assumption text no longer says the APR rules could not be verified.
+- Not verified: CR-10 for PCP and purchase/option fees; what the 18/12/2025 change to CONC App 1.2.6R was (CR-18); CR-12, CR-13 (statutes not read); no UI to check.
+- Next: 3b (cost-of-ownership engine), its brief and decisions first.
 
 Full history (progress logs, finished part scopes, slice archives): `docs/history/` (grep it, don't read it whole).

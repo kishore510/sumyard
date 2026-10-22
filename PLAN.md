@@ -1,6 +1,6 @@
 # Phase plan: Sumyard
 
-Last updated: 21 October 2026 (3a Done, 0.17.0; slice 3 In progress; slices 1b and 2 built, owner checks open)
+Last updated: 22 October 2026 (3a.1 Done, 0.17.1; slice 3 In progress; slices 1b and 2 built, owner checks open)
 
 Sumyard is a set of personal UK finance calculators in one clean, ad-free web app, for the owner's own use. Constraints: client-side only, a static site on GitHub Pages, UK rules from versioned per-tax-year config, illustrative not advice.
 
@@ -26,6 +26,7 @@ Rules for this file: add a row when scope is added; update the Status cell when 
 | 2b Compound interest page | The page on the 2a engine: inputs, yearly table and chart, nominal and real, fee drag, scenarios, compare, Help | Done (0.16.0, PR #20, 21 October 2026) |
 | 3 Car decision | Keep vs buy outright vs PCP vs HP vs loan over a fixed horizon: finance, depreciation, running costs, VED as an input, residual value | In progress |
 | 3a Car finance engine | Amortising payment and schedule, rate solver, loan, HP and PCP, outstanding balance; APR conventions verified first (internal, no UI) | Done (0.17.0, PR #21, 21 October 2026) |
+| 3a.1 APR verification | Statutory APR read from CONC App 1.2 and SI 2010/1011 (CR-1 to CR-3 verified, CR-10 partly); `apr` from dated cash flows (internal, no UI) | Done (0.17.1, PR #22, 22 October 2026) |
 | 3b Cost-of-ownership engine | Each option's cost over the horizon: fuel types incl. electric, residual cases, equity, flip points, opportunity cost of cash (internal, no UI) | Not started |
 | 3c-1 Car decision page | The page with option cards, scenarios, compare, Help | Not started |
 | 3c-2 Car crossover and sensitivity | Crossover chart, sensitivity, polish | Not started |
