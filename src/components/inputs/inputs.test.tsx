@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { act, useState } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { fromPence, ratio } from '@/lib/money'
+import { fromPence, type Money, ratio } from '@/lib/money'
 import { click, mount, type } from '@/test/dom'
 import { CurrencyInput } from './CurrencyInput'
 import { DecimalInput } from './DecimalInput'
@@ -200,6 +200,10 @@ describe('inputs that may be left empty (allowEmpty, slice 3c-1)', () => {
     expect(input().value).toBe('')
     type(input(), '12.50')
     expect(onChange).toHaveBeenLastCalledWith(fromPence(1_250))
+    view.unmount()
+    view = mount(
+      <CurrencyInput id="a" label="A" allowEmpty value={fromPence(1_250)} onChange={onChange} onValidityChange={onValidityChange} />,
+    )
     type(input(), '')
     expect(onChange).toHaveBeenLastCalledWith(null)
     expect(onValidityChange).toHaveBeenLastCalledWith(true)
@@ -216,15 +220,14 @@ describe('inputs that may be left empty (allowEmpty, slice 3c-1)', () => {
 
   it('PercentInput and NumberInput take allowEmpty too', () => {
     const onPercent = vi.fn()
-    view = mount(<PercentInput id="p" label="P" allowEmpty value={null} onChange={onPercent} />)
-    expect(input().value).toBe('')
+    view = mount(<PercentInput id="p" label="P" allowEmpty value={'1'} onChange={onPercent} />)
     type(input(), '4.5')
     expect(onPercent).toHaveBeenLastCalledWith('4.5')
     type(input(), ' ')
     expect(onPercent).toHaveBeenLastCalledWith(null)
     view.unmount()
     const onNumber = vi.fn()
-    view = mount(<NumberInput id="n" label="N" allowEmpty value={null} min={1} onChange={onNumber} />)
+    view = mount(<NumberInput id="n" label="N" allowEmpty value={5} min={1} onChange={onNumber} />)
     type(input(), '12')
     expect(onNumber).toHaveBeenLastCalledWith(12)
     type(input(), '')
@@ -233,7 +236,7 @@ describe('inputs that may be left empty (allowEmpty, slice 3c-1)', () => {
 
   it('follows a value set to null from outside (a scenario loaded)', () => {
     function Harness() {
-      const [value, setValue] = useState<number | null>(fromPence(500))
+      const [value, setValue] = useState<Money | null>(fromPence(500))
       return (
         <>
           <CurrencyInput id="a" label="A" allowEmpty value={value} onChange={setValue} />
@@ -271,7 +274,7 @@ describe('DecimalInput (slice 3c-1)', () => {
         id="d"
         label="Miles per kWh"
         allowEmpty
-        value={null}
+        value="1"
         min={ratio(0, 1)}
         minExclusive
         onChange={onChange}

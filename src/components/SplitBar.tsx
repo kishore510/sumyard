@@ -72,6 +72,7 @@ export function SplitBar({
   totalLabel,
   formatValue,
   highlight,
+  emptyText = 'Nothing to show yet: enter your pay.',
 }: {
   title: string
   /** Every part, in order; parts of nothing are left out of the bar, legend and table. */
@@ -82,6 +83,8 @@ export function SplitBar({
   formatValue: (value: number) => string
   /** The id of the part to show in the accent (take-home). */
   highlight?: string
+  /** Shown instead of the bar when the total is nothing or below. */
+  emptyText?: string
 }) {
   const { theme } = useTheme()
   const [ref, width] = useWidth()
@@ -93,7 +96,7 @@ export function SplitBar({
   const sum = shown.reduce((a, s) => a + s.value, 0)
   const problem =
     total <= 0
-      ? 'Nothing to show yet: enter your pay.'
+      ? emptyText
       : shown.some((s) => s.value < 0) || sum !== total
         ? 'This can’t be drawn as a bar: a part is below nothing. The figures are below.'
         : null

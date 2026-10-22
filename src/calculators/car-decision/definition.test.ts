@@ -179,7 +179,14 @@ describe('validateInputs', () => {
   })
 
   it('names every bad field, one error each', () => {
-    const errors = errorsOf({ ...example, horizonMonths: 0, options: [{ ...loan(), value: -1, rate: 'x' }, { ...cash(), term: 0 }] })
+    const errors = errorsOf({
+      ...example,
+      horizonMonths: 0,
+      options: [
+        { ...loan(), value: -1, rate: 'x' },
+        { ...cash(), term: 0 },
+      ],
+    })
     expect(errors).toHaveLength(4)
     expect(errors[1]).toContain('Option 1')
     expect(errors[3]).toContain('Option 2')
@@ -520,7 +527,7 @@ describe('summarise (compare)', () => {
     expect(labels).toContain('Option 2: net cost per month of coverage')
     expect(labels).toContain('Car (option 3): total net cost')
     const row = summary.results.ok && summary.results.rows.find((r) => r.label === 'Option 2: net cost per month of coverage')
-    expect(row && row.value).toEqual({ kind: 'text', text: 'No results: inputs missing' })
+    expect(row ? row.value : undefined).toEqual({ kind: 'text', text: 'No results: inputs missing' })
   })
 
   it('missing shared assumptions are an input refusal naming them', () => {

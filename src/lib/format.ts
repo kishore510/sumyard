@@ -104,7 +104,16 @@ export function formatPercentPointDelta(change: Ratio, maxDecimals = 2): string 
   return `${change.numerator > 0 ? '+' : ''}${text} ${unit}`
 }
 
-/* Stub (red). */
-export function formatPence(_amount: { readonly numerator: bigint; readonly denominator: bigint }, _maxDecimals = 2): string {
-  return ''
+/** Exact pence (a cost per mile) to at most `maxDecimals` places, trailing zeros dropped: "13.64p", "12p". Nearest, halves away from zero. */
+export function formatPence(amount: { readonly numerator: bigint; readonly denominator: bigint }, maxDecimals = 2): string {
+  const scale = 10n ** BigInt(maxDecimals)
+  const scaled = divideRound(amount.numerator * scale, amount.denominator, 'nearest')
+  const size = scaled < 0n ? -scaled : scaled
+  const fraction =
+    maxDecimals > 0
+      ? String(size % scale)
+          .padStart(maxDecimals, '0')
+          .replace(/0+$/, '')
+      : ''
+  return `${scaled < 0n ? '-' : ''}${group(size / scale)}${fraction ? `.${fraction}` : ''}p`
 }

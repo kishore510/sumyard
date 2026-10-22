@@ -97,7 +97,7 @@ describe('the page', () => {
   it('each card’s figures are the engine’s, in the expected case by default', () => {
     set(example)
     const result = engine()
-    result.options.forEach((option, i) => expectCard(i, option, 'expected'))
+    for (const [i, option] of result.options.entries()) expectCard(i, option, 'expected')
   })
 
   it('switching the case changes every card to that case, and the choice is stored with the inputs', () => {
@@ -105,10 +105,10 @@ describe('the page', () => {
     const result = engine()
     chooseCase('Low')
     expect(session.get().inputs.valueCase).toBe('low')
-    result.options.forEach((option, i) => expectCard(i, option, 'low'))
+    for (const [i, option] of result.options.entries()) expectCard(i, option, 'low')
     expect(text($('[data-headline]', card(0)))).not.toBe(money(result.options[0]!.cases.expected.netCostPerCoverageMonth))
     chooseCase('High')
-    result.options.forEach((option, i) => expectCard(i, option, 'high'))
+    for (const [i, option] of result.options.entries()) expectCard(i, option, 'high')
   })
 
   it('the horizon changes coverage: a PCP handed back covers its term and is flagged when that is under the horizon', () => {
@@ -410,7 +410,7 @@ describe('scenarios', () => {
     expect(session.get().inputs).toEqual(carDecisionCalculator.defaultInputs())
     act(() => session.load(scenarioStore.get().scenarios[0]!))
     expect(session.get().inputs).toEqual(example)
-    engine().options.forEach((option, i) => expectCard(i, option, 'expected'))
+    for (const [i, option] of engine().options.entries()) expectCard(i, option, 'expected')
     const summary = carDecisionCalculator.summarise(example, undefined as never)
     const labels = summary.results.ok ? summary.results.rows.map((r) => r.label) : []
     expect(labels).toContain('PCP: net cost per month of coverage')
@@ -488,10 +488,11 @@ describe('property', () => {
       )
       if (!outcome.ok) continue
       compared++
-      outcome.result.options.forEach((option, k) => expectCard(k, option, i.valueCase))
+      for (const [k, option] of outcome.result.options.entries()) expectCard(k, option, i.valueCase)
     }
     expect(compared).toBeGreaterThanOrEqual(120)
-  })
+    // Each case renders the whole page (up to four editors and cards) in happy-dom: about 15 seconds here, so a wider limit than the default.
+  }, 60_000)
 })
 
 describe('words', () => {

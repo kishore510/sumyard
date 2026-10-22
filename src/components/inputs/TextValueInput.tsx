@@ -8,7 +8,8 @@ import { boxClass, describedBy, Field } from './Field'
  * passed to onChange. An invalid one shows its message inline (and the
  * calculator shows no results until it is fixed: onValidityChange). On blur
  * a valid value is shown in its tidy form ("1,234.50"). When `value`
- * changes from outside (a scenario loaded), the text follows it.
+ * changes from outside (a scenario loaded), the text follows it. With
+ * `allowEmpty`, an empty box is valid and its value is null (not entered).
  */
 
 export interface TextValueProps<T> {
@@ -21,7 +22,10 @@ export interface TextValueProps<T> {
   disabled?: boolean
 }
 
-export function TextValueInput<T extends string | number>({
+/** A typed input's props: a value always, or (with `allowEmpty`) a value or null for an empty box. */
+export type Emptyable<T> = (TextValueProps<T> & { allowEmpty?: false }) | (TextValueProps<T | null> & { allowEmpty: true })
+
+export function TextValueInput<T extends string | number | null>({
   id,
   label,
   hint,
@@ -29,18 +33,22 @@ export function TextValueInput<T extends string | number>({
   onChange,
   onValidityChange,
   disabled,
-  parse,
-  format,
+  parse: parseText,
+  format: formatValue,
   prefix,
   suffix,
   inputMode,
+  allowEmpty = false,
 }: TextValueProps<T> & {
   parse: (text: string) => Parsed<T>
   format: (value: T) => string
+  allowEmpty?: boolean
   prefix?: string
   suffix?: string
   inputMode: 'decimal' | 'numeric' | 'text'
 }) {
+  const parse = (next: string): Parsed<T> => (allowEmpty && !next.trim() ? { ok: true, value: null as T } : parseText(next))
+  const format = (next: T) => (next === null ? '' : formatValue(next))
   const [text, setText] = useState(() => format(value))
   const [error, setError] = useState<string | null>(null)
   const [shown, setShown] = useState(value)
