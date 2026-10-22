@@ -261,6 +261,8 @@ export function Chart({
   const every = Math.max(1, Math.ceil(((longest * CHAR + 8) * categories.length) / Math.max(1, plot.right - plot.left)))
   const zero = domain.min <= 0 && domain.max >= 0 ? y(0) : null
   const lines = series.filter((s) => s.kind === 'line')
+  // The legend names a series' kind only when bars and lines share the chart; its swatch shows the rest (3d-1 fix).
+  const mixed = bars.length > 0 && lines.length > 0
   // Without selection the highlight is on the first line only (as before 3c-2); with it, on every line.
   const highlighted = selectedIndex < 0 ? [] : interactive ? lines : lines.slice(0, 1)
   const ends = endLabels
@@ -598,7 +600,8 @@ export function Chart({
                     <line x1={0} x2={24} y1={5} y2={5} strokeWidth={2} strokeDasharray={style.dash} className={style.stroke} />
                   )}
                 </svg>
-                {s.label} ({s.kind === 'bar' ? 'bars' : 'line'})
+                {s.label}
+                {mixed && ` (${s.kind === 'bar' ? 'bars' : 'line'})`}
               </li>
             )
           })}

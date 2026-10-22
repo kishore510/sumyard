@@ -4,6 +4,17 @@ All notable changes to Sumyard are listed here, newest first. The format follows
 
 ## [Unreleased]
 
+## [0.22.1] - 2026-10-22
+
+### Fixed
+- **Car decision:** each card lists any running costs you left empty (insurance, maintenance, VED, other costs), which count as nothing. When the options differ in which are empty, a line under the verdict says so.
+- **What changes the answer** no longer says "above it, the two are level" for the savings return. It names the option that is lower below the threshold, says the two are level there, and says it can't yet tell which is lower above it.
+- **The options side by side** can be read on a phone. Figures are no longer hidden under the first column, and each one reads exactly as on its card.
+- Cards keep their own height instead of stretching to the tallest. The **Option** header in the low, expected and high table stays on one line.
+- The bottom line leaves out **Cost of choosing the alternative** when the switch line above already gives it.
+- The chart's legend no longer adds "(line)" after each option's name.
+- On a phone, a long option name in the bar at the top wraps instead of widening the page.
+
 ## [0.22.0] - 2026-10-22
 
 ### Changed

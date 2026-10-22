@@ -945,9 +945,8 @@ describe('the answer first (3d-1)', () => {
     expect($$('[data-switch-cost]').map(text)).toEqual([
       'Switching to New car PCP costs £182.26 a month more than keeping Current car: £8,748.56 more over 48 months.',
     ])
-    expect(text($('[data-bottom-row="alternative"] dd'))).toBe(
-      'Choosing New car PCP instead of Current car costs £182.26 a month more (£8,748.56 over 48 months).',
-    )
+    // The switch line names the same pair, so the bottom line leaves the alternative out (3d-1.1).
+    expect($('[data-bottom-row="alternative"]')).toBeNull()
     expect(text($('[data-scenario-sentence]'))).toBe('Current car has the lowest net cost in all three end-value cases.')
     // The phone bar carries the verdict in short.
     expect(text($('[data-sticky-value]'))).toBe('Current car, £182.26 a month less than New car PCP')
@@ -1003,5 +1002,98 @@ describe('the answer first (3d-1)', () => {
     expect(view.host.textContent).toContain('Expected value at the end')
     expect(view.host.textContent).toContain('Low value at the end')
     expect(view.host.textContent).toContain('High value at the end')
+  })
+})
+
+describe('3d-1.1 fixes', () => {
+  const ZERO_POUNDS = fromPounds(0)
+
+  it('a card lists its running-cost boxes left empty; none when all are filled', () => {
+    set(inputs([cash({ name: 'A' }), cash({ name: 'B', insurance: ZERO_POUNDS, ved: ZERO_POUNDS })]))
+    expect($('[data-empty-costs]', card(0))).toBeNull()
+    expect(text($('[data-empty-costs]', card(1)))).toBe('Left empty, counted as nothing: insurance and VED.')
+  })
+
+  it('a line under the verdict when the options differ in which boxes are empty, naming each', () => {
+    set(inputs([cash({ name: 'A' }), cash({ name: 'B', insurance: ZERO_POUNDS, ved: ZERO_POUNDS })]))
+    const note = $('[data-empty-costs-differ]')!
+    expect(note.closest('[data-verdict-panel]')).not.toBeNull()
+    expect(text(note)).toBe(
+      'Running costs left empty differ between the options (an empty box counts as nothing): A, none; B, insurance and VED.',
+    )
+  })
+
+  it('no line under the verdict when every box is filled, or the same boxes are empty in each', () => {
+    set(inputs([cash({ name: 'A' }), cash({ name: 'B', value: fromPounds(19_000) })]))
+    expect($('[data-empty-costs-differ]')).toBeNull()
+    set(inputs([cash({ name: 'A', other: ZERO_POUNDS }), cash({ name: 'B', value: fromPounds(19_000), other: ZERO_POUNDS })]))
+    expect($('[data-empty-costs-differ]')).toBeNull()
+    for (const c of cards()) expect(text($('[data-empty-costs]', c))).toBe('Left empty, counted as nothing: other costs.')
+  })
+
+  it('every cell of the side-by-side table reads as its card does for the same measure', () => {
+    // A handed-back PCP (no equity), an APR, an effective rate and no finance, over a long horizon.
+    set(
+      inputs([keep({ name: 'Old' }), loan({ name: 'Loan' }), pcp({ name: 'Merc', pcpEnd: 'hand-back', term: 24 }), pcp({ name: 'Buy' })], {
+        horizonMonths: 121,
+      }),
+    )
+    const table = $('[data-compare-table]')!
+    const order = cards().map((c) => Number(c.getAttribute('data-option-index')))
+    const row = (label: string) => $$('tbody tr', table).find((tr) => text(tr.querySelector('th')) === label)!
+    const measures: [string, string][] = [
+      ['Average cost per month owned', '[data-headline]'],
+      ['Total net cost', '[data-total]'],
+      ['Coverage', '[data-coverage]'],
+      ['Equity at the horizon', '[data-equity]'],
+      ['Cash out', '[data-cash-out]'],
+      ['Opportunity cost', '[data-opportunity]'],
+    ]
+    for (const [label, marker] of measures) {
+      const cells = $$('td', row(label))
+      order.forEach((index, k) => {
+        expect(text(cells[k]), `${label}, option ${index}`).toBe(text($(marker, card(index))))
+      })
+    }
+    const rates = $$('td', row('Rate'))
+    order.forEach((index, k) => {
+      const shown = $('[data-rate-value]', card(index))
+      if (shown) expect(text($('[data-rate-value]', rates[k]!)), `rate, option ${index}`).toBe(text(shown))
+    })
+    expect(text($('[data-coverage]', card(2)))).toBe('24 of 121 months')
+    expect(text($('[data-coverage]', card(0)))).toBe('121 of 121 months')
+  })
+
+  it('the side-by-side table: its first column stays opaque and wraps, the other columns keep a minimum width', () => {
+    set(example)
+    const table = $('[data-compare-table]')!
+    expect(table.className).not.toMatch(/min-w-max/)
+    for (const th of $$('tbody th', table)) expect(th.className).toMatch(/sticky.*bg-surface|bg-surface.*sticky/)
+    for (const th of $$('tbody th', table)) expect(th.className).toMatch(/\bmin-w-/)
+    for (const td of $$('td', table)) expect(td.className).toMatch(/\bmin-w-/)
+  })
+
+  it('cards align to the top: a short card is not stretched to the tallest', () => {
+    set(example)
+    expect($('[data-cards]')!.className).toMatch(/\bitems-start\b/)
+  })
+
+  it('the three-case table’s Option header does not wrap', () => {
+    set(ownerPage())
+    const header = $$('[data-scenario-table] thead th').find((th) => text(th) === 'Option')!
+    expect(header.className).toMatch(/whitespace-nowrap/)
+  })
+
+  it('the phone bar’s verdict wraps a long unbroken option name instead of widening the page', () => {
+    set(inputs([keep({ name: 'Old' }), cash({ name: 'L'.repeat(80), value: fromPounds(19_000) })]))
+    expect(text($('[data-sticky-value]'))).toContain('L'.repeat(80))
+    expect($('[data-sticky-value]')!.className).toMatch(/\[overflow-wrap:anywhere\]/)
+  })
+
+  it('the chart legend names each option without a “(line)” suffix', () => {
+    set(example)
+    const legend = $('[data-crossover] ul')!
+    expect(legend.textContent).not.toMatch(/\(line\)/)
+    for (const name of example.options.map((o) => o.name)) expect(legend.textContent).toContain(name)
   })
 })

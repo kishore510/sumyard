@@ -14,7 +14,7 @@ import {
   ZERO,
 } from '@/lib/money'
 import type { Breakdown, CarOption, Comparison, OwnershipResult, ValueCase } from '../car-ownership/types'
-import { CASE_LABELS, type OptionStatus } from './definition'
+import { CASE_LABELS, FIELD_LABELS, type OptionInputs, type OptionStatus } from './definition'
 import { breakdownParts, lowest, type Part } from './results'
 
 /*
@@ -291,6 +291,10 @@ export function bottomLine(comparison: Comparison, valueCase: ValueCase, names: 
   ]
   const label = 'Cost of choosing the alternative'
   const nextEntry = ranking.find((entry) => !low.options.includes(entry.option))
+  // The verdict panel's switch line already gives this pair's difference (3d-1 fix): the row is left out.
+  const pair = nextEntry && low.options.length === 1 ? [low.options[0]!, nextEntry.option] : null
+  const switched = (s: SwitchCost) => !!pair?.includes(s.option) && pair.includes(s.keep)
+  if (switchCosts(comparison, valueCase, names, gbp).some(switched)) return rows
   let alternative: BottomLineRow
   if (ranking.length < 2)
     alternative = {
@@ -327,6 +331,33 @@ export function bottomLine(comparison: Comparison, valueCase: ValueCase, names: 
     }
   }
   return [...rows, alternative]
+}
+
+// Running costs left empty -------------------------------------------------------
+
+export type RunningBox = 'insurance' | 'maintenance' | 'ved' | 'other'
+
+/** The optional running-cost boxes, in the editor's order. */
+const RUNNING_BOXES: readonly RunningBox[] = ['insurance', 'maintenance', 'ved', 'other']
+
+/** A box's label in a sentence: lower case, unless it is an abbreviation (VED). */
+const boxWord = (box: RunningBox) => {
+  const label = FIELD_LABELS[box]
+  return label === label.toUpperCase() ? label : label.toLowerCase()
+}
+
+/** The optional running-cost boxes an option leaves empty: an empty box reads as nothing, stored as 0 (F38). From the inputs. */
+export const emptyRunningCosts = (option: OptionInputs): RunningBox[] => RUNNING_BOXES.filter((box) => compare(option[box], ZERO) === 0)
+
+/** For a card: the boxes left empty, or null when every one is filled. */
+export const emptyRunningText = (boxes: readonly RunningBox[]): string | null =>
+  boxes.length === 0 ? null : `Left empty, counted as nothing: ${list(boxes.map(boxWord))}.`
+
+/** Under the verdict: one line naming each costed option's empty boxes, only when the options differ in which are empty. */
+export function emptyCostsDiffer(options: readonly { readonly name: string; readonly boxes: readonly RunningBox[] }[]): string | null {
+  if (new Set(options.map((o) => o.boxes.join())).size < 2) return null
+  const each = options.map((o) => `${o.name}, ${o.boxes.length === 0 ? 'none' : list(o.boxes.map(boxWord))}`)
+  return `Running costs left empty differ between the options (an empty box counts as nothing): ${each.join('; ')}.`
 }
 
 // Low, expected and high ----------------------------------------------------------

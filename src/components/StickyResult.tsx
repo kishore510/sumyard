@@ -113,7 +113,14 @@ export function StickyResult({
       {value === null ? (
         <span className="text-sm font-medium text-text">{emptyText}</span>
       ) : (
-        <span data-sticky-value className={cn('font-semibold tracking-tight text-text tabular-nums', full ? 'text-xl' : 'text-base')}>
+        // A long unbroken option name in a sentence (the car verdict) wraps instead of widening the page.
+        <span
+          data-sticky-value
+          className={cn(
+            'min-w-0 font-semibold tracking-tight text-text tabular-nums [overflow-wrap:anywhere]',
+            full ? 'text-xl' : 'text-base',
+          )}
+        >
           {value}
         </span>
       )}

@@ -5,7 +5,18 @@ import { percentRatio } from '@/lib/parse'
 import type { Comparison, ValueCase } from '../car-ownership/types'
 import { type CarDecisionInputs, calculate, type OptionStatus, type PageOutcome, uniqueNames } from './definition'
 import { car, cash, inputs, keep, OWNER_KEEP, OWNER_PCP, ownerPage, pcp, randomInputs, seeded } from './fixtures/inputs'
-import { bottomLine, engineNames, largestCost, moneyFlows, scenarioTable, switchCosts, verdict } from './narrative'
+import {
+  bottomLine,
+  emptyCostsDiffer,
+  emptyRunningCosts,
+  emptyRunningText,
+  engineNames,
+  largestCost,
+  moneyFlows,
+  scenarioTable,
+  switchCosts,
+  verdict,
+} from './narrative'
 import { breakdownParts } from './results'
 
 /*
@@ -58,6 +69,9 @@ function allText(i: CarDecisionInputs): string[] {
     }
   }
   out.push(scenarioTable(comparison, names).sentence)
+  const empties = i.options.map((o, k) => ({ name: uniqueNames(i.options)[k]!, boxes: emptyRunningCosts(o) }))
+  for (const e of empties) out.push(emptyRunningText(e.boxes) ?? '')
+  out.push(emptyCostsDiffer(empties) ?? '')
   for (const status of outcome.statuses) if (status.kind === 'ok') moneyFlows(status.option, status.result)
   return out
 }
@@ -121,10 +135,10 @@ describe('the owner’s page (Keep current car against a 0% PCP, 0% savings retu
     )
   })
 
-  it('the bottom line: net cost, running cost, depreciation and the alternative', () => {
+  it('the bottom line: net cost, running cost and depreciation; no alternative, as the switch line names the same pair (3d-1.1)', () => {
     const rows = bottomLine(comparison, 'expected', names, gbp)
-    expect(rows.map((r) => r.id)).toEqual(['net', 'running', 'depreciation', 'alternative'])
-    const [net, running, depreciation, alternative] = rows as [(typeof rows)[0], (typeof rows)[0], (typeof rows)[0], (typeof rows)[0]]
+    expect(rows.map((r) => r.id)).toEqual(['net', 'running', 'depreciation'])
+    const [net, running, depreciation] = rows as [(typeof rows)[0], (typeof rows)[0], (typeof rows)[0]]
     expect(net.options).toEqual([0])
     expect(gbp(net.perMonth!)).toBe('£379.85')
     // Running: (8,000.16 + 1,599.84 + 2,000.16 + 1,632.48) ÷ 48 for Keep, (3,200.16 + 2,400.00 + 371.04) ÷ 48 for the PCP.
@@ -133,9 +147,6 @@ describe('the owner’s page (Keep current car against a 0% PCP, 0% savings retu
     // Depreciation: 5,000 ÷ 48 for Keep, 21,000 ÷ 48 for the PCP.
     expect(depreciation.options).toEqual([0])
     expect(gbp(depreciation.perMonth!)).toBe('£104.17')
-    expect(alternative.options).toEqual([1])
-    expect(gbp(alternative.perMonth!)).toBe('£182.26')
-    expect(alternative.text).toBe('Choosing New car PCP instead of Current car costs £182.26 a month more (£8,748.56 over 48 months).')
     for (const row of rows) expect(row.definition.length).toBeGreaterThan(0)
   })
 
@@ -278,6 +289,71 @@ describe('switch cost', () => {
       expect(c.total).toEqual(compare(d, ZERO) < 0 ? subtract(ZERO, d) : d)
       expect(c.direction).toBe(compare(d, ZERO) > 0 ? 'more' : compare(d, ZERO) < 0 ? 'less' : 'same')
     }
+  })
+})
+
+describe('the bottom line’s alternative (3d-1.1)', () => {
+  it('kept when it names a different pair from every switch line', () => {
+    const i = inputs([
+      keep({ name: 'Old', maintenance: fromPounds(9_000) }),
+      cash({ name: 'A' }),
+      cash({ name: 'B', value: fromPounds(19_000) }),
+    ])
+    const { comparison, names } = run(i)
+    expect(comparison.ranking.expected.full.map((e) => names[e.option])).toEqual(['A', 'B', 'Old'])
+    const alternative = bottomLine(comparison, 'expected', names, gbp).find((r) => r.id === 'alternative')!
+    expect(alternative.text).toMatch(/^Choosing B instead of A costs £[\d,.]+ a month more/)
+  })
+
+  it('kept without a Keep option (no switch line)', () => {
+    const { comparison, names } = run(inputs([cash({ name: 'A' }), cash({ name: 'B', value: fromPounds(19_000) })]))
+    expect(bottomLine(comparison, 'expected', names, gbp).map((r) => r.id)).toContain('alternative')
+  })
+
+  it('dropped when the lowest is a new car and the next is keeping (the switch line, the other way round)', () => {
+    const i = inputs([keep({ name: 'Old', maintenance: fromPounds(9_000) }), cash({ name: 'A' })])
+    const { comparison, names } = run(i)
+    expect(comparison.ranking.expected.full.map((e) => names[e.option])).toEqual(['A', 'Old'])
+    expect(switchCosts(comparison, 'expected', names, gbp)).toHaveLength(1)
+    expect(bottomLine(comparison, 'expected', names, gbp).map((r) => r.id)).toEqual(['net', 'running', 'depreciation'])
+  })
+})
+
+describe('running costs left empty (3d-1.1)', () => {
+  const costed = (i: CarDecisionInputs) => i.options.map((o, k) => ({ name: uniqueNames(i.options)[k]!, boxes: emptyRunningCosts(o) }))
+
+  it('all filled: nothing listed for any option, no line under the verdict', () => {
+    const i = inputs([car({ name: 'A' }), car({ name: 'B' })])
+    for (const option of i.options) {
+      expect(emptyRunningCosts(option)).toEqual([])
+      expect(emptyRunningText(emptyRunningCosts(option))).toBeNull()
+    }
+    expect(emptyCostsDiffer(costed(i))).toBeNull()
+  })
+
+  it('one option with gaps: listed for it, and a line names the option and its boxes', () => {
+    const i = inputs([car({ name: 'A' }), car({ name: 'B', insurance: ZERO, ved: ZERO })])
+    expect(emptyRunningCosts(i.options[1]!)).toEqual(['insurance', 'ved'])
+    expect(emptyRunningText(emptyRunningCosts(i.options[1]!))).toBe('Left empty, counted as nothing: insurance and VED.')
+    expect(emptyCostsDiffer(costed(i))).toBe(
+      'Running costs left empty differ between the options (an empty box counts as nothing): A, none; B, insurance and VED.',
+    )
+  })
+
+  it('every box empty, listed in the editor’s order', () => {
+    const option = car({ insurance: ZERO, maintenance: ZERO, ved: ZERO, other: ZERO })
+    expect(emptyRunningText(emptyRunningCosts(option))).toBe('Left empty, counted as nothing: insurance, maintenance, VED and other costs.')
+  })
+
+  it('both with the same gaps: listed for each, no line under the verdict', () => {
+    const i = inputs([car({ name: 'A', maintenance: ZERO }), car({ name: 'B', maintenance: ZERO })])
+    for (const option of i.options) expect(emptyRunningText(emptyRunningCosts(option))).toBe('Left empty, counted as nothing: maintenance.')
+    expect(emptyCostsDiffer(costed(i))).toBeNull()
+  })
+
+  it('a single option: no line under the verdict', () => {
+    const i = inputs([car({ name: 'A', maintenance: ZERO })])
+    expect(emptyCostsDiffer(costed(i))).toBeNull()
   })
 })
 

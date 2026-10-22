@@ -177,8 +177,14 @@ function crossingText<T>(flip: Flip<T>, what: string, show: (value: T) => string
   if (flip.kind === 'no-crossing-in-range')
     return `${what}: ${NO_CROSSING.toLowerCase()} over the range Sumyard searches; ${who(flip.lowerThroughout)} throughout, with ${HELD}.`
   // Neighbours that show the same (a savings return to a few decimal places) read as one threshold.
-  if (show(flip.below) === show(flip.above))
-    return `${what}: below about ${show(flip.above)}, ${who(flip.lowerBelow)}; above it, ${who(flip.lowerAbove)}. With ${HELD}.`
+  const same = show(flip.below) === show(flip.above)
+  // The engine stops at the first change of order (F29). Into a tie, that is where the two are level, often a narrow band
+  // of penny-rounded totals around a crossing: which is lower beyond it isn't found, so it isn't said (3d-1 fix).
+  if (flip.lowerAbove === 'tie' && flip.lowerBelow !== 'tie')
+    return `${what}: ${same ? `below about ${show(flip.above)}` : `up to ${show(flip.below)}`}, ${who(flip.lowerBelow)}; ${
+      same ? 'at about' : 'at'
+    } ${show(flip.above)}, the two are level. The search stops there, so it doesn’t say which is lower above it. With ${HELD}.`
+  if (same) return `${what}: below about ${show(flip.above)}, ${who(flip.lowerBelow)}; above it, ${who(flip.lowerAbove)}. With ${HELD}.`
   return `${what}: up to ${show(flip.below)}, ${who(flip.lowerBelow)}; from ${show(flip.above)}, ${who(flip.lowerAbove)}. With ${HELD}.`
 }
 

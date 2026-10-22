@@ -47,7 +47,7 @@ import {
   uniqueNames,
   VALUE_CASES,
 } from './definition'
-import { engineNames, type NoVerdict, verdict } from './narrative'
+import { emptyCostsDiffer, emptyRunningCosts, engineNames, type NoVerdict, verdict } from './narrative'
 import { fieldName, OptionEditor } from './OptionEditor'
 import { cardOrder, flipPair, flipsFor, pairChoices } from './results'
 
@@ -167,12 +167,26 @@ export default function CarDecisionPage() {
   const names = inputs.options.map(optionName)
   const order = ok ? cardOrder(ok, inputs.valueCase, inputs.options.length) : []
   const cards: CardData[] = ok
-    ? order.map((index) => ({ index, name: names[index]!, kind: inputs.options[index]!.acquisition, status: ok.statuses[index]! }))
+    ? order.map((index) => ({
+        index,
+        name: names[index]!,
+        kind: inputs.options[index]!.acquisition,
+        status: ok.statuses[index]!,
+        inputs: inputs.options[index]!,
+      }))
     : []
   // The answer first (3d-1): the verdict from the engine's full-coverage ordering, in words, by engine index.
   const comparison = ok?.comparison ?? null
   const answerNames = ok ? engineNames(ok.statuses, uniques) : []
   const said = comparison ? verdict(comparison, inputs.valueCase, answerNames, toEngineShared(inputs).savingsReturn, gbp) : null
+  // Costed options that differ in which running-cost boxes are left empty: one line under the verdict (3d-1 fix).
+  const emptyNote = ok
+    ? emptyCostsDiffer(
+        ok.statuses.flatMap((status, index) =>
+          status.kind === 'ok' ? [{ name: uniques[index]!, boxes: emptyRunningCosts(inputs.options[index]!) }] : [],
+        ),
+      )
+    : null
   const value = said && said.kind !== 'none' ? said.short : null
   const label = 'Lowest net cost under these assumptions'
   const emptyText =
@@ -247,7 +261,14 @@ export default function CarDecisionPage() {
             <>
               {comparison && said && (
                 <>
-                  <VerdictPanel verdict={said} comparison={comparison} valueCase={inputs.valueCase} names={answerNames} gbp={gbp} />
+                  <VerdictPanel
+                    verdict={said}
+                    emptyNote={emptyNote}
+                    comparison={comparison}
+                    valueCase={inputs.valueCase}
+                    names={answerNames}
+                    gbp={gbp}
+                  />
                   <BottomLine comparison={comparison} valueCase={inputs.valueCase} names={answerNames} gbp={gbp} />
                   <ScenarioTable comparison={comparison} valueCase={inputs.valueCase} names={answerNames} gbp={gbp} />
                 </>
