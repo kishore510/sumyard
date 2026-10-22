@@ -623,3 +623,26 @@ Moved verbatim from `PHASE-BRIEF.md` on 21 October 2026, replaced by part 3a's.
 - Not verified: a real phone, Safari, Firefox, a screen reader, the deployed site; no external cross-check yet.
 - Owner checks: fill `docs/compound-cross-checks.json` (spreadsheet FV or a reputable calculator, with source and date); confirm the C8 rate bounds and the starting years.
 - Next: slice 3 (car decision), its brief first.
+
+## Archive: part 3a scope (as of 0.17.1)
+
+Moved from `PHASE-BRIEF.md` on 22 October 2026.
+
+### Part 3a: finance engine (0.17.0, internal, no UI)
+
+#### Scope
+
+- Step 1 (gate, before any engine code): this brief and the `PLAN.md` rows; owner decisions in `docs/modelling-decisions-car.md`; the APR definition and the PCP and HP conventions verified from official sources and logged in `docs/verification-log.md` ("Car finance (slice 3a)"), anything unreachable marked OPEN; published worked examples in `docs/worked-examples.md`.
+- `src/calculators/car-finance/` (`calc.ts`, `types.ts`, tests, `fixtures/`, `README.md`): the amortising payment and schedule (pennies that add up); a rate solver for a cash-flow series (documented method, tolerance and bound, a typed refusal); loan, HP and PCP (hand back or buy at the end, mileage excess); the outstanding balance at any month for 3b. Pure, config-free, money through `money.ts` (`FinePence` / `Factor` where a root or solve needs them). Assumptions carry no figures; refusals name the field; bounds in `src/lib/inputLimits.ts`.
+- Tests first (red, then green): hand-checkable cases; published examples; an exact-fraction reference on 300 seeded cases; a rate round trip on 300 cases; properties; edge cases; the literal guard. Mutation spot-checks (interest on the closing balance, fee left out of the rate, balloon left out of the final payment, time basis changed) must fail the suite.
+
+#### Out of scope
+
+Ownership costs, fuel, depreciation, the page, registry entry, scenarios, Chart changes, any tax or VED config, early termination or settlement rebates, a flat rate (no definition verified).
+
+## Archive: last-session entry, part 3a.1
+
+- 22 October 2026, part 3a.1 (0.17.1, PR #22, internal): CONC App 1.2 and SI 2010/1011 read (the SI is revoked, CR-15); CR-1 to CR-3 verified, CR-10 partly (HP balloon), CR-15 to CR-18 added; `apr(flows)` (F15) with `roundRatio`/`APR_DISPLAY_DIGITS`; tests red then green; mutation spot-checks all caught (one equivalent mutant).
+- Differs from the brief: no published APR example exists on either source (CR-17), so APR-1 to APR-4 are hand-checkable; no agreement-level APR (CR-10 still OPEN); the effective-rate assumption text no longer says the APR rules could not be verified.
+- Not verified: CR-10 for PCP and purchase/option fees; what the 18/12/2025 change to CONC App 1.2.6R was (CR-18); CR-12, CR-13 (statutes not read); no UI to check.
+- Next: 3b (cost-of-ownership engine), its brief and decisions first.

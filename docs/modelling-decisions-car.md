@@ -133,3 +133,96 @@ Left out. No page read defines a flat rate or relates one to an APR (CR-4). HMRC
 - **Refusals**: as F9 (`'no-solution'`, `'no-convergence'`): nothing borrowed, nothing repaid, month-0 charges at or above the drawdown, or less repaid than borrowed (a negative rate; CONC App 1.2 gives no rule for one). A month that is not whole, below nothing or over `MAX_FINANCE_TERM_MONTHS`, or an amount below nothing, throws `EngineInputError`.
 - **Assumptions** (CONC App 1.2.5R, CR-16): every payment is made on its date (a). The others apply only "where necessary" (1.2.5A G) and cover what the engine does not model.
 
+
+## Owner decisions (slice 3b, 22 October 2026)
+
+O1 to O8 of the 3b brief, numbered on from F15. Code: `src/calculators/car-ownership/` (`calc.ts`, `types.ts`); constants in `src/lib/inputLimits.ts`, `src/lib/units.ts` and `src/lib/money.ts`.
+
+### F16. An option (O1)
+
+An option is a **car** and an **acquisition**. The car: its price (buy, loan, HP, PCP) or current value (keep); its value at the horizon in low, expected and high cases; annual mileage; fuel type and its cost; running costs. The acquisition: keep, buy outright (cash), loan, HP or PCP, the last three through the 3a engine (`loan`, `hirePurchase`, `pcp`) with the car's price as the cash price. A PCP option chooses its end (buy or hand back); comparing both ends is two options. From one to four options (`MAX_CAR_OPTIONS`) on one horizon.
+
+### F17. Value over time (O2)
+
+Only the price or current value V0 and the three horizon values are inputs. Between them the value falls (or rises) by a constant yearly percentage fitted to hit the horizon value: V(m) = V0 × (VH / V0)^(m / H) at month m of a horizon of H months, which is a constant monthly factor q = (VH / V0)^(1/H), the yearly change q^12 − 1. It is an **illustrative shape**, not a depreciation model. V(0) = V0 and V(H) = VH exactly; months between are rounded to the penny. A horizon value of nothing gives nothing from month one; a car worth nothing stays worth nothing. Zero depreciation (VH = V0) and a rise are allowed up to VH ≤ V0 × `MAX_HORIZON_VALUE_RATIO` (three halves).
+
+### F18. Net cost (O3)
+
+Net cost at a month = cash out so far (deposit, payments, fees, running costs, any end payment) − the car's **equity** then (its value less what is still owed on it) + the opportunity cost of cash. With nothing owed, equity is the value, as O3 states; with a finance balance still owed (a horizon inside the term), subtracting the value alone would count the car as fully paid for, so the balance is added back. For **keep**, the current value counts as given up at month 0 (the sale forgone): it is not cash out, but it is in the net cost and in the opportunity cost ("the capital tied up in the car's current value"). So keeping a car worth V0 costs exactly what buying the same car for V0 in cash costs (the parity test).
+
+**Opportunity cost**: every outflow (and keep's forgone sale) compounded forward to the month at the person's savings return, an **after-tax annual effective rate** they enter, less the outflows themselves: Σ c_k ((1 + s)^((m − k) / 12) − 1). `futureValueOfFlows` does this in fine fixed point by Horner's rule with the monthly factor (1 + s)^(1/12), rounded once to the penny. It does not call `project()` (finance payments stop at the term); a property test shows that for level monthly payments it equals `project()` within a penny.
+
+### F19. Coverage (O4)
+
+Each option reports `coverageMonths`, the months within the horizon it has a car: the horizon, except a PCP handed back before the horizon, which covers the term. No replacement car is modelled. Totals are taken at the end of coverage, and the headline is **net cost per month of coverage**, with the total beside it. An option with less coverage than the horizon is flagged (`fullCoverage: false`) and listed apart; it is never ranked against full coverage.
+
+### F20. Equity (O5)
+
+Equity at a month = value − `outstandingBalance` (3a, F12), so negative equity shows. When the term ends inside the horizon: HP and PCP buy pay the final payment and purchase fee and keep the car (nothing owed); PCP hand back returns the car, which settles the final payment, and pays the excess mileage charge (F11); after hand-back there is no car and no equity.
+
+### F21. Running costs (O6)
+
+Insurance, maintenance, VED and other: annual amounts the person enters for the first year (no tax figure, no VED rule), each rising by one general yearly increase. Fuel or energy: cost per mile × annual mileage, with its own yearly price change. `costPerMile` takes (a) miles per (imperial) gallon and a price per litre, with the litres in a gallon from `src/lib/units.ts` (verified, CO-1); (b) miles per kWh, a home share and home and public prices per kWh; or (c) a cost per mile. No tax rule for electric cars and no benefit in kind.
+
+### F22. Flip points (O7)
+
+For two options and one value case: the horizon value of either option, the savings return, and the annual mileage (set the same for both, as one driver) at which their net costs per month of coverage are equal. A typed "no crossing in range" when there is none in the search range. Reported as thresholds, never as a recommendation. Method: F29.
+
+### F23. Language (O8)
+
+Results say "lowest net cost under these assumptions", never "best", "recommended" or "should". The engine's assumption strings are checked for those words.
+
+## Engine decisions (slice 3b, proposed; owner to confirm)
+
+### F24. Time grid
+
+Month 0 is the start: a cash price, a deposit, a fee paid at the start and keep's forgone sale fall there. Running costs and fuel are paid monthly in arrears, months 1 to the end of coverage. Finance payments follow 3a (F5); when the horizon ends inside the term, payments stop at the horizon and the balance is still owed (F18). A loan's amount may be below the price: the rest is paid in cash at month 0; a loan above the price is refused. A PCP's expected mileage is the annual mileage × term / 12, to the nearest whole mile.
+
+### F25. Rounding
+
+Each month's running cost and fuel cost is exact (`ExactPence`: annual amount × (1 + increase)^year / 12, year = whole years since the start) and rounded once to the nearest penny. The value at a month is rounded once to the nearest penny from fine fixed point; the horizon value is exact. The opportunity cost at a month is rounded once. Every total is a sum of those pennies, so the breakdown adds up to the net cost exactly.
+
+### F26. Breakdown
+
+At the end of coverage E, with V0 the starting value, V(E) the value then and B the balance (at hand-back, the final payment the car settles):
+
+- **depreciation** = V0 − V(E) (negative if the value rose);
+- **interest and fees** = acquisition outlay + forgone sale − V0 + B (interest, fees, purchase and option fees, the excess mileage charge; nothing for cash or keep);
+- **equity handed back** = V(E) − B at a PCP hand-back (negative when the final payment was above the value), else nothing;
+- **fuel, insurance, maintenance, VED, other**: the sums of the monthly amounts;
+- **opportunity cost** (F18).
+
+They add up to the net cost to the penny.
+
+### F27. Comparison
+
+`compareOptions` costs every option on the shared horizon and savings return. For each value case it ranks the full-coverage options by net cost per month of coverage (compared exactly, as net × the other's coverage) and states ties; partial-coverage options are listed apart, unranked. The order means "lowest net cost under these assumptions" (F23).
+
+### F28. Refusals
+
+As 3a: `{ ok: false, problems: [{ field, reason }] }`, with `option` (its index) on a problem in one option, 3a's finance problems passed through under the same option, and `'result'` / `'too-large'` when a sum would pass the safe range. Bounds: F30.
+
+### F29. How flip points are found
+
+- **Horizon value**: closed form. Net cost is linear in the option's horizon value VH: −1 per penny while the car is held at the horizon, 0 when it was handed back earlier (then there is no crossing unless the two are equal throughout). The crossing X solves (net(0) − X) / C = net_other / C_other exactly; it is returned to the nearest penny if it lies in [0, V0 × `MAX_HORIZON_VALUE_RATIO`].
+- **Savings return** and **annual mileage**: a bounded, deterministic search. Each is scanned on a grid of `FLIP_SCAN_STEPS` equal steps over its range (savings return 0 to `MAX_SAVINGS_RETURN`, in steps of 10^−`FLIP_RATE_DIGITS`; mileage 0 to `MAX_ANNUAL_MILEAGE`, whole miles); at the first step where the order changes, bisection narrows it to two neighbouring values (10^−`FLIP_RATE_DIGITS` apart, or one mile) with different orders. The result is that pair and which option is lower each side. Crossings that come and go within one grid step can be missed; that is stated in the assumptions.
+
+### F30. Proposed bounds (for the owner)
+
+| Input | Bound | Constant |
+|---|---|---|
+| Options | 1 to 4 | `MAX_CAR_OPTIONS` |
+| Horizon | 1 to 240 months (20 years) | `MAX_HORIZON_MONTHS` |
+| Horizon value | nothing to 1.5 × the starting value | `MAX_HORIZON_VALUE_RATIO` |
+| Annual mileage | whole miles, nothing to 100,000 | `MAX_ANNUAL_MILEAGE` |
+| Savings return (after tax) | nothing to 20% a year | `MAX_SAVINGS_RETURN` |
+| Yearly increase (running costs, fuel price) | −50% to +50% | `PRICE_CHANGE_BOUND` |
+| Miles per gallon | above nothing, to 1,000 | `MAX_MILES_PER_GALLON` |
+| Miles per kWh | above nothing, to 20 | `MAX_MILES_PER_KWH` |
+| Price per litre, per kWh, cost per mile | nothing to 1,000 pence | `MAX_PENCE_PER_UNIT` |
+| Home charging share | nothing to all | (a share) |
+| Running costs | nothing to `MAX_INPUT_AMOUNT` a year | `MAX_INPUT_AMOUNT` |
+
+### F31. Not modelled
+
+Replacement cars, early termination and settlement, part exchange, leasing, finance on a kept car, tax on savings beyond the after-tax rate entered, EV tax rules, benefit in kind, VED rules, insurance or servicing models, condition charges at hand-back.

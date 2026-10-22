@@ -306,6 +306,12 @@ export const RATE_SOLVE_DIGITS = 24
  */
 export const APR_DISPLAY_DIGITS = 3
 
+/** Flip points (slice 3b, F29): a savings return is searched in steps of 10^-FLIP_RATE_DIGITS. */
+export const FLIP_RATE_DIGITS = 9
+
+/** Flip points (F29): the grid a range is scanned on before bisection. */
+export const FLIP_SCAN_STEPS = 64
+
 /** The most bisection steps a rate solver takes before it refuses (F9). */
 export const RATE_SOLVE_MAX_STEPS = 200
 

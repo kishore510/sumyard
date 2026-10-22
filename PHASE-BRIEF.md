@@ -1,6 +1,6 @@
 # PHASE-BRIEF: Slice 3 Car decision
 
-Status: 3a (finance engine) Done (0.17.0, PR #21); 3a.1 (APR) Done (0.17.1, PR #22); 3b next, its brief and decisions first. Slices 1b and 2 are built and stay open in `PLAN.md` until the owner's checks below are done. Status per part lives only in `PLAN.md`. Finished part scopes are in `docs/history/phase-brief-archive.md`.
+Status: 3a (finance engine) Done (0.17.0, PR #21); 3a.1 (APR) Done (0.17.1, PR #22); 3b (cost-of-ownership engine) in progress. Slices 1b and 2 are built and stay open in `PLAN.md` until the owner's checks below are done. Status per part lives only in `PLAN.md`. Finished part scopes are in `docs/history/phase-brief-archive.md`.
 
 ## Docs rule
 
@@ -10,25 +10,21 @@ Close out every session with the tiered checklist in `CLAUDE.md` ("Session close
 
 Compare what a car costs over a fixed horizon under five options: keep the current car, buy outright, PCP, HP or a personal loan. Finance maths first, then the cost of ownership, then the page. Illustrative, not advice. Owner decisions F1 to F4, engine decisions F5 onwards: `docs/modelling-decisions-car.md`.
 
-## Part 3a: finance engine (0.17.0, internal, no UI)
+## Part 3b: cost-of-ownership engine (0.18.0, internal, no UI)
 
 ### Scope
 
-- Step 1 (gate, before any engine code): this brief and the `PLAN.md` rows; owner decisions in `docs/modelling-decisions-car.md`; the APR definition and the PCP and HP conventions verified from official sources and logged in `docs/verification-log.md` ("Car finance (slice 3a)"), anything unreachable marked OPEN; published worked examples in `docs/worked-examples.md`.
-- `src/calculators/car-finance/` (`calc.ts`, `types.ts`, tests, `fixtures/`, `README.md`): the amortising payment and schedule (pennies that add up); a rate solver for a cash-flow series (documented method, tolerance and bound, a typed refusal); loan, HP and PCP (hand back or buy at the end, mileage excess); the outstanding balance at any month for 3b. Pure, config-free, money through `money.ts` (`FinePence` / `Factor` where a root or solve needs them). Assumptions carry no figures; refusals name the field; bounds in `src/lib/inputLimits.ts`.
-- Tests first (red, then green): hand-checkable cases; published examples; an exact-fraction reference on 300 seeded cases; a rate round trip on 300 cases; properties; edge cases; the literal guard. Mutation spot-checks (interest on the closing balance, fee left out of the rate, balloon left out of the final payment, time basis changed) must fail the suite.
+- Step 1 (gate, before any engine code): this brief and the `PLAN.md` rows; owner decisions O1 to O8 as F16 to F23 and engine decisions F24 to F31 in `docs/modelling-decisions-car.md`; proposed bounds in `src/lib/inputLimits.ts` (F30); the litres in a gallon verified and logged (`docs/verification-log.md`, CO-1) in `src/lib/units.ts`.
+- `src/calculators/car-ownership/` (`calc.ts`, `types.ts`, tests, `fixtures/`, `README.md`): `valueCurve`, `costPerMile`, `futureValueOfFlows`, the monthly cash-flow timeline per option, `ownershipCost` (per value case: totals, per-month cumulative net cost and equity, the breakdown, coverage, net cost per month of coverage), `compareOptions` (one horizon, coverage flags, ordering with ties) and `flipPoints`. Pure, no tax figure, money through `money.ts`, assumptions with no figures, typed refusals by field, overflow refused.
+- Tests first (red, then green): hand-checkable cases; keep versus buy parity; the breakdown adds up; an exact-fraction reference on 300 seeded cases (loan, HP, PCP buy, PCP hand back, cash, keep); properties; edge cases; the literal guard. Mutation spot-checks (value curve fitted to the wrong end, opportunity cost omitted, hand back treated as covering the horizon, equity sign flipped, the general increase applied to fuel) must fail the suite.
 
 ### Out of scope
 
-Ownership costs, fuel, depreciation, the page, registry entry, scenarios, Chart changes, any tax or VED config, early termination or settlement rebates, a flat rate (no definition verified).
-
-## Part 3b: cost-of-ownership engine (internal, no UI)
-
-Each option's cost over the fixed horizon (F2): finance from 3a; depreciation from the user's residual values (low, expected, high, F3); running costs with fuel types including electric (per-mile energy cost, user-entered prices); VED as a user-entered annual amount (F4); equity and negative equity from 3a's outstanding balance; flip points (the mileage or residual value where the cheapest option changes); the opportunity cost of cash through the compound engine. Its own brief and decisions before code.
+The page, registry entry, scenarios, Chart changes, tax or VED config, EV tax rules, replacement cars, early termination, any change to the 3a engine (unless a failing test proves a bug: then stop and report).
 
 ## Part 3c-1: the page with option cards
 
-`#/c/car` on 3a and 3b: inputs in sections, one card per option (cost over the horizon, monthly outlay, what you own at the end), scenarios and compare, Help, assumptions. Built from shared components.
+`#/c/car` on 3a and 3b: inputs in sections, one card per option (net cost per month of coverage and the total, monthly outlay, equity at the end; partial coverage flagged), scenarios and compare, Help, assumptions. Built from shared components.
 
 ## Part 3c-2: crossover chart, sensitivity, polish
 

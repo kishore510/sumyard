@@ -27,9 +27,9 @@ Rules for this file: add a row when scope is added; update the Status cell when 
 | 3 Car decision | Keep vs buy outright vs PCP vs HP vs loan over a fixed horizon: finance, depreciation, running costs, VED as an input, residual value | In progress |
 | 3a Car finance engine | Amortising payment and schedule, rate solver, loan, HP and PCP, outstanding balance; APR conventions verified first (internal, no UI) | Done (0.17.0, PR #21, 21 October 2026) |
 | 3a.1 APR verification | Statutory APR read from CONC App 1.2 and SI 2010/1011 (CR-1 to CR-3 verified, CR-10 partly); `apr` from dated cash flows (internal, no UI) | Done (0.17.1, PR #22, 22 October 2026) |
-| 3b Cost-of-ownership engine | Each option's cost over the horizon: fuel types incl. electric, residual cases, equity, flip points, opportunity cost of cash (internal, no UI) | Not started |
-| 3c-1 Car decision page | The page with option cards, scenarios, compare, Help | Not started |
-| 3c-2 Car crossover and sensitivity | Crossover chart, sensitivity, polish | Not started |
+| 3b Cost-of-ownership engine | Up to four options (keep, cash, loan, HP, PCP buy or hand back) on one horizon: value curve and low/expected/high cases, running costs and fuel incl. electric, equity, opportunity cost, coverage, net cost per month of coverage, comparison and flip points (internal, no UI) | In progress |
+| 3c-1 Car decision page | The page on 3a and 3b: inputs in sections, one card per option (net cost per month of coverage and total, monthly outlay, equity at the end), scenarios, compare, Help | Not started |
+| 3c-2 Car crossover and sensitivity | Cumulative net cost chart with crossovers (shared Chart, table fallback), flip points and sensitivity shown as thresholds, browser matrix, polish | Not started |
 | Take-home pay | Shipped inside 1b (1b-i to 0.12.0) at `#/c/optimiser`; 1b-ii added the optimiser to the same page | Done (0.14.0, PR #17, 21 October 2026) |
 | Mortgage overpayment | Check daily vs monthly interest handling per lender | Not started |
 | Loan / APR | Verify the APR definition against official guidance | Not started |
