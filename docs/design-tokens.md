@@ -13,12 +13,13 @@ All tokens live in `src/styles/tokens.css`. They are adapted from Chalkline's `s
 | Change | Why |
 |---|---|
 | Prefix `--sy-` instead of `--cl-`. | Sumyard's own namespace; the names after the prefix are Chalkline's. |
-| New raw-palette layer, `--sy-palette-*` (30 colours, including 8 translucent). | The brief asks for themes to swap only a semantic layer over a raw palette. Chalkline sets each theme's semantic tokens straight to hex. **Every palette value is a Chalkline value**; no new colour was introduced. |
+| New raw-palette layer, `--sy-palette-*` (32 colours, including 8 translucent). | The brief asks for themes to swap only a semantic layer over a raw palette. Chalkline sets each theme's semantic tokens straight to hex. **Every palette value is a Chalkline value**; no new colour was introduced. |
 | Dropped the diagram-only tokens: canvas, grid, guides, find highlight, node, edge, group, minimap, swatches, handles, docking, palette and panel widths, AI, tour, stencils, Mermaid. | Not used by Sumyard. |
 | Session B copied back six chrome tokens, with Chalkline's names and values: `--sy-toast-duration` (5000ms), `--sy-drawer-max-height` (80dvh, the menu), `--sy-full-sheet-height`, `--sy-help-width` (400px, every sheet; Chalkline's settings width equals it), `--sy-banner-width` (560px, the first-run notice) and `--sy-badge-dot` (8px). | The app chrome. No new token was invented. |
+| 0.20.1 added one semantic token, `--sy-swatch-teal` (Tailwind `swatch-teal`), with Chalkline's name and values: `--cl-swatch-teal`, `#0f766e` light and `#5fd0c2` dark, as palette `teal-700` and `teal-300`. **Flagged:** Chalkline's swatch is a diagram fill colour; Sumyard uses it only for the Chart's `secondary` line style. | The Chart needed a fourth line colour that is not the danger colour (a car page with four options drew one in danger). No Sumyard token was distinct enough: the others are blue, red or grey. Contrast is tested at 3:1 (graphics) on bg, surface and surface-muted in both themes; line labels are drawn in `text`. |
 | No logo token or logo. | Chalkline's mark is a diagram sketch. Sumyard has a text wordmark until a mark is designed (flagged; not invented). |
 
-No semantic token was invented. The semantic names and values are Chalkline's.
+No semantic token was invented. The semantic names and values are Chalkline's (`swatch-teal` is a Chalkline swatch, see above).
 
 ## Semantic colours
 
@@ -38,5 +39,6 @@ No semantic token was invented. The semantic names and values are Chalkline's.
 | `focus` | blue-600 | blue-300 |
 | `danger` | red-700 `#b3261e` | red-300 `#f2877d` |
 | `on-danger` | white | red-950 `#1a0b09` |
+| `swatch-teal` | teal-700 `#0f766e` | teal-300 `#5fd0c2` |
 | `shadow-color`, `shadow-color-strong` | slate-850 at 10% and 16% | black at 35% and 50% |
 | `overlay` | slate-850 at 40% | black at 60% |

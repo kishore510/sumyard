@@ -278,7 +278,7 @@ The optional costs and fees (`OPTIONAL_FIELDS`: insurance, maintenance, VED, oth
 
 ### F39. The crossover chart
 
-x is the month, 0 to the horizon; y is each option's cumulative net cost (`MonthPoint.netCost`) in the case shown, straight from the engine's months. A line stops at the end of its coverage (a PCP handed back), marked "handed back at month N"; the horizon and each finance term that ends inside it are marked. A line keeps its style by its place in the editor (accent, contrast, neutral, then danger for a fourth option: the Chart has four styles, each with its own dash and marker, and names each line at its end). Lines that cross are not called an order; the cards' order is at the horizon (F27).
+x is the month, 0 to the horizon; y is each option's cumulative net cost (`MonthPoint.netCost`) in the case shown, straight from the engine's months. A line stops at the end of its coverage (a PCP handed back), marked "handed back at month N"; the horizon and each finance term that ends inside it are marked. A line keeps its style by its place in the editor (accent, contrast, neutral, then secondary for a fourth option; none is the danger colour, since no option is a warning; each style has its own colour token, dash and marker, and each line is named at its end). Lines that cross are not called an order; the cards' order is at the horizon (F27).
 
 ### F40. The selected month
 

@@ -163,3 +163,7 @@ Lighthouse 12.8.2, mobile form factor, headless Chromium 1194 (Chrome 141), `vit
 The timespans run with Lighthouse's mobile CPU slowdown, so the blocking time is the cards, the flip search and the sensitivity steps on a slow phone: one load of a four-option, 240-month scenario, and one opening of the sensitivity. SEO's failures are robots.txt, as before, and the snapshot's DOM size (the chart's 241-row table with a button per row and four sensitivity tables; in the backlog).
 
 Not checked: a real phone, Safari, Firefox, a screen reader, the deployed site.
+
+## Browser checks, slice 3c-3 (0.20.1), 22 October 2026
+
+Scratch Playwright (1.56) and axe-core 4.10 against `vite preview`, on the car decision page at 360 and 1280 px in light and dark (system colour scheme), with a saved scenario of four options loaded (keep, a loan, HP, a PCP handed back at month 36; 48 months). At each width and theme: four lines with four distinct computed stroke colours, dashes and end labels, none the danger colour; each line at least 3:1 on the chart's surface (the teal line 5.47:1 light, 8.06:1 dark); Home and two Right arrows give month 2 with the triangle marker selected; no horizontal page scroll; axe (WCAG 2.0/2.1 A and AA, best practice) found no violations; no external requests; no console errors. 68 checks passed and none failed. No compute change.

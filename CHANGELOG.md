@@ -4,6 +4,11 @@ All notable changes to Sumyard are listed here, newest first. The format follows
 
 ## [Unreleased]
 
+## [0.20.1] - 2026-10-22
+
+### Fixed
+- **Car decision chart:** with four options, the fourth line is now drawn in its own teal pattern with a triangle marker, instead of the red used for warnings. No line on a chart is red unless it is a warning.
+
 ## [0.20.0] - 2026-10-22
 
 ### Added
