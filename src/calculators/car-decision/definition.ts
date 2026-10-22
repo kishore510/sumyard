@@ -134,10 +134,10 @@ export const PCP_ENDS: readonly PcpEnd[] = ['buy', 'hand-back']
 export const FIELD_LABELS: Record<OptionField, string> = {
   name: 'Name',
   acquisition: 'How you get the car',
-  value: 'Price or current value',
-  endLow: 'End value, low',
-  endExpected: 'End value, expected',
-  endHigh: 'End value, high',
+  value: 'Price or what the car is worth today',
+  endLow: 'Low value at the end',
+  endExpected: 'Expected value at the end',
+  endHigh: 'High value at the end',
   annualMileage: 'Annual mileage',
   fuelMode: 'Fuel type',
   milesPerGallon: 'Miles per gallon',
@@ -584,8 +584,8 @@ function engineLabel(field: OwnershipField | FinanceField | 'result', valueLabel
   }
 }
 
-/** "Price" or, for keep, "Current value". */
-export const valueLabel = (kind: AcquisitionKind) => (kind === 'keep' ? 'Current value' : 'Price')
+/** "Price" or, for keep, the question the box answers. */
+export const valueLabel = (kind: AcquisitionKind) => (kind === 'keep' ? 'What is the car worth today?' : 'Price')
 
 /** Engine problems as an InputRefusal, for RefusalNotice and compare. */
 export function inputRefusal(problems: readonly OwnershipProblem[], kind: AcquisitionKind = 'cash'): InputRefusal {
@@ -677,7 +677,7 @@ export function uniqueNames(options: readonly OptionInputs[]): string[] {
   return names.map((name, index) => (names.indexOf(name) === index ? name : `${name} (option ${index + 1})`))
 }
 
-/** Fields in words for a missing list: "Price, End value, low". */
+/** Fields in words for a missing list: "Price, Low value at the end". */
 export const fieldList = (fields: readonly OptionField[], kind: AcquisitionKind) =>
   fields.map((field) => (field === 'value' ? valueLabel(kind) : FIELD_LABELS[field])).join(', ')
 
@@ -693,7 +693,7 @@ export const carDecisionCalculator: CalculatorDefinition<CarDecisionInputs> = de
   id: 'car-decision',
   name: 'Car decision',
   summary:
-    'What a car costs over the same horizon if you keep your current car, buy with cash, or take a loan, HP or PCP: net cost per month of coverage in low, expected and high cases for its value, with what would change the order.',
+    'What a car costs over the same horizon if you keep your current car, buy with cash, or take a loan, HP or PCP: average cost per month owned in low, expected and high cases for its value, with what would change the order.',
   taxRules: 'none',
   inputsVersion: 2,
   defaultInputs: () => ({
@@ -732,7 +732,7 @@ export const carDecisionCalculator: CalculatorDefinition<CarDecisionInputs> = de
     const results: SummaryRow[] = [text(SHARED_LABELS.valueCase, CASE_LABELS[inputs.valueCase])]
     outcome.statuses.forEach((status, index) => {
       const name = names[index]!
-      const labels = ['net cost per month of coverage', 'total net cost', 'coverage', 'equity at the horizon'].map(
+      const labels = ['average cost per month owned', 'total net cost', 'coverage', 'equity at the horizon'].map(
         (what) => `${name}: ${what}`,
       )
       const [perMonth, total, coverage, equity] = labels as [string, string, string, string]

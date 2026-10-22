@@ -39,7 +39,7 @@ export function orderingRule(comparison: Comparison, valueCase: ValueCase): stri
   const months = comparison.horizonMonths
   const partial = comparison.ranking[valueCase].partial.length > 0
   return [
-    `Ordered by net cost per month of coverage, lowest first, under these assumptions (the ${CASE_LABELS[valueCase].toLowerCase()} end value).`,
+    `Ordered by average cost per month owned, lowest first, under these assumptions (the ${CASE_LABELS[valueCase].toLowerCase()} end value).`,
     partial
       ? `Options that don’t cover all ${months} months are listed after the others and not ordered against them.`
       : `Every option shown covers all ${months} months.`,
@@ -53,9 +53,7 @@ export function tiesText(comparison: Comparison, valueCase: ValueCase, names: re
     if (entry.tiedWithPrevious) groups.at(-1)!.push(entry.option)
     else groups.push([entry.option])
   }
-  return groups
-    .filter((g) => g.length > 1)
-    .map((g) => `${list(g.map((i) => names[i]!))} are tied: the same net cost per month of coverage.`)
+  return groups.filter((g) => g.length > 1).map((g) => `${list(g.map((i) => names[i]!))} are tied: the same average cost per month owned.`)
 }
 
 /** The lowest full-coverage options (all tied for lowest) and their net cost per month of coverage; null when none covers the horizon. */
@@ -148,7 +146,7 @@ const HELD = 'everything else as entered'
  * here is worked out, only put in words. Never a recommendation.
  */
 export function flipSentences(flips: FlipPoints, names: readonly [string, string], gbp: (amount: Money) => string): FlipSentence[] {
-  const who = (lower: Lower) => (lower === 'tie' ? 'the two are level' : `${names[lower]} has the lower net cost per month of coverage`)
+  const who = (lower: Lower) => (lower === 'tie' ? 'the two are level' : `${names[lower]} has the lower average cost per month owned`)
   const caseWord = CASE_LABELS[flips.valueCase].toLowerCase()
   const value = (which: 0 | 1): FlipSentence => {
     const flip = flips.horizonValue[which]

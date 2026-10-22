@@ -246,7 +246,7 @@ export function SensitivityView({
       <Section id="cd-section-sensitivity" title="Sensitivity: what moves the answer most" summary={summary} onOpenChange={onOpenChange}>
         <p className="text-sm text-text-muted">
           Each row moves one input by the percentage shown, one at a time, with every other input held at its current value. Each figure is
-          the change in that option’s net cost per month of coverage against its card, from the same engine. The changes are constant
+          the change in that option’s average cost per month owned against its card, from the same engine. The changes are constant
           percentages of today’s inputs, illustrative only, not a forecast and not advice. Rows are sorted with the largest change first.
           “Outside the range” means the move takes the input past what Sumyard models.
         </p>
@@ -271,7 +271,7 @@ export function SensitivityView({
                 >
                   <table className="w-full min-w-max border-collapse text-sm text-text">
                     <caption className="sr-only">
-                      {names[o.index]}: change in net cost per month of coverage when one input moves, largest first
+                      {names[o.index]}: change in average cost per month owned when one input moves, largest first
                     </caption>
                     <thead>
                       <tr className="text-text-muted">

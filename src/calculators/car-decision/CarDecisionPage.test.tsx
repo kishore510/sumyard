@@ -6,7 +6,19 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { SETTLE_MS } from '@/components/StickyResult'
 import { formatGBP, formatGBPDelta, formatPence, formatPercentFixed } from '@/lib/format'
 import { MAX_CAR_OPTIONS, SENSITIVITY_SHIFTS } from '@/lib/inputLimits'
-import { APR_DISPLAY_DIGITS, fromPence, fromPounds, type Money, roundRatio, subtract, toPence } from '@/lib/money'
+import {
+  APR_DISPLAY_DIGITS,
+  exact,
+  exactMul,
+  fromPence,
+  fromPounds,
+  type Money,
+  ratio,
+  roundExact,
+  roundRatio,
+  subtract,
+  toPence,
+} from '@/lib/money'
 import { percentRatio } from '@/lib/parse'
 import { STORAGE_KEYS } from '@/lib/storageKeys'
 import { scenarioStore } from '@/scenarios/index'
@@ -14,11 +26,11 @@ import { settingsStore } from '@/settings/settings'
 import { byText, click, mount, type } from '@/test/dom'
 import { toasts } from '@/toast/toasts'
 import { compareOptions, costPerMile, flipPoints, ownershipCost } from '../car-ownership/calc'
-import type { Comparison, OwnershipResult, ValueCase } from '../car-ownership/types'
+import type { Comparison, OwnershipResult, RankEntry, ValueCase } from '../car-ownership/types'
 import { sessionFor } from '../session'
 import CarDecisionPage from './CarDecisionPage'
 import { type CarDecisionInputs, carDecisionCalculator, type OptionInputs, toEngineOption, toEngineShared } from './definition'
-import { blank, blankV1, cash, electric, hp, inputs, keep, loan, pcp, perMile } from './fixtures/inputs'
+import { blank, blankV1, cash, electric, hp, inputs, keep, loan, ownerPage, pcp, perMile } from './fixtures/inputs'
 import { flipSentences } from './results'
 import { DRIVERS, shiftOption } from './sensitivity'
 
@@ -143,7 +155,7 @@ describe('ordering', () => {
     expect(order).toEqual([...ranking.full.map((e) => e.option), ...ranking.partial.map((e) => e.option)])
     expect(order.at(-1)).toBe(1)
     const rule = text($('[data-ordering-rule]'))
-    expect(rule).toMatch(/net cost per month of coverage, lowest first/i)
+    expect(rule).toMatch(/average cost per month owned, lowest first/i)
     expect(rule).toMatch(/not ordered against/i)
     expect(rule).toMatch(/under these assumptions/i)
   })
@@ -180,11 +192,15 @@ describe('ordering', () => {
     expect(text($('[data-ties]'))).toMatch(/Red and Blue.*tied/)
   })
 
-  it('the sticky figure is the lowest net cost per month of coverage, under these assumptions', () => {
+  it('the sticky figure is the verdict: the lowest net cost under these assumptions and its gap to the next (3d-1)', () => {
     set(example)
     const result = engine()
-    const first = result.ranking.expected.full[0]!
-    expect(text($('[data-sticky-value]'))).toContain(money(result.options[first.option]!.cases.expected.netCostPerCoverageMonth))
+    const [first, next] = result.ranking.expected.full as [RankEntry, RankEntry]
+    const gap = subtract(result.options[next.option]!.cases.expected.netCost, result.options[first.option]!.cases.expected.netCost)
+    const perMonth = roundExact(exactMul(exact(gap), ratio(1, example.horizonMonths)), 'nearest')
+    expect(text($('[data-sticky-value]'))).toBe(
+      `${example.options[first.option]!.name}, ${money(perMonth)} a month less than ${example.options[next.option]!.name}`,
+    )
     expect(view.host.textContent).toMatch(/lowest net cost under these assumptions/i)
   })
 })
@@ -253,7 +269,7 @@ describe('cards', () => {
     const header = $$('thead th', table).map(text)
     const order = cards().map((c) => Number(c.getAttribute('data-option-index')))
     expect(header.slice(1)).toEqual(order.map((i) => example.options[i]!.name))
-    const net = $$('tbody tr', table).find((tr) => text(tr.querySelector('th')) === 'Net cost per month of coverage')!
+    const net = $$('tbody tr', table).find((tr) => text(tr.querySelector('th')) === 'Average cost per month owned')!
     expect($$('td', net).map(text)).toEqual(order.map((i) => money(result.options[i]!.cases.expected.netCostPerCoverageMonth)))
   })
 })
@@ -785,7 +801,7 @@ describe('scenarios', () => {
     for (const [i, option] of engine().options.entries()) expectCard(i, option, 'expected')
     const summary = carDecisionCalculator.summarise(example, undefined as never)
     const labels = summary.results.ok ? summary.results.rows.map((r) => r.label) : []
-    expect(labels).toContain('PCP: net cost per month of coverage')
+    expect(labels).toContain('PCP: average cost per month owned')
     expect(view.host.textContent).toContain('Uses no tax rules')
   })
 })
@@ -868,7 +884,7 @@ describe('property', () => {
 })
 
 describe('words', () => {
-  const BANNED = /\b(best|recommended|cheapest|guaranteed|winner|optimal)\b|will be worth|you should/i
+  const BANNED = /\b(best|recommended|cheapest|cheaper|guaranteed|should|winner|optimal)\b|will be worth/i
 
   it('the page never uses the banned words (filled, assumptions open, flips shown, a refusal, missing inputs)', () => {
     vi.useFakeTimers()
@@ -882,6 +898,10 @@ describe('words', () => {
     expect(view.host.textContent).not.toMatch(BANNED)
     set(inputs([cash(), hp({ deposit: fromPounds(18_000) }), blank('pcp')]))
     expect(view.host.textContent).not.toMatch(BANNED)
+    set(ownerPage())
+    expect(view.host.textContent).not.toMatch(BANNED)
+    set(inputs([cash({ name: 'A' }), cash({ name: 'B' })]))
+    expect(view.host.textContent).not.toMatch(BANNED)
   })
 
   it('nor do the page’s sources, the engines’ assumptions or the Help topic', () => {
@@ -891,6 +911,8 @@ describe('words', () => {
       'OptionEditor.tsx',
       'CarResults.tsx',
       'CarViews.tsx',
+      'CarAnswer.tsx',
+      'narrative.ts',
       'definition.ts',
       'results.ts',
       'rates.ts',
@@ -902,5 +924,84 @@ describe('words', () => {
     for (const line of [...result.assumptions, ...result.options.flatMap((o) => [...o.assumptions, ...(o.finance?.assumptions ?? [])])])
       expect(line).not.toMatch(BANNED)
     expect(readFileSync(join(here, '../../../content/help/car-decision.md'), 'utf8')).not.toMatch(BANNED)
+  })
+})
+
+describe('the answer first (3d-1)', () => {
+  it('the results column opens with the verdict, then the bottom line, the three cases, then the order', () => {
+    set(ownerPage())
+    const results = $('[data-results]')!
+    const panels = [...results.querySelectorAll('section[aria-labelledby]')].filter((el) => el.parentElement?.closest('section') === null)
+    expect(panels.map((el) => el.getAttribute('aria-labelledby'))).toEqual([
+      'cd-verdict-title',
+      'cd-bottom-title',
+      'cd-scenarios-title',
+      'cd-order-title',
+    ])
+    expect(text($('[data-verdict]'))).toBe(
+      'Current car has the lowest net cost under these assumptions: £182.26 a month less than New car PCP, £8,748.56 over 48 months. ' +
+        'It uses a savings return of 0% a year, so tying up cash costs nothing in this comparison.',
+    )
+    expect($$('[data-switch-cost]').map(text)).toEqual([
+      'Switching to New car PCP costs £182.26 a month more than keeping Current car: £8,748.56 more over 48 months.',
+    ])
+    expect(text($('[data-bottom-row="alternative"] dd'))).toBe(
+      'Choosing New car PCP instead of Current car costs £182.26 a month more (£8,748.56 over 48 months).',
+    )
+    expect(text($('[data-scenario-sentence]'))).toBe('Current car has the lowest net cost in all three end-value cases.')
+    // The phone bar carries the verdict in short.
+    expect(text($('[data-sticky-value]'))).toBe('Current car, £182.26 a month less than New car PCP')
+  })
+
+  it('cards keep their detail, headed by the average cost per month owned, its largest part and the money in and out', () => {
+    set(ownerPage())
+    const [keepCard, pcpCard] = [card(0), card(1)]
+    expect(keepCard.textContent).toContain('Average cost per month owned')
+    expect(text($('[data-headline]', keepCard))).toBe('£379.85')
+    expect(text($('[data-headline]', pcpCard))).toBe('£562.11')
+    expect(text($('[data-largest]', pcpCard))).toBe('Largest part of the cost: Depreciation (£21,000.00 of £26,981.20)')
+    expect(text($('[data-upfront]', pcpCard))).toBe('£13,000.00')
+    expect(text($('[data-monthly]', pcpCard))).toBe('£208.33 a month')
+    expect(text($('[data-final]', pcpCard))).toBe('£20,000.00')
+    expect(pcpCard.querySelector('[data-money-flows]')!.textContent).toContain('with a £10.00 purchase fee')
+    expect(text($('[data-upfront]', keepCard))).toBe('£0.00')
+    expect($('[data-monthly]', keepCard)).toBeNull()
+    expect($('[data-final]', keepCard)).toBeNull()
+    // The detail stays below.
+    for (const marker of ['[data-total]', '[data-coverage]', '[data-equity]', '[data-cash-out]', '[data-opportunity]'])
+      expect($(marker, pcpCard), marker).not.toBeNull()
+  })
+
+  it('the effective rate says which fees it includes', () => {
+    set(ownerPage())
+    expect(text($('[data-rate-fees]', card(1)))).toMatch(/^It includes any arrangement or documentation fee/)
+  })
+
+  it('no verdict for a single option, with the reason in the bar', () => {
+    set(inputs([cash({ name: 'A' })]))
+    expect($('[data-sticky-value]')).toBeNull()
+    expect(view.host.textContent).toContain('No verdict: one option only')
+    expect(text($('[data-verdict]'))).toMatch(/^No verdict: there is only one option/)
+  })
+
+  it('one polite announcement of the verdict once the inputs settle', () => {
+    vi.useFakeTimers()
+    set(ownerPage())
+    set(ownerPage({ valueCase: 'low' }))
+    const live = $('[data-sticky-announcer]')!
+    expect(live.getAttribute('aria-live')).toBe('polite')
+    act(() => vi.advanceTimersByTime(SETTLE_MS / 2))
+    expect(text(live)).toBe('')
+    act(() => vi.advanceTimersByTime(SETTLE_MS))
+    expect(text(live)).toMatch(/^Current car has the lowest net cost under these assumptions/)
+    expect(document.querySelectorAll('[aria-live]').length).toBe(1)
+  })
+
+  it('plain-English labels: what the kept car is worth today, the expected value at the end', () => {
+    set(ownerPage())
+    expect(view.host.textContent).toContain('What is the car worth today?')
+    expect(view.host.textContent).toContain('Expected value at the end')
+    expect(view.host.textContent).toContain('Low value at the end')
+    expect(view.host.textContent).toContain('High value at the end')
   })
 })

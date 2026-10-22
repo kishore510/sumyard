@@ -20,12 +20,25 @@ export const EFFECTIVE_LABEL = 'Effective interest rate, not the lender’s APR'
 
 export type RateShown =
   | { readonly kind: 'apr'; readonly label: typeof APR_LABEL; readonly rate: Ratio }
-  | { readonly kind: 'effective'; readonly label: typeof EFFECTIVE_LABEL; readonly rate: Ratio; readonly why: string }
+  | {
+      readonly kind: 'effective'
+      readonly label: typeof EFFECTIVE_LABEL
+      readonly rate: Ratio
+      readonly why: string
+      /** Which fees the rate includes, in words. */
+      readonly fees: string
+    }
   | { readonly kind: 'none'; readonly why: string }
 
 const WHY_EFFECTIVE = {
   pcp: 'Whether a PCP’s APR assumes the optional final payment is paid is not yet verified, so this is the rate on the buy path, with every fee.',
   optionFee: 'Whether an option to purchase fee counts in the APR is not yet verified, so this is the rate with every fee.',
+} as const
+
+/** The fees the finance engine's effective rate counts: every payment of the buy path (car-finance calc, compute). */
+const FEES_INCLUDED = {
+  pcp: 'It includes any arrangement or documentation fee, the optional final payment and the purchase fee paid with it.',
+  optionFee: 'It includes any arrangement or documentation fee, any balloon and the option to purchase fee.',
 } as const
 
 const NO_RATE = 'No rate of nothing or more fits these payments.'
@@ -54,6 +67,12 @@ export function rateShown(acquisition: Acquisition, finance: FinanceResult | nul
     return outcome.ok ? { kind: 'apr', label: APR_LABEL, rate: outcome.display } : { kind: 'none', why: NO_RATE }
   }
   if (!finance.effectiveRate.ok) return { kind: 'none', why: NO_RATE }
-  const why = acquisition.kind === 'pcp' ? WHY_EFFECTIVE.pcp : WHY_EFFECTIVE.optionFee
-  return { kind: 'effective', label: EFFECTIVE_LABEL, rate: finance.effectiveRate.annual, why }
+  const which = acquisition.kind === 'pcp' ? 'pcp' : 'optionFee'
+  return {
+    kind: 'effective',
+    label: EFFECTIVE_LABEL,
+    rate: finance.effectiveRate.annual,
+    why: WHY_EFFECTIVE[which],
+    fees: FEES_INCLUDED[which],
+  }
 }

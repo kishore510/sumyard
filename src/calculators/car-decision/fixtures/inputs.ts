@@ -1,4 +1,4 @@
-import { fromPounds, type Money } from '@/lib/money'
+import { fromPence, fromPounds, type Money } from '@/lib/money'
 import type { CarDecisionInputs, OptionInputs } from '../definition'
 
 /*
@@ -178,3 +178,122 @@ export const inputs = (options: OptionInputs[], patch: Partial<CarDecisionInputs
 
 /** Inputs as version 1 stored them. */
 export type V1Inputs = Omit<CarDecisionInputs, 'options'> & { readonly options: readonly V1Option[] }
+
+/*
+ * The owner's page as reported for session 3d-1: Keep current car at £6,000
+ * now (ends £0 / £1,000 / £2,000) against a 48-month 0% PCP at £43,000 with
+ * a £13,000 deposit, a £20,000 final payment and a £10 purchase fee (ends
+ * £20,000 / £22,000 / £25,000), a 0% savings return. The brief gives no
+ * running costs: these are made up so the totals reproduce the owner's
+ * figures (Keep £379.85 and PCP £562.11 a month, £8,748.56 apart over 48
+ * months), insurance £400 and maintenance £500 a year on the kept car
+ * giving the £1,599.84 and £2,000.16 the owner saw.
+ */
+export const OWNER_KEEP = keep({
+  name: 'Current car',
+  value: fromPounds(6_000),
+  endLow: fromPounds(0),
+  endExpected: fromPounds(1_000),
+  endHigh: fromPounds(2_000),
+  annualMileage: 10_000,
+  fuelMode: 'per-mile',
+  milesPerGallon: null,
+  pencePerLitre: null,
+  pencePerMile: '20',
+  fuelPriceChange: '0',
+  insurance: fromPounds(400),
+  maintenance: fromPounds(500),
+  ved: fromPounds(0),
+  other: fromPounds('408.12'),
+})
+
+export const OWNER_PCP = pcp({
+  name: 'New car PCP',
+  value: fromPounds(43_000),
+  endLow: fromPounds(20_000),
+  endExpected: fromPounds(22_000),
+  endHigh: fromPounds(25_000),
+  annualMileage: 10_000,
+  fuelMode: 'per-mile',
+  milesPerGallon: null,
+  pencePerLitre: null,
+  pencePerMile: '8',
+  fuelPriceChange: '0',
+  insurance: fromPounds(600),
+  maintenance: fromPounds(0),
+  ved: fromPounds(0),
+  other: fromPounds('92.76'),
+  deposit: fromPounds(13_000),
+  term: 48,
+  rate: '0',
+  arrangementFee: fromPounds(0),
+  finalPayment: fromPounds(20_000),
+  purchaseFee: fromPounds(10),
+  pcpEnd: 'buy',
+  mileageAllowance: 10_000,
+  excessPerMile: 0,
+})
+
+export const ownerPage = (patch: Partial<CarDecisionInputs> = {}): CarDecisionInputs =>
+  inputs([OWNER_KEEP, OWNER_PCP], { horizonMonths: 48, savingsReturn: '0', generalIncrease: '0', ...patch })
+
+/** Mulberry32: a small seeded generator, so a random run is the same every time. */
+export function seeded(seed: number) {
+  let a = seed >>> 0
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0
+    let t = a
+    t = Math.imul(t ^ (t >>> 15), t | 1)
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61)
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+  }
+}
+
+/** Random valid page inputs (one to `most` options of any kind), as the page property test makes them. */
+export function randomInputs(random: () => number, n: number, most: number): CarDecisionInputs {
+  const int = (lo: number, hi: number) => lo + Math.floor(random() * (hi - lo + 1))
+  const pounds = (lo: number, hi: number) => fromPence(int(lo * 100, hi * 100))
+  const pctText = (lo: number, hi: number) => String(int(lo * 100, hi * 100) / 100)
+  const kinds = ['keep', 'cash', 'loan', 'hire-purchase', 'pcp'] as const
+  const cases = ['low', 'expected', 'high'] as const
+  const options = Array.from({ length: int(1, most) }, (): OptionInputs => {
+    const price = int(2_000, 40_000)
+    const ends = [int(0, price), int(0, price), int(0, price)].sort((a, b) => a - b)
+    const deposit = int(0, Math.floor(price / 2))
+    return {
+      ...cash(),
+      name: `Car ${n}`,
+      acquisition: kinds[int(0, kinds.length - 1)]!,
+      value: fromPounds(price),
+      endLow: fromPounds(ends[0]!),
+      endExpected: fromPounds(ends[1]!),
+      endHigh: fromPounds(ends[2]!),
+      annualMileage: int(0, 20_000),
+      fuelPriceChange: pctText(-5, 8),
+      insurance: pounds(0, 1_500),
+      maintenance: pounds(0, 1_500),
+      ved: pounds(0, 600),
+      other: pounds(0, 300),
+      loanAmount: fromPounds(int(1, price)),
+      deposit: fromPounds(deposit),
+      term: int(6, 72),
+      rate: pctText(0, 15),
+      basis: random() < 0.5 ? 'annual' : 'monthly',
+      arrangementFee: pounds(0, 300),
+      arrangementFeeTiming: random() < 0.5 ? 'start' : 'added',
+      balloon: fromPounds(int(0, Math.floor((price - deposit) / 3))),
+      optionFee: pounds(0, 20),
+      finalPayment: fromPounds(int(0, Math.floor((price - deposit) / 2))),
+      purchaseFee: pounds(0, 20),
+      pcpEnd: random() < 0.5 ? 'buy' : 'hand-back',
+      mileageAllowance: int(0, 20_000),
+      excessPerMile: int(0, 30),
+    }
+  })
+  return inputs(options, {
+    horizonMonths: int(1, 60),
+    valueCase: cases[int(0, 2)]!,
+    savingsReturn: random() < 0.2 ? '0' : pctText(0, 8),
+    generalIncrease: pctText(-3, 8),
+  })
+}

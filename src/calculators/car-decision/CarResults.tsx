@@ -5,10 +5,11 @@ import { SplitBar } from '@/components/SplitBar'
 import { InlineNotice } from '@/components/states'
 import { Button } from '@/components/ui/button'
 import { formatPercent, formatPercentFixed } from '@/lib/format'
-import { APR_DISPLAY_DIGITS, fromPence, type Money, toPence } from '@/lib/money'
+import { APR_DISPLAY_DIGITS, compare, fromPence, type Money, toPence, ZERO } from '@/lib/money'
 import { cn } from '@/lib/utils'
 import type { AcquisitionKind, Comparison, FlipPoints, ValueCase } from '../car-ownership/types'
 import { ACQUISITION_LABELS, CASE_LABELS, type CarDecisionInputs, coverageText, fieldList, type OptionStatus } from './definition'
+import { largestCost, moneyFlows } from './narrative'
 import { type RateShown, rateShown } from './rates'
 import {
   breakdownParts,
@@ -70,14 +71,25 @@ function Rate({ shown }: { shown: RateShown }) {
           <span>
             <span className="text-text-muted">{shown.label}:</span> <span className="font-medium tabular-nums">{rateText(shown)}</span>
           </span>
-          {shown.kind === 'effective' && <span className="text-xs text-text-muted">{shown.why}</span>}
+          {shown.kind === 'effective' && (
+            <>
+              <span className="text-xs text-text-muted">{shown.why}</span>
+              <span data-rate-fees className="text-xs text-text-muted">
+                {shown.fees}
+              </span>
+            </>
+          )}
         </>
       )}
     </p>
   )
 }
 
-/** One option's card (U16): the headline net cost per month of coverage, the total, coverage, equity, cash out, opportunity cost, the breakdown. */
+/**
+ * One option's card (U16): the headline average cost per month owned (the engine's net cost per month of coverage), the
+ * largest part of it, the total, coverage, equity, cash out, opportunity cost, the breakdown, then the money that changes
+ * hands, apart from the cost (3d-1).
+ */
 function OptionCard({
   card,
   valueCase,
@@ -152,11 +164,12 @@ function OkCard({
   const equity = equityAtHorizon(result, valueCase)
   const shown = rateFor(status)
   const parts = breakdownParts(c.breakdown)
+  const largest = largestCost(c.breakdown, c.netCost, gbp)
   return (
     <ResultCard
       {...props}
       headline={gbp(c.netCostPerCoverageMonth)}
-      headlineLabel="Net cost per month of coverage"
+      headlineLabel="Average cost per month owned"
       footer={
         <>
           {!result.fullCoverage && (
@@ -176,6 +189,11 @@ function OkCard({
               </InlineNotice>
             </div>
           )}
+          {largest && (
+            <p data-largest className="text-sm text-text">
+              {largest.text}
+            </p>
+          )}
           {shown && <Rate shown={shown} />}
           <SplitBar
             title="Where the net cost goes"
@@ -185,6 +203,7 @@ function OkCard({
             formatValue={(v) => gbp(fromPence(v))}
             emptyText="The net cost is nothing or below, so there is nothing to split. The figures are below."
           />
+          <MoneyFlowRows status={status} gbp={gbp} />
         </>
       }
     >
@@ -205,6 +224,50 @@ function OkCard({
         marker="opportunity"
       />
     </ResultCard>
+  )
+}
+
+const UPFRONT_DETAIL: Record<AcquisitionKind, string> = {
+  keep: 'None: its value counts as a sale given up, not cash',
+  cash: 'The price, at the start',
+  loan: 'What the loan doesn’t cover, and any fee then',
+  'hire-purchase': 'The deposit and any fee then',
+  pcp: 'The deposit and any fee then',
+}
+
+/** The money that changes hands (3d-1), apart from the net cost: upfront, monthly and at the end. */
+function MoneyFlowRows({ status, gbp }: { status: Extract<OptionStatus, { kind: 'ok' }>; gbp: Gbp }) {
+  const { result } = status
+  const flows = moneyFlows(status.option, result)
+  const kind = result.acquisition
+  const feeName = kind === 'hire-purchase' ? 'option to purchase fee' : 'purchase fee'
+  const { monthly, final } = flows
+  const monthlyDetail = monthly
+    ? [
+        `${monthly.payments} payment${monthly.payments === 1 ? '' : 's'}`,
+        // Only when it shows differently: a last payment pennies apart reads the same in whole pounds.
+        gbp(monthly.last) !== gbp(monthly.amount) ? `the last ${gbp(monthly.last)}` : null,
+        monthly.payments > result.horizonMonths ? `${result.horizonMonths} of them within the horizon` : null,
+      ]
+        .filter(Boolean)
+        .join('; ')
+    : ''
+  const finalDetail = final
+    ? [
+        `Due at month ${final.month}${compare(final.fee, ZERO) > 0 ? `, with a ${gbp(final.fee)} ${feeName}` : ''}`,
+        final.withinHorizon ? '' : ', after the horizon: what is still owed then is taken off the car’s value here',
+      ].join('')
+    : ''
+  return (
+    <div data-money-flows className="flex flex-col gap-1 border-t border-border pt-3">
+      <h4 className="text-sm font-semibold text-text">Money in and out</h4>
+      <p className="text-xs text-text-muted">The cash that changes hands, apart from the net cost above.</p>
+      <dl className="flex flex-col">
+        <StatRow label="Upfront cash" value={gbp(flows.upfront)} detail={UPFRONT_DETAIL[kind]} marker="upfront" />
+        {monthly && <StatRow label="Monthly payment" value={`${gbp(monthly.amount)} a month`} detail={monthlyDetail} marker="monthly" />}
+        {final && <StatRow label="Final payment due at the end" value={gbp(final.amount)} detail={finalDetail} marker="final" />}
+      </dl>
+    </div>
   )
 }
 
@@ -285,7 +348,7 @@ export function CompareTable({ cards, valueCase, gbp }: { cards: readonly CardDa
   const none = (card: CardData) =>
     card.status.kind === 'missing' ? 'Inputs missing' : card.status.kind === 'held' ? 'Input to fix' : 'No results'
   const rows: [string, (card: CardData) => string][] = [
-    ['Net cost per month of coverage', (card) => (ok(card) ? gbp(ok(card)!.result.cases[valueCase].netCostPerCoverageMonth) : none(card))],
+    ['Average cost per month owned', (card) => (ok(card) ? gbp(ok(card)!.result.cases[valueCase].netCostPerCoverageMonth) : none(card))],
     ['Total net cost', (card) => (ok(card) ? gbp(ok(card)!.result.cases[valueCase].netCost) : none(card))],
     ['Coverage', (card) => (ok(card) ? coverageText(ok(card)!.result) : none(card))],
     [
@@ -461,7 +524,7 @@ export function WhatChanges({ state, inputs, gbp, picker }: { state: FlipState; 
       <>
         <p>
           Between {names[0]} and {names[1]}
-          {state.lowest ? ', the two lowest net costs per month of coverage,' : ','} in the {CASE_LABELS[inputs.valueCase].toLowerCase()}{' '}
+          {state.lowest ? ', the two lowest average costs per month owned,' : ','} in the {CASE_LABELS[inputs.valueCase].toLowerCase()}{' '}
           case. Each line changes one thing.
         </p>
         <ul className="flex list-disc flex-col gap-2 pl-5">
@@ -488,7 +551,7 @@ export function WhatChanges({ state, inputs, gbp, picker }: { state: FlipState; 
       {state.kind !== 'no-pair' && (
         <p data-flips-measured className="text-text-muted">
           Measured over the whole horizon, to month {inputs.horizonMonths}, whatever month the chart shows: each threshold is where the two
-          net costs per month of coverage are equal at the end.
+          average costs per month owned are equal at the end.
         </p>
       )}
       {body}
