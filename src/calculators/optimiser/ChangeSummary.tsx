@@ -27,22 +27,48 @@ const CARDS: readonly { readonly id: Measure; readonly title: string; readonly s
 
 const NO_PERCENT = '–'
 
-function Row({ id, label, now, next, change }: { id: string; label: string; now: string; next: string; change: string }) {
+const COLUMN_LABELS = { now: 'Now', new: 'New', change: 'Change' } as const
+
+/**
+ * One measure: its label on a line of its own (a row header for the three cells, through `headers`), then Now, New
+ * and Change across the card's full width, so amounts in pounds and pence fit a phone without breaking (U23).
+ */
+function Row({
+  card,
+  id,
+  label,
+  now,
+  next,
+  change,
+}: {
+  card: string
+  id: string
+  label: string
+  now: string
+  next: string
+  change: string
+}) {
+  const rowId = `opt-${card}-${id}`
+  const cell = 'pb-1.5 pl-2 text-right tabular-nums [overflow-wrap:anywhere] first:pl-0'
   return (
-    <tr data-row={id} className="border-t border-border">
-      <th scope="row" className="py-1.5 pr-2 text-left font-normal text-text-muted">
-        {label}
-      </th>
-      <td data-col="now" className="py-1.5 pl-2 text-right tabular-nums [overflow-wrap:anywhere]">
-        {now}
-      </td>
-      <td data-col="new" className="py-1.5 pl-2 text-right tabular-nums [overflow-wrap:anywhere]">
-        {next}
-      </td>
-      <td data-col="change" className="py-1.5 pl-2 text-right font-medium tabular-nums [overflow-wrap:anywhere]">
-        {change}
-      </td>
-    </tr>
+    <>
+      <tr className="border-t border-border">
+        <th id={rowId} scope="colgroup" colSpan={3} className="pt-1.5 text-left text-xs font-normal text-text-muted">
+          {label}
+        </th>
+      </tr>
+      <tr data-row={id}>
+        <td data-col="now" headers={`${rowId} opt-${card}-now`} className={cell}>
+          {now}
+        </td>
+        <td data-col="new" headers={`${rowId} opt-${card}-new`} className={cell}>
+          {next}
+        </td>
+        <td data-col="change" headers={`${rowId} opt-${card}-change`} className={`${cell} font-medium`}>
+          {change}
+        </td>
+      </tr>
+    </>
   )
 }
 
@@ -78,24 +104,18 @@ function Card({
       <table className="mt-1 w-full table-fixed border-collapse text-sm text-text">
         <thead>
           <tr className="text-xs text-text-muted">
-            <th scope="col" className="w-2/7 pb-1 text-left font-normal">
-              <span className="sr-only">Measure</span>
-            </th>
-            <th scope="col" className="pb-1 text-right font-normal">
-              Now
-            </th>
-            <th scope="col" className="pb-1 text-right font-normal">
-              New
-            </th>
-            <th scope="col" className="pb-1 text-right font-normal">
-              Change
-            </th>
+            {(['now', 'new', 'change'] as const).map((col) => (
+              <th key={col} id={`opt-${id}-${col}`} scope="col" className="pb-1 text-right font-normal">
+                {COLUMN_LABELS[col]}
+              </th>
+            ))}
           </tr>
         </thead>
         <tbody>
-          <Row id="month" label="Per month" now={gbp(monthly.now)} next={gbp(monthly.new)} change={change(monthly.change)} />
-          <Row id="year" label="Per year" now={gbp(annual.now)} next={gbp(annual.new)} change={change(annual.change)} />
+          <Row card={id} id="month" label="Per month" now={gbp(monthly.now)} next={gbp(monthly.new)} change={change(monthly.change)} />
+          <Row card={id} id="year" label="Per year" now={gbp(annual.now)} next={gbp(annual.new)} change={change(annual.change)} />
           <Row
+            card={id}
             id="percentChange"
             label="% change"
             now=""
@@ -104,6 +124,7 @@ function Card({
           />
           {share && (
             <Row
+              card={id}
               id="share"
               label="Share of pay"
               now={formatPercent(share.now)}

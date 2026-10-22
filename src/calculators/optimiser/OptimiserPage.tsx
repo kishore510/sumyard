@@ -1454,7 +1454,7 @@ function CostChartBody({
         contribution. It is not the cost of the next {POUND}, and no point is a recommendation.
       </p>
       <Chart
-        title={`${COST_LABEL}, against your contribution`}
+        title={`${COST_LABEL}, from no contribution, by your contribution`}
         categories={data.categories}
         series={[{ id: 'cost', label: COST_LABEL, kind: 'line', values: data.values }]}
         xValues={data.xValues}

@@ -18,7 +18,7 @@ import type { Cliff, CliffKind, OptimiseResult, OptimiserPoint, PointReason, Thr
  */
 
 /** The y axis and the table heading. */
-export const COST_LABEL = `Average cost of each ${formatGBP(ONE_POUND, 'pounds')} in, from no contribution`
+export const COST_LABEL = `Average cost per ${formatGBP(ONE_POUND, 'pounds')} in`
 
 /** The x axis and the table's first heading. */
 export const X_LABEL = 'Your contribution a year'
