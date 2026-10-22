@@ -238,7 +238,7 @@ As 3a: `{ ok: false, problems: [{ field, reason }] }`, with `option` (its index)
 
 ### F31. Not modelled
 
-Replacement cars, early termination and settlement, part exchange, leasing, finance on a kept car, tax on savings beyond the after-tax rate entered, EV tax rules, benefit in kind, VED rules, insurance or servicing models, condition charges at hand-back.
+Replacement cars, early termination and settlement of a new agreement, part exchange, leasing, tax on savings beyond the after-tax rate entered, EV tax rules, benefit in kind, VED rules, insurance or servicing models, condition charges at hand-back. Finance still owed on a kept car is modelled from 3e (F43 to F52) from the lender's settlement figure; early-settlement charges and rights, handing back an existing PCP and a second agreement on the new car stay out.
 
 ## Page decisions (slice 3c-1, proposed; owner to confirm)
 
@@ -292,3 +292,51 @@ For each costed option, one input at a time moved by each of `SENSITIVITY_SHIFTS
 
 Any two options that cover the whole horizon with results, chosen by name (two Selects); the default is the two lowest in the engine's ordering (F37). The same option twice is not a pair. `flipPoints` measures at the end of coverage, so the page says the thresholds are measured over the whole horizon, whatever month the chart shows. Memoised by the pair and its engine inputs.
 
+
+## Keeping a car with finance still owed (session 3e, owner's brief, 22 October 2026)
+
+The owner's decisions for keeping the current car while finance on it is still owed, numbered on from F42. Engine: `src/calculators/car-ownership/` (`existingFinance` on the keep acquisition); page: `src/calculators/car-decision/`. No config change and no figure.
+
+### F43. Inputs
+
+A kept car takes a switch, "Still owe finance on it?", off by default. When on, four boxes: the **settlement figure** (the lender's quote to clear the agreement today), the **monthly payment**, **payments left** (whole months) and a **final payment** due at the end (default 0, not null: an empty box reads as nothing, as F38's optional boxes). The engine's keep acquisition takes an optional `existingFinance { settlement, monthlyPayment, paymentsLeft, finalPayment }`; absent means no finance, exactly as before.
+
+### F44. The maths
+
+With V0 the car's value now, S the settlement and equity_m = value_m − balance_m:
+
+net cost at month m = payments to m (and the final payment once paid) + (V0 − S) − equity_m + opportunity cost.
+
+The **sale given up is V0 − S** (the net proceeds of selling today and clearing the finance), not V0. At month 0 the balance is S, so equity is V0 − S and the net cost is zero. Each payment's principal lowers the balance by the same amount it adds to cash out, so the principal cancels: only the interest is a finance cost. The breakdown (F26) shows depreciation and **interest** (its `interestAndFees` part, here interest alone: payments + final payment paid − S + the balance still owed), and no principal line. Cash out at month 0 is nothing: nothing is paid upfront.
+
+### F45. The implied rate
+
+The rate is implied from the person's figures by 3a's solver, not a second one: the agreement goes to 3a's `hirePurchase` priced by the payment (cash price S, no deposit, no fees, the final payment as its balloon, the payments left as its term), so `solveRate` (F9) finds the monthly rate, `buildSchedule` (F7, the last month's interest taking the rounding) gives the amortising balance and `outstandingBalance` (F12) the balance at each month. The card labels it "Implied rate from your figures, not the lender's APR".
+
+### F46. The end of the term
+
+The final payment is paid with the last monthly payment at the end of the term and the car is kept. Handing back an existing PCP is out of scope (`docs/open-questions.md`).
+
+### F47. Negative equity now
+
+A settlement above the car's value today is allowed and flagged on the card. The sale given up, V0 − S, is then negative: selling today would cost money to clear the finance. It enters the net cost and the opportunity cost as any other flow at month 0, compounded at the savings return like the rest, so keeping counts the cash a sale would have needed as cash kept, earning the savings return.
+
+### F48. The settlement figure
+
+The settlement is the lender's figure, as quoted. Early-settlement charges and statutory early-termination rights are not modelled, and no rule about them is stated. The box's hint says to use the lender's current quote.
+
+### F49. Timing
+
+The first remaining payment is one month from today (as F5). If the term ends inside the horizon, the final payment is paid then and nothing is owed afterwards. If the horizon ends first, equity at the horizon is the value less the balance still owed; negative equity there shows, as F20.
+
+### F50. Refusals
+
+Typed, never a number (F28), each naming its field: the payments and final payment adding up to less than the settlement (a negative implied rate; field monthly payment); payments left of nothing (with or without a monthly payment), not whole or above `MAX_FINANCE_TERM_MONTHS`; any amount outside the existing bounds; and, from 3a's checks, a settlement of nothing or a final payment above the settlement. A payment too high for any rate the solver brackets is refused as 3a refuses it.
+
+### F51. Inputs version 3
+
+The page's inputs go to version 3 with five fields per option (the switch and the four boxes). Existing options migrate with the switch off, the three amounts empty and the final payment 0; their results are identical (a snapshot test through storage, as 1b-i.1). Version 1 migrates through version 2.
+
+### F52. Running-cost rounding, accepted
+
+The per-month rounding of running costs (`docs/open-questions.md`, about 40p over ten years) is accepted by the owner as it is; not changed.
