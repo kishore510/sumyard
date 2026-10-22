@@ -1,6 +1,6 @@
 # Phase plan: Sumyard
 
-Last updated: 22 October 2026 (1b-iii compare redesign In progress, 0.21.0; slices 1b, 2 and 3 built, owner checks open)
+Last updated: 22 October 2026 (1b-iii compare redesign Done, 0.21.0; slices 1b, 2 and 3 built, owner checks open)
 
 Sumyard is a set of personal UK finance calculators in one clean, ad-free web app, for the owner's own use. Constraints: client-side only, a static site on GitHub Pages, UK rules from versioned per-tax-year config, illustrative not advice.
 
@@ -21,7 +21,7 @@ Rules for this file: add a row when scope is added; update the Status cell when 
 | 0.12.0 Page redesign | Sections, sticky result, split bar, payslip net pay (UI only) | Done (0.12.0, PR #14, 18 October 2026) |
 | 1b-ii-a Optimiser sweep and chart | `optimise()` from page inputs, take-home against contribution chart with markers and cliffs, table fallback, load layout-shift fix | Done (0.13.0, PR #16, 21 October 2026) |
 | 1b-ii-b Reading the result | Cost of £1 more pension, thresholds in words, warnings, childcare eligibility, compare, Help and assumptions | Done (0.14.0, PR #17, 21 October 2026) |
-| 1b-iii Pension compare redesign | Contribution picker (typed amount, slider, pills), now against a target a month and a year with % change and pts, cost-of-£1 chart over the whole range, milestones, warnings at the target, detail in sections (UI and one pure function; no tax or config change) | In progress |
+| 1b-iii Pension compare redesign | Contribution picker (typed amount, slider, pills), now against a target a month and a year with % change and pts, cost-of-£1 chart over the whole range, milestones, warnings at the target, detail in sections (UI and one pure function; no tax or config change) | Done (0.21.0, PR #27, 22 October 2026) |
 | 2 Compound interest | Regular contributions, compounding, inflation-adjusted view, fee drag, yearly table and chart | In progress |
 | 2a Compound interest engine | Pure engine: effective and equivalent rates, yearly projection with and without the fee, real view, fee drag, refusals (internal, no UI) | Done (0.15.0, PR #19, 21 October 2026) |
 | 2b Compound interest page | The page on the 2a engine: inputs, yearly table and chart, nominal and real, fee drag, scenarios, compare, Help | Done (0.16.0, PR #20, 21 October 2026) |
