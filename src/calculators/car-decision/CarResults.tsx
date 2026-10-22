@@ -478,7 +478,8 @@ export function WhatChanges({ state, inputs, gbp, picker }: { state: FlipState; 
     <section
       data-flips
       aria-labelledby="cd-flips-title"
-      className="flex flex-col gap-3 rounded-lg border border-border bg-surface p-5 text-sm text-text shadow-sm"
+      // A long unbroken option name wraps instead of widening the page.
+      className="flex min-w-0 flex-col gap-3 rounded-lg border border-border bg-surface p-5 text-sm text-text shadow-sm [overflow-wrap:anywhere]"
     >
       <h2 id="cd-flips-title" className="text-base font-semibold">
         What changes the answer

@@ -48,7 +48,7 @@ For two options that cover the whole horizon, the page says, once your inputs se
 
 ## Sensitivity: what moves the answer most
 
-This section shows, for each option, how its net cost per month of coverage would change if one input moved by a fixed percentage up or down, **one at a time, with every other input held at its current value**: the end value (in the case chosen), the savings return, the annual mileage and the fuel or energy price. The inputs that move the answer most come first, with a small bar for the largest moves either way. A move that would take an input past what Sumyard models says **Outside the range**. It is worked out once you stop typing ("Updating" until then). The changes are constant percentages of today's inputs: illustrative only, not a forecast and not advice.
+This section shows, for each option, how its net cost per month of coverage would change if one input moved by a fixed percentage up or down, **one at a time, with every other input held at its current value**: the end value (in the case chosen), the savings return, the annual mileage and the fuel or energy price. The inputs that move the answer most come first, with a small bar for the largest moves either way. A move that would take an input past what Sumyard models says **Outside the range**. It is worked out when you open the section, once you stop typing ("Updating" until then), since it reruns every option many times. The changes are constant percentages of today's inputs: illustrative only, not a forecast and not advice.
 
 ## Rates
 

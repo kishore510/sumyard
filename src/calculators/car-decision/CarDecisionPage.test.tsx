@@ -673,9 +673,22 @@ describe('sensitivity (3c-2)', () => {
   const settle = () => act(() => vi.advanceTimersByTime(SETTLE_MS))
   const two = inputs([cash(), loan()])
 
+  const openSection = () => click($('#cd-section-sensitivity-button'))
+
+  it('works out nothing while its section is closed', () => {
+    vi.useFakeTimers()
+    set(two)
+    settle()
+    act(() => vi.runAllTimers())
+    expect($('[data-sensitivity-option]')).toBeNull()
+    expect($('[data-sensitivity-status]')).toBeNull()
+    expect(text($('#cd-section-sensitivity-summary'))).toMatch(/open to work out/i)
+  })
+
   it('shows “updating” until the inputs settle, then a table per option equal to engine reruns, largest effect first', () => {
     vi.useFakeTimers()
     set(two)
+    openSection()
     expect(text($('[data-sensitivity-status]'))).toMatch(/updating/i)
     expect($('[data-sensitivity-option]')).toBeNull()
     settle()
@@ -711,6 +724,7 @@ describe('sensitivity (3c-2)', () => {
   it('never works out on each keystroke: typing restarts the wait', () => {
     vi.useFakeTimers()
     set(two)
+    openSection()
     settle()
     act(() => vi.runAllTimers())
     type(field(0, 'insurance'), '600')
@@ -846,6 +860,7 @@ describe('words', () => {
   it('the page never uses the banned words (filled, assumptions open, flips shown, a refusal, missing inputs)', () => {
     vi.useFakeTimers()
     set(example)
+    click($('#cd-section-sensitivity-button'))
     act(() => vi.advanceTimersByTime(SETTLE_MS))
     act(() => vi.runAllTimers())
     ;($('details#assumptions') as HTMLDetailsElement).open = true

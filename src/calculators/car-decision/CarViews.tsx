@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { ChangeBar } from '@/components/ChangeBar'
 import { Chart } from '@/components/Chart/Chart'
-import { ResultCard, StatRow } from '@/components/ResultCard'
+import { StatRow } from '@/components/ResultCard'
 import { Section } from '@/components/Section'
 import { SETTLE_MS } from '@/components/StickyResult'
 import { formatGBPCompact, formatGBPDelta } from '@/lib/format'
@@ -97,26 +97,34 @@ function Readout({ rows, month, valueCase, gbp }: { rows: readonly ReadoutRow[];
         Everything else as entered, in the {caseWord(valueCase)} end value; only the month changes. Figures are from the start to the end of
         that month.
       </p>
-      <div className="grid min-w-0 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      {/* Plain blocks, not regions: the option cards above are the regions named by each option. */}
+      <ul className="grid min-w-0 gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {rows.map((row) => (
-          <ResultCard key={row.index} title={row.name} heading="h3" className="p-4" {...{ 'data-readout-row': row.index }}>
-            {row.point ? (
-              <>
-                <StatRow label="Net cost so far" value={gbp(row.point.netCost)} marker="readout-net" />
-                <StatRow
-                  label="Equity"
-                  value={gbp(row.point.equity)}
-                  detail="What the car is worth less anything still owed"
-                  marker="readout-equity"
-                />
-                <StatRow label="Cash out so far" value={gbp(row.point.cashOut)} marker="readout-cash" />
-              </>
-            ) : (
-              <StatRow label="Coverage" value={`Handed back at month ${row.handedBackAt}`} detail="No car, and no figures, after that" />
-            )}
-          </ResultCard>
+          <li
+            key={row.index}
+            data-readout-row={row.index}
+            className="flex min-w-0 flex-col gap-2 rounded-md border border-border bg-surface-muted p-3"
+          >
+            <p className="text-sm font-semibold text-text [overflow-wrap:anywhere]">{row.name}</p>
+            <dl className="flex flex-col">
+              {row.point ? (
+                <>
+                  <StatRow label="Net cost so far" value={gbp(row.point.netCost)} marker="readout-net" />
+                  <StatRow
+                    label="Equity"
+                    value={gbp(row.point.equity)}
+                    detail="What the car is worth less anything still owed"
+                    marker="readout-equity"
+                  />
+                  <StatRow label="Cash out so far" value={gbp(row.point.cashOut)} marker="readout-cash" />
+                </>
+              ) : (
+                <StatRow label="Coverage" value={`Handed back at month ${row.handedBackAt}`} detail="No car, and no figures, after that" />
+              )}
+            </dl>
+          </li>
         ))}
-      </div>
+      </ul>
     </div>
   )
 }
@@ -145,6 +153,8 @@ export interface OptionSensitivity {
 
 export type SensitivityState =
   | { readonly kind: 'none' }
+  /** The section is closed: nothing is worked out until it opens (docs/performance.md). */
+  | { readonly kind: 'closed' }
   | { readonly kind: 'updating' }
   | { readonly kind: 'ready'; readonly options: readonly OptionSensitivity[]; readonly ms: number }
 
@@ -153,15 +163,15 @@ const memo = new Map<string, readonly DriverRow[]>()
 const MEMO_SIZE = MAX_CAR_OPTIONS * MAX_CAR_OPTIONS
 
 /**
- * The sensitivity rows, worked out once the inputs have settled (SETTLE_MS) and then one input of one option per step,
+ * The sensitivity rows, worked out while the section is open, once the inputs have settled (SETTLE_MS), and then one input of one option per step,
  * with a break between steps, so typing and scrolling stay responsive (docs/performance.md); "updating" until done. Never
  * on each keystroke. Each option's rows are kept by its inputs, so going back to inputs already seen shows them at once.
  */
-export function useSensitivity(outcome: Ok | null, inputs: CarDecisionInputs): SensitivityState {
+export function useSensitivity(outcome: Ok | null, inputs: CarDecisionInputs, open: boolean): SensitivityState {
   const [ready, setReady] = useState<{ for: Ok; state: SensitivityState } | null>(null)
   const any = outcome?.statuses.some((status) => status.kind === 'ok') ?? false
   useEffect(() => {
-    if (!outcome || !any) return
+    if (!outcome || !any || !open) return
     let timer: ReturnType<typeof setTimeout>
     let cancelled = false
     const shared = toEngineShared(inputs)
@@ -203,8 +213,9 @@ export function useSensitivity(outcome: Ok | null, inputs: CarDecisionInputs): S
       cancelled = true
       clearTimeout(timer)
     }
-  }, [outcome, inputs, any])
+  }, [outcome, inputs, any, open])
   if (!any) return { kind: 'none' }
+  if (!open) return { kind: 'closed' }
   return ready && ready.for === outcome ? ready.state : { kind: 'updating' }
 }
 
@@ -213,9 +224,11 @@ export function SensitivityView({
   state,
   inputs,
   amounts,
+  onOpenChange,
 }: {
   state: SensitivityState
   inputs: CarDecisionInputs
+  onOpenChange: (open: boolean) => void
   /** The Settings amount style: changes are shown signed (formatGBPDelta). */
   amounts: AmountStyle
 }) {
@@ -223,12 +236,14 @@ export function SensitivityView({
   const summary =
     state.kind === 'none'
       ? 'Needs an option with results'
-      : state.kind === 'updating'
-        ? 'Updating once the inputs settle'
-        : state.options.map((o) => `${names[o.index]}: ${driverLabel(o.rows[0]!.driver, inputs.valueCase).toLowerCase()} most`).join('; ')
+      : state.kind === 'closed'
+        ? 'Open to work out which inputs move each option’s net cost most'
+        : state.kind === 'updating'
+          ? 'Updating once the inputs settle'
+          : state.options.map((o) => `${names[o.index]}: ${driverLabel(o.rows[0]!.driver, inputs.valueCase).toLowerCase()} most`).join('; ')
   return (
     <div data-sensitivity data-sensitivity-ms={state.kind === 'ready' ? state.ms : undefined} className="min-w-0">
-      <Section id="cd-section-sensitivity" title="Sensitivity: what moves the answer most" summary={summary}>
+      <Section id="cd-section-sensitivity" title="Sensitivity: what moves the answer most" summary={summary} onOpenChange={onOpenChange}>
         <p className="text-sm text-text-muted">
           Each row moves one input by the percentage shown, one at a time, with every other input held at its current value. Each figure is
           the change in that option’s net cost per month of coverage against its card, from the same engine. The changes are constant
@@ -244,14 +259,12 @@ export function SensitivityView({
         {state.kind === 'ready' &&
           state.options.map((o) => {
             const largest = o.rows[0]?.effect ?? ZERO
-            const titleId = `cd-sensitivity-${o.index}`
             return (
               <div key={o.index} data-sensitivity-option={o.index} className="flex min-w-0 flex-col gap-2">
-                <h3 id={titleId} className="text-sm font-semibold text-text [overflow-wrap:anywhere]">
-                  {names[o.index]}
-                </h3>
+                <h3 className="text-sm font-semibold text-text [overflow-wrap:anywhere]">{names[o.index]}</h3>
                 <section
-                  aria-labelledby={titleId}
+                  // Named apart from the option's card, which is the region named by the option alone.
+                  aria-label={`${names[o.index]}: sensitivity`}
                   // biome-ignore lint/a11y/noNoninteractiveTabindex: a scrollable region must be keyboard-focusable (axe scrollable-region-focusable).
                   tabIndex={0}
                   className="relative overflow-x-auto rounded-md border border-border"

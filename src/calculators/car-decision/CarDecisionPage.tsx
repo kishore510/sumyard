@@ -140,7 +140,9 @@ export default function CarDecisionPage() {
       ? chosenPair.pair
       : defaultPair
   const flips = useFlips(outcome, inputs, pair)
-  const sensitivity = useSensitivity(okOutcome, inputs)
+  // Sensitivity is worked out only while its section is open: it reruns the engine many times (docs/performance.md).
+  const [sensitivityOpen, setSensitivityOpen] = useState(false)
+  const sensitivity = useSensitivity(okOutcome, inputs, sensitivityOpen)
   const uniques = uniqueNames(inputs.options)
   const pickPair = (which: 0 | 1, index: number) => {
     const next: [number, number] = [pair?.[0] ?? index, pair?.[1] ?? index]
@@ -274,7 +276,7 @@ export default function CarDecisionPage() {
             picker={
               choices.length >= 2 &&
               pair && (
-                <div data-pair-picker className="grid gap-3 sm:grid-cols-2">
+                <div data-pair-picker className="grid min-w-0 gap-3 sm:grid-cols-2 [&>*]:min-w-0">
                   {([0, 1] as const).map((which) => (
                     <Select
                       key={which}
@@ -289,7 +291,7 @@ export default function CarDecisionPage() {
               )
             }
           />
-          <SensitivityView state={sensitivity} inputs={inputs} amounts={amounts} />
+          <SensitivityView state={sensitivity} inputs={inputs} amounts={amounts} onOpenChange={setSensitivityOpen} />
         </>
       )}
 

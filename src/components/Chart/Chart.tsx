@@ -570,12 +570,13 @@ export function Chart({
       </div>
 
       {(series.length > 1 || references.length > 0) && !empty && (
-        <ul className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-text">
+        <ul className="flex min-w-0 flex-wrap gap-x-4 gap-y-1 text-xs text-text">
           {series.map((s, i) => {
             const style = styleOf(s, i)
             return (
-              <li key={s.id} className="flex items-center gap-1.5">
-                <svg aria-hidden="true" width={24} height={10}>
+              // A long unbroken name wraps instead of widening the page.
+              <li key={s.id} className="flex min-w-0 items-center gap-1.5 [overflow-wrap:anywhere]">
+                <svg aria-hidden="true" width={24} height={10} className="shrink-0">
                   {s.kind === 'bar' ? (
                     <rect x={4} y={1} width={16} height={8} rx={2} className={style.fill} />
                   ) : (
