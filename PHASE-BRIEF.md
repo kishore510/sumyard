@@ -1,6 +1,6 @@
 # PHASE-BRIEF: Car decision results redesign
 
-Status: slices 1b (take-home and optimiser), 2 (compound interest) and 3 (car decision) are built; each stays In progress in `PLAN.md` until the owner's checks below. The **pension compare redesign** (1b-iii) is Done (0.21.0, PR #27). The **car results redesign** (3d-1, 0.22.0) is built, from the owner's use of the car page, and awaits merge. Status per part lives only in `PLAN.md`. Finished part scopes are in `docs/history/phase-brief-archive.md`.
+Status: slices 1b (take-home and optimiser), 2 (compound interest) and 3 (car decision) are built; each stays In progress in `PLAN.md` until the owner's checks below. The **pension compare redesign** (1b-iii) is Done (0.21.0, PR #27). The **car results redesign** (3d-1) is Done (0.22.0, PR #28), from the owner's use of the car page. Status per part lives only in `PLAN.md`. Finished part scopes are in `docs/history/phase-brief-archive.md`.
 
 ## Docs rule
 

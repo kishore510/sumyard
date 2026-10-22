@@ -1,6 +1,6 @@
 # Phase plan: Sumyard
 
-Last updated: 22 October 2026 (3d-1 car results redesign built, 0.22.0, awaiting merge; 1b-iii Done, 0.21.0; slices 1b, 2 and 3 built, owner checks open)
+Last updated: 22 October 2026 (3d-1 car results redesign Done, 0.22.0; 1b-iii Done, 0.21.0; slices 1b, 2 and 3 built, owner checks open)
 
 Sumyard is a set of personal UK finance calculators in one clean, ad-free web app, for the owner's own use. Constraints: client-side only, a static site on GitHub Pages, UK rules from versioned per-tax-year config, illustrative not advice.
 
@@ -32,7 +32,7 @@ Rules for this file: add a row when scope is added; update the Status cell when 
 | 3c-1 Car decision page | The page on 3a and 3b at `#/c/car-decision`: shared horizon and end-value case, option editor (up to four, sections), one card per option (net cost per month of coverage and total, coverage, equity, cash out, breakdown), order and flip points in words, APR or effective-rate label, comparison table, scenarios, compare, Help | Done (0.19.0, PR #24, 22 October 2026) |
 | 3c-2 Car crossover and sensitivity | Cumulative net cost chart with crossovers and tap-to-pick month readout (shared Chart: four line styles, selection, table fallback), sensitivity per option, flip points for any pair, empty optional boxes read as nothing (inputs version 2), browser matrix, polish | Done (0.20.0, PR #25, 22 October 2026) |
 | 3c-3 Fifth chart style | A fourth non-danger line style in the shared Chart (Chalkline's teal swatch, its own dash and triangle marker); the car page's four options drawn without the danger colour; a guard that no chart series uses it unless it is a genuine warning | Done (0.20.1, PR #26, 22 October 2026) |
-| 3d-1 Car results redesign | Answer first: verdict sentence (lowest net cost, gap a month and over the horizon, savings return used), switch cost against keeping, bottom line, low/expected/high table; cards renamed "Average cost per month owned" with the largest part and money in and out; plain-English labels (UI and pure derived functions; no engine, config, storage or inputs-version change) | In progress |
+| 3d-1 Car results redesign | Answer first: verdict sentence (lowest net cost, gap a month and over the horizon, savings return used), switch cost against keeping, bottom line, low/expected/high table; cards renamed "Average cost per month owned" with the largest part and money in and out; plain-English labels (UI and pure derived functions; no engine, config, storage or inputs-version change) | Done (0.22.0, PR #28, 22 October 2026) |
 | Take-home pay | Shipped inside 1b (1b-i to 0.12.0) at `#/c/optimiser`; 1b-ii added the optimiser to the same page | Done (0.14.0, PR #17, 21 October 2026) |
 | Mortgage overpayment | Check daily vs monthly interest handling per lender | Not started |
 | Loan / APR | Verify the APR definition against official guidance | Not started |
