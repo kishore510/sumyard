@@ -4,7 +4,7 @@ import { join } from 'node:path'
 import { act } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { SETTLE_MS } from '@/components/StickyResult'
-import { formatGBP, formatPence, formatPercent } from '@/lib/format'
+import { formatGBP, formatPence, formatPercentFixed } from '@/lib/format'
 import { MAX_CAR_OPTIONS } from '@/lib/inputLimits'
 import { APR_DISPLAY_DIGITS, fromPence, fromPounds, type Money, roundRatio, toPence } from '@/lib/money'
 import { percentRatio } from '@/lib/parse'
@@ -260,12 +260,17 @@ describe('rates', () => {
     expect(loanRate.getAttribute('data-rate-kind')).toBe('apr')
     const finance = result.options[1]!.finance!
     if (!finance.effectiveRate.ok) throw new Error('no rate')
-    expect(text(loanRate)).toContain(formatPercent(roundRatio(finance.effectiveRate.annual, APR_DISPLAY_DIGITS, 'nearest'), 1))
+    expect(text(loanRate)).toContain(formatPercentFixed(roundRatio(finance.effectiveRate.annual, APR_DISPLAY_DIGITS, 'nearest'), 1))
     expect(text(loanRate)).toMatch(/APR/)
     const pcpRate = $('[data-rate]', card(2))!
     expect(pcpRate.getAttribute('data-rate-kind')).toBe('effective')
     expect(text(pcpRate)).toMatch(/effective interest rate, not the lender’s APR/i)
     expect($('[data-rate]', card(0))).toBeNull()
+  })
+
+  it('an APR is shown to one fixed decimal place, so a whole rate keeps its .0', () => {
+    set(inputs([loan({ rate: '10', basis: 'annual' })]))
+    expect(text($('[data-rate]', card(0)))).toContain('10.0%')
   })
 
   it('HP shows the APR with no option fee, and the effective rate with one', () => {

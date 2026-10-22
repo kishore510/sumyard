@@ -6,6 +6,7 @@ import {
   formatGBPDelta,
   formatIsoDate,
   formatPence,
+  formatPercentFixed,
   formatPercent,
   formatPercentPointDelta,
 } from './format'
@@ -156,5 +157,14 @@ describe('formatPence (slice 3c-1: a cost per mile)', () => {
     expect(formatPence({ numerator: 25n, denominator: 1000n })).toBe('0.03p')
     expect(formatPence({ numerator: -25n, denominator: 10n })).toBe('-2.5p')
     expect(formatPence({ numerator: 123_456_789n, denominator: 1n })).toBe('123,456,789p')
+  })
+})
+
+describe('formatPercentFixed (slice 3c-1: an APR to one fixed place)', () => {
+  it('keeps trailing zeros to the places asked', () => {
+    expect(formatPercentFixed(ratio(1, 10), 1)).toBe('10.0%')
+    expect(formatPercentFixed(ratio(79, 1_000), 1)).toBe('7.9%')
+    expect(formatPercentFixed(ratio(0, 1), 1)).toBe('0.0%')
+    expect(formatPercentFixed(ratio(12_345, 100), 1)).toBe('12,345.0%')
   })
 })
