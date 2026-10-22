@@ -2,7 +2,7 @@
 
 How the car decision models finance and ownership where there is a choice. Format as `docs/modelling-decisions-compound.md`: each decision names the code that carries it out. F1 to F4 are the owner's, given at the start of slice 3a (21 October 2026). F5 onwards are engine decisions proposed in slice 3a on what the sources below verify; **the owner confirms them** (listed in `PHASE-BRIEF.md`, "Still with the owner").
 
-What official sources say, and what could not be read, is in `docs/verification-log.md`, "Car finance (slice 3a)" (items CR-1 to CR-14). The short version: the statutory APR (its equation, time basis, included costs and display rounding) is **OPEN**, because every source that states it (legislation.gov.uk, the regulator's handbook, the government's 2012 guidance PDF and its archived quick start guide) was refused by this environment's network. So the engine does **not** compute or name an APR. It solves an **effective rate** under the definition HMRC publishes on www.gov.uk (CFM21180), and says that it is not the statutory APR.
+What official sources say, and what could not be read, is in `docs/verification-log.md`, "Car finance (slice 3a)" (items CR-1 to CR-18). The short version: in 3a the statutory APR was **OPEN** (its sources were refused by the network), so the engine solves an **effective rate** under the definition HMRC publishes on www.gov.uk (CFM21180), and says that it is not the statutory APR. In 3a.1 (22 October 2026) the regulator's handbook (CONC App 1.2) and SI 2010/1011 were read: the APR's equation, time basis, included costs and display rounding are verified (CR-1 to CR-3), and `apr` (F15) computes it from cash flows the caller counts. Whether the APR assumes a PCP's optional final payment is paid, and whether purchase and option fees count, are still **OPEN** (CR-10).
 
 No tax figure is involved. The only constants are calendar divisors (`src/lib/periods.ts`), input bounds (`src/lib/inputLimits.ts`) and the solver's precision (`src/lib/money.ts`), all outside the engine so its literal guard holds.
 
@@ -68,7 +68,7 @@ HMRC's Corporate Finance Manual (CFM21180, CR-5) defines the effective interest 
 - **Payments**: every regular payment as made (the last one with its rounding), plus, at the last month, the final payment and the purchase fee (the PCP buy path; F11).
 - The **annual effective rate** is (1 + i)^12 − 1: twelve equal months compound to a year, as in the compound engine's C2. Both are returned as `Ratio`s to fifteen decimal places; nothing is rounded for display in the engine.
 
-The statutory APR may differ: its time basis (years, days or months), what it counts and how it is rounded are OPEN (CR-1 to CR-3). The result's assumptions say so in words, and the page (3c) must not label this rate "APR" unless the owner verifies that it matches.
+The statutory APR (F15, verified in 3a.1) uses the same equation on an annual basis with a month a twelfth of a year, so on the same cash flows its unrounded value equals this annual effective rate. They can still differ: the APR counts only the charges its rules count (CR-2), its treatment of a PCP's optional final payment and of purchase and option fees is OPEN (CR-10), and it is shown rounded (CR-3). So this rate keeps its name and is never labelled "APR"; the result's assumptions say so in words.
 
 ### F9. How the rate is solved
 
@@ -84,7 +84,7 @@ Bisection on fine fixed point (`Factor`), deterministic:
 
 - **Arrangement fee** (a loan's arrangement fee, an HP or PCP documentation fee): either paid **at the start** (not financed; it reduces the credit received in F8) or **added to the balance** (financed; interest runs on it; F7's A includes it).
 - **Purchase fee** (HP's option to purchase fee, a PCP's purchase fee): with the last regular payment (F5); in the buy path only.
-- **Cost of credit** = total interest + arrangement fee + purchase fee. It is this engine's term; the statutory "total charge for credit" may count other items (CR-2, OPEN).
+- **Cost of credit** = total interest + arrangement fee + purchase fee. It is this engine's term; the statutory total charge for credit counts what CR-2 lists (broker fees known to the lender, compulsory ancillary services such as required insurance), which the engine does not model, and whether it counts a purchase fee is OPEN (CR-10).
 
 ### F11. HP, PCP and the loan at the end
 
@@ -119,3 +119,17 @@ The bounds are conservative input bounds, not market figures, for the owner to c
 ### F14. Flat rate
 
 Left out. No page read defines a flat rate or relates one to an APR (CR-4). HMRC's bad debt relief examples (VBDR2420, VBDR2430) describe a one-year HP agreement with "interest of 20%" and total interest of £1,800 on £9,000; that is an example, not a definition, and is mirrored only as totals (`docs/worked-examples.md`, HP-1).
+
+### F15. The statutory APR (slice 3a.1)
+
+`apr(flows)` solves the equation in CONC App 1.2.6R (CR-1) for one drawdown and dated payments:
+
+    drawdown = Σ (payment at month m) × (1 + X)^−(m / 12)
+
+- **Time basis**: months from the first drawdown, a month a twelfth of a year (CONC App 1.2.6R(3)(b) to (e), "12 equal months"). Payment dates in days are not modelled (F5), so the days basis is never needed.
+- **Method**: with 1 + X = (1 + i)^12 the equation is F8's monthly equation, so `apr` sums the payments by month, takes those at month 0 off the drawdown, solves for i with F9's bisection and returns X = (1 + i)^12 − 1 (`annualRate`). That is an exact rewriting, not an approximation; the only error is the solver's (10^-24 a month, so X is good to about 10^-20).
+- **Which payments**: the caller's. The drawdown is the total amount of credit, the sum made available (the cash price less the deposit, or the loan amount; G3188). The payments are the repayments and the charges in the total charge for credit (CR-2): interest within the regular payments, a required arrangement fee (at month 0 if paid at the start, inside the payments if added to the balance), an HP balloon at its month (CR-10). The engine builds no agreement-level APR: whether a PCP's optional final payment and a purchase or option fee count is OPEN (CR-10), so the page shows an APR only for agreements without them until those close.
+- **Display**: `display` is X to one decimal place of a percentage (`APR_DISPLAY_DIGITS`, the least the rule allows, CR-3), to the nearest, a following figure of five or more rounding up (`roundRatio`, mode `'nearest'`, which is that rule for a rate of nothing or more). It is rounded from the fifteen-place `annual`, so a rate that sits on a display half to fifteen places counts as on it and rounds up; the 40-place solver value of such a rate can fall a hair below the half (about 10^-24), which the rule would not mean to round down. `annual` keeps fifteen places for comparisons.
+- **Refusals**: as F9 (`'no-solution'`, `'no-convergence'`): nothing borrowed, nothing repaid, month-0 charges at or above the drawdown, or less repaid than borrowed (a negative rate; CONC App 1.2 gives no rule for one). A month that is not whole, below nothing or over `MAX_FINANCE_TERM_MONTHS`, or an amount below nothing, throws `EngineInputError`.
+- **Assumptions** (CONC App 1.2.5R, CR-16): every payment is made on its date (a). The others apply only "where necessary" (1.2.5A G) and cover what the engine does not model.
+

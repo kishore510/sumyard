@@ -199,6 +199,15 @@ export function subtractRatio(a: Ratio, b: Ratio): Ratio {
   return ratio(Number(numerator), Number(denominator))
 }
 
+/** r rounded to `digits` decimal places (zero to RATE_RATIO_DIGITS) by `mode`, as a Ratio over 10^digits. For showing a rate. */
+export function roundRatio(r: Ratio, digits: number, mode: RoundingMode): Ratio {
+  const [n, d] = ratioParts(r, 'roundRatio')
+  if (!isSafe(digits) || digits < 0 || digits > RATE_RATIO_DIGITS)
+    throw new MoneyError(`roundRatio: ${String(digits)} is not a digit count`)
+  const denominator = 10n ** BigInt(digits)
+  return ratio(Number(divideRound(n * denominator, d, mode)), Number(denominator))
+}
+
 /**
  * An exact amount of pence as a fraction: numerator / denominator, in BigInt,
  * denominator above zero, in lowest terms. For a rule that leaves part of a
@@ -289,6 +298,13 @@ export const RATE_RATIO_DIGITS = 15
 
 /** A rate solver (slice 3a, decision F9 in docs/modelling-decisions-car.md) stops within 10^-RATE_SOLVE_DIGITS a period. */
 export const RATE_SOLVE_DIGITS = 24
+
+/**
+ * Decimal places an APR is shown to, as a fraction: one decimal place of a
+ * percentage, the least the APR rule allows, a following figure of five or
+ * more rounding up (slice 3a.1, F15; docs/verification-log.md, CR-3).
+ */
+export const APR_DISPLAY_DIGITS = 3
 
 /** The most bisection steps a rate solver takes before it refuses (F9). */
 export const RATE_SOLVE_MAX_STEPS = 200

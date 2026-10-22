@@ -103,6 +103,8 @@ Decisions F7 (rounding), F8 and F9 (the rate) in `docs/modelling-decisions-car.m
 
 **Reference tolerance.** The payment is within about 10^-30 of a penny of the exact closed form, so `reference.test.ts` requires the engine's payment to equal the exact one rounded to the nearest penny (the same near-half margin as compound interest, 10^-12 of a penny; no seed is that close), and every schedule row to equal the reference's exact replay of F7.
 
+**The statutory APR (slice 3a.1, F15).** `apr` solves F9's monthly equation and returns X = (1 + i)^12 − 1 (`annualRate`), good to about 10^-20; `annual` is that to fifteen places (`factorToRatio`, nearest). `display` rounds `annual` to `APR_DISPLAY_DIGITS` (3: one decimal place of a percentage) with `roundRatio`, mode `'nearest'`: a following figure of five or more rounds up, as CONC App 1.2.6R(3)(f) requires (CR-3). Rounding from fifteen places rather than from the 40-place factor is deliberate: a rate exactly on a display half can solve to a factor about 10^-24 below it, which would round down. `apr.test.ts` checks the display against exact fractions on 300 seeded yearly cases (the root lies in [k − ½, k + ½) thousandths) and 300 exact round trips, some exactly on a half.
+
 | Step | Mode | Where | Basis |
 |---|---|---|---|
 | Monthly rate | Exact `Ratio` (basis `'monthly'`); fine fixed point (basis `'annual'`, or solved) | `monthlyFactor` | F6 |
@@ -111,6 +113,7 @@ Decisions F7 (rounding), F8 and F9 (the rate) in `docs/modelling-decisions-car.m
 | Last month | Priced by rate: the last payment brings the balance to the final payment. Priced by payment: the last month's interest does | `buildSchedule` | F7 |
 | Excess mileage charge | Whole miles × whole pence a mile: exact | `pcp` | F11 |
 | Effective rate, monthly and annual | Bisection to 10^-24, shown to fifteen decimal places (`factorToRatio`); nothing rounded for display | `solveRate`, `annualRate` | F8, F9 |
+| Statutory APR | `annual`: as the effective rate. `display`: `annual` to one decimal place of a percentage, nearest, a following five rounding up | `apr`, `roundRatio` | F15; CR-3 (verified) |
 
 ## Display (`format.ts`)
 

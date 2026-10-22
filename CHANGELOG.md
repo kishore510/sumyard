@@ -4,6 +4,11 @@ All notable changes to Sumyard are listed here, newest first. The format follows
 
 ## [Unreleased]
 
+## [0.17.1] - 2026-10-22
+
+### Added
+- **Internal only: the official APR.** Nothing you can see in the app has changed. The car finance calculations can now work out the APR the way the consumer credit rules define it, shown to one decimal place as those rules require. The rules were read directly this time. The existing effective rate stays as it is and is still not called APR. Some PCP and hire purchase details (whether the optional final payment and the purchase or option fee count) are not settled by the rules read, so the coming page will not show an APR for those until they are.
+
 ## [0.17.0] - 2026-10-21
 
 ### Added
