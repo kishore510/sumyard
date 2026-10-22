@@ -194,17 +194,24 @@ describe('an empty box read as a value (emptyValue, slice 3c-2)', () => {
   it('CurrencyInput: an empty box is the empty value (shown empty, with a placeholder), and the empty value shows empty', () => {
     const onChange = vi.fn()
     const onValidityChange = vi.fn()
-    view = mount(
-      <CurrencyInput
-        id="a"
-        label="A"
-        emptyValue={fromPence(0)}
-        placeholder="0"
-        value={fromPence(1_250)}
-        onChange={onChange}
-        onValidityChange={onValidityChange}
-      />,
-    )
+    function Harness() {
+      const [value, setValue] = useState<Money>(fromPence(1_250))
+      return (
+        <CurrencyInput
+          id="a"
+          label="A"
+          emptyValue={fromPence(0)}
+          placeholder="0"
+          value={value}
+          onChange={(next) => {
+            onChange(next)
+            setValue(next)
+          }}
+          onValidityChange={onValidityChange}
+        />
+      )
+    }
+    view = mount(<Harness />)
     expect(input().getAttribute('placeholder')).toBe('0')
     type(input(), '')
     expect(onChange).toHaveBeenLastCalledWith(fromPence(0))

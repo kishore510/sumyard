@@ -535,7 +535,8 @@ describe('the crossover chart (3c-2)', () => {
 
   it('crossings are drawn, not announced as a ranking', () => {
     set(handBack)
-    expect(text(chart())).not.toMatch(/\b(cheaper|ranks?|ranked|first place|lowest)\b/i)
+    // The chart's own summary names each line's highest and lowest value; what is banned is an order of options.
+    expect(text(chart())).not.toMatch(/\b(cheaper|cheapest|ranks?|ranked|first place|winner)\b|lowest net cost/i)
   })
 })
 
