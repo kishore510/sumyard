@@ -178,3 +178,40 @@ export function randomCase(random: () => number, kind: Kind): { option: CarOptio
     shared: { horizonMonths, savingsReturn: random() < 0.15 ? NONE : ratio(whole(random, 0, 1_000), 10_000) },
   }
 }
+
+/** Keep with finance still owed (F43): settlement, monthly payment, payments left, final payment. */
+export const keepOwing = (
+  settlement: Money,
+  monthlyPayment: Money,
+  paymentsLeft: number,
+  finalPayment: Money = fromPence(0),
+): Acquisition => ({
+  kind: 'keep',
+  existingFinance: { settlement, monthlyPayment, paymentsLeft, finalPayment },
+})
+
+/**
+ * A random kept car with finance still owed (F43 to F50): a settlement from a tenth of the value to above it, up to
+ * five years of payments, sometimes a final payment, and a monthly payment at a random nominal rate to fifteen percent
+ * a year, rounded up to the penny so the payments always cover the settlement. Running costs and fuel as randomCase.
+ */
+export function randomOwingCase(random: () => number): { option: CarOption; shared: Shared; rate: Ratio } {
+  const base = randomCase(random, 'keep')
+  const value = base.option.car.value
+  const settlement = whole(random, Math.max(1, Math.floor(value / 10)), Math.floor((value * 13) / 10))
+  const paymentsLeft = whole(random, 1, 60)
+  const finalPayment = random() < 0.5 ? 0 : whole(random, 0, Math.floor((settlement * 2) / 5))
+  const rate = ratio(whole(random, 0, 1_500), 10_000)
+  const i = rate.numerator / rate.denominator / 12
+  const v = (1 + i) ** -paymentsLeft
+  const exact = i === 0 ? (settlement - finalPayment) / paymentsLeft : ((settlement - finalPayment * v) * i) / (1 - v)
+  const monthlyPayment = Math.max(0, Math.ceil(exact))
+  return {
+    option: {
+      ...base.option,
+      acquisition: keepOwing(fromPence(settlement), fromPence(monthlyPayment), paymentsLeft, fromPence(finalPayment)),
+    },
+    shared: base.shared,
+    rate,
+  }
+}

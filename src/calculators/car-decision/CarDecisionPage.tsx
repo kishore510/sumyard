@@ -204,7 +204,13 @@ export default function CarDecisionPage() {
         ? [
             ...ok.comparison.assumptions,
             ...ok.comparison.options.flatMap((o) => o.assumptions),
-            ...ok.comparison.options.flatMap((o) => (o.finance ? o.finance.assumptions.map((line) => `Finance agreements: ${line}`) : [])),
+            ...ok.comparison.options.flatMap((o) =>
+              o.finance
+                ? o.finance.assumptions.map(
+                    (line) => `${o.acquisition === 'keep' ? 'Finance still owed on a kept car' : 'Finance agreements'}: ${line}`,
+                  )
+                : [],
+            ),
           ]
         : []),
       ...PAGE_ASSUMPTIONS,

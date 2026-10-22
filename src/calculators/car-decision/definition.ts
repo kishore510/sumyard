@@ -96,6 +96,15 @@ export interface OptionInputs {
   readonly mileageAllowance: number | null
   /** Whole pence a mile. */
   readonly excessPerMile: number
+  /** Keep only (inputs version 3): finance still owed on the car (F43). Off for every other kind. */
+  readonly owesFinance: boolean
+  /** The lender's figure to clear the finance today. */
+  readonly settlement: Money | null
+  readonly owedPayment: Money | null
+  /** Whole monthly payments left. */
+  readonly paymentsLeft: number | null
+  /** Due with the last payment; optional, so never null. */
+  readonly owedFinalPayment: Money
 }
 
 export type OptionField = keyof OptionInputs
@@ -168,6 +177,11 @@ export const FIELD_LABELS: Record<OptionField, string> = {
   pcpEnd: 'At the end',
   mileageAllowance: 'Mileage allowance',
   excessPerMile: 'Excess mileage charge',
+  owesFinance: 'Still owe finance on it?',
+  settlement: 'Settlement figure',
+  owedPayment: 'Monthly payment',
+  paymentsLeft: 'Payments left',
+  owedFinalPayment: 'Final payment',
 }
 
 export const SHARED_LABELS: Record<SharedField, string> = {
@@ -194,6 +208,9 @@ export const MONEY_FIELDS: readonly OptionField[] = [
   'optionFee',
   'finalPayment',
   'purchaseFee',
+  'settlement',
+  'owedPayment',
+  'owedFinalPayment',
 ]
 
 /** Optional costs and fees (inputs version 2): an empty box reads as nothing, stored as 0. */
@@ -208,6 +225,7 @@ export const OPTIONAL_FIELDS: readonly OptionField[] = [
   'optionFee',
   'purchaseFee',
   'excessPerMile',
+  'owedFinalPayment',
 ]
 
 /** Decimal places a rate, a decimal and a percentage accept. */
@@ -221,9 +239,10 @@ type Whole = { readonly kind: 'whole'; readonly min: number; readonly max: numbe
 type Rate = { readonly kind: 'percent'; readonly min: Ratio; readonly max: Ratio }
 type Decimal = { readonly kind: 'decimal'; readonly min: Ratio; readonly max: Ratio; readonly minExclusive?: boolean }
 type Choice = { readonly kind: 'choice'; readonly options: readonly string[] }
+type Switch = { readonly kind: 'switch' }
 
 /** Each field's kind and bounds (src/lib/inputLimits.ts), for the inputs and validation alike. */
-export const LIMITS: Record<Exclude<OptionField, 'name'>, { readonly kind: 'money' } | Whole | Rate | Decimal | Choice> = {
+export const LIMITS: Record<Exclude<OptionField, 'name'>, { readonly kind: 'money' } | Whole | Rate | Decimal | Choice | Switch> = {
   acquisition: { kind: 'choice', options: ACQUISITIONS },
   value: { kind: 'money' },
   endLow: { kind: 'money' },
@@ -259,6 +278,12 @@ export const LIMITS: Record<Exclude<OptionField, 'name'>, { readonly kind: 'mone
   pcpEnd: { kind: 'choice', options: PCP_ENDS },
   mileageAllowance: { kind: 'whole', min: 0, max: MAX_ANNUAL_MILEAGE },
   excessPerMile: { kind: 'whole', min: 0, max: toPence(MAX_EXCESS_PER_MILE) },
+  owesFinance: { kind: 'switch' },
+  settlement: { kind: 'money' },
+  owedPayment: { kind: 'money' },
+  // From nothing: the engine refuses no payments left by name (F50), rather than the box holding it back.
+  paymentsLeft: { kind: 'whole', min: 0, max: MAX_FINANCE_TERM_MONTHS },
+  owedFinalPayment: { kind: 'money' },
 }
 
 export const SHARED_LIMITS = {
@@ -285,6 +310,7 @@ function optionFieldProblem(field: OptionField, value: unknown): string | undefi
   }
   const limit = LIMITS[field]
   if (limit.kind === 'choice') return limit.options.includes(value as string) ? undefined : 'must be one of the options.'
+  if (limit.kind === 'switch') return typeof value === 'boolean' ? undefined : 'must be on or off.'
   if (value === null) return OPTIONAL_FIELDS.includes(field) ? 'must be a number: an empty optional box is stored as nothing.' : undefined
   switch (limit.kind) {
     case 'money':
@@ -398,6 +424,11 @@ export function blankOption(acquisition: AcquisitionKind): OptionInputs {
     pcpEnd: 'buy',
     mileageAllowance: null,
     excessPerMile: 0,
+    owesFinance: false,
+    settlement: null,
+    owedPayment: null,
+    paymentsLeft: null,
+    owedFinalPayment: ZERO,
   }
 }
 
@@ -419,6 +450,25 @@ function fromVersion1(old: unknown): unknown {
   }
 }
 
+/**
+ * Inputs version 2 to 3 (3e, F51): each option gains finance still owed on a kept car, switched off, the amounts empty
+ * and no final payment, so every option has the same figures as before. What isn't a set of inputs is passed on for
+ * validation to refuse.
+ */
+function fromVersion2(old: unknown): unknown {
+  if (!isRecord(old) || Array.isArray(old) || !Array.isArray(old.options)) return old
+  return {
+    ...old,
+    options: old.options.map((option: unknown) => {
+      if (!isRecord(option) || Array.isArray(option)) return option
+      return { ...option, owesFinance: false, settlement: null, owedPayment: null, paymentsLeft: null, owedFinalPayment: 0 }
+    }),
+  }
+}
+
+/** Each version's step up to the next, in order: the inputs version is one past the last. */
+const MIGRATIONS = [fromVersion1, fromVersion2] as const
+
 /** Option sections (docs/ui-patterns.md, U1): the car, its finance (loan, HP, PCP only) and running costs with fuel. */
 export type SectionId = 'car' | 'finance' | 'running'
 
@@ -429,6 +479,12 @@ export const FUEL_FIELDS: Record<FuelMode, readonly OptionField[]> = {
 }
 
 export const isFinance = (kind: AcquisitionKind) => kind === 'loan' || kind === 'hire-purchase' || kind === 'pcp'
+
+/** A kept car's finance boxes, shown while its switch is on (F43). */
+export const OWING_FIELDS: readonly OptionField[] = ['settlement', 'owedPayment', 'paymentsLeft', 'owedFinalPayment']
+
+/** The finance section shows: a loan, HP or PCP's agreement, or the switch for finance still owed on a kept car. */
+export const hasFinanceSection = (kind: AcquisitionKind) => isFinance(kind) || kind === 'keep'
 
 /** The fields an option's section shows, for its kind, fuel type and pricing. */
 export function sectionFields(id: SectionId, option: OptionInputs): readonly OptionField[] {
@@ -442,6 +498,8 @@ export function sectionFields(id: SectionId, option: OptionInputs): readonly Opt
       return ['deposit', 'term', price, 'arrangementFee', 'balloon', 'optionFee']
     case 'pcp':
       return ['deposit', 'term', price, 'arrangementFee', 'finalPayment', 'purchaseFee', 'mileageAllowance', 'excessPerMile']
+    case 'keep':
+      return option.owesFinance ? OWING_FIELDS : []
     default:
       return []
   }
@@ -494,6 +552,17 @@ export function toEngineOption(option: OptionInputs, generalIncrease: Ratio): Ca
 }
 
 function acquisitionOf(o: OptionInputs): Acquisition {
+  if (o.acquisition === 'keep' && o.owesFinance) {
+    return {
+      kind: 'keep',
+      existingFinance: {
+        settlement: need(o.settlement),
+        monthlyPayment: need(o.owedPayment),
+        paymentsLeft: need(o.paymentsLeft),
+        finalPayment: o.owedFinalPayment,
+      },
+    }
+  }
   if (o.acquisition === 'keep' || o.acquisition === 'cash') return { kind: o.acquisition }
   const pricing: Pricing =
     o.pricing === 'rate'
@@ -551,16 +620,34 @@ const SPECIFIC: Partial<Record<string, string>> = {
   'horizonValue/above-maximum': 'An end value is above the most Sumyard models for this price.',
   'payment/below-minimum': 'The monthly payments don’t repay the amount financed.',
   'payment/above-maximum': 'The monthly payment is too high for any rate Sumyard models.',
+  // Finance still owed on a kept car (F50).
+  'monthlyPayment/below-minimum':
+    'The payments left and any final payment add up to less than the settlement figure, which would mean a rate below nothing. Check them against the lender’s statement.',
+  'monthlyPayment/above-maximum': 'The monthly payment is too high for any rate Sumyard models.',
+  'paymentsLeft/below-minimum': 'Enter at least one payment left. If the finance is cleared, switch “Still owe finance on it?” off.',
+  'settlement/below-minimum': 'Enter the settlement figure the lender quotes, above nothing.',
+  'keep:finalPayment/above-maximum': 'The final payment can’t be more than the settlement figure.',
+  'existingFinance/not-a-choice': 'The finance still owed isn’t a set of figures Sumyard can read.',
 }
 
 /** The page's label for an engine field. */
-function engineLabel(field: OwnershipField | FinanceField | 'result', valueLabel: string): string {
+function engineLabel(field: OwnershipField | FinanceField | 'result', kind: AcquisitionKind): string {
   switch (field) {
+    case 'settlement':
+      return FIELD_LABELS.settlement
+    case 'monthlyPayment':
+      return FIELD_LABELS.owedPayment
+    case 'paymentsLeft':
+      return FIELD_LABELS.paymentsLeft
+    case 'finalPayment':
+      return kind === 'keep' ? FIELD_LABELS.owedFinalPayment : FIELD_LABELS.finalPayment
+    case 'existingFinance':
+      return FIELD_LABELS.owesFinance
     case 'result':
       return 'Result'
     case 'value':
     case 'cashPrice':
-      return valueLabel
+      return valueLabel(kind)
     case 'amount':
       return FIELD_LABELS.loanAmount
     case 'horizonValue':
@@ -594,8 +681,8 @@ export function inputRefusal(problems: readonly OwnershipProblem[], kind: Acquis
     kind: 'inputs',
     problems: problems.map(({ field, reason }) => ({
       field,
-      label: engineLabel(field, valueLabel(kind)),
-      message: SPECIFIC[`${field}/${reason}`] ?? PROBLEM_MESSAGES[reason],
+      label: engineLabel(field, kind),
+      message: SPECIFIC[`${kind}:${field}/${reason}`] ?? SPECIFIC[`${field}/${reason}`] ?? PROBLEM_MESSAGES[reason],
     })),
   }
 }
@@ -686,6 +773,19 @@ const text = (label: string, value: string): SummaryRow => ({ label, value: { ki
 const percentRow = (label: string, value: string | null): SummaryRow =>
   value === null ? text(label, 'Not entered') : { label, value: { kind: 'ratio', ratio: percentRatio(value) } }
 
+/** A kept car's finance still owed, for compare: a row each, empty boxes as not entered. */
+function owingRows(name: string, option: OptionInputs): SummaryRow[] {
+  const amount = (label: string, value: Money | null) => (value === null ? text(label, 'Not entered') : money(label, value))
+  return [
+    amount(`${name}: settlement figure`, option.settlement),
+    amount(`${name}: monthly payment`, option.owedPayment),
+    option.paymentsLeft === null
+      ? text(`${name}: payments left`, 'Not entered')
+      : { label: `${name}: payments left`, value: { kind: 'count', count: option.paymentsLeft } },
+    money(`${name}: final payment`, option.owedFinalPayment),
+  ]
+}
+
 /** "48 of 48 months". */
 export const coverageText = (result: OwnershipResult) => `${result.coverageMonths} of ${result.horizonMonths} months`
 
@@ -695,7 +795,7 @@ export const carDecisionCalculator: CalculatorDefinition<CarDecisionInputs> = de
   summary:
     'What a car costs over the same horizon if you keep your current car, buy with cash, or take a loan, HP or PCP: average cost per month owned in low, expected and high cases for its value, with what would change the order.',
   taxRules: 'none',
-  inputsVersion: 2,
+  inputsVersion: MIGRATIONS.length + 1,
   defaultInputs: () => ({
     horizonMonths: DEFAULT_HORIZON_MONTHS,
     valueCase: 'expected',
@@ -705,8 +805,9 @@ export const carDecisionCalculator: CalculatorDefinition<CarDecisionInputs> = de
   }),
   validateInputs: validate,
   migrateInputs(from, old) {
-    if (from === 1) return fromVersion1(old)
-    throw new Error(`The car decision calculator has no inputs version ${from} to migrate from`)
+    if (!Number.isSafeInteger(from) || from < 1 || from > MIGRATIONS.length)
+      throw new Error(`The car decision calculator has no inputs version ${from} to migrate from`)
+    return MIGRATIONS.slice(from - 1).reduce((inputs, step) => step(inputs), old)
   },
   summarise(inputs) {
     const names = uniqueNames(inputs.options)
@@ -715,7 +816,10 @@ export const carDecisionCalculator: CalculatorDefinition<CarDecisionInputs> = de
       text(SHARED_LABELS.valueCase, CASE_LABELS[inputs.valueCase]),
       percentRow(SHARED_LABELS.savingsReturn, inputs.savingsReturn),
       percentRow(SHARED_LABELS.generalIncrease, inputs.generalIncrease),
-      ...inputs.options.map((option, index) => text(names[index]!, ACQUISITION_LABELS[option.acquisition])),
+      ...inputs.options.flatMap((option, index) => [
+        text(names[index]!, ACQUISITION_LABELS[option.acquisition]),
+        ...(option.acquisition === 'keep' && option.owesFinance ? owingRows(names[index]!, option) : []),
+      ]),
     ]
     const outcome = calculate(inputs)
     if (outcome.kind === 'missing-shared') {
@@ -749,6 +853,8 @@ export const carDecisionCalculator: CalculatorDefinition<CarDecisionInputs> = de
         text(coverage, coverageText(status.result)),
         status.result.fullCoverage ? money(equity, c.months.at(-1)!.equity) : text(equity, 'No car: handed back'),
       )
+      const rate = status.option.acquisition.kind === 'keep' ? status.result.finance?.effectiveRate : undefined
+      if (rate?.ok) results.push({ label: `${name}: implied rate`, value: { kind: 'ratio', ratio: rate.annual } })
     })
     return { inputs: rows, results: { ok: true, rows: results } }
   },

@@ -186,3 +186,9 @@ An optional running-cost box left empty counts as nothing (F38, U22). Each coste
 ### U36. A side-by-side table that can be read on a phone
 
 The sticky first column is opaque, 8rem wide, and its labels wrap. Each option's column keeps a minimum width, with its figures on one line, so every figure can be scrolled fully into view beside the first column at 360 px. Each cell shows the text its card shows for the same measure, from one function (`measures`, `CarResults.tsx`). Cards align to the top and keep their own heights. Table headers that are single words don't wrap. The bottom line leaves out "Cost of choosing the alternative" when a switch line in the verdict already gives the same pair. A chart legend names a series' kind ("bars", "line") only when bars and lines share the chart.
+
+## 3e: finance still owed on a kept car (0.23.0)
+
+### U37. A switch that reveals its boxes
+
+A Keep option's Finance section holds one switch ("Still owe finance on it?", the shared `Toggle`, off by default). Its boxes appear only while it is on, directly after it, so the keyboard path is the switch, then each box in order; Space turns it on and off. The boxes are asked as plain questions with short hints that hold no figure. The section summary says "No finance owed" while the switch is off. On the card, the rate is labelled "Implied rate from your figures, not the lender’s APR" with one line saying what it is; the money in and out says how many payments are left; a settlement above today's value is a warning notice, "Negative equity now", beside the one for the horizon.

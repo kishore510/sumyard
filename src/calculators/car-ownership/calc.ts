@@ -51,13 +51,14 @@ import {
 import { MONTHS_PER_YEAR } from '@/lib/periods'
 import { LITRES_PER_GALLON } from '@/lib/units'
 import { hirePurchase, loan, outstandingBalance, pcp } from '../car-finance/calc'
-import type { DatedPayment, FinanceOutcome, FinanceProblemReason, FinanceResult } from '../car-finance/types'
+import type { DatedPayment, FinanceField, FinanceOutcome, FinanceProblemReason, FinanceResult } from '../car-finance/types'
 import type {
   Breakdown,
   CarOption,
   CaseResult,
   Comparison,
   ComparisonOutcome,
+  ExistingFinance,
   Flip,
   FlipOutcome,
   FuelCost,
@@ -91,6 +92,9 @@ import type {
  * - F26, F27: the breakdown and the comparison.
  * - F22, F29: flip points, closed form or a bounded search.
  * - F28: typed refusals, never a wrong number.
+ * - F43 to F50 (3e): finance still owed on a kept car, through the 3a engine:
+ *   the sale given up is the value less the settlement, the rate is implied
+ *   by 3a's solver, the balance is 3a's schedule.
  *
  * The engine holds no figure: bounds come from lib/inputLimits.ts, the litres
  * in a gallon from lib/units.ts, the calendar from lib/periods.ts and search
@@ -318,9 +322,42 @@ interface Prepared {
 
 type Prepare = { readonly ok: true; readonly prepared: Prepared } | { readonly ok: false; readonly problems: readonly OwnershipProblem[] }
 
-/** The 3a agreement for a finance option, with the car's value as the cash price (F16, F24). */
+/** Finance still owed on a kept car, or undefined (F43). */
+const owingOf = (option: CarOption): ExistingFinance | undefined =>
+  option.acquisition.kind === 'keep' ? (option.acquisition.existingFinance ?? undefined) : undefined
+
+/** 3a's fields for a kept car's finance, by the names the person entered (F50). */
+const OWING_FIELDS: Partial<Record<FinanceField, OwnershipField | FinanceField>> = {
+  cashPrice: 'settlement',
+  payment: 'monthlyPayment',
+  term: 'paymentsLeft',
+  balloon: 'finalPayment',
+}
+
+/**
+ * Finance still owed on a kept car through 3a (F45): an agreement priced by the payment, with the settlement as the
+ * amount owed now, no deposit and no fees, and the final payment due with the last payment. 3a's solver implies the
+ * rate, its schedule gives the balance. Its refusals are named by the person's fields in prepare (OWING_FIELDS).
+ */
+function owingFinance(owing: ExistingFinance): FinanceOutcome {
+  const outcome = hirePurchase({
+    cashPrice: owing.settlement,
+    deposit: ZERO,
+    term: owing.paymentsLeft,
+    pricing: { kind: 'payment', payment: owing.monthlyPayment },
+    arrangementFee: ZERO,
+    arrangementFeeTiming: 'start',
+    balloon: owing.finalPayment,
+    optionFee: ZERO,
+  })
+  return outcome.ok ? { ok: true, result: { ...outcome.result, assumptions: OWING_FINANCE_ASSUMPTIONS } } : outcome
+}
+
+/** The 3a agreement for a finance option, with the car's value as the cash price (F16, F24), or a kept car's finance (F45). */
 function financeOf(option: CarOption): FinanceOutcome | null {
   const { car, acquisition } = option
+  const owing = owingOf(option)
+  if (owing) return owingFinance(owing)
   if (acquisition.kind === 'loan') return loan(acquisition.finance)
   if (acquisition.kind === 'hire-purchase') return hirePurchase({ ...acquisition.finance, cashPrice: car.value })
   if (acquisition.kind === 'pcp') {
@@ -337,6 +374,10 @@ function acquisitionChecks(option: CarOption): readonly Check[] {
   if (typeof acquisition !== 'object' || acquisition === null || !ACQUISITIONS.includes(acquisition.kind))
     return [['acquisition', 'not-a-choice']]
   if (acquisition.kind === 'pcp' && !ENDS.includes(acquisition.end)) return [['end', 'not-a-choice']]
+  if (acquisition.kind === 'keep' && 'existingFinance' in acquisition && acquisition.existingFinance !== undefined) {
+    const owing: unknown = acquisition.existingFinance
+    if (typeof owing !== 'object' || owing === null || Array.isArray(owing)) return [['existingFinance', 'not-a-choice']]
+  }
   return []
 }
 
@@ -363,14 +404,18 @@ function prepare(option: CarOption, horizonMonths: number, index: number): Prepa
   }
   if (problems.length > 0) return { ok: false, problems }
   const financed = financeOf(option)
-  if (financed && !financed.ok) return { ok: false, problems: financed.problems.map((problem) => ({ ...problem, option: index })) }
+  const owing = owingOf(option)
+  const named = (field: FinanceField | 'result') => (owing && field !== 'result' && OWING_FIELDS[field]) || field
+  if (financed && !financed.ok)
+    return { ok: false, problems: financed.problems.map((problem) => ({ ...problem, field: named(problem.field), option: index })) }
   const finance = financed ? financed.result : null
 
   const H = horizonMonths
   const term = finance ? finance.schedule.rows.length : 0
   const handBack = acquisition.kind === 'pcp' && acquisition.end === 'hand-back' && term <= H
   const coverage = handBack ? term : H
-  const forgone = acquisition.kind === 'keep' ? car.value : ZERO
+  // Keep gives up a sale of its value (F18); with finance owed, of what a sale would leave after the settlement (F44).
+  const forgone = acquisition.kind === 'keep' ? (owing ? subtract(car.value, owing.settlement) : car.value) : ZERO
 
   // Acquisition (F24).
   const acq: Money[] = Array.from({ length: coverage + 1 }, () => ZERO)
@@ -384,6 +429,11 @@ function prepare(option: CarOption, horizonMonths: number, index: number): Prepa
       const end = handBack ? finance.handBack!.excessMileageCharge : add(finance.own.finalPayment, finance.own.purchaseFee)
       acq[term] = add(acq[term]!, end)
     }
+  }
+  if (finance && owing) {
+    // A kept car's payments from a month from today; the final payment with the last, and the car kept (F46, F49).
+    for (let m = 1; m <= Math.min(term, coverage); m++) acq[m] = finance.schedule.rows[m - 1]!.payment
+    if (term <= coverage) acq[term] = add(acq[term]!, finance.own.finalPayment)
   }
 
   // Running costs and fuel (F21, F25).
@@ -503,6 +553,11 @@ const COMMON_ASSUMPTIONS: readonly string[] = [
 
 const KIND_ASSUMPTIONS: Readonly<Record<string, readonly string[]>> = {
   keep: ['Keeping the car counts its current value as a sale given up at the start, so it compares like for like with buying it.'],
+  'keep-owing': [
+    'Keeping the car counts what selling it today would leave after clearing the finance, its value less the settlement figure, as a sale given up at the start. With more owed than the car is worth, that is below nothing.',
+    'The payments still owed are paid as you entered them, the first a month from today, with any final payment at the end; the car is then yours. Only the interest in them is a cost: the rest pays down what is owed.',
+    'If the horizon ends before the payments do, what is still owed is taken off the car’s value.',
+  ],
   cash: ['The price is paid in full at the start.'],
   finance: [
     'Finance follows the car finance engine. If the horizon ends before the agreement does, what is still owed is taken off the car’s value.',
@@ -513,9 +568,16 @@ const KIND_ASSUMPTIONS: Readonly<Record<string, readonly string[]>> = {
   ],
 }
 
+/** A kept car's finance, in place of the 3a agreement's own assumptions (F45, F48). */
+const OWING_FINANCE_ASSUMPTIONS: readonly string[] = [
+  'The rate is implied from your settlement figure, monthly payment, payments left and final payment: the monthly rate at which the payments discount back to the settlement, compounded over a year. It is not the lender’s APR.',
+  'Interest is charged each month on the balance at the start of the month and rounded to the penny; the last month’s interest takes the rounding, so the balance comes to the final payment.',
+  'The settlement figure is the lender’s, as you entered it. Early settlement charges and rights are not modelled; the balance after each payment is the schedule’s, not a settlement figure.',
+]
+
 function assumptionsFor(prepared: Prepared): string[] {
   const { kind } = prepared.option.acquisition
-  const key = kind === 'keep' || kind === 'cash' ? kind : 'finance'
+  const key = kind === 'keep' ? (owingOf(prepared.option) ? 'keep-owing' : 'keep') : kind === 'cash' ? kind : 'finance'
   return [...COMMON_ASSUMPTIONS, ...KIND_ASSUMPTIONS[key]!, ...(prepared.handBack ? KIND_ASSUMPTIONS['hand-back']! : [])]
 }
 

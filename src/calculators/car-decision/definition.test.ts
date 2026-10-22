@@ -20,7 +20,7 @@ import {
 import { divideRound, fromPence, fromPounds, type Ratio, ratio, toPence } from '@/lib/money'
 import { decimalRatio, percentRatio } from '@/lib/parse'
 import { MONTHS_PER_YEAR } from '@/lib/periods'
-import { compareOptions } from '../car-ownership/calc'
+import { compareOptions, ownershipCost } from '../car-ownership/calc'
 import { CALCULATORS } from '../index'
 import {
   type CarDecisionInputs,
@@ -34,7 +34,23 @@ import {
   SHARED_LABELS,
   toEngineOption,
 } from './definition'
-import { blank, blankV1, cash, electric, hp, inputs, keep, loan, pcp, perMile, type V1Inputs } from './fixtures/inputs'
+import {
+  asV2,
+  blank,
+  blankV1,
+  cash,
+  electric,
+  hp,
+  inputs,
+  keep,
+  keepOwing,
+  loan,
+  pcp,
+  perMile,
+  type V1Inputs,
+  type V2Inputs,
+} from './fixtures/inputs'
+import { sensitivityOf } from './sensitivity'
 
 /*
  * Slice 3c-1: the car decision page's registry entry (definition.ts). Inputs
@@ -63,9 +79,9 @@ const pastPct = (r: Ratio, direction: 1 | -1) => ratio(r.numerator * 10_000 + di
 const pastDec = (r: Ratio, direction: 1 | -1) => ratio(r.numerator * 100 + direction * r.denominator, r.denominator * 100)
 
 describe('registration', () => {
-  it('is registered as car-decision, inputs version 2, no tax rules, after compound interest', () => {
+  it('is registered as car-decision, inputs version 3, no tax rules, after compound interest', () => {
     expect(CALCULATORS.get('car-decision')).toBe(carDecisionCalculator)
-    expect(carDecisionCalculator.inputsVersion).toBe(2)
+    expect(carDecisionCalculator.inputsVersion).toBe(3)
     expect(carDecisionCalculator.taxRules).toBe('none')
     expect(CALCULATORS.list().map((c) => c.id)).toEqual(['optimiser', 'compound-interest', 'car-decision'])
   })
@@ -312,6 +328,7 @@ describe('migrateInputs', () => {
       'optionFee',
       'purchaseFee',
       'excessPerMile',
+      'owedFinalPayment',
     ])
   })
 
@@ -344,11 +361,11 @@ describe('migrateInputs', () => {
     for (const raw of [null, 'x', { ...example, options: 'none' }, { ...example, options: [null] }]) {
       expect(check(carDecisionCalculator.migrateInputs(1, raw)).ok).toBe(false)
     }
-    for (const from of [0, 2, 3]) expect(() => carDecisionCalculator.migrateInputs(from, example)).toThrow()
+    for (const from of [0, 3, 4]) expect(() => carDecisionCalculator.migrateInputs(from, example)).toThrow()
   })
 
   it('inputs from a newer version are refused, not guessed', () => {
-    expect(CALCULATORS.readInputs('car-decision', 3, example)).toMatchObject({ ok: false, reason: 'newer-inputs' })
+    expect(CALCULATORS.readInputs('car-decision', 4, example)).toMatchObject({ ok: false, reason: 'newer-inputs' })
   })
 })
 
@@ -577,5 +594,130 @@ describe('summarise (compare)', () => {
 
   it('does not read the tax config it is given', () => {
     expect(carDecisionCalculator.summarise(example, undefined as never)).toEqual(carDecisionCalculator.summarise(example, taxYear))
+  })
+})
+
+describe('finance still owed on a kept car (3e, F43 to F51)', () => {
+  const increase = percentRatio('3')
+
+  it('version 2 to 3: the switch off, the amounts empty, the final payment 0; every other field kept', () => {
+    const old: V2Inputs = { ...example, options: [asV2(keep()), asV2(loan())] }
+    expect(carDecisionCalculator.migrateInputs(2, old)).toEqual(example)
+    expect(carDecisionCalculator.migrateInputs(2, { ...example, options: [asV2(blank('keep'))] })).toEqual({
+      ...example,
+      options: [blank('keep')],
+    })
+  })
+
+  it('a version 2 scenario read through storage gives identical results, option by option', () => {
+    const v3 = inputs([keep(), loan(), hp(), pcp()], { valueCase: 'high' })
+    const old: V2Inputs = { ...v3, options: v3.options.map(asV2) }
+    const read = CALCULATORS.readInputs('car-decision', 2, old)
+    expect(read).toMatchObject({ ok: true, migrated: true })
+    if (!read.ok) return
+    expect(read.inputs).toEqual(v3)
+    const before = compareOptions(
+      v3.options.map((o) => toEngineOption(o, increase)),
+      { horizonMonths: 48, savingsReturn: percentRatio('4') },
+    )
+    expect(calculate(read.inputs as CarDecisionInputs)).toMatchObject({ kind: 'ok', comparison: before.ok ? before.result : null })
+  })
+
+  it('version 1 migrates through version 2 to 3', () => {
+    const old = { ...example, options: [blankV1('keep')] }
+    expect(carDecisionCalculator.migrateInputs(1, old)).toEqual({ ...example, options: [blank('keep')] })
+  })
+
+  it.each<[keyof OptionInputs, unknown]>([
+    ['owesFinance', 'yes'],
+    ['owesFinance', null],
+    ['settlement', 1.5],
+    ['settlement', -1],
+    ['owedPayment', '260'],
+    ['paymentsLeft', 2.5],
+    ['paymentsLeft', -1],
+    ['paymentsLeft', MAX_FINANCE_TERM_MONTHS + 1],
+    ['owedFinalPayment', null],
+  ])('refuses a bad %s (%j), naming it', (field, value) => {
+    const errors = errorsOf(withOption({ [field]: value }))
+    expect(errors).toHaveLength(1)
+    expect(errors[0]).toContain(FIELD_LABELS[field])
+  })
+
+  it('accepts no payments left in a box (the engine refuses it, naming the box) and the bound', () => {
+    expect(check(withOption({ paymentsLeft: 0 })).ok).toBe(true)
+    expect(check(withOption({ paymentsLeft: MAX_FINANCE_TERM_MONTHS })).ok).toBe(true)
+  })
+
+  it('missing: with the switch on, the settlement, payment and payments left; an empty final payment reads as 0', () => {
+    expect(missingFields({ ...keep(), settlement: null })).toEqual([])
+    expect(missingFields({ ...keep(), owesFinance: true })).toEqual(['settlement', 'owedPayment', 'paymentsLeft'])
+    expect(missingFields(keepOwing({ owedPayment: fromPounds(320), owedFinalPayment: fromPounds(0) }))).toEqual([])
+  })
+
+  it('maps to the engine’s existing finance only with the switch on', () => {
+    expect(toEngineOption(keep(), increase).acquisition).toEqual({ kind: 'keep' })
+    expect(toEngineOption(keepOwing({ owesFinance: false }), increase).acquisition).toEqual({ kind: 'keep' })
+    expect(toEngineOption(keepOwing(), increase).acquisition).toEqual({
+      kind: 'keep',
+      existingFinance: {
+        settlement: fromPounds(7_200),
+        monthlyPayment: fromPounds(260),
+        paymentsLeft: 24,
+        finalPayment: fromPounds(1_500),
+      },
+    })
+  })
+
+  it.each([
+    [
+      'payments below the settlement',
+      { owedPayment: fromPounds(200), owedFinalPayment: fromPounds(0) },
+      'Monthly payment',
+      /less than the settlement/,
+    ],
+    ['no payments left', { paymentsLeft: 0 }, 'Payments left', /at least one payment/],
+    ['a settlement of nothing', { settlement: fromPounds(0) }, 'Settlement figure', /settlement figure/i],
+    ['a final payment above the settlement', { owedFinalPayment: fromPounds(8_000) }, 'Final payment', /more than the settlement/],
+  ] as const)('refused, naming the box: %s', (_name, patch, label, message) => {
+    const outcome = calculate(inputs([keepOwing(patch), cash()]))
+    if (outcome.kind !== 'ok') throw new Error(outcome.kind)
+    const status = outcome.statuses[0]!
+    expect(status.kind).toBe('refused')
+    if (status.kind !== 'refused') return
+    expect(status.refusal.problems.map((p) => p.label)).toEqual([label])
+    expect(status.refusal.problems[0]!.message).toMatch(message)
+    expect(outcome.statuses[1]!.kind).toBe('ok')
+  })
+
+  it('the sensitivity works with it: every move inside the bounds has the engine’s figure', () => {
+    const option = toEngineOption(keepOwing(), increase)
+    const shared = { horizonMonths: 48, savingsReturn: percentRatio('4') }
+    const base = ownershipCost(option, shared)
+    if (!base.ok) throw new Error('refused')
+    const rows = sensitivityOf(option, shared, 'expected', base.result)
+    expect(rows.length).toBeGreaterThan(0)
+    for (const row of rows) expect(row.cells.every((cell) => cell.change !== null)).toBe(true)
+  })
+
+  it('summarise lists the finance still owed and the implied rate', () => {
+    const summary = carDecisionCalculator.summarise(inputs([keepOwing(), cash()]), taxYear)
+    expect(summary.inputs.map((r) => r.label)).toEqual([
+      'Horizon (months)',
+      'End-value case',
+      'Savings return (after tax, a year)',
+      'Yearly increase in running costs',
+      'Keep, still paying',
+      'Keep, still paying: settlement figure',
+      'Keep, still paying: monthly payment',
+      'Keep, still paying: payments left',
+      'Keep, still paying: final payment',
+      'Buy outright',
+    ])
+    expect(summary.inputs[7]).toEqual({ label: 'Keep, still paying: payments left', value: { kind: 'count', count: 24 } })
+    const rows = summary.results.ok ? summary.results.rows : []
+    const rate = rows.find((r) => r.label === 'Keep, still paying: implied rate')
+    expect(rate?.value.kind).toBe('ratio')
+    expect(rows.filter((r) => r.label.startsWith('Buy outright')).map((r) => r.label)).not.toContain('Buy outright: implied rate')
   })
 })

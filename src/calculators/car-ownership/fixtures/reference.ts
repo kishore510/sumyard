@@ -122,7 +122,7 @@ export interface Reference {
   readonly cases: Readonly<Record<ValueCase, ReferenceCase>>
 }
 
-/** The reference for one option, given 3a's result for its finance (null for keep and cash). */
+/** The reference for one option, given 3a's result for its finance (null for cash and keep without finance). */
 export function reference(option: CarOption, shared: Shared, finance: FinanceResult | null): Reference {
   const { car, acquisition } = option
   const H = shared.horizonMonths
@@ -143,7 +143,14 @@ export function reference(option: CarOption, shared: Shared, finance: FinanceRes
       else acq[term]! += BigInt(finance.own.finalPayment) + BigInt(finance.own.purchaseFee)
     }
   }
-  const forgone = acquisition.kind === 'keep' ? v0 : 0n
+  // Keep with finance still owed (F44, F46, F49): the payments as entered, the final payment with the last; the sale given up is V0 − S.
+  const owing = acquisition.kind === 'keep' ? acquisition.existingFinance : undefined
+  if (owing) {
+    const n = owing.paymentsLeft
+    for (let m = 1; m <= Math.min(n, coverage); m++) acq[m] = BigInt(owing.monthlyPayment)
+    if (n <= coverage) acq[n]! += BigInt(owing.finalPayment)
+  }
+  const forgone = acquisition.kind === 'keep' ? v0 - (owing ? BigInt(owing.settlement) : 0n) : 0n
 
   const miles = frac(BigInt(car.annualMileage))
   const fuel = monthly(times(costPerMile(car.fuel), miles), car.fuelPriceChange, coverage)
