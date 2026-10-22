@@ -13,7 +13,7 @@ import type { ValueCase } from '../car-ownership/types'
 import { crossover, type ReadoutRow, readout } from './chart'
 import { CASE_LABELS, type CarDecisionInputs, type PageOutcome, toEngineShared, uniqueNames } from './definition'
 import { cardOrder } from './results'
-import { type Cell, type Driver, type DriverRow, sensitivityOf } from './sensitivity'
+import { byEffect, type Cell, DRIVERS, type Driver, type DriverRow, driverRow } from './sensitivity'
 
 /*
  * The car decision's views below the cards (slice 3c-2), every figure the
@@ -153,44 +153,52 @@ const memo = new Map<string, readonly DriverRow[]>()
 const MEMO_SIZE = MAX_CAR_OPTIONS * MAX_CAR_OPTIONS
 
 /**
- * The sensitivity rows, worked out once the inputs have settled (SETTLE_MS) and then one option at a time with a break
- * between, so typing and scrolling stay responsive; "updating" until done. Never on each keystroke.
+ * The sensitivity rows, worked out once the inputs have settled (SETTLE_MS) and then one input of one option per step,
+ * with a break between steps, so typing and scrolling stay responsive (docs/performance.md); "updating" until done. Never
+ * on each keystroke. Each option's rows are kept by its inputs, so going back to inputs already seen shows them at once.
  */
 export function useSensitivity(outcome: Ok | null, inputs: CarDecisionInputs): SensitivityState {
   const [ready, setReady] = useState<{ for: Ok; state: SensitivityState } | null>(null)
-  const costed = outcome
-    ? cardOrder(outcome, inputs.valueCase, inputs.options.length).filter((i) => outcome.statuses[i]!.kind === 'ok')
-    : []
-  const any = costed.length > 0
+  const any = outcome?.statuses.some((status) => status.kind === 'ok') ?? false
   useEffect(() => {
     if (!outcome || !any) return
     let timer: ReturnType<typeof setTimeout>
     let cancelled = false
     const shared = toEngineShared(inputs)
-    const order = cardOrder(outcome, inputs.valueCase, inputs.options.length)
+    const work = cardOrder(outcome, inputs.valueCase, inputs.options.length).flatMap((index) => {
+      const status = outcome.statuses[index]!
+      return status.kind === 'ok' ? [{ index, status, key: JSON.stringify([status.option, shared, inputs.valueCase]) }] : []
+    })
     const start = performance.now()
     const done: OptionSensitivity[] = []
-    const step = (k: number) => {
+    let rows: DriverRow[] = []
+    // One step per option and input; an option already worked out is one step.
+    const step = (option: number, driver: number) => {
       if (cancelled) return
-      const index = order[k]
-      if (index === undefined) {
+      const item = work[option]
+      if (!item) {
         setReady({ for: outcome, state: { kind: 'ready', options: done, ms: Math.round(performance.now() - start) } })
         return
       }
-      const status = outcome.statuses[index]!
-      if (status.kind === 'ok') {
-        const key = JSON.stringify([status.option, shared, inputs.valueCase])
-        let rows = memo.get(key)
-        if (!rows) {
-          rows = sensitivityOf(status.option, shared, inputs.valueCase, status.result)
-          if (memo.size >= MEMO_SIZE) memo.clear()
-          memo.set(key, rows)
-        }
-        done.push({ index, rows })
+      const known = memo.get(item.key)
+      if (known) {
+        done.push({ index: item.index, rows: known })
+        timer = setTimeout(() => step(option + 1, 0), 0)
+        return
       }
-      timer = setTimeout(() => step(k + 1), 0)
+      rows.push(driverRow(item.status.option, shared, inputs.valueCase, item.status.result, DRIVERS[driver]!))
+      if (driver + 1 < DRIVERS.length) {
+        timer = setTimeout(() => step(option, driver + 1), 0)
+        return
+      }
+      const sorted = byEffect(rows)
+      if (memo.size >= MEMO_SIZE) memo.clear()
+      memo.set(item.key, sorted)
+      done.push({ index: item.index, rows: sorted })
+      rows = []
+      timer = setTimeout(() => step(option + 1, 0), 0)
     }
-    timer = setTimeout(() => step(0), SETTLE_MS)
+    timer = setTimeout(() => step(0, 0), SETTLE_MS)
     return () => {
       cancelled = true
       clearTimeout(timer)

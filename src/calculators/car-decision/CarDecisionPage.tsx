@@ -93,6 +93,10 @@ const PAGE_ASSUMPTIONS = [
   'VED, insurance and the other running costs are the amounts you enter. Sumyard holds no VED figures and models no tax rules or electric car benefit rules.',
   'No replacement car is modelled: a car handed back at the end of a PCP leaves the rest of the horizon uncovered, so it is shown per month of coverage and not ordered against options that cover the whole horizon.',
   'A loan’s APR, and HP’s when there is no option to purchase fee, is worked out from the agreement’s payments under the APR rules. For a PCP, and HP with an option fee, the card shows the effective interest rate instead, which is not the lender’s APR.',
+  'An optional cost or fee left empty counts as nothing. The price, the end values, the mileage, the fuel figures and the finance terms an option needs are never assumed: until they are entered, the option has no figures.',
+  'The month-by-month chart shows each option’s net cost so far at the end of each month, in the end-value case chosen, from the same engine as the cards. A line stops where its car is handed back. Lines that cross are not an order: the cards are ordered at the horizon.',
+  'The thresholds in “What changes the answer” are measured over the whole horizon, whatever month the chart shows.',
+  'The sensitivity view moves one input at a time by a constant percentage of its current value (the end value in the case chosen, the savings return, the annual mileage or the fuel or energy price), with every other input held at its current value, and shows the engine’s change in net cost per month of coverage. Illustrative only, not a forecast and not advice.',
   'Uses no tax rules: nothing here depends on the tax rules of any year.',
   'Illustrative only, not financial advice.',
 ]

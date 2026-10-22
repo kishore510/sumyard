@@ -78,20 +78,25 @@ export interface DriverRow {
 
 const size = (amount: Money) => (compare(amount, ZERO) < 0 ? subtract(ZERO, amount) : amount)
 
-/** Every driver's row for one option, the largest effect first (ties in the drivers' order). `base` is the engine's result without a move. */
-export function sensitivityOf(option: CarOption, shared: Shared, valueCase: ValueCase, base: OwnershipResult): DriverRow[] {
+/** One driver's row for one option: a cell per shift. `base` is the engine's result without a move. */
+export function driverRow(option: CarOption, shared: Shared, valueCase: ValueCase, base: OwnershipResult, driver: Driver): DriverRow {
   const before = base.cases[valueCase].netCostPerCoverageMonth
-  const rows = DRIVERS.map((driver): DriverRow => {
-    const cells = SENSITIVITY_SHIFTS.map((shift): Cell => {
-      const moved = shiftOption(option, shared, driver, shift, valueCase)
-      const run = ownershipCost(moved.option, moved.shared)
-      return { shift, change: run.ok ? subtract(run.result.cases[valueCase].netCostPerCoverageMonth, before) : null }
-    })
-    const effect = cells.reduce(
-      (most, cell) => (cell.change !== null && compare(size(cell.change), most) > 0 ? size(cell.change) : most),
-      ZERO,
-    )
-    return { driver, cells, effect }
+  const cells = SENSITIVITY_SHIFTS.map((shift): Cell => {
+    const moved = shiftOption(option, shared, driver, shift, valueCase)
+    const run = ownershipCost(moved.option, moved.shared)
+    return { shift, change: run.ok ? subtract(run.result.cases[valueCase].netCostPerCoverageMonth, before) : null }
   })
-  return rows.sort((a, b) => compare(b.effect, a.effect))
+  const effect = cells.reduce(
+    (most, cell) => (cell.change !== null && compare(size(cell.change), most) > 0 ? size(cell.change) : most),
+    ZERO,
+  )
+  return { driver, cells, effect }
+}
+
+/** Rows the largest effect first; ties keep the drivers' order. */
+export const byEffect = (rows: readonly DriverRow[]): DriverRow[] => [...rows].sort((a, b) => compare(b.effect, a.effect))
+
+/** Every driver's row for one option, the largest effect first. `base` is the engine's result without a move. */
+export function sensitivityOf(option: CarOption, shared: Shared, valueCase: ValueCase, base: OwnershipResult): DriverRow[] {
+  return byEffect(DRIVERS.map((driver) => driverRow(option, shared, valueCase, base, driver)))
 }
