@@ -66,12 +66,10 @@ describe('a crossing into a tie (3d-1.1)', () => {
 })
 
 /*
- * Open question OQ-flip-tie (docs/open-questions.md): the engine's search
- * stops at the first change of order, which near a crossing is often into a
- * band of savings returns where the two penny-rounded totals are level. It
- * should report the order beyond that band (or no crossing, if the order
- * comes back to the same side). Engine change for the owner to decide; this
- * test fails today and is skipped until then.
+ * OQ-flip-tie (closed in 3d-2, F53): the engine's search used to stop at the
+ * first change of order, which near a crossing is often into a band of
+ * savings returns where the two penny-rounded totals are level. It now
+ * carries on past the band to the option lower above it.
  */
 describe('the engine’s savings return search past a tie', () => {
   // Found by a seeded random search (seed 7, case 6); the order is B lower up to about 4.8% and A lower from 5%.
@@ -108,12 +106,7 @@ describe('the engine’s savings return search past a tie', () => {
     { horizonMonths: 36, valueCase: 'high', savingsReturn: '0.55', generalIncrease: '3.27' },
   )
 
-  it('reproduces: today the search reports a crossing from B lower into a tie', () => {
-    const found = flipsFor(calculate(i), i, [0, 1])!.flips.savingsReturn
-    expect(found).toMatchObject({ kind: 'crossing', lowerBelow: 1, lowerAbove: 'tie' })
-  })
-
-  it.skip('OQ-flip-tie: a reported crossing names the option lower above it, not a tie on the way', () => {
+  it('OQ-flip-tie: a reported crossing names the option lower above it, not a tie on the way', () => {
     const found = flipsFor(calculate(i), i, [0, 1])!.flips.savingsReturn
     expect(found).toMatchObject({ kind: 'crossing', lowerBelow: 1, lowerAbove: 0 })
   })
