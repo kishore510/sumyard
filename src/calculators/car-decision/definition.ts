@@ -194,6 +194,20 @@ export const MONEY_FIELDS: readonly OptionField[] = [
   'purchaseFee',
 ]
 
+/** Optional costs and fees (inputs version 2): an empty box reads as nothing, stored as 0. */
+export const OPTIONAL_FIELDS: readonly OptionField[] = [
+  'insurance',
+  'maintenance',
+  'ved',
+  'other',
+  'deposit',
+  'arrangementFee',
+  'balloon',
+  'optionFee',
+  'purchaseFee',
+  'excessPerMile',
+]
+
 /** Decimal places a rate, a decimal and a percentage accept. */
 export const DECIMALS = 2
 

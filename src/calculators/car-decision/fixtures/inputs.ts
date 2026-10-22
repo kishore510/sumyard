@@ -1,4 +1,4 @@
-import { fromPounds } from '@/lib/money'
+import { fromPounds, type Money } from '@/lib/money'
 import type { CarDecisionInputs, OptionInputs } from '../definition'
 
 /*
@@ -7,8 +7,40 @@ import type { CarDecisionInputs, OptionInputs } from '../definition'
  * market, tax or VED figure.
  */
 
-/** Every field empty, as a fresh option starts (kind and choices as the page's defaults). */
+/** An option as inputs version 1 stored it: optional costs and fees could be empty (null). */
+export type V1Option = Omit<
+  OptionInputs,
+  'insurance' | 'maintenance' | 'ved' | 'other' | 'deposit' | 'arrangementFee' | 'balloon' | 'optionFee' | 'purchaseFee' | 'excessPerMile'
+> & {
+  readonly insurance: Money | null
+  readonly maintenance: Money | null
+  readonly ved: Money | null
+  readonly other: Money | null
+  readonly deposit: Money | null
+  readonly arrangementFee: Money | null
+  readonly balloon: Money | null
+  readonly optionFee: Money | null
+  readonly purchaseFee: Money | null
+  readonly excessPerMile: number | null
+}
+
+/** A fresh option (inputs version 2): every required box empty; optional costs and fees 0, as an empty box reads. */
 export const blank = (acquisition: OptionInputs['acquisition'] = 'cash'): OptionInputs => ({
+  ...blankV1(acquisition),
+  insurance: fromPounds(0),
+  maintenance: fromPounds(0),
+  ved: fromPounds(0),
+  other: fromPounds(0),
+  deposit: fromPounds(0),
+  arrangementFee: fromPounds(0),
+  balloon: fromPounds(0),
+  optionFee: fromPounds(0),
+  purchaseFee: fromPounds(0),
+  excessPerMile: 0,
+})
+
+/** Every field empty, as a fresh option started in inputs version 1 (3c-1), optional costs and fees included. */
+export const blankV1 = (acquisition: OptionInputs['acquisition'] = 'cash'): V1Option => ({
   name: '',
   acquisition,
   value: null,
@@ -143,3 +175,6 @@ export const inputs = (options: OptionInputs[], patch: Partial<CarDecisionInputs
   options,
   ...patch,
 })
+
+/** Inputs as version 1 stored them. */
+export type V1Inputs = Omit<CarDecisionInputs, 'options'> & { readonly options: readonly V1Option[] }

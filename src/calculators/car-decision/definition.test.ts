@@ -28,12 +28,13 @@ import {
   carDecisionCalculator,
   FIELD_LABELS,
   missingFields,
+  OPTIONAL_FIELDS,
   type OptionInputs,
   optionName,
   SHARED_LABELS,
   toEngineOption,
 } from './definition'
-import { blank, cash, electric, hp, inputs, keep, loan, pcp, perMile } from './fixtures/inputs'
+import { blank, blankV1, cash, electric, hp, inputs, keep, loan, pcp, perMile, type V1Inputs } from './fixtures/inputs'
 
 /*
  * Slice 3c-1: the car decision page's registry entry (definition.ts). Inputs
@@ -62,16 +63,16 @@ const pastPct = (r: Ratio, direction: 1 | -1) => ratio(r.numerator * 10_000 + di
 const pastDec = (r: Ratio, direction: 1 | -1) => ratio(r.numerator * 100 + direction * r.denominator, r.denominator * 100)
 
 describe('registration', () => {
-  it('is registered as car-decision, inputs version 1, no tax rules, after compound interest', () => {
+  it('is registered as car-decision, inputs version 2, no tax rules, after compound interest', () => {
     expect(CALCULATORS.get('car-decision')).toBe(carDecisionCalculator)
-    expect(carDecisionCalculator.inputsVersion).toBe(1)
+    expect(carDecisionCalculator.inputsVersion).toBe(2)
     expect(carDecisionCalculator.taxRules).toBe('none')
     expect(CALCULATORS.list().map((c) => c.id)).toEqual(['optimiser', 'compound-interest', 'car-decision'])
   })
 })
 
 describe('defaults', () => {
-  it('are valid: the starting horizon, the expected case, and every amount and rate empty', () => {
+  it('are valid: the starting horizon, the expected case, every required amount and rate empty, optional costs and fees 0', () => {
     expect(check(defaults())).toEqual({ ok: true, inputs: defaults() })
     const d = defaults()
     expect(d.horizonMonths).toBe(DEFAULT_HORIZON_MONTHS)
@@ -174,8 +175,14 @@ describe('validateInputs', () => {
     expect(errorsOf({ ...example, options: [option] })).toEqual([expect.stringContaining(FIELD_LABELS.term)])
   })
 
-  it('accepts every amount and rate empty (null)', () => {
+  it('accepts every required amount and rate empty (null)', () => {
     expect(check({ ...example, savingsReturn: null, generalIncrease: null, options: [blank('pcp')] }).ok).toBe(true)
+  })
+
+  it.each(OPTIONAL_FIELDS)('refuses an empty (null) %s: from inputs version 2 an optional cost or fee is stored as 0', (field) => {
+    const errors = errorsOf(withOption({ [field]: null }))
+    expect(errors).toHaveLength(1)
+    expect(errors[0]).toContain(FIELD_LABELS[field])
   })
 
   it('names every bad field, one error each', () => {
@@ -291,27 +298,68 @@ describe('validateInputs', () => {
 })
 
 describe('migrateInputs', () => {
-  it('has nothing to migrate from: version 1 is the first', () => {
-    for (const from of [0, 1, 2]) expect(() => carDecisionCalculator.migrateInputs(from, example)).toThrow()
+  const v1 = (options: V1Inputs['options'], patch: Partial<V1Inputs> = {}): V1Inputs => ({ ...example, options, ...patch })
+
+  it('the optional costs and fees are the cost and fee boxes, nothing required', () => {
+    expect(OPTIONAL_FIELDS).toEqual([
+      'insurance',
+      'maintenance',
+      'ved',
+      'other',
+      'deposit',
+      'arrangementFee',
+      'balloon',
+      'optionFee',
+      'purchaseFee',
+      'excessPerMile',
+    ])
+  })
+
+  it('from version 1: an empty optional cost or fee becomes 0; every other field is kept as it was', () => {
+    const old = v1([blankV1('pcp'), { ...blankV1('cash'), name: 'Named', value: fromPounds(5_000), endLow: null }])
+    const migrated = carDecisionCalculator.migrateInputs(1, old)
+    expect(migrated).toEqual({ ...example, options: [blank('pcp'), { ...blank('cash'), name: 'Named', value: fromPounds(5_000) }] })
+    expect(check(migrated).ok).toBe(true)
+  })
+
+  it('a complete version 1 scenario migrates to the same inputs, so every figure is identical', () => {
+    const old = v1([keep(), loan(), hp(), pcp()], { valueCase: 'low' })
+    const migrated = carDecisionCalculator.migrateInputs(1, old)
+    expect(migrated).toEqual(old)
+    const read = CALCULATORS.readInputs('car-decision', 1, old)
+    expect(read).toMatchObject({ ok: true })
+    expect(read.ok && calculate(read.inputs as CarDecisionInputs)).toEqual(calculate(old as CarDecisionInputs))
+  })
+
+  it('a version 1 option with an optional fee left empty is costed after migration as with 0 entered', () => {
+    const old = v1([{ ...cash(), insurance: null, other: null }])
+    const read = CALCULATORS.readInputs('car-decision', 1, old)
+    if (!read.ok) throw new Error(read.message)
+    expect(calculate(read.inputs as CarDecisionInputs)).toEqual(
+      calculate(inputs([{ ...cash(), insurance: fromPounds(0), other: fromPounds(0) }])),
+    )
+  })
+
+  it('leaves what it can’t read for validation to refuse, and has nothing to migrate from other versions', () => {
+    for (const raw of [null, 'x', { ...example, options: 'none' }, { ...example, options: [null] }]) {
+      expect(check(carDecisionCalculator.migrateInputs(1, raw)).ok).toBe(false)
+    }
+    for (const from of [0, 2, 3]) expect(() => carDecisionCalculator.migrateInputs(from, example)).toThrow()
   })
 
   it('inputs from a newer version are refused, not guessed', () => {
-    expect(CALCULATORS.readInputs('car-decision', 2, example)).toMatchObject({ ok: false, reason: 'newer-inputs' })
+    expect(CALCULATORS.readInputs('car-decision', 3, example)).toMatchObject({ ok: false, reason: 'newer-inputs' })
   })
 })
 
 describe('missingFields', () => {
-  it('a blank option needs the car, its running costs and its fuel figures; cash adds nothing', () => {
+  it('a blank option needs the car and its fuel figures; optional running costs read as 0; cash adds nothing', () => {
     expect(missingFields(blank('cash'))).toEqual([
       'value',
       'endLow',
       'endExpected',
       'endHigh',
       'annualMileage',
-      'insurance',
-      'maintenance',
-      'ved',
-      'other',
       'milesPerGallon',
       'pencePerLitre',
       'fuelPriceChange',
@@ -333,18 +381,9 @@ describe('missingFields', () => {
   it('finance fields by kind', () => {
     const finance = (kind: OptionInputs['acquisition']) => missingFields({ ...cash(), acquisition: kind })
     expect(finance('keep')).toEqual([])
-    expect(finance('loan')).toEqual(['loanAmount', 'term', 'rate', 'arrangementFee'])
-    expect(finance('hire-purchase')).toEqual(['deposit', 'term', 'rate', 'arrangementFee', 'balloon', 'optionFee'])
-    expect(finance('pcp')).toEqual([
-      'deposit',
-      'term',
-      'rate',
-      'arrangementFee',
-      'finalPayment',
-      'purchaseFee',
-      'mileageAllowance',
-      'excessPerMile',
-    ])
+    expect(finance('loan')).toEqual(['loanAmount', 'term', 'rate'])
+    expect(finance('hire-purchase')).toEqual(['term', 'rate'])
+    expect(finance('pcp')).toEqual(['term', 'rate', 'finalPayment', 'mileageAllowance'])
   })
 })
 

@@ -20,6 +20,10 @@ export interface TextValueProps<T> {
   onChange: (value: T) => void
   onValidityChange?: (valid: boolean) => void
   disabled?: boolean
+  /** Shown in an empty box. */
+  placeholder?: string
+  /** What an empty box is: valid, this value; and this value shows as an empty box. */
+  emptyValue?: T
 }
 
 /** A typed input's props: a value always, or (with `allowEmpty`) a value or null for an empty box. */
