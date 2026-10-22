@@ -1,7 +1,7 @@
 {
   "name": "sumyard",
   "private": true,
-  "version": "0.22.1",
+  "version": "0.23.0",
   "description": "Sumyard: personal UK finance calculators.",
   "type": "module",
   "scripts": {

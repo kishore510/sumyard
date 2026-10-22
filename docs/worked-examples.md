@@ -178,6 +178,8 @@ No published worked example of a car's ownership cost was used. These are hand-c
 | OWN-4 | £10,000 paid at the start, 10% savings return, 12 months | Opportunity cost £1,000 | F18 | **Yes** |
 | OWN-5 | PCP: £20,000 car, £2,000 deposit, £8,000 final payment, 24 months at no interest; handed back on a 36-month horizon; 4,000 miles over the allowance at 10p | Coverage 24 months, flagged; net cost £12,400 (deposit, payments, excess); no equity after hand-back | F19, F20, F26 | **Yes** |
 | OWN-6 | Cost per mile at 50 mpg and 150p a litre | 150 × 4.54609 ÷ 50 = 13.63827p a mile | F21, CO-1 | **Yes** |
+| OWN-7 | Keep, finance owed (3e, fixture a): car worth £12,000, settlement £10,800, 24 payments of £450, no final payment, ends at £6,000 over 48 months, no running costs or return | Implied rate nothing; sale given up £1,200; cash out £10,800; interest nothing; net cost £6,000 (depreciation only); net cost at month 0 nothing | F44, F45 | **Yes** (`existing.test.ts`) |
+| OWN-8 | Keep, finance owed (3e, fixture d): worth £15,000, settlement £9,000, 12 payments of £600 and £2,000 at the end, ends at £9,000 over 48 months | Interest 12 × £600 + £2,000 − £9,000 = £200; net cost less running costs £6,000 + £200 = £6,200; nothing owed after month 12 | F44, F46, F49 | **Yes** (`existing.test.ts`) |
 
 ## HMRC cross-check harness
 

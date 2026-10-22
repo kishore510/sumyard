@@ -1,6 +1,6 @@
 # Phase plan: Sumyard
 
-Last updated: 22 October 2026 (3d-1.1 car page fixes Done, 0.22.1; 3d-1 car results redesign Done, 0.22.0; 1b-iii Done, 0.21.0; slices 1b, 2 and 3 built, owner checks open)
+Last updated: 22 October 2026 (3e finance on a kept car Done, 0.23.0; 3d-1.1 car page fixes Done, 0.22.1; 3d-1 car results redesign Done, 0.22.0; 1b-iii Done, 0.21.0; slices 1b, 2 and 3 built, owner checks open)
 
 Sumyard is a set of personal UK finance calculators in one clean, ad-free web app, for the owner's own use. Constraints: client-side only, a static site on GitHub Pages, UK rules from versioned per-tax-year config, illustrative not advice.
 
@@ -34,6 +34,7 @@ Rules for this file: add a row when scope is added; update the Status cell when 
 | 3c-3 Fifth chart style | A fourth non-danger line style in the shared Chart (Chalkline's teal swatch, its own dash and triangle marker); the car page's four options drawn without the danger colour; a guard that no chart series uses it unless it is a genuine warning | Done (0.20.1, PR #26, 22 October 2026) |
 | 3d-1 Car results redesign | Answer first: verdict sentence (lowest net cost, gap a month and over the horizon, savings return used), switch cost against keeping, bottom line, low/expected/high table; cards renamed "Average cost per month owned" with the largest part and money in and out; plain-English labels (UI and pure derived functions; no engine, config, storage or inputs-version change) | Done (0.22.0, PR #28, 22 October 2026) |
 | 3d-1.1 Car page fixes | Empty running costs listed on each card, and under the verdict when options differ; flip sentence for a crossing into a tie (engine gap logged, OQ-flip-tie); side-by-side table readable at 360 px and matching the cards; cards top-aligned; Option header on one line; alternative row only for a new pair; legend without "(line)"; monthly penny drift logged again with the exact-twelfths proposal (UI and pure derived functions; no engine, config, storage or inputs-version change) | Done (0.22.1, PR #29, 22 October 2026) |
+| 3e Keep a car with finance still owed | Keep option: "still owe finance on it?" switch, settlement figure, monthly payment, payments left, final payment; sale given up = value − settlement; only interest a finance cost; rate implied by 3a's solver, labelled not the lender's APR; negative equity now flagged; inputs version 3 with identical migrated results; early settlement charges, hand-back of an existing PCP and a second agreement stay out | Done (0.23.0, PR #30, 22 October 2026) |
 | Take-home pay | Shipped inside 1b (1b-i to 0.12.0) at `#/c/optimiser`; 1b-ii added the optimiser to the same page | Done (0.14.0, PR #17, 21 October 2026) |
 | Mortgage overpayment | Check daily vs monthly interest handling per lender | Not started |
 | Loan / APR | Verify the APR definition against official guidance | Not started |

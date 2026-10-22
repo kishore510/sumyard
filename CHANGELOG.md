@@ -4,6 +4,12 @@ All notable changes to Sumyard are listed here, newest first. The format follows
 
 ## [Unreleased]
 
+## [0.23.0] - 2026-10-22
+
+### Added
+- **Car decision:** a car you keep can have finance still owed on it. Turn on **Still owe finance on it?** in its Finance section and enter what the lender says you owe to clear it today, the monthly payment, how many payments are left and any final payment. Keeping then counts what a sale today would leave after clearing the finance as a sale given up, and only the interest in the payments counts as a cost.
+- The card shows the **implied rate from your figures, not the lender’s APR**, the payments left and the final payment in **Money in and out**, and flags **negative equity now** when you owe more than the car is worth today. Saved scenarios and compare include the new boxes.
+
 ## [0.22.1] - 2026-10-22
 
 ### Fixed

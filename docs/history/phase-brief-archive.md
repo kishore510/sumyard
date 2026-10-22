@@ -732,3 +732,26 @@ Pot projection, growth, age or inflation; any config, tax rule or engine change;
 - 22 October 2026, part 1b-iii (0.21.0, user-visible): pre-check passed (PR #26 merged, Pages deploy green; this file had moved on to slice 3, not 1b-ii). `compareContributions`, the picker, the change summary, the cost chart, milestones and warnings replace the dropdown, the zoomed chart and the compare block. Tests red then green; three mutation spot-checks caught.
 - Differs from the brief: the slider's top is the engine's maximum, not the allowance headroom; the chart is labelled as an average from no contribution; the Year / Month choice no longer drives the chart; decisions numbered U23 onwards (U10 to U22 were taken).
 - Not verified: a real phone, Safari, Firefox, a screen reader, the deployed site. Browser matrix: Chromium at 360, 768, 1024 and 1280 px, light and dark, nine states, 72 runs.
+
+### Part 3d-1: car decision results redesign (0.22.0)
+
+#### Goal
+
+On the car decision page (`#/c/car-decision`), the results answer "which has the lowest net cost, by how much, and why" before any detail; the detail stays, below. Decisions U29 to U33 (`docs/ui-patterns.md`).
+
+#### Scope
+
+- `narrative.ts` (pure, from `compareOptions`): `verdict`, `switchCosts`, `largestCost`, `bottomLine`, `scenarioTable`, `moneyFlows`.
+- `CarAnswer.tsx`: the verdict and switch cost, the bottom line and the low/expected/high table first in the results column; the phone bar carries the verdict; one polite announcement after settle.
+- Cards: "Average cost per month owned", the largest part, money in and out; plain-English value labels; the effective rate's fees.
+
+#### Out of scope
+
+Any engine, config, storage or inputs-version change (the monthly penny drift is logged in `docs/open-questions.md`, not fixed); other calculators.
+
+## Archive: last-session entry, part 3d-1.1
+
+- 22 October 2026, 3d-1.1 (0.22.1, user-visible): pre-check passed (PR #28 merged as bc7378d). Eight car page fixes: empty running costs on cards and under the verdict; the flip sentence for a crossing into a tie; the side-by-side table readable at 360 px and matching the cards; cards top-aligned; Option header; alternative row only for a new pair; legend without "(line)". Tests red then green; 7 mutants caught.
+- Item 2: `flipPoints` returns a real crossing, not a clamped bound, but stops on a penny-rounding tie band, so the engine doesn't say which option is lower above the threshold. The sentence now says the two are level there and that the search can't say what comes above. It does not say "no crossing found", because there is a crossing. The engine gap is logged (OQ-flip-tie) with a skipped test that fails today. Item 8 is logged again with the exact-twelfths proposal.
+- Also fixed: the phone bar overflowed with an 80-character name (from 3d-1). Matrix: Chromium + axe 4.10, 360/768/1024/1280, light and dark, two pages, 184 checks clean; `main` fails 11 of the same checks at 360 px.
+- Not verified: a real phone, Safari, Firefox, a screen reader, the deployed site.
