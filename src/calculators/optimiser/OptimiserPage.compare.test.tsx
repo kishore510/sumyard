@@ -161,8 +161,12 @@ describe('contribution picker', () => {
 
   it('the target is not stored', () => {
     type(box('opt-salary'), '60,000')
+    const before = JSON.stringify(session.get().inputs)
     type(box('opt-target'), '6,000')
-    expect(JSON.stringify(session.get().inputs)).not.toContain(String(toPence(fromPounds(6_000))))
+    slide(fromPounds(7_000))
+    click($('[data-pill="maximum"]'))
+    expect(JSON.stringify(session.get().inputs)).toBe(before)
+    expect(JSON.stringify(localStorage)).not.toMatch(/target/i)
   })
 })
 
@@ -188,7 +192,7 @@ describe('change summary', () => {
       expect(cell(measure, 'year', 'now')).toBe(money(m.annual.now))
       expect(cell(measure, 'year', 'new')).toBe(money(m.annual.new))
       expect(cell(measure, 'year', 'change')).toBe(formatGBPChange(m.annual.change, 'pence'))
-      expect($(`[data-compare-card="${measure}"] tr[data-row="percent"]`)).not.toBeNull()
+      expect($(`[data-compare-card="${measure}"] tr[data-row="percentChange"]`)).not.toBeNull()
     }
     // Column and row labels.
     const head = $('[data-compare-card="takeHome"] thead')!.textContent!
@@ -201,7 +205,7 @@ describe('change summary', () => {
     type(box('opt-salary'), '60,000')
     type(box('opt-employee'), '3,000')
     type(box('opt-target'), '6,000')
-    expect(cell('ownContribution', 'percent', 'change')).toBe('+100%')
+    expect(cell('ownContribution', 'percentChange', 'change')).toBe('+100%')
     expect(cell('ownContribution', 'share', 'change')).toBe('+5 pts')
     expect($('[data-compare-card="ownContribution"]')!.textContent).toContain('pts')
   })
@@ -239,7 +243,7 @@ describe('change summary', () => {
   it('the % change is left out, in words, when the figure now is nothing', () => {
     type(box('opt-salary'), '60,000')
     type(box('opt-target'), '3,000')
-    expect(cell('ownContribution', 'percent', 'change')).not.toMatch(/%$/)
+    expect(cell('ownContribution', 'percentChange', 'change')).not.toMatch(/%$/)
   })
 
   it('the old “now and the one you are looking at” block, the view switch and the range switch are gone', () => {
@@ -328,14 +332,18 @@ describe('warnings at the target and elsewhere', () => {
   it('warnings elsewhere in the range are counted in a Section summary and say what the range measures', () => {
     type(box('opt-salary'), '300,000')
     click($('[data-pill="now"]'))
-    const codes = new Set(sweep().points.flatMap((p) => p.warnings.map((w) => w.code)))
+    const result = sweep()
+    const atNow = new Set(result.points.find((p) => p.contribution === result.currentContribution)!.warnings.map((w) => w.code))
+    const codes = new Set(result.points.flatMap((p) => p.warnings.map((w) => w.code)).filter((code) => !atNow.has(code)))
     expect(codes.size).toBeGreaterThan(0)
     const summary = $('#opt-other-warnings-summary')!.textContent!
-    expect(summary).toMatch(new RegExp(`${codes.size} warnings?`))
+    expect(summary).toMatch(new RegExp(`${codes.size} warnings? elsewhere`))
+    expect($('[data-warning-count]')!.textContent).toMatch(
+      new RegExp(`${atNow.size === 0 ? 'No warnings' : `${atNow.size} warnings?`} at this contribution`),
+    )
     const panel = $('#opt-other-warnings-panel')!
     expect(panel.textContent).toMatch(/if your own contribution is/)
     expect(panel.textContent).not.toMatch(/From £[\d,.]+ a year to/)
-    expect($('[data-warning-count]')!.textContent).toMatch(/No warnings at this contribution/)
   })
 
   it('with no warnings anywhere, the line says so', () => {
