@@ -164,6 +164,19 @@ No worked APR example is published in CONC App 1 or SI 2010/1011 (`docs/verifica
 | APR-3 | £1,000 drawn; a £100 charge at the drawdown; £990 repaid at 12 months | £900 net: X = 990 / 900 − 1 = 10% | CR-1, CR-2 (charges in the total charge for credit) | **Yes**, exactly |
 | APR-4 | £100,000 drawn; £112,350.00 repaid at 12 months. Also £112,349.99 | X = 12.35% exactly, shown 12.4% (a following 5 rounds up); X = 12.34999%, shown 12.3% | CR-3 | **Yes** |
 
+## Car ownership (slice 3b)
+
+No published worked example of a car's ownership cost was used. These are hand-checkable cases of decisions F17 to F26, not published examples. Mirrored in `src/calculators/car-ownership/calc.test.ts`.
+
+| Id | Inputs | Result by hand | Basis | Mirrored |
+|---|---|---|---|---|
+| OWN-1 | Cash, £20,000 car worth £10,000 at 48 months; no running costs; no return | Net cost £10,000 (price − end value); £208.33 a month of coverage | F18 | **Yes** |
+| OWN-2 | Keep a car worth £15,000, £7,000 at the horizon; and cash for the same car; 5% savings return | Equal net costs and breakdowns; keep pays no cash | F18 | **Yes** |
+| OWN-3 | A value falling from £100 to £25 over 24 months | £50 at month 12, £70.71 at month 6; the yearly change −50% | F17 | **Yes** |
+| OWN-4 | £10,000 paid at the start, 10% savings return, 12 months | Opportunity cost £1,000 | F18 | **Yes** |
+| OWN-5 | PCP: £20,000 car, £2,000 deposit, £8,000 final payment, 24 months at no interest; handed back on a 36-month horizon; 4,000 miles over the allowance at 10p | Coverage 24 months, flagged; net cost £12,400 (deposit, payments, excess); no equity after hand-back | F19, F20, F26 | **Yes** |
+| OWN-6 | Cost per mile at 50 mpg and 150p a litre | 150 × 4.54609 ÷ 50 = 13.63827p a mile | F21, CO-1 | **Yes** |
+
 ## HMRC cross-check harness
 
 `docs/hmrc-cross-checks.json` holds 72 input cases derived from the verified 2026-27 config: taper start less £1, at the start, plus £1, the zone's midpoint, the zero point and £10,000 above it; for rUK and Scotland; with no student loan and with each plan alone (1, 2, 4, 5, postgraduate). Every expected result is `null`, so `crossChecks.test.ts` lists each case as a todo. The owner fills them from HMRC's own online calculators (pounds strings, the calculator's www.gov.uk page and the date checked); a filled case is then compared with the engine, within the file's `tolerancePence` (0 now). The test fails if the cases drift from the config.

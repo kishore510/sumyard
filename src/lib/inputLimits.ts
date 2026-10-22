@@ -59,3 +59,30 @@ export const MAX_MILEAGE = 1_000_000
 
 /** Car finance: the largest excess mileage charge per mile (F13). */
 export const MAX_EXCESS_PER_MILE = fromPounds(10)
+
+/** Car ownership: the most options compared at once (decision F16 in docs/modelling-decisions-car.md). */
+export const MAX_CAR_OPTIONS = 4
+
+/** Car ownership: the longest horizon, in whole months (F30). */
+export const MAX_HORIZON_MONTHS = 240
+
+/** Car ownership: a horizon value may be at most this times the starting value (F17, F30): zero depreciation and a modest rise are allowed. */
+export const MAX_HORIZON_VALUE_RATIO = ratio(3, 2)
+
+/** Car ownership: the most miles a year (F30). */
+export const MAX_ANNUAL_MILEAGE = 100_000
+
+/** Car ownership: the largest after-tax savings return a year, for the opportunity cost (F18, F30). Not a market figure. */
+export const MAX_SAVINGS_RETURN = ratio(1, 5)
+
+/** Car ownership: a yearly increase in running costs or the fuel price lies within plus or minus this (F21, F30). */
+export const PRICE_CHANGE_BOUND = ratio(1, 2)
+
+/** Car ownership: the most miles per gallon accepted (F30). */
+export const MAX_MILES_PER_GALLON = ratio(1_000, 1)
+
+/** Car ownership: the most miles per kWh accepted (F30). */
+export const MAX_MILES_PER_KWH = ratio(20, 1)
+
+/** Car ownership: the largest price per litre, per kWh or per mile, in pence (F30). */
+export const MAX_PENCE_PER_UNIT = ratio(1_000, 1)

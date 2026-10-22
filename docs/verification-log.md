@@ -274,3 +274,15 @@ Read on 21 October 2026, in slice 3a, before any engine code, to verify the APR 
 
 Closed: CR-1, CR-2, CR-3 (Verified); CR-10 partly (HP balloon). Still OPEN: CR-10 for a PCP's optional final payment and for purchase and option fees; CR-12 and CR-13 (the 1974 Act and the 2004 regulations were not read in 3a.1).
 
+
+## Car ownership (slice 3b)
+
+Read on 22 October 2026, in slice 3b step 1, before any engine code. No tax config value is involved; the only figure is a unit conversion, kept in `src/lib/units.ts`. Decisions: `docs/modelling-decisions-car.md` (F16 to F31).
+
+**Network.** www.gov.uk and www.legislation.gov.uk were reachable. A GOV.UK search for "4.54609", "litres per gallon" and "imperial gallon" found no page that defines the gallon: Advisory fuel rates (https://www.gov.uk/guidance/advisory-fuel-rates, updated 21 August 2026) lists a price per litre and per gallon but no definition, and HCOS4650 says only that "the necessary conversions from kilometres to miles and gallons to litres" must be done. The definition is in the Act below, on legislation.gov.uk (not www.gov.uk; this is a unit, not a tax-config value, and needs no allowlist change: the URL appears only in this log).
+
+| # | Topic | Page | URL | Read on | Line read | Status | Engine |
+|---|---|---|---|---|---|---|---|
+| CO-1 | Litres in an imperial gallon | Weights and Measures Act 1985, Schedule 1 (revised text, valid from 3 May 2023): Part VI "Definitions of certain units which may not be used for trade except as supplementary indications", Measurement of capacity; and the metric capacity units | https://www.legislation.gov.uk/ukpga/1985/72/schedule/1 | 2026-10-22 | "GALLON = 4.54609 cubic decimetres."; "LITRE = a cubic decimetre." | **Verified** | F21: `LITRES_PER_GALLON` = 454609 / 100000 in `src/lib/units.ts`; `costPerMile` (a) = price per litre × litres per gallon ÷ miles per gallon. Miles per gallon is taken as miles per imperial gallon (the UK figure), which the page labels. |
+| CO-2 | Kilometres in a mile | Not needed: no input is in kilometres | — | — | — | Not used | None. |
+| CO-3 | VED, EV tax, benefit in kind | Not read: out of scope (F4) | — | — | — | Not modelled | VED is an amount the person enters. |
