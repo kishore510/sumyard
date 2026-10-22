@@ -146,6 +146,29 @@ describe('ordering', () => {
     expect(rule).toMatch(/under these assumptions/i)
   })
 
+  it('a partial option with the lowest net cost per month still comes after every full-coverage option', () => {
+    const cheapHandBack = pcp({
+      name: 'Short PCP',
+      pcpEnd: 'hand-back',
+      term: 24,
+      value: fromPounds(8_000),
+      endExpected: fromPounds(5_000),
+      deposit: fromPounds(500),
+      finalPayment: fromPounds(5_000),
+      rate: '0',
+    })
+    const dear = cash({ name: 'Dear car', value: fromPounds(40_000), endLow: fromPounds(8_000), endExpected: fromPounds(10_000) })
+    const i = inputs([cheapHandBack, dear, keep()], { horizonMonths: 48 })
+    set(i)
+    const result = engine(i)
+    const perMonth = (k: number) => toPence(result.options[k]!.cases.expected.netCostPerCoverageMonth)
+    // The precondition: the partial option is cheaper per month than a full one, so only the coverage rule puts it last.
+    expect(result.options[0]!.fullCoverage).toBe(false)
+    expect(perMonth(0)).toBeLessThan(perMonth(1))
+    expect(cards().map((c) => Number(c.getAttribute('data-option-index'))).at(-1)).toBe(0)
+    expect(text($('[data-headline]', card(0)))).toBe(money(result.options[0]!.cases.expected.netCostPerCoverageMonth))
+  })
+
   it('states ties', () => {
     set(inputs([cash({ name: 'Red' }), cash({ name: 'Blue' })]))
     expect(text($('[data-ties]'))).toMatch(/Red and Blue.*tied/)
