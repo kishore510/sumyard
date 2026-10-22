@@ -1,6 +1,6 @@
 # PHASE-BRIEF: Slice 3 Car decision
 
-Status: 3a (finance engine) Done (0.17.0, PR #21); 3a.1 (APR) Done (0.17.1, PR #22); 3b (cost-of-ownership engine) Done (0.18.0, PR #23); 3c-1 (the page) Done (0.19.0, PR #24); 3c-2 (chart, sensitivity, polish) built (0.20.0), In progress until it merges. Slices 1b and 2 are built and stay open in `PLAN.md` until the owner's checks below are done. Status per part lives only in `PLAN.md`. Finished part scopes are in `docs/history/phase-brief-archive.md`.
+Status: 3a (finance engine) Done (0.17.0, PR #21); 3a.1 (APR) Done (0.17.1, PR #22); 3b (cost-of-ownership engine) Done (0.18.0, PR #23); 3c-1 (the page) Done (0.19.0, PR #24); 3c-2 (chart, sensitivity, polish) Done (0.20.0, PR #25). Slice 3 is built; it stays In progress until the owner's checks below. Slices 1b and 2 are built and stay open in `PLAN.md` until the owner's checks below are done. Status per part lives only in `PLAN.md`. Finished part scopes are in `docs/history/phase-brief-archive.md`.
 
 ## Docs rule
 
@@ -32,13 +32,13 @@ Slice 3a: confirm decisions F5 to F14 and the bounds (`src/calculators/car-finan
 
 ## Last session
 
-- 22 October 2026, part 3c-2 (0.20.0, user-visible): pre-check passed, `DEFAULT_HORIZON_MONTHS` = 48 recorded; optional boxes read as nothing (inputs version 2, migration); shared Chart with four line styles, end labels and position selection; the crossover chart with tap-to-pick readout, flip points for any pair, sensitivity on demand; tests red then green (100-input property); mutation spot-checks all caught; browser matrix 158 checks clean after three fixes.
+- 22 October 2026, part 3c-2 (0.20.0, PR #25, user-visible): pre-check passed, `DEFAULT_HORIZON_MONTHS` = 48 recorded; optional boxes read as nothing (inputs version 2, migration); shared Chart with four line styles, end labels and position selection; the crossover chart with tap-to-pick readout, flip points for any pair, sensitivity on demand; tests red then green (100-input property); mutation spot-checks all caught; browser matrix 158 checks clean after three fixes.
 - Differs from the brief: sensitivity is worked out only while its section is open (Lighthouse put 2.6 s of blocking time on it on a slow phone); the end value moves in the case shown only; a fourth option is drawn in the danger colour (the Chart's only fourth style); flip points are measured over the whole horizon (the engine's contract), said on the page.
 - Not verified: a real phone, Safari, Firefox, a screen reader, the deployed site. Flip search still one task of up to about 430 ms after settling (a worker needs the owner's go-ahead). OPEN: CR-10 carries over.
 
 ## Next
 
-- Merge 3c-2, then mark it Done in `PLAN.md`. Slice 3 is then built; it stays In progress until the owner's checks above (F5 to F15, F24 to F31, F32 to F42, the cross-checks, a real phone) are done.
+- Slice 3 is built; it stays In progress until the owner's checks above (F5 to F15, F24 to F31, F32 to F42, the cross-checks, a real phone) are done.
 - CR-10: settle from a source whether a PCP's optional final payment and purchase or option fees count in the APR, before any card shows an APR for them.
 - Then propose the next slice: **mortgage overpayment** (`PLAN.md`), its brief and decisions first (daily versus monthly interest per lender).
 

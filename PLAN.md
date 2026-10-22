@@ -1,6 +1,6 @@
 # Phase plan: Sumyard
 
-Last updated: 22 October 2026 (3c-2 In progress, 0.20.0: slice 3 built, owner checks open; slices 1b and 2 built, owner checks open)
+Last updated: 22 October 2026 (3c-2 Done, 0.20.0: slice 3 built, owner checks open; slices 1b and 2 built, owner checks open)
 
 Sumyard is a set of personal UK finance calculators in one clean, ad-free web app, for the owner's own use. Constraints: client-side only, a static site on GitHub Pages, UK rules from versioned per-tax-year config, illustrative not advice.
 
@@ -29,7 +29,7 @@ Rules for this file: add a row when scope is added; update the Status cell when 
 | 3a.1 APR verification | Statutory APR read from CONC App 1.2 and SI 2010/1011 (CR-1 to CR-3 verified, CR-10 partly); `apr` from dated cash flows (internal, no UI) | Done (0.17.1, PR #22, 22 October 2026) |
 | 3b Cost-of-ownership engine | Up to four options (keep, cash, loan, HP, PCP buy or hand back) on one horizon: value curve and low/expected/high cases, running costs and fuel incl. electric, equity, opportunity cost, coverage, net cost per month of coverage, comparison and flip points (internal, no UI) | Done (0.18.0, PR #23, 22 October 2026) |
 | 3c-1 Car decision page | The page on 3a and 3b at `#/c/car-decision`: shared horizon and end-value case, option editor (up to four, sections), one card per option (net cost per month of coverage and total, coverage, equity, cash out, breakdown), order and flip points in words, APR or effective-rate label, comparison table, scenarios, compare, Help | Done (0.19.0, PR #24, 22 October 2026) |
-| 3c-2 Car crossover and sensitivity | Cumulative net cost chart with crossovers and tap-to-pick month readout (shared Chart: four line styles, selection, table fallback), sensitivity per option, flip points for any pair, empty optional boxes read as nothing (inputs version 2), browser matrix, polish | In progress |
+| 3c-2 Car crossover and sensitivity | Cumulative net cost chart with crossovers and tap-to-pick month readout (shared Chart: four line styles, selection, table fallback), sensitivity per option, flip points for any pair, empty optional boxes read as nothing (inputs version 2), browser matrix, polish | Done (0.20.0, PR #25, 22 October 2026) |
 | Take-home pay | Shipped inside 1b (1b-i to 0.12.0) at `#/c/optimiser`; 1b-ii added the optimiser to the same page | Done (0.14.0, PR #17, 21 October 2026) |
 | Mortgage overpayment | Check daily vs monthly interest handling per lender | Not started |
 | Loan / APR | Verify the APR definition against official guidance | Not started |
