@@ -2,13 +2,16 @@ import { describe, expect, it } from 'vitest'
 import {
   formatAmountInput,
   formatGBP,
+  formatGBPChange,
   formatGBPCompact,
   formatGBPDelta,
   formatIsoDate,
   formatPence,
   formatPercent,
+  formatPercentChange,
   formatPercentFixed,
   formatPercentPointDelta,
+  formatPointsChange,
 } from './format'
 import { exact, fromPence, ratio } from './money'
 
@@ -146,6 +149,28 @@ describe('deltas', () => {
     expect(formatPercentPointDelta(ratio(25, 1000))).toBe('+2.5 percentage points')
     expect(formatPercentPointDelta(ratio(-1, 100))).toBe('-1 percentage point')
     expect(formatPercentPointDelta(ratio(0, 1))).toBe('No change')
+  })
+})
+
+describe('signed changes with the true minus sign (0.21.0)', () => {
+  it('formatGBPChange: plus, true minus, no sign at zero', () => {
+    expect(formatGBPChange(p(1234), 'pence')).toBe('+£12.34')
+    expect(formatGBPChange(p(-1234), 'pence')).toBe('\u2212£12.34')
+    expect(formatGBPChange(p(0), 'pence')).toBe('£0.00')
+    expect(formatGBPChange(p(-40), 'pounds')).toBe('£0')
+  })
+
+  it('formatPercentChange: a signed percentage, at most one place', () => {
+    expect(formatPercentChange(ratio(1, 4))).toBe('+25%')
+    expect(formatPercentChange(ratio(-1, 3))).toBe('\u221233.3%')
+    expect(formatPercentChange(ratio(0, 1))).toBe('0%')
+  })
+
+  it('formatPointsChange: percentage points as pts, distinct from percent', () => {
+    expect(formatPointsChange(ratio(25, 1000))).toBe('+2.5 pts')
+    expect(formatPointsChange(ratio(-1, 100))).toBe('\u22121 pt')
+    expect(formatPointsChange(ratio(0, 1))).toBe('0 pts')
+    expect(formatPointsChange(ratio(1, 20))).not.toContain('%')
   })
 })
 

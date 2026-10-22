@@ -1,10 +1,7 @@
-import { add, compare, fromPounds, type Money, max, min, mulRound, subtract, toPence, ZERO } from '@/lib/money'
-import { ZOOM_MARGIN } from '@/lib/sweep'
+import { compare, fromPounds, type Money, mulRound, subtract, toPence } from '@/lib/money'
 import { type BreakdownPeriod, perPeriod } from './breakdown'
-import type { ChartView } from './chartData'
 import type {
   ChildcareScheme,
-  Cliff,
   EngineWarning,
   OptimiseResult,
   OptimiserPoint,
@@ -14,11 +11,12 @@ import type {
 } from './types'
 
 /*
- * Reading optimise()'s result on the take-home page (part 1b-ii-b): the
- * point at the current contribution, the point nearest a chosen one, and
- * each point's change against now, for the page's period, and the zoomed
- * range around the current contribution. Pure; no tax figure here, and no
- * point is called the best.
+ * Reading optimise()'s result on the take-home page (part 1b-ii-b; the
+ * compare redesign removed the zoomed range, the change against now and the
+ * compare rows): the point at the current contribution, the point nearest a
+ * chosen one, the cost of more pension, thresholds in words, and warnings
+ * and childcare by run. Pure; no tax figure here, and no point is called
+ * the best.
  */
 
 /** The point at the current contribution (optimise() always includes it). */
@@ -34,54 +32,6 @@ export function nearestPoint(points: readonly OptimiserPoint[], contribution: Mo
     if (gap < Math.abs(toPence(subtract(best.contribution, contribution)))) best = point
   }
   return best
-}
-
-/** Each point's value for the period less the value at `now` for the period: signed, nothing at now. */
-export function changeVsNow(points: readonly OptimiserPoint[], now: OptimiserPoint, view: ChartView, period: BreakdownPeriod): Money[] {
-  const base = perPeriod(now[view], period)
-  return points.map((point) => subtract(perPeriod(point[view], period), base))
-}
-
-export interface ZoomRange {
-  readonly from: Money
-  readonly to: Money
-}
-
-/**
- * The chart's default range: from a margin below the current contribution to
- * a margin past the furthest threshold point ahead of it (any threshold the
- * engine places above the current contribution and within the modelled
- * range), inside nothing to the maximum. The margin is ZOOM_MARGIN of that
- * span, at least two sweep steps. Null when no threshold point lies ahead or
- * the range would be the whole sweep: the chart then shows every point.
- */
-export function zoomRange(result: OptimiseResult): ZoomRange | null {
-  const current = result.currentContribution
-  const ahead = result.thresholds.flatMap((t) =>
-    t.contribution !== null && compare(t.contribution, current) > 0 && compare(t.contribution, result.maximumContribution) <= 0
-      ? [t.contribution]
-      : [],
-  )
-  if (ahead.length === 0) return null
-  const top = max(ahead[0]!, ...ahead)
-  const margin = max(mulRound(subtract(top, current), ZOOM_MARGIN, 'nearest'), add(result.step, result.step))
-  const from = max(ZERO, subtract(current, margin))
-  const to = min(result.maximumContribution, add(top, margin))
-  if (compare(from, ZERO) === 0 && compare(to, result.maximumContribution) === 0) return null
-  return { from, to }
-}
-
-/** The points and cliffs inside a range (both ends included); all of them for no range. */
-export function pointsIn(
-  result: OptimiseResult,
-  range: ZoomRange | null,
-): { readonly points: readonly OptimiserPoint[]; readonly cliffs: readonly Cliff[] } {
-  if (range === null) return { points: result.points, cliffs: result.cliffs }
-  const inside = (amount: Money) => compare(amount, range.from) >= 0 && compare(amount, range.to) <= 0
-  return {
-    points: result.points.filter((point) => inside(point.contribution)),
-    cliffs: result.cliffs.filter((cliff) => inside(cliff.from) && inside(cliff.to)),
-  }
 }
 
 /** The unit the cost of more pension is said in. */
@@ -131,6 +81,9 @@ const METHOD_WORDS: Record<PensionMethod, string> = {
   reliefAtSource: 'relief at source',
 }
 
+/** Said with the Child Benefit charge's full-charge point: the whole charge still applies there. */
+export const FULL_CHARGE_NOTE = 'At the full-charge point the whole charge still applies: it first falls a penny below it.'
+
 export interface ThresholdWords {
   readonly name: string
   readonly status: 'alreadyUnder' | 'contributeMore' | 'outOfReach'
@@ -154,10 +107,7 @@ export function thresholdWords(
   const limit = `${gbp(threshold.limit)} for the year`
   const suffix = period === 'year' ? ' a year' : ' a month'
   const more = (extra: Money) => `${gbp(perPeriod(extra, period, 'up'))} more${suffix}`
-  const fullCharge =
-    threshold.threshold === 'hicbcFullCharge'
-      ? ' At the full-charge point the whole charge still applies: it first falls a penny below it.'
-      : ''
+  const fullCharge = threshold.threshold === 'hicbcFullCharge' ? ` ${FULL_CHARGE_NOTE}` : ''
   if (threshold.status === 'alreadyMet')
     return {
       name,
@@ -232,38 +182,3 @@ export function childcareRuns(
 /** What the childcare check leaves out: it is eligibility on income only. */
 export const CHILDCARE_NOT_CHECKED =
   'Eligibility on your adjusted net income only. Not checked: a partner’s income, minimum expected earnings, the child’s age and circumstances, immigration status, Universal Credit or childcare vouchers, and for Free Childcare for Working Parents living in England. The support itself is not counted in spendable.'
-
-export interface CompareRow {
-  readonly id: 'contribution' | 'pension' | 'takeHome' | 'childBenefit' | 'annualAllowanceCharge' | 'spendable' | 'adjustedNetIncome'
-  readonly label: string
-  readonly now: Money
-  readonly chosen: Money
-  /** Chosen less now, signed. */
-  readonly change: Money
-  /** A year's measure, shown for the year whatever the period. */
-  readonly year: boolean
-}
-
-/**
- * The contribution now against a chosen one: amounts for the period, and
- * adjusted net income for the year (its limits are a year's). Child Benefit
- * and the annual allowance charge only when either point has some.
- */
-export function compareRows(now: OptimiserPoint, chosen: OptimiserPoint, period: BreakdownPeriod): CompareRow[] {
-  const row = (id: CompareRow['id'], label: string, pick: (point: OptimiserPoint) => Money, year = false): CompareRow => {
-    const at = (point: OptimiserPoint) => (year ? pick(point) : perPeriod(pick(point), period))
-    return { id, label, now: at(now), chosen: at(chosen), change: subtract(at(chosen), at(now)), year }
-  }
-  const some = (pick: (point: OptimiserPoint) => Money) => compare(pick(now), ZERO) !== 0 || compare(pick(chosen), ZERO) !== 0
-  return [
-    row('contribution', 'Your contribution', (p) => p.contribution),
-    row('pension', 'Into your pension', (p) => p.pension.total),
-    row('takeHome', 'Take-home', (p) => p.takeHome),
-    ...(some((p) => p.childBenefit) ? [row('childBenefit', 'Child Benefit received', (p) => p.childBenefit)] : []),
-    ...(some((p) => p.annualAllowanceCharge)
-      ? [row('annualAllowanceCharge', 'Annual allowance charge', (p) => p.annualAllowanceCharge)]
-      : []),
-    row('spendable', 'Spendable', (p) => p.spendable),
-    row('adjustedNetIncome', 'Adjusted net income', (p) => p.adjustedNetIncome, true),
-  ]
-}

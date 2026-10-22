@@ -2,24 +2,15 @@ import { describe, expect, it } from 'vitest'
 import { taxYear } from '@/config/tax/2026-27'
 import { formatGBP, formatPercent } from '@/lib/format'
 import { fromPence, fromPounds, type Money, mulRound, ratio, toPence, ZERO } from '@/lib/money'
-import { MONTHS_PER_YEAR } from '@/lib/periods'
-import {
-  CHART_VIEWS,
-  CLIFF_LABELS,
-  cliffRuns,
-  MONTH_NOTE,
-  optimiserChartData,
-  REASON_LABELS,
-  THRESHOLD_LABELS,
-  viewLabel,
-  X_LABELS,
-} from './chartData'
+import { CLIFF_LABELS, CURVE_NOTE, cliffRuns, costChartData, REASON_LABELS, TARGET_LABEL, THRESHOLD_LABELS } from './chartData'
 import { type OptimiserPageInputs, optimiserCalculator } from './definition'
 import { calculateOptimise } from './optimiserInputs'
+import { ONE_POUND } from './reading'
 import type { Cliff, OptimiseResult } from './types'
 
 /*
- * 1b-ii-a: the optimiser chart's data (chartData.ts), from optimise()'s
+ * 1b-ii-a: the optimiser chart's data; the compare redesign made it the
+ * cost chart (the engine's net cost per pound) with the target marked (chartData.ts), from optimise()'s
  * result: one value per point, a marker for the current contribution, the
  * maximum and each threshold point, and each run of cliffs as a labelled
  * range. Expected values come from the engine's own result; no tax figure
@@ -43,21 +34,34 @@ function result(patch: Partial<OptimiserPageInputs> = {}): OptimiseResult {
   return r
 }
 
-describe('optimiserChartData', () => {
-  it('has one category, x and value per point, by contribution, for either view', () => {
+/** The chart data with the target at the contribution now (no target marker). */
+const chart = (r: OptimiseResult, percentBase: Money | null = null) => costChartData(r, { gbp, percentBase, target: r.currentContribution })
+
+describe('costChartData', () => {
+  it('has one category, x and value per point, by contribution: the engine’s net cost per pound in pence, none at nothing', () => {
     const r = result()
-    for (const view of CHART_VIEWS) {
-      const data = optimiserChartData(r, view, { gbp, percentBase: null })
-      expect(data.xValues).toEqual(r.points.map((p) => toPence(p.contribution)))
-      expect(data.categories).toEqual(r.points.map((p) => gbp(p.contribution)))
-      expect(data.values).toEqual(r.points.map((p) => toPence(view === 'spendable' ? p.spendable : p.takeHome)))
-      expect(data.rowNotes).toHaveLength(r.points.length)
-    }
+    const data = chart(r)
+    expect(data.xValues).toEqual(r.points.map((p) => toPence(p.contribution)))
+    expect(data.categories).toEqual(r.points.map((p) => gbp(p.contribution)))
+    expect(data.values).toEqual(
+      r.points.map((p) => (p.netCostPerPound === null ? null : toPence(mulRound(ONE_POUND, p.netCostPerPound, 'nearest')))),
+    )
+    expect(data.values[0]).toBeNull()
+    expect(data.rowNotes).toHaveLength(r.points.length)
+  })
+
+  it('marks the target unless it is the contribution now', () => {
+    const r = result()
+    expect(chart(r).markers.some((m) => m.label.startsWith(TARGET_LABEL))).toBe(false)
+    const target = fromPounds(9_123)
+    const marked = costChartData(r, { gbp, percentBase: null, target }).markers
+    expect(marked.find((m) => m.label.startsWith(TARGET_LABEL))).toEqual({ x: toPence(target), label: `${TARGET_LABEL}: ${gbp(target)}` })
+    expect(marked.map((m) => m.x)).toEqual([...marked.map((m) => m.x)].sort((a, b) => a - b))
   })
 
   it('marks every point that is not only a sweep point, with its reasons and amount, in order', () => {
     const r = result()
-    const data = optimiserChartData(r, 'spendable', { gbp, percentBase: null })
+    const data = chart(r)
     const marked = r.points.filter((p) => p.reasons.some((reason) => reason.kind !== 'sweep'))
     expect(data.markers.map((m) => m.x)).toEqual(marked.map((p) => toPence(p.contribution)))
     const current = data.markers.find((m) => m.x === toPence(r.currentContribution))!
@@ -75,7 +79,7 @@ describe('optimiserChartData', () => {
 
   it('puts the markers’ reasons in the table rows, and nothing on plain sweep points', () => {
     const r = result()
-    const data = optimiserChartData(r, 'takeHome', { gbp, percentBase: null })
+    const data = chart(r)
     r.points.forEach((p, i) => {
       const plain = p.reasons.every((reason) => reason.kind === 'sweep')
       expect(data.rowNotes[i] === '', gbp(p.contribution)).toBe(plain)
@@ -85,16 +89,16 @@ describe('optimiserChartData', () => {
   it('a contribution entered as a percentage shows each marker as a percentage of pensionable pay too', () => {
     const r = result()
     const base = fromPounds(115_000)
-    const data = optimiserChartData(r, 'spendable', { gbp, percentBase: base })
+    const data = chart(r, base)
     for (const m of data.markers) expect(m.label).toContain(`${formatPercent(ratio(m.x, toPence(base)))} of pensionable pay`)
-    expect(optimiserChartData(r, 'spendable', { gbp, percentBase: null }).markers.some((m) => m.label.includes('pensionable'))).toBe(false)
+    expect(chart(r).markers.some((m) => m.label.includes('pensionable'))).toBe(false)
     // No pensionable pay: no percentage, rather than a division by nothing.
-    expect(optimiserChartData(r, 'spendable', { gbp, percentBase: ZERO }).markers.some((m) => m.label.includes('%'))).toBe(false)
+    expect(chart(r, ZERO).markers.some((m) => m.label.includes('%'))).toBe(false)
   })
 
   it('draws each run of cliffs of one kind as one labelled range; student loan steps are a note, not a range', () => {
     const r = result({ studentLoans: ['plan2'], pensionMethod: 'salarySacrifice' })
-    const data = optimiserChartData(r, 'spendable', { gbp, percentBase: null })
+    const data = chart(r)
     const runs = cliffRuns(r.cliffs)
     const ranges = runs.filter((run) => run.kind !== 'studentLoanWholePounds')
     expect(data.spans).toEqual(
@@ -110,47 +114,13 @@ describe('optimiserChartData', () => {
   })
 
   it('calls no point the best, and claims nothing about the curve’s direction', () => {
-    const data = optimiserChartData(result({ studentLoans: ['plan1'] }), 'spendable', { gbp, percentBase: fromPounds(115_000) })
-    const text = [...data.markers.map((m) => m.label), ...data.spans.map((s) => s.label), ...data.notes, ...data.rowNotes].join(' ')
+    const data = chart(result({ studentLoans: ['plan1'] }), fromPounds(115_000))
+    const text = [...data.markers.map((m) => m.label), ...data.spans.map((s) => s.label), ...data.notes, ...data.rowNotes, CURVE_NOTE].join(
+      ' ',
+    )
     expect(text).not.toMatch(/\b(best|optimal|optimum|recommended|always (falls|rises)|never (falls|rises))\b/i)
     for (const label of [...Object.values(REASON_LABELS), ...Object.values(THRESHOLD_LABELS), ...Object.values(CLIFF_LABELS)])
       expect(label).not.toMatch(/\b(best|optimal|recommended)\b/i)
-  })
-})
-
-describe('optimiserChartData by period (1b-ii-b)', () => {
-  const month = (amount: Money) => mulRound(amount, ratio(1, MONTHS_PER_YEAR), 'nearest')
-
-  it('in the month view shows each point’s value and contribution a month, through money.ts', () => {
-    const r = result()
-    for (const view of CHART_VIEWS) {
-      const data = optimiserChartData(r, view, { gbp, percentBase: null, period: 'month' })
-      expect(data.values).toEqual(r.points.map((p) => toPence(month(view === 'spendable' ? p.spendable : p.takeHome))))
-      expect(data.xValues).toEqual(r.points.map((p) => toPence(month(p.contribution))))
-      expect(data.categories).toEqual(r.points.map((p) => gbp(month(p.contribution))))
-    }
-  })
-
-  it('labels the axes for the period', () => {
-    expect(viewLabel('takeHome', 'month')).toBe('Take-home a month')
-    expect(viewLabel('spendable', 'month')).toBe('Spendable a month')
-    expect(viewLabel('takeHome', 'year')).toBe('Take-home a year')
-    expect(X_LABELS.month).toBe('Pension a month')
-    expect(X_LABELS.year).toBe('Pension a year')
-  })
-
-  it('says amounts in markers and ranges a month in the month view', () => {
-    const r = result()
-    const data = optimiserChartData(r, 'spendable', { gbp, percentBase: null, period: 'month' })
-    const current = data.markers.find((m) => m.x === toPence(month(r.currentContribution)))!
-    expect(current.label).toContain(`${gbp(month(r.currentContribution))} a month`)
-    for (const span of data.spans) expect(span.label).toMatch(/ a month$/)
-  })
-
-  it('the month note says a month is the year divided evenly, assuming level pay, and points to the PAYE estimate', () => {
-    expect(MONTH_NOTE).toContain(String(MONTHS_PER_YEAR))
-    expect(MONTH_NOTE).toMatch(/level pay/)
-    expect(MONTH_NOTE).toMatch(/PAYE estimate/)
   })
 })
 

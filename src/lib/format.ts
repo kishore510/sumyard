@@ -113,6 +113,29 @@ export function formatPercentPointDelta(change: Ratio, maxDecimals = 2): string 
   return `${change.numerator > 0 ? '+' : ''}${text} ${unit}`
 }
 
+const MINUS = '\u2212'
+
+/** A shown number with any hyphen-minus swapped for the true minus sign, and a plus when `positive` and not shown as zero. */
+const signedText = (text: string, positive: boolean) =>
+  text.startsWith('-') ? `${MINUS}${text.slice(1)}` : positive && /[1-9]/.test(text) ? `+${text}` : text
+
+/** A change in an amount with the true minus sign (U+2212): "+£12.34", "−£12.34", or "£0.00" (no sign when it shows as zero). */
+export function formatGBPChange(amount: Money, style: AmountStyle): string {
+  return signedText(formatGBP(amount, style), toPence(amount) > 0)
+}
+
+/** A percentage change, signed with the true minus sign, at most one place: "+25%", "−33.3%", "0%". */
+export function formatPercentChange(change: Ratio): string {
+  return signedText(formatPercent(change, 1), change.numerator > 0)
+}
+
+/** A change in percentage points, signed with the true minus sign: "+2.5 pts", "−1 pt", "0 pts". Never a % sign. */
+export function formatPointsChange(change: Ratio): string {
+  const text = formatPercent(change, 2).replace('%', '')
+  const unit = text.replace('-', '') === '1' ? 'pt' : 'pts'
+  return `${signedText(text, change.numerator > 0)} ${unit}`
+}
+
 /** Exact pence (a cost per mile) to at most `maxDecimals` places, trailing zeros dropped: "13.64p", "12p". Nearest, halves away from zero. */
 export function formatPence(amount: { readonly numerator: bigint; readonly denominator: bigint }, maxDecimals = 2): string {
   const scale = 10n ** BigInt(maxDecimals)

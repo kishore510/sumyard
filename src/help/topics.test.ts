@@ -100,15 +100,16 @@ describe('content/help', () => {
     expect(linksIn(topicById('take-home-pay')!.blocks)).toContain('help:pension-optimiser')
   })
 
-  it('the optimiser topic covers reading the chart: period, zoom, change, cost, thresholds, warnings, childcare, compare, what is not modelled', () => {
+  it('the optimiser topic covers the compare: choosing, the cards, % change and pts, cost, milestones, warnings, childcare, what is not modelled', () => {
     const text = JSON.stringify(topicById('pension-optimiser')!.blocks)
     for (const word of [
-      /Month/,
-      /Full range/,
-      /Change vs now/,
-      /a pound more/i,
-      /against no contribution/i,
-      /since the previous point/i,
+      /slider/i,
+      /Now.*New.*Change/,
+      /% change/,
+      /pts/,
+      /total paid into your pension/i,
+      /on average from no contribution/i,
+      /last step/i,
       /already under/i,
       /out of reach/i,
       /a penny below/i,
@@ -118,7 +119,7 @@ describe('content/help', () => {
       /not checked/i,
       /compare/i,
       /not modelled/i,
-      /no point is called the best/i,
+      /nothing is called the best/i,
     ])
       expect(text).toMatch(word)
     expect(text).not.toMatch(/coming/i)

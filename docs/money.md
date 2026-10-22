@@ -148,6 +148,22 @@ The page does no money arithmetic of its own except two things through `money.ts
 
 The chart's points and the readout are the engine's `MonthPoint`s, unchanged.
 
+## Pension compare (0.21.0)
+
+`compareContributions` (`src/calculators/optimiser/compare.ts`) takes two engine points (the contribution now and a target, each from `optimise()`) and does arithmetic only, through `money.ts`:
+
+| Step | Mode | Basis |
+|---|---|---|
+| Year: now, new | The engine's annual figures, unrounded further | Engine |
+| Year: change | `subtract(new, now)`, exact | Arithmetic |
+| Month: now, new | `perPeriod(annual, 'month')`: the year's figure times one over `MONTHS_PER_YEAR`, nearest penny (as B14) | Display policy |
+| Month: change | `subtract` of the two month figures as shown, so each row adds up to the penny; it can differ by a penny from the year's change divided evenly | Display policy |
+| % change | Exact `Ratio` of the year's change over the year's figure now; null when that figure is nothing or below | Arithmetic |
+| Share of pay, change in points | Exact `Ratio`s of the contribution over pensionable pay, and their difference (`subtractRatio`); null with no pensionable pay | Arithmetic |
+| Cost per £1 (average over the range) | Exact `Ratio` of take-home given up over the extra total paid into the pension; null when that extra is nothing | Arithmetic |
+
+Total paid into the pension is the engine's `pension.total` at each point (own contribution, provider relief, other employer contributions); it is never the contribution change added on.
+
 ## Display (`format.ts`)
 
 Locale en-GB. Formatting works from integer pence in `BigInt`, never by dividing a float, so the digits are exact at any size. **Display rounding is nearest, halves away from zero**; it is for showing results and is not a tax rule.

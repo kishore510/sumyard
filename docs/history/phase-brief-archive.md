@@ -687,3 +687,23 @@ The page, registry entry, scenarios, Chart changes, tax or VED config, EV tax ru
 - Differs from the brief: every field shown must be filled for an option to be costed (no empty-as-nothing); a PCP's mileage allowance is entered a year; flip points are for the two lowest options only, worked out once inputs settle (one pair costs about 300 ms at four options and 240 months); HP with no option fee shows the APR (F15), as a loan does; the rate rule lives in the page's `rates.ts` (the engines carry no labels); shared component extensions (allowEmpty, DecimalInput, SplitBar and RefusalNotice, ResultCard, StatRow, useItemKeys).
 - Not verified: a real phone, Safari, Firefox, a screen reader, the deployed site; no cross-check value filled (all six pending). OPEN: CR-10 carries over.
 - Next: 3c-2 (crossover chart, sensitivity, polish), its brief first.
+
+## Archive: part 3c-2 scope (as of 0.20.0)
+
+### Scope
+
+- Pre-check: 3c-1 merged, CI green, Pages deployed; the owner's acceptance of `DEFAULT_HORIZON_MONTHS` = 48 recorded.
+- Empty optional boxes: costs and fees read as nothing (0 placeholder, hint); required boxes still hold the option back, named one per line; inputs version 2 with a migration giving identical figures.
+- Shared Chart: four line styles (a neutral one that is not the danger colour; the compound interest "Paid in" line uses it), end labels, a series ending early, pointer and keyboard selection of an x, the selected-position marker, the table row highlighted and selectable, the summary naming the position.
+- The car page below the cards: the crossover chart (engine's cumulative net cost, the case shown, lines stopping at coverage end, horizon and term markers) with a tap-to-pick month and a readout; "What changes the answer" for any pair, measured over the whole horizon; a sensitivity Section (end value, savings return, mileage, fuel price at minus and plus ten and twenty percent, engine reruns, largest first, after the inputs settle); a "how to read this page" line; assumptions and Help.
+- Tests first (red, then green), a property over 100 random inputs, banned words and the literal guard over the new files, mutation spot-checks; the browser matrix and Lighthouse, with compute times in `docs/performance.md`.
+
+### Out of scope
+
+Tax or VED config, EV tax rules, replacement cars, early termination, Monte Carlo or varying returns, a worker, any new calculator, any engine change.
+
+## Archive: last-session entry, part 3c-3
+
+- 22 October 2026, slice 3c-3 (0.20.1, PR #26, user-visible fix): pre-check passed (PR #25 merged, CI green, PLAN row Done). The shared Chart has a fifth style, `secondary` (token `swatch-teal`, Chalkline's teal swatch; dash-dot-dot; triangle marker); the default order no longer picks danger; the car page's fourth option uses it. Tests red then green, plus a source guard (`dangerStyle.test.ts`).
+- Differs from the brief: the Chart test that asserted danger as the default third style now asserts neutral (the default order changed; no page relied on it).
+- Not verified: a real phone, Safari, Firefox, a screen reader, the deployed site. Browser matrix: Chromium 360 and 1280 px, light and dark, axe, four-option car page, 68 checks clean.

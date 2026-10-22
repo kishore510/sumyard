@@ -28,3 +28,4 @@ Moved verbatim from `PLAN.md` on 21 October 2026. New unknowns go here.
 - Sumyard name and domain availability.
 - Which calculator after Phase 1: take-home pay now ships with 1b; compound interest is the likely next.
 
+- Pension compare (1b-iii): confirm the slider's top as the engine's maximum (gross equal to pay), not the allowance headroom (U24); confirm the chart's measure, the engine's net cost per pound as an average from no contribution, over the marginal cost per step (U25).

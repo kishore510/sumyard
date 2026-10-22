@@ -117,3 +117,31 @@ Work that reruns an engine many times (the sensitivity view) runs only while its
 
 An optional amount (a fee, a running cost) passes `emptyValue` (0) and a "0" placeholder to its input: an empty box is valid and is that value, the value shows as an empty box, and the hint ends "An empty box counts as nothing." Required boxes keep `allowEmpty` (null: not entered) and hold their item back, named one per line on its card.
 
+
+## Compare redesign: the take-home page's pension compare (0.21.0)
+
+Patterns from the compare redesign, from the owner's use on a phone. They replace U10 (for the optimiser: the Year / Month choice now drives only the sticky take-home figure and the breakdown) and U11 and U12 (no zoomed range, no select of points). Not owner decisions unless marked; change them with a note here.
+
+### U23. One answer near the top: now against a target
+
+A page that compares two values of one input (now and a target) leads with one plain sentence and three cards (your contribution, total paid into your pension, take-home), each with Now, New and Change columns and Per month, Per year and % change rows (`compareContributions`, `compare.ts`). Month and year are always shown together. "% change" (a change on the figure now) and "pts" (a change in a share of pay, percentage points) are separate rows and never share a label. Signs are written (true minus, plus), never colour only; colours stay neutral; nothing is called better or worse. The sentence is also the sticky bar's text on a phone.
+
+### U24. A picker, not a list
+
+The target is picked with a typed amount (or percentage, in the page's contribution mode) kept in step with a native range slider from nothing to the engine's maximum, and pills for Now, each threshold still ahead (from the engine's thresholds) and Maximum. A typed value past the maximum is clamped with a message that says so, never silently. The amount a month and a year and the share of pay are shown under it. The target is the page's state only, never stored; it opens on the nearest threshold still ahead, or on Now (saying there is nothing to compare). No dropdown of amounts. Owner decision (this session): the slider's top is the engine's `maximumContribution` (pay-bounded), not the allowance headroom; over-allowance contributions stay reachable and are warned about.
+
+### U25. A chart of cost, over the whole range
+
+The chart plots the engine's net cost per pound (`netCostPerPound`: spendable given up for each £1 into the pension, on average from no contribution) against the contribution, over the full sweep from nothing to the maximum, the y axis from zero (or below, if the data go there). Now and the target are marked; cliffs are lettered shaded ranges with the line dashed across them (the existing Chart spans: a jump lies somewhere inside, so it is not smoothed and not placed). The title says it is an average from no contribution, not the cost of the next pound. Owner decision (this session): the engine's measure, labelled honestly, rather than the marginal rate per step. The table is in a Section.
+
+### U26. Milestones in words, always visible
+
+Each threshold is one line: "Already under", "Contribute £X a year (£Y a month) more", or "Out of reach" with the reason, plus the full-charge wording for the Child Benefit charge. Measured from now. The words adjusted net income and threshold income appear here and in the detail sections, not in the main answer.
+
+### U27. Warnings: the target's in full, the rest counted
+
+A line always visible gives the count of warnings at the target and the count further along the range. Warnings at the target are shown in full, never collapsed (G13). Those that apply only at other contributions sit in a Section whose summary carries their count; each says the contributions it applies to by what is measured ("if your own contribution is between £X and £Y a year").
+
+### U28. Detail behind sections
+
+The cost-of-£1 detail, the chart's table, the milestone audit and the assumptions sit in `Section`s with live one-line summaries; no new accordion. Spendable is shown only where it differs from take-home (Child Benefit or an annual allowance charge).

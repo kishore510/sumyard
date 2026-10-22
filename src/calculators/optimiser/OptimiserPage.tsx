@@ -21,17 +21,21 @@ import { Button } from '@/components/ui/button'
 import { VerifiedBadge } from '@/components/VerifiedBadge'
 import { listTaxYears, taxYearLabel } from '@/config/tax/index'
 import { useItemKeys } from '@/hooks/useItemKeys'
-import { formatGBP, formatGBPCompact, formatGBPDelta } from '@/lib/format'
-import { add, compare, fromPence, type Money, ratio, subtract, toPence, ZERO } from '@/lib/money'
+import { formatGBP, formatGBPChange, formatGBPCompact, formatPence } from '@/lib/format'
+import { add, compare, fromPence, type Money, mulRound, type Ratio, ratio, subtract, subtractRatio, toPence, ZERO } from '@/lib/money'
 import type { Parsed } from '@/lib/parse'
 import { useStore } from '@/lib/store'
-import { settingsStore } from '@/settings/settings'
+import { MAX_SWEEP_POINTS } from '@/lib/sweep'
+import { type AmountStyle, settingsStore } from '@/settings/settings'
 import { DISCLAIMER } from '@/sheets/parts'
 import { toasts } from '@/toast/toasts'
 import { configFor, sessionFor } from '../session'
-import { BREAKDOWN_PERIODS, type Breakdown, type BreakdownPeriod, breakdown, perPeriod } from './breakdown'
+import { BREAKDOWN_PERIODS, type Breakdown, type BreakdownPeriod, breakdown } from './breakdown'
+import { ChangeSummary } from './ChangeSummary'
+import { ContributionPicker } from './ContributionPicker'
 import { benefitTaxable } from './calc'
-import { CHART_VIEWS, type ChartView, CURVE_NOTE, MONTH_NOTE, optimiserChartData, viewLabel, X_LABELS } from './chartData'
+import { COST_LABEL, CURVE_NOTE, costChartData, X_LABEL } from './chartData'
+import { type ContributionComparison, comparePoints, pointAt } from './compare'
 import {
   type ContributionField,
   calculatePaye,
@@ -58,34 +62,19 @@ import {
   usesPensionablePay,
   yearsAgoLabel,
 } from './definition'
-import { calculateOptimise, carryForwardYears, type OptimiserPageResult } from './optimiserInputs'
+import { calculateOptimise, carryForwardYears, type OptimiserPageResult, toOptimiserInputs } from './optimiserInputs'
 import { annualAmount, annualBenefit, type BenefitItem, CONTRIBUTION_MODES, ITEM_PERIODS, type ListItem } from './pageInputs'
 import { parseTaxCode } from './paye'
-import {
-  CHILDCARE_NOT_CHECKED,
-  type CompareRow,
-  type ContributionRun,
-  changeVsNow,
-  childcareRuns,
-  compareRows,
-  costOfMore,
-  currentPoint,
-  nearestPoint,
-  ONE_POUND,
-  pointsIn,
-  type ThresholdWords,
-  thresholdWords,
-  warningRuns,
-  type ZoomRange,
-  zoomRange,
-} from './reading'
+import { CHILDCARE_NOT_CHECKED, childcareRuns, currentPoint, ONE_POUND, THRESHOLD_NAMES, thresholdWords, warningRuns } from './reading'
 import { payslipNet, splitSegments } from './results'
 import { NEEDS_FIXING, SECTION_IDS, SECTION_TITLES, type SectionId, sectionForField, sectionSummary, sectionsSet } from './sections'
+import { changeSentence, clampTarget, defaultTarget, milestoneWords, runWords, warningSplit } from './targetWords'
 import {
   BENEFIT_PAYMENTS,
   CHILD_BENEFIT_PAYMENTS,
   type ChildcareScheme,
   DEFAULT_POLICY,
+  type EngineWarning,
   type OptimiseResult,
   type OptimiserPoint,
   type PayeEstimate,
@@ -119,7 +108,6 @@ const MODE_OPTIONS = CONTRIBUTION_MODES.map((value) => ({ value, label: value ==
 const PERIOD_OPTIONS = ITEM_PERIODS.map((value) => ({ value, label: PERIOD_LABELS[value] }))
 const PAYMENT_OPTIONS_BENEFIT = BENEFIT_PAYMENTS.map((value) => ({ value, label: value === 'beforeTax' ? 'Before tax' : 'After tax' }))
 const BREAKDOWN_OPTIONS = BREAKDOWN_PERIODS.map((value) => ({ value, label: value === 'year' ? 'Year' : 'Month' }))
-const VIEW_OPTIONS = CHART_VIEWS.map((value) => ({ value, label: value === 'spendable' ? 'Spendable' : 'Take-home' }))
 const PERCENT_MIN = ratio(0, 1)
 
 const METHOD_HINTS: Record<OptimiserPageInputs['pensionMethod'], string> = {
@@ -163,17 +151,16 @@ const CONTRIBUTION_HINTS: Record<ContributionField, string> = {
 /** What the contribution chart leaves out, beside optimise()'s own assumptions. */
 const CHART_ASSUMPTIONS = [
   'Contribution chart, not modelled: defined benefit pension savings, income other than this job, relief claimed through Self Assessment, who pays an annual allowance charge (Scheme Pays), the value of childcare support, investment growth and tax on withdrawals.',
-  'Contribution chart: each point changes only your own contribution, by the method chosen, from nothing up to the most the engine models; the sweep is in amounts, so a contribution entered as a percentage shows as its amount, with its share of pensionable pay beside the marked points.',
+  'Contribution chart: each point changes only your own contribution, by the method chosen, from nothing up to the most the engine models (into the pension, gross, all of your pay), whatever the annual allowance; the chart is always the whole range, in amounts a year.',
 ]
 
-/** How the page reads the sweep (1b-ii-b). No figures. */
+/** How the page compares a target with now (the compare redesign). No figures. */
 const READING_ASSUMPTIONS = [
-  'Contribution chart: the page’s Year / Month choice drives the chart, its table and the cards below; a month is each year’s figure divided by the months in a year, to the nearest penny, assuming level pay all year, and the sweep steps by a round amount a month.',
-  'Contribution chart: by default it shows a range around your contribution now and the thresholds ahead of it, with a margin either side; Full range shows every point. Warnings are listed for every point, whatever the range shown.',
-  'Change vs now: each point’s figure for the period less the figure at your contribution now, each rounded first.',
-  'Cost of more pension: the engine’s net cost per pound (against no contribution) and marginal rate (since the previous point), as pence of a pound to the nearest penny.',
-  'Thresholds in words are measured from your contribution now; in the month view the extra a month is rounded up to the penny, so that much a month is enough. Each limit is a year’s figure, as adjusted net income and threshold income are.',
-  'The contribution you look at is your contribution now until you choose another; it is not saved.',
+  'Compare: your contribution now against the target you choose, each worked out by the engine. A month is each year’s figure divided by the months in a year, to the nearest penny, and a month’s change is the difference of the two month figures shown, so each row adds up.',
+  'Compare: the total paid into your pension is your contribution, any relief your provider adds and your employer’s own contribution, as the engine counts them; % change is on the figure now; pts is the change in your share of pensionable pay.',
+  'Cost chart: the take-home (with any Child Benefit, less any annual allowance charge) given up for each pound paid into your pension in total, an average from no contribution, not the cost of the next pound.',
+  'Milestones are measured from your contribution now; each extra a month is rounded up to the penny, so that much a month is enough. Each limit is a year’s figure.',
+  'The target opens on the nearest threshold ahead of your contribution now (or on now, when there is none); it is not saved.',
 ]
 
 /** What the optimiser leaves out, gathered from optimise()'s assumptions and the chart's own. */
@@ -202,10 +189,16 @@ export default function OptimiserPage() {
   const value = ok ? gbp(breakdown(ok.annual, period).takeHome) : null
   // The sweep needs pay and a take-home result; it is the slowest part of the page, so only redone when inputs change.
   const hasPay = compare(add(inputs.salary, inputs.bonus), ZERO) > 0
-  const sweep = useMemo(
-    () => (!invalid && hasPay ? calculateOptimise(inputs, config, period) : null),
-    [invalid, hasPay, inputs, config, period],
+  // The sweep is always a year's (U23): the Year / Month choice is for the take-home figure and the breakdown only.
+  const sweep = useMemo(() => (!invalid && hasPay ? calculateOptimise(inputs, config) : null), [invalid, hasPay, inputs, config])
+  // The target to compare (U24): the page's state only, never stored; forgotten on a load or a fresh start.
+  const [picked, setPicked] = useState<{ readonly revision: number; readonly amount: Money } | null>(null)
+  const sweepOk = sweep && !isInputProblem(sweep) && sweep.ok ? sweep : null
+  const requested = sweepOk ? (picked?.revision === state.revision ? picked.amount : defaultTarget(sweepOk)) : null
+  const compareState = useCompare(sweepOk, requested, inputs, resolved, config, gbp, (amount) =>
+    setPicked({ revision: state.revision, amount }),
   )
+  const style = amounts
 
   return (
     <div className="flex flex-col gap-6">
@@ -227,6 +220,11 @@ export default function OptimiserPage() {
         announcement={value === null ? null : `${label}: ${value}`}
         controls={
           <>
+            {ok && compareState && (
+              <p data-sticky-sentence className="text-sm text-text [overflow-wrap:anywhere]">
+                {compareState.sentence}
+              </p>
+            )}
             <Segmented id="opt-period" label="Show take-home for a" value={period} options={BREAKDOWN_OPTIONS} onChange={setPeriod} />
             <div className="flex">
               <VerifiedBadge config={config} />
@@ -239,9 +237,11 @@ export default function OptimiserPage() {
             <ResultsOrNotice
               result={result}
               sweep={sweep}
+              compareState={compareState}
               inputs={inputs}
               resolved={resolved}
               gbp={gbp}
+              style={style}
               period={period}
               setPeriod={setPeriod}
             />
@@ -476,9 +476,11 @@ function ResultsOrNotice({
 }: {
   result: PageResult | null
   sweep: OptimiserPageResult | null
+  compareState: PensionCompareState | null
   inputs: OptimiserPageInputs
   resolved: ResolvedInputs
   gbp: Gbp
+  style: AmountStyle
   period: BreakdownPeriod
   setPeriod: (period: BreakdownPeriod) => void
 }) {
@@ -928,17 +930,21 @@ function pennyNote(month: Breakdown, gbp: Gbp): string | undefined {
 function Results({
   result,
   sweep,
+  compareState,
   inputs,
   resolved,
   gbp,
+  style,
   period,
   setPeriod,
 }: {
   result: TakeHomeResult
   sweep: OptimiserPageResult | null
+  compareState: PensionCompareState | null
   inputs: OptimiserPageInputs
   resolved: ResolvedInputs
   gbp: Gbp
+  style: AmountStyle
   period: BreakdownPeriod
   setPeriod: (period: BreakdownPeriod) => void
 }) {
@@ -958,6 +964,8 @@ function Results({
           </InlineNotice>
         </div>
       ))}
+
+      {compareState && <PensionCompare state={compareState} inputs={inputs} resolved={resolved} gbp={gbp} style={style} />}
 
       <div className="flex flex-col gap-3" data-headline>
         <ResultCard title="Take-home pay" headlineLabel={PERIOD_LABELS_HEADLINE[period]} headline={gbp(shown.takeHome)}>
@@ -1007,7 +1015,7 @@ function Results({
           highlight="takeHome"
         />
       </section>
-      {sweep && <OptimiserChart sweep={sweep} inputs={inputs} resolved={resolved} gbp={gbp} period={period} />}
+      {sweep && <CostChart sweep={sweep} state={compareState} inputs={inputs} resolved={resolved} gbp={gbp} style={style} />}
 
       <div className="flex flex-col gap-3" data-breakdown={period}>
         <Segmented
@@ -1175,238 +1183,188 @@ function AllowanceInputs({ taxYear, inputs }: { taxYear: string; inputs: Optimis
   )
 }
 
-/**
- * The contribution chart (1b-ii-a), below the split bar: spendable (or take-home) against the contribution by the
- * chosen method, from optimise()'s points, with the current contribution, the maximum and each threshold point marked,
- * cliffs as lettered ranges, and the table. A refusal takes its place; an input problem is already shown above.
- * 1b-ii-b: in the page's period, with a chosen point (the current contribution until another is chosen) read out
- * above the chart, and each point's change against now in the table. The choice is never stored.
- */
-function OptimiserChart({
-  sweep,
-  inputs,
-  resolved,
-  gbp,
-  period,
-}: {
-  sweep: OptimiserPageResult
-  inputs: OptimiserPageInputs
-  resolved: ResolvedInputs
-  gbp: Gbp
-  period: BreakdownPeriod
-}) {
-  const [view, setView] = useState<ChartView>('spendable')
-  const [chosen, setChosen] = useState<Money | null>(null)
-  const [fullRange, setFullRange] = useState(false)
-  if (isInputProblem(sweep)) return null
-  const reading = sweep.ok ? readSweep(sweep, chosen, fullRange) : null
-  return (
-    <>
-      <section
-        data-optimiser
-        aria-labelledby="opt-chart-heading"
-        className="flex min-w-0 flex-col gap-4 rounded-lg border border-border bg-surface p-5 shadow-sm"
-      >
-        <h2 id="opt-chart-heading" className="text-base font-semibold">
-          Pension contributions
-        </h2>
-        {!sweep.ok ? (
-          <RefusalNotice refusal={sweep} />
-        ) : (
-          reading && (
-            <ChartBody
-              sweep={sweep}
-              reading={reading}
-              view={view}
-              setView={setView}
-              setChosen={setChosen}
-              fullRange={fullRange}
-              setFullRange={setFullRange}
-              inputs={inputs}
-              resolved={resolved}
-              gbp={gbp}
-              period={period}
-            />
-          )
-        )}
-      </section>
-      {sweep.ok && reading && <ReadingCards sweep={sweep} reading={reading} gbp={gbp} period={period} />}
-    </>
-  )
-}
-
-/** What the page reads from the sweep: the range shown (zoomed or full), its points and cliffs, the point now and the chosen one. */
-interface SweepReading {
-  readonly range: ZoomRange | null
-  readonly shown: ReturnType<typeof pointsIn>
+/** What the page reads from the sweep for the compare: the target, the engine's point there, and the comparison. */
+export interface PensionCompareState {
+  readonly sweep: OptimiseResult
+  readonly requested: Money
+  readonly target: Money
+  readonly clamped: boolean
   readonly now: OptimiserPoint
-  readonly choice: OptimiserPoint
+  readonly targetPoint: OptimiserPoint
+  readonly comparison: ContributionComparison
+  readonly sentence: string
+  readonly setRequested: (amount: Money) => void
 }
 
-function readSweep(sweep: OptimiseResult, chosen: Money | null, fullRange: boolean): SweepReading {
-  const range = zoomRange(sweep)
-  const shown = pointsIn(sweep, fullRange ? null : range)
+const POUND = formatGBP(ONE_POUND, 'pounds')
+
+/**
+ * The compare for a sweep and a requested target: the target within the maximum, the engine's point there (optimise()
+ * at that contribution, at the sweep's step) and the comparison with now. The point is worked out again only when the
+ * inputs or the target change.
+ */
+function useCompare(
+  sweep: OptimiseResult | null,
+  requested: Money | null,
+  inputs: OptimiserPageInputs,
+  resolved: ResolvedInputs,
+  config: ReturnType<typeof configFor>,
+  gbp: Gbp,
+  setRequested: (amount: Money) => void,
+): PensionCompareState | null {
+  const clamp = sweep && requested !== null ? clampTarget(requested, sweep.maximumContribution) : null
+  const target = clamp?.target ?? null
+  const targetPoint = useMemo(() => {
+    if (!sweep || target === null) return null
+    if (compare(target, sweep.currentContribution) === 0) return currentPoint(sweep)
+    const point = pointAt(toOptimiserInputs(inputs), config, DEFAULT_POLICY, target, { step: sweep.step, maxPoints: MAX_SWEEP_POINTS })
+    return 'contribution' in point ? point : null
+  }, [sweep, target, inputs, config])
+  if (!sweep || !clamp || !targetPoint || requested === null) return null
   const now = currentPoint(sweep)
-  return { range, shown, now, choice: nearestPoint(shown.points, chosen ?? now.contribution) }
+  const comparison = comparePoints(now, targetPoint, resolved.pensionablePay)
+  return {
+    sweep,
+    requested,
+    target: clamp.target,
+    clamped: clamp.clamped,
+    now,
+    targetPoint,
+    comparison,
+    sentence: changeSentence(comparison, gbp),
+    setRequested,
+  }
 }
 
-const PERIOD_SUFFIX: Record<BreakdownPeriod, string> = { year: ' a year', month: ' a month' }
-
-/** An annual amount said for the period: the year's amount "a year", or a twelfth of it "a month". */
-const perText = (gbp: Gbp, period: BreakdownPeriod) => (annual: Money) => `${gbp(perPeriod(annual, period))}${PERIOD_SUFFIX[period]}`
-
-function ChartBody({
-  sweep,
-  reading,
-  view,
-  setView,
-  setChosen,
-  fullRange,
-  setFullRange,
+/**
+ * The compare (U23, U24, U26, U27), first in the results: the picker, the one-sentence summary and three cards, the
+ * milestones and the warnings at the target. Nothing here is stored.
+ */
+function PensionCompare({
+  state,
   inputs,
   resolved,
   gbp,
-  period,
+  style,
 }: {
-  sweep: OptimiseResult
-  reading: SweepReading
-  view: ChartView
-  setView: (view: ChartView) => void
-  setChosen: (contribution: Money) => void
-  fullRange: boolean
-  setFullRange: (full: boolean) => void
+  state: PensionCompareState
   inputs: OptimiserPageInputs
   resolved: ResolvedInputs
   gbp: Gbp
-  period: BreakdownPeriod
+  style: AmountStyle
 }) {
-  const percentBase = inputs.employeeContribution.mode === 'percentOfPay' ? resolved.pensionablePay : null
-  const { range, shown, now, choice } = reading
-  const points = shown.points
-  const data = optimiserChartData({ ...sweep, ...shown }, view, { gbp, percentBase, period })
-  const yLabel = viewLabel(view, period)
-  const money = (pence: number) => gbp(fromPence(pence))
-  const compact = (pence: number) => formatGBPCompact(fromPence(pence))
-  const per = perText(gbp, period)
-  const changes = changeVsNow(points, now, view, period)
-  const delta = (amount: Money) => formatGBPDelta(amount, 'pence')
-  const index = points.indexOf(choice)
-  const isNow = choice === now
-  const options = points.map((point) => ({
-    value: String(toPence(point.contribution)),
-    label: `${per(point.contribution)}${point === now ? ' (your contribution now)' : ''}`,
-  }))
-  return (
-    <>
-      <p className="text-sm text-text-muted">
-        Candidate contributions by {METHOD_LABELS[sweep.method].toLowerCase()}, from nothing up to the most the engine models. None is a
-        recommendation. Spendable is take-home with any Child Benefit, less any annual allowance charge.
-      </p>
-      <Segmented id="opt-chart-view" label="Show" value={view} options={VIEW_OPTIONS} onChange={setView} />
-      {range && (
-        <Toggle
-          id="opt-full-range"
-          label="Full range"
-          hint="From nothing up to the most the engine models, instead of around your contribution now and the thresholds ahead of it."
-          checked={fullRange}
-          onChange={setFullRange}
-        />
-      )}
-      <p data-range-note className="text-xs text-text-muted">
-        {range === null
-          ? 'Showing the full range: no threshold lies ahead of your contribution now.'
-          : fullRange
-            ? 'Showing the full range.'
-            : `Showing ${per(range.from)} to ${per(range.to)}: around your contribution now and the thresholds ahead of it.`}
-      </p>
-      <Select
-        id="opt-chosen"
-        label="Contribution to look at"
-        hint="Your contribution now until you choose another. Read out below, highlighted on the chart and compared further down."
-        value={String(toPence(choice.contribution))}
-        options={options}
-        onChange={(pence) => setChosen(fromPence(Number(pence)))}
-      />
-      <p data-readout aria-live="polite" className="rounded-md bg-surface-muted px-3 py-2 text-sm text-text">
-        {isNow ? 'Your contribution now' : 'At'} <strong className="tabular-nums">{per(choice.contribution)}</strong>:{' '}
-        {VIEW_LABELS_LOWER[view]} <strong className="tabular-nums">{per(choice[view])}</strong>
-        {isNow ? '.' : `, ${delta(changes[index]!)}${PERIOD_SUFFIX[period]} against your contribution now (${per(now.contribution)}).`}
-      </p>
-      <Chart
-        title={`${yLabel} against your pension contribution`}
-        categories={data.categories}
-        series={[{ id: view, label: yLabel, kind: 'line', values: data.values }]}
-        xValues={data.xValues}
-        formatXTick={compact}
-        markers={data.markers}
-        spans={data.spans}
-        pointMarkers={false}
-        selectedX={data.xValues[index]}
-        columns={[
-          { label: 'Change vs now', values: changes.map(delta), numeric: true },
-          { label: 'Marked', values: data.rowNotes },
-        ]}
-        xLabel={X_LABELS[period]}
-        yLabel={yLabel}
-        formatTick={compact}
-        formatValue={money}
-        integer
-      />
-      <div className="flex flex-col gap-1 text-xs text-text-muted">
-        {data.notes.map((note) => (
-          <p key={note}>{note}</p>
-        ))}
-        <p>{CURVE_NOTE}</p>
-        {period === 'month' && <p data-month-note>{MONTH_NOTE}</p>}
-      </div>
-    </>
-  )
-}
-
-const VIEW_LABELS_LOWER: Record<ChartView, string> = { spendable: 'spendable', takeHome: 'take-home' }
-
-/** Below the chart, for the chosen point (1b-ii-b): the cost of more pension. */
-function ReadingCards({
-  sweep,
-  reading,
-  gbp,
-  period,
-}: {
-  sweep: OptimiseResult
-  reading: SweepReading
-  gbp: Gbp
-  period: BreakdownPeriod
-}) {
-  return (
-    <>
-      <CostCard sweep={sweep} choice={reading.choice} gbp={gbp} period={period} />
-      <ThresholdsCard sweep={sweep} gbp={gbp} period={period} />
-      <SweepWarnings sweep={sweep} choice={reading.choice} gbp={gbp} period={period} />
-      <CompareChoice now={reading.now} choice={reading.choice} gbp={gbp} period={period} />
-    </>
-  )
-}
-
-const STATUS_LABELS: Record<ThresholdWords['status'], string> = {
-  alreadyUnder: 'Already under',
-  contributeMore: 'Reachable',
-  outOfReach: 'Out of reach',
-}
-
-/** Each threshold optimise() gives, in words, for the period (from your contribution now, not the chosen one). */
-function ThresholdsCard({ sweep, gbp, period }: { sweep: OptimiseResult; gbp: Gbp; period: BreakdownPeriod }) {
+  const { sweep } = state
   return (
     <section
-      data-thresholds
-      aria-labelledby="opt-thresholds-heading"
-      className="flex min-w-0 flex-col gap-3 rounded-lg border border-border bg-surface p-5 shadow-sm"
+      data-pension-compare
+      aria-labelledby="opt-compare-heading"
+      className="flex min-w-0 flex-col gap-4 rounded-lg border border-border bg-surface p-4 shadow-sm sm:p-5"
     >
-      <h2 id="opt-thresholds-heading" className="text-base font-semibold">
-        Thresholds from your contribution now
+      <h2 id="opt-compare-heading" className="text-base font-semibold">
+        Compare a pension contribution
       </h2>
+      <ContributionPicker
+        sweep={sweep}
+        requested={state.requested}
+        target={state.target}
+        clamped={state.clamped}
+        onChange={state.setRequested}
+        mode={inputs.employeeContribution.mode}
+        pensionablePay={resolved.pensionablePay}
+        gbp={gbp}
+      />
+      <ChangeSummary comparison={state.comparison} sentence={state.sentence} gbp={gbp} style={style} />
+      <TargetWarnings state={state} gbp={gbp} />
+      <Milestones sweep={sweep} gbp={gbp} />
+    </section>
+  )
+}
+
+const count = (n: number, noun: string) => `${n} ${noun}${n === 1 ? '' : 's'}`
+
+/**
+ * Warnings (U27): a line with the count at the target and elsewhere; the target's in full, never collapsed; the rest
+ * in a Section whose summary counts them, each with the contributions it applies at. With the childcare check, the
+ * target's eligibility on income. Never a cap.
+ */
+function TargetWarnings({ state, gbp }: { state: PensionCompareState; gbp: Gbp }) {
+  const { sweep, targetPoint } = state
+  const { atTarget, elsewhere } = warningSplit(sweep.points, targetPoint)
+  const runs = warningRuns(sweep.points)
+  const where = (code: EngineWarning['code']) => {
+    const run = runs.find((r) => r.code === code)
+    return run ? `Across the range it applies ${runWords(run.runs, sweep.maximumContribution, gbp)}.` : ''
+  }
+  const childcare = childcareRuns(sweep.points)
+  const line =
+    atTarget.length === 0 && elsewhere.length === 0
+      ? 'No warnings at this contribution, or anywhere from nothing to the most modelled.'
+      : `${atTarget.length === 0 ? 'No warnings' : count(atTarget.length, 'warning')} at this contribution; ${
+          elsewhere.length === 0 ? 'none' : count(elsewhere.length, 'other warning')
+        } elsewhere in the range. Warnings never stop or cap a contribution.`
+  return (
+    <div data-target-warnings className="flex min-w-0 flex-col gap-2">
+      <p data-warning-count className="text-sm text-text">
+        {line}
+      </p>
+      {atTarget.map((warning) => (
+        <div key={warning.code} data-target-warning={warning.code} className="[overflow-wrap:anywhere]">
+          <InlineNotice tone="warning">
+            <p>{warning.message}</p>
+            <p className="text-xs">{where(warning.code)}</p>
+          </InlineNotice>
+        </div>
+      ))}
+      {childcare.length > 0 && (
+        <div data-childcare className="flex flex-col gap-1 text-sm">
+          {childcare.map((scheme) => {
+            const eligible = targetPoint.childcare.some((c) => c.scheme === scheme.scheme && c.eligibleOnIncome)
+            return (
+              <p key={scheme.scheme} className="text-text">
+                {SCHEME_LABELS[scheme.scheme]}: {eligible ? 'eligible on income' : 'over the income limit'} at this contribution.{' '}
+                <span className="text-text-muted">
+                  {scheme.eligible.length === 0
+                    ? 'Over the limit at every contribution.'
+                    : `Eligible on income ${runWords(scheme.eligible, sweep.maximumContribution, gbp)}.`}
+                </span>
+              </p>
+            )
+          })}
+          <p className="text-xs text-text-muted">{CHILDCARE_NOT_CHECKED}</p>
+        </div>
+      )}
+      <Section
+        id="opt-other-warnings"
+        title="Warnings at other contributions"
+        summary={elsewhere.length === 0 ? 'None elsewhere in the range' : `${count(elsewhere.length, 'warning')} elsewhere in the range`}
+      >
+        {elsewhere.length === 0 ? (
+          <p className="text-sm text-text-muted">No other contribution, from nothing to the most modelled, carries a warning.</p>
+        ) : (
+          <ul className="flex flex-col gap-2">
+            {elsewhere.map((warning) => (
+              <li key={warning.code} data-sweep-warning={warning.code} className="[overflow-wrap:anywhere]">
+                <InlineNotice tone="warning">
+                  <p>{warning.message}</p>
+                  <p className="text-xs">Applies {runWords(warning.runs, sweep.maximumContribution, gbp)}.</p>
+                </InlineNotice>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Section>
+    </div>
+  )
+}
+
+/** Milestones (U26): each threshold from the contribution now, in plain words, always visible. */
+function Milestones({ sweep, gbp }: { sweep: OptimiseResult; gbp: Gbp }) {
+  return (
+    <div data-milestones className="flex min-w-0 flex-col gap-2">
+      <h3 className="text-sm font-semibold text-text">Milestones from your contribution now</h3>
       <ul className="flex flex-col">
         {sweep.thresholds.map((threshold) => {
-          const words = thresholdWords(threshold, sweep.method, period, gbp)
+          const words = milestoneWords(threshold, sweep.method, gbp)
           return (
             <li
               key={threshold.threshold}
@@ -1416,51 +1374,183 @@ function ThresholdsCard({ sweep, gbp, period }: { sweep: OptimiseResult; gbp: Gb
             >
               <span className="flex flex-wrap items-baseline justify-between gap-x-3">
                 <span className="font-medium text-text">{words.name}</span>
-                <span className="text-xs text-text-muted">{STATUS_LABELS[words.status]}</span>
+                <span className="text-xs text-text-muted">{words.label}</span>
               </span>
-              <span className="text-text-muted">{words.text}</span>
+              <span className="text-text-muted [overflow-wrap:anywhere]">{words.text}</span>
             </li>
           )
         })}
       </ul>
-    </section>
+    </div>
   )
 }
 
-/** The cost of a pound more pension at the chosen point, from netCostPerPound and marginalRate, each with what it is measured against. */
-function CostCard({ sweep, choice, gbp, period }: { sweep: OptimiseResult; choice: OptimiserPoint; gbp: Gbp; period: BreakdownPeriod }) {
-  const cost = costOfMore(sweep.points, choice)
-  const per = perText(gbp, period)
-  // Always in pence: a cost of part of a pound would round away in whole pounds.
-  const pence = (amount: Money) => formatGBP(amount, 'pence')
-  const more = `${pence(ONE_POUND)} more${period === 'month' ? ' a month' : ''}`
+/**
+ * The cost chart (U25), below the split bar: the engine's net cost per pound over the whole sweep, now and the target
+ * marked, cliffs as lettered ranges; then the detail Sections (U28). A refusal takes its place; an input problem is
+ * already shown above.
+ */
+function CostChart({
+  sweep,
+  state,
+  inputs,
+  resolved,
+  gbp,
+  style,
+}: {
+  sweep: OptimiserPageResult
+  state: PensionCompareState | null
+  inputs: OptimiserPageInputs
+  resolved: ResolvedInputs
+  gbp: Gbp
+  style: AmountStyle
+}) {
+  if (isInputProblem(sweep)) return null
   return (
-    <div data-cost>
-      <ResultCard title={`Cost of ${pence(ONE_POUND)} more pension`}>
-        <StatRow
-          label="Against no contribution"
-          value={cost.sinceNothing === null ? '–' : pence(cost.sinceNothing)}
-          detail={
-            cost.sinceNothing === null
-              ? 'No contribution to measure against yet: choose a larger contribution to see its cost.'
-              : `Spendable given up for each ${more} going into your pension, from no contribution to ${per(choice.contribution)}`
-          }
-        />
-        <StatRow
-          label="Since the previous point"
-          value={cost.sincePrevious === null ? '–' : pence(cost.sincePrevious.cost)}
-          detail={
-            cost.sincePrevious === null
-              ? 'This is the first point: there is no previous point to measure from.'
-              : `Of each ${more} into your pension since ${per(cost.sincePrevious.from)}: ${pence(cost.sincePrevious.cost)} came out of spendable and ${pence(cost.sincePrevious.kept)} did not`
-          }
-        />
-      </ResultCard>
-      <p className="mt-2 text-xs text-text-muted">
-        Into your pension means your contribution, any relief your provider adds and any salary sacrificed. A jump between points (a
-        lettered range on the chart) can make either figure very different from its neighbours’.
+    <>
+      <section
+        data-optimiser
+        aria-labelledby="opt-chart-heading"
+        className="flex min-w-0 flex-col gap-4 rounded-lg border border-border bg-surface p-4 shadow-sm sm:p-5"
+      >
+        <h2 id="opt-chart-heading" className="text-base font-semibold">
+          What each {POUND} into your pension costs
+        </h2>
+        {!sweep.ok ? (
+          <RefusalNotice refusal={sweep} />
+        ) : (
+          state && <CostChartBody state={state} inputs={inputs} resolved={resolved} gbp={gbp} />
+        )}
+      </section>
+      {sweep.ok && state && <CostDetail state={state} gbp={gbp} />}
+      {sweep.ok && state && <MilestoneDetail sweep={state.sweep} gbp={gbp} />}
+      {sweep.ok && state && <SpendableDetail state={state} gbp={gbp} style={style} />}
+    </>
+  )
+}
+
+const pence = (value: number) => formatPence({ numerator: BigInt(value), denominator: 1n })
+
+function CostChartBody({
+  state,
+  inputs,
+  resolved,
+  gbp,
+}: {
+  state: PensionCompareState
+  inputs: OptimiserPageInputs
+  resolved: ResolvedInputs
+  gbp: Gbp
+}) {
+  const { sweep, target } = state
+  const percentBase = inputs.employeeContribution.mode === 'percentOfPay' ? resolved.pensionablePay : null
+  const data = costChartData(sweep, { gbp, percentBase, target })
+  const selected = data.xValues.indexOf(toPence(target))
+  return (
+    <>
+      <p className="text-sm text-text-muted">
+        For each contribution by {METHOD_LABELS[sweep.method].toLowerCase()}, from nothing to the most modelled: the take-home (with any
+        Child Benefit, less any annual allowance charge) given up for each {POUND} paid into your pension in total, on average from no
+        contribution. It is not the cost of the next {POUND}, and no point is a recommendation.
       </p>
-    </div>
+      <Chart
+        title={`${COST_LABEL}, from no contribution, by your contribution`}
+        categories={data.categories}
+        series={[{ id: 'cost', label: COST_LABEL, kind: 'line', values: data.values }]}
+        xValues={data.xValues}
+        formatXTick={(x) => formatGBPCompact(fromPence(x))}
+        markers={data.markers}
+        spans={data.spans}
+        pointMarkers={false}
+        selectedX={selected >= 0 ? data.xValues[selected] : undefined}
+        columns={[{ label: 'Marked', values: data.rowNotes }]}
+        xLabel={X_LABEL}
+        yLabel={COST_LABEL}
+        formatTick={pence}
+        formatValue={pence}
+        includeZero
+        integer
+      />
+      <div className="flex flex-col gap-1 text-xs text-text-muted">
+        {data.notes.map((note) => (
+          <p key={note}>{note}</p>
+        ))}
+        <p>{CURVE_NOTE}</p>
+      </div>
+    </>
+  )
+}
+
+/** Pence of a pound, to the nearest penny, from an exact ratio; a dash for none. */
+const perPound = (r: Ratio | null) => (r === null ? '–' : formatGBP(mulRound(ONE_POUND, r, 'nearest'), 'pence'))
+
+/** The cost of each pound in, three ways, each with what it is measured on (U28). */
+function CostDetail({ state, gbp }: { state: PensionCompareState; gbp: Gbp }) {
+  const { comparison: c, target } = state
+  const kept = c.marginalAtTarget
+  const lastStep = kept === null ? null : subtractRatio(ratio(1, 1), kept)
+  return (
+    <Section
+      id="opt-cost-detail"
+      title="Cost detail"
+      summary={
+        c.costPerPound === null
+          ? 'No change in what goes in between now and your target'
+          : `On average ${perPound(c.costPerPound)} of take-home for each ${POUND} more in, now to your target`
+      }
+    >
+      <div data-cost>
+        <ResultCard title={`Cost of each ${POUND} in`}>
+          <StatRow
+            label="Average, now to your target"
+            value={perPound(c.costPerPound)}
+            detail={
+              c.costPerPound === null
+                ? 'The total paid into your pension is the same at both, so there is nothing to measure.'
+                : `Take-home given up for each ${POUND} more paid into your pension in total, from ${gbp(state.now.contribution)} to ${gbp(target)} a year`
+            }
+          />
+          <StatRow
+            label="At your target, from no contribution"
+            value={perPound(c.netCostPerPoundAtTarget)}
+            detail={`Take-home with any Child Benefit, less any annual allowance charge, given up for each ${POUND} in, on average from no contribution (the chart’s figure)`}
+          />
+          <StatRow
+            label="At your target, the last step"
+            value={perPound(lastStep)}
+            detail={`Of each extra ${POUND} in since the chart’s point before your target, what came out of take-home (with any Child Benefit, less any annual allowance charge)`}
+          />
+        </ResultCard>
+        <p className="mt-2 text-xs text-text-muted">
+          Near a lettered range on the chart any of these can be very different from its neighbours’. Paid in means your contribution, any
+          relief your provider adds and your employer’s own contribution.
+        </p>
+      </div>
+    </Section>
+  )
+}
+
+/** The threshold audit: each limit and what it is measured on, from now (kept out of the main answer, U26). */
+function MilestoneDetail({ sweep, gbp }: { sweep: OptimiseResult; gbp: Gbp }) {
+  return (
+    <Section
+      id="opt-milestone-detail"
+      title="Milestones in detail"
+      summary={`${count(sweep.thresholds.length, 'threshold')}, each limit and what it is measured on, from your contribution now`}
+    >
+      <ul data-thresholds className="flex flex-col">
+        {sweep.thresholds.map((threshold) => (
+          <li
+            key={threshold.threshold}
+            data-threshold={threshold.threshold}
+            className="flex flex-col gap-0.5 border-t border-border py-2 text-sm first:border-t-0 first:pt-0"
+          >
+            <span className="font-medium text-text">{THRESHOLD_NAMES[threshold.threshold]}</span>
+            <span className="text-text-muted [overflow-wrap:anywhere]">{thresholdWords(threshold, sweep.method, 'year', gbp).text}</span>
+          </li>
+        ))}
+      </ul>
+    </Section>
   )
 }
 
@@ -1469,102 +1559,31 @@ const SCHEME_LABELS: Record<ChildcareScheme, string> = {
   thirtyHours: 'Free Childcare for Working Parents',
 }
 
-/**
- * Every warning any point of the whole sweep carries (not only the range shown), with where it applies and whether
- * it applies at the chosen point; never hidden and never a cap. With the childcare check, each scheme's eligibility
- * on income at the chosen point and where it holds, and what is not checked.
- */
-function SweepWarnings({
-  sweep,
-  choice,
-  gbp,
-  period,
-}: {
-  sweep: OptimiseResult
-  choice: OptimiserPoint
-  gbp: Gbp
-  period: BreakdownPeriod
-}) {
-  const per = perText(gbp, period)
-  const where = (runs: readonly ContributionRun[]) =>
-    runs.map((run) => (compare(run.from, run.to) === 0 ? `At ${per(run.from)}` : `From ${per(run.from)} to ${per(run.to)}`)).join('; ')
-  const warnings = warningRuns(sweep.points)
-  const childcare = childcareRuns(sweep.points)
+/** Spendable beside take-home, only where it differs (Child Benefit or an annual allowance charge; U28). */
+function SpendableDetail({ state, gbp, style }: { state: PensionCompareState; gbp: Gbp; style: AmountStyle }) {
+  const { now, targetPoint: next } = state
+  const differs = (p: OptimiserPoint) => compare(p.spendable, p.takeHome) !== 0
+  if (!differs(now) && !differs(next)) return null
+  const rows: { label: string; pick: (p: OptimiserPoint) => Money }[] = [
+    { label: 'Take-home', pick: (p) => p.takeHome },
+    { label: 'Child Benefit received', pick: (p) => p.childBenefit },
+    { label: 'Annual allowance charge', pick: (p) => p.annualAllowanceCharge },
+    { label: 'Spendable', pick: (p) => p.spendable },
+  ]
   return (
-    <section
-      data-optimiser-warnings
-      aria-labelledby="opt-sweep-warnings-heading"
-      className="flex min-w-0 flex-col gap-3 rounded-lg border border-border bg-surface p-5 shadow-sm"
-    >
-      <h2 id="opt-sweep-warnings-heading" className="text-base font-semibold">
-        Warnings across the contributions
-      </h2>
-      {warnings.length === 0 ? (
-        <p className="text-sm text-text-muted">No warnings at any contribution, from nothing up to the most modelled.</p>
-      ) : (
-        <ul className="flex flex-col gap-2">
-          {warnings.map((warning) => (
-            <li key={warning.code} data-sweep-warning={warning.code}>
-              <InlineNotice tone="warning">
-                <p>{warning.message}</p>
-                <p className="text-xs">
-                  {where(warning.runs)}.
-                  {choice.warnings.some((w) => w.code === warning.code) ? ' This applies at the contribution you are looking at.' : ''}
-                </p>
-              </InlineNotice>
-            </li>
+    <Section id="opt-spendable" title="Spendable income" summary={`Spendable at your target: ${gbp(next.spendable)} a year`}>
+      <div data-spendable>
+        <ResultCard title="Spendable: take-home with Child Benefit, less any annual allowance charge">
+          {rows.map((row) => (
+            <StatRow
+              key={row.label}
+              label={`${row.label}, a year`}
+              value={gbp(row.pick(next))}
+              detail={`Now ${gbp(row.pick(now))} · change ${formatGBPChange(subtract(row.pick(next), row.pick(now)), style)}`}
+            />
           ))}
-        </ul>
-      )}
-      <p className="text-xs text-text-muted">
-        Warnings are shown wherever they apply; no contribution is stopped or capped because of one.
-      </p>
-      {childcare.length > 0 && (
-        <div data-childcare className="flex flex-col gap-2 border-t border-border pt-3 text-sm">
-          <h3 className="font-medium text-text">Childcare support: eligibility on income</h3>
-          <ul className="flex flex-col gap-1">
-            {childcare.map((scheme) => {
-              const eligible = choice.childcare.some((c) => c.scheme === scheme.scheme && c.eligibleOnIncome)
-              return (
-                <li key={scheme.scheme} className="text-text">
-                  {SCHEME_LABELS[scheme.scheme]}: {eligible ? 'eligible on income' : 'over the income limit'} at {per(choice.contribution)}.{' '}
-                  <span className="text-text-muted">
-                    {scheme.eligible.length === 0
-                      ? 'Over the limit at every contribution.'
-                      : `Eligible on income: ${where(scheme.eligible)}.`}
-                  </span>
-                </li>
-              )
-            })}
-          </ul>
-          <p className="text-xs text-text-muted">{CHILDCARE_NOT_CHECKED}</p>
-        </div>
-      )}
-    </section>
-  )
-}
-
-/** The contribution now against the chosen one (1b-ii-b): each row at the choice, with now and the change beside it. */
-function CompareChoice({ now, choice, gbp, period }: { now: OptimiserPoint; choice: OptimiserPoint; gbp: Gbp; period: BreakdownPeriod }) {
-  const rows = compareRows(now, choice, period)
-  const words = (row: CompareRow) => (row.year ? ' for the year' : PERIOD_SUFFIX[period])
-  return (
-    <div data-compare-choice className="flex flex-col gap-2">
-      <ResultCard title="Your contribution now and the one you are looking at">
-        {rows.map((row) => (
-          <StatRow
-            key={row.id}
-            label={`${row.label}${words(row)}`}
-            value={gbp(row.chosen)}
-            detail={`Now ${gbp(row.now)} · change ${formatGBPDelta(row.change, 'pence')}`}
-          />
-        ))}
-      </ResultCard>
-      {choice === now && (
-        <p className="text-xs text-text-muted">
-          These are the figures at your contribution now: choose another contribution above the chart to compare it.
-        </p>
-      )}
-    </div>
+        </ResultCard>
+      </div>
+    </Section>
   )
 }
