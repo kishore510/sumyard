@@ -218,7 +218,7 @@ As 3a: `{ ok: false, problems: [{ field, reason }] }`, with `option` (its index)
 ### F29. How flip points are found
 
 - **Horizon value**: closed form. Net cost is linear in the option's horizon value VH: −1 per penny while the car is held at the horizon, 0 when it was handed back earlier (then there is no crossing unless the two are equal throughout). The crossing X solves (net(0) − X) / C = net_other / C_other exactly; it is returned to the nearest penny if it lies in [0, V0 × `MAX_HORIZON_VALUE_RATIO`].
-- **Savings return** and **annual mileage**: a bounded, deterministic search. Each is scanned on a grid of `FLIP_SCAN_STEPS` equal steps over its range (savings return 0 to `MAX_SAVINGS_RETURN`, in steps of 10^−`FLIP_RATE_DIGITS`; mileage 0 to `MAX_ANNUAL_MILEAGE`, whole miles); at the first step where the order changes, bisection narrows it to two neighbouring values (10^−`FLIP_RATE_DIGITS` apart, or one mile) with different orders. The result is that pair and which option is lower each side. Crossings that come and go within one grid step can be missed; that is stated in the assumptions.
+- **Savings return** and **annual mileage**: a bounded, deterministic search. Each is scanned on a grid of `FLIP_SCAN_STEPS` equal steps over its range (savings return 0 to `MAX_SAVINGS_RETURN`, in steps of 10^−`FLIP_RATE_DIGITS`; mileage 0 to `MAX_ANNUAL_MILEAGE`, whole miles); at the first step where the order changes, bisection narrows it to two neighbouring values (10^−`FLIP_RATE_DIGITS` apart, or one mile) with different orders. The result is that pair and which option is lower each side. Crossings that come and go within one grid step can be missed; that is stated in the assumptions. A tie on the way is carried past to the first step where the other option is lower (F53, 3d-2).
 
 ### F30. Proposed bounds (for the owner)
 
@@ -340,3 +340,38 @@ The page's inputs go to version 3 with five fields per option (the switch and th
 ### F52. Running-cost rounding, accepted
 
 The per-month rounding of running costs (`docs/open-questions.md`, about 40p over ten years) is accepted by the owner as it is; not changed.
+
+## Thresholds and the cost bridge (session 3d-2, owner's brief, 22 October 2026)
+
+The owner's decisions for the flip search past a tie, a fuel or energy price threshold and a bridge of the difference between two options, numbered on from F52. Engine: `src/calculators/car-ownership/calc.ts` (`flipPoints`, `fuelPriceFlip`, `pencePerLitreFor`, `costBridge`); page: `src/calculators/car-decision/`. No config change, no figure, no new tolerance constant.
+
+### F53. A search carries on past a tie (closes OQ-flip-tie)
+
+F29's bounded search (savings return, annual mileage, and F54's fuel price) changes how it treats a tie. With the order at the bottom of the range a strict one (one option lower), a step where the two are level is passed over: the scan carries on to the first step where the **other** option is lower. If the same option is lower again after a tie, that was a touch, not a crossing, and the scan carries on; if the other option is never lower in the range, the result is no crossing, that option lower throughout. At a crossing, two bisections narrow it: the first to neighbours where the other option becomes lower (`above`), the second, only when the value just below `above` is level, to neighbours where the first option stops being lower (`below`). The result names the option lower on each side, both strict, and, when the two are level between them, the band as `level: { from, to }` (the first and last values searched, the neighbours of `below` and `above`). Between `from` and `to` the two penny-rounded totals are level or can flicker by a penny either way; both ends are level. The page says the band in words ("from P to Q the two are level"), never a single point.
+
+A range that starts level is unchanged: the first step where one option is lower is the crossing, with the two level below it (`lowerBelow: 'tie'`), and no band. Two options level throughout are no crossing, level throughout. The search uses the same grid (`FLIP_SCAN_STEPS`, steps of 10^−`FLIP_RATE_DIGITS`, or whole miles); no tolerance is added. A crossing with no tie is reported exactly as before (the same `below`, `above` and orders, no `level`).
+
+The horizon value (F29's closed form) has no such fault: it solves for the crossing exactly and names the other option below it and the subject above it, both strict; at the crossing itself, to the penny, the two can be level, and that is said as one point.
+
+### F54. The fuel or energy price threshold
+
+`fuelPriceFlip([first, second], shared, case)`: the first option's fuel or energy cost per mile at which the two average costs per month owned are equal at the end of coverage, everything else as entered (the second option untouched; the first option's mileage, yearly fuel price change, finance and running costs as entered). The first option's fuel is replaced by a direct cost per mile (the `per-mile` kind, whose pence per mile is F21's (c)) and the cost per mile is searched as F29 and F53 do, from nothing to `MAX_PENCE_PER_UNIT` pence per mile (what the page accepts for a direct cost per mile), in steps of 1 / `FLIP_RATE_DENOMINATOR` of a penny. The step is the rate search's own denominator, a billionth of a penny per mile, so no new constant: at any mileage the engine accepts, one step moves a month's fuel by far less than the penny it is rounded to. Same refusals as `flipPoints` (F28); "no crossing in range" as the other searches.
+
+The page shows it in pence per mile always. For petrol or diesel it is also shown as a price per litre, through F21's conversion turned round: `pencePerLitreFor(pence per mile, miles per gallon)` = pence per mile × miles per gallon ÷ `LITRES_PER_GALLON`, exactly. For an option on a direct cost per mile, pence per mile only. For electric, pence per mile only, with a sentence saying it is the home and public charging together, the split held as entered. A first option driven no miles has no fuel cost to change: no crossing.
+
+### F55. The cost bridge
+
+`costBridge(first, second, case)` (two `OwnershipResult`s): for two options that both cover the whole horizon, the difference in average cost per month owned, first less second, split by the engine's breakdown parts (F26): interest and fees, depreciation, equity handed back, fuel or energy, insurance, maintenance, VED, other and opportunity cost. Equity handed back is a part too: a PCP handed back at the end of a term equal to the horizon covers the whole horizon and has it, and without it the parts would not add up. Null when either option covers less than the horizon (the page then hides the bridge and says why). Pure, on the engine's results, no config.
+
+Each part's exact value is (first's part − second's part) ÷ the months owned, an `ExactPence`; the parts add up to the exact difference of the two averages, since each breakdown adds up to its net cost exactly (F26). Shown to the penny so the shown parts add up to the shown total exactly:
+
+- the shown total is the exact difference rounded once to the nearest penny, halves away from nothing: the verdict's gap a month (the total difference over the horizon, rounded once), so it can differ by a penny from the two cards' rounded averages subtracted;
+- each part is first cut to whole pence towards nothing; the pennies still needed to reach the shown total go one each to the parts with the largest remainders in that direction (by size, then by the parts' order); each shown part is within a penny of its exact value.
+
+So the bridge of an option against itself is nothing in every part, and swapping the pair turns every exact and shown figure to its negative.
+
+The page names the largest part by its shown size: "Most of the difference is X: £N a month." when it is on the same side as the total and more than half of it; otherwise "The largest part is X: £N a month", saying it is on the other side from the total or less than half of it. Tied largest parts are named together. Described, never explained: nothing says why a part differs.
+
+### F56. The bridge's pair
+
+The bridge uses the same pair as "What changes the answer" (F42): the same two choices, by default the two lowest in the engine's order; choosing either in one place changes both. Its own two Selects sit in the bridge's section (the pair Selects were below the cards; the bridge is with the results), labelled the same and saying the pair is shared.
