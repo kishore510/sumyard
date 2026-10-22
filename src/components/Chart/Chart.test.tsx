@@ -264,12 +264,52 @@ describe('Chart', () => {
       expect(view.host.querySelector('[data-series="d"] polyline')!.getAttribute('class')).toMatch(/stroke-danger/)
     })
 
-    it('without a style, series keep their order’s style (the first three as before)', () => {
+    it('without a style, series keep their order’s style, and the order never picks the danger colour', () => {
       const plain = four.series.map(({ style: _style, ...s }) => s)
       view = mount(<Chart {...four} series={plain} />)
       expect(view.host.querySelector('[data-series="a"] polyline')!.getAttribute('class')).toMatch(/stroke-accent/)
-      expect(view.host.querySelector('[data-series="c"] polyline')!.getAttribute('class')).toMatch(/stroke-danger/)
-      expect(view.host.querySelector('[data-series="d"] polyline')!.getAttribute('class')).toMatch(/stroke-text-muted/)
+      expect(view.host.querySelector('[data-series="b"] polyline')!.getAttribute('class')).toMatch(/stroke-text\b/)
+      expect(view.host.querySelector('[data-series="c"] polyline')!.getAttribute('class')).toMatch(/stroke-text-muted/)
+      expect(view.host.querySelector('[data-series="d"] polyline')!.getAttribute('class')).toMatch(/stroke-swatch-teal/)
+      expect(view.host.querySelector('.stroke-danger, .fill-danger')).toBeNull()
+    })
+
+    describe('a fourth style that is not the danger colour (secondary)', () => {
+      const five: ChartProps = {
+        ...four,
+        series: [...four.series, { id: 'e', label: 'Echo', kind: 'line', values: [1, 4, 7, 9, 12], style: 'secondary' }],
+      }
+      const marker = (id: string) => view!.host.querySelector(`[data-series="${id}"] [data-end-marker]`)!
+
+      it('has its own token colour (not the danger colour, nor another style’s), its own dash and its own marker shape', () => {
+        view = mount(<Chart {...five} />)
+        const cls = view.host.querySelector('[data-series="e"] polyline')!.getAttribute('class')!
+        expect(cls).toMatch(/stroke-swatch-teal/)
+        expect(cls).not.toMatch(/danger/)
+        const ids = ['a', 'b', 'c', 'd', 'e']
+        expect(new Set(ids.map(style)).size).toBe(5)
+        expect(new Set(ids.map(dash)).size).toBe(5)
+        expect(marker('e').tagName.toLowerCase()).toBe('polygon')
+        expect(new Set(ids.map((id) => `${marker(id).tagName}/${marker(id).getAttribute('transform') ?? ''}`)).size).toBe(4)
+        const legend = [...view.host.querySelectorAll('ul li svg line')].map((l) => l.getAttribute('stroke-dasharray') ?? 'solid')
+        expect(legend).toEqual(ids.map(dash))
+      })
+
+      it('is labelled at its end like the others, with labels kept apart', () => {
+        view = mount(<Chart {...five} />)
+        const labels = [...view.host.querySelectorAll('[data-end-label]')]
+        expect(labels.map((l) => l.textContent)).toEqual(['Alpha', 'Bravo', 'Charlie', 'Delta', 'Echo'])
+        const ys = labels.map((l) => Number(l.querySelector('text')!.getAttribute('y'))).sort((p, q) => p - q)
+        for (let k = 1; k < ys.length; k++) expect(ys[k]! - ys[k - 1]!).toBeGreaterThanOrEqual(10)
+      })
+
+      it('marks the selected position with its own shape', () => {
+        view = mount(<Chart {...five} selectedX={2} onSelectX={() => {}} selectLabel="Month" />)
+        const selected = view.host.querySelectorAll('[data-selected]')
+        expect(
+          [...selected].some((m) => m.tagName.toLowerCase() === 'polygon' && /stroke-swatch-teal/.test(m.getAttribute('class')!)),
+        ).toBe(true)
+      })
     })
 
     it('labels the end of each line with its name and its own marker shape', () => {

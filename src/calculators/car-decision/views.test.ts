@@ -39,6 +39,12 @@ const alone = (option: CarOption, shared: Shared) => {
 }
 
 describe('crossover data', () => {
+  it('has a distinct style for each of the most options a page holds, none of them the danger colour', () => {
+    expect(SERIES_STYLES.length).toBeGreaterThanOrEqual(MAX_CAR_OPTIONS)
+    expect(new Set(SERIES_STYLES).size).toBe(SERIES_STYLES.length)
+    expect(SERIES_STYLES).not.toContain('danger')
+  })
+
   const example = inputs([keep(), loan(), pcp({ pcpEnd: 'hand-back', term: 36 })], { horizonMonths: 48 })
 
   it('months 0 to the horizon; one line per costed option in the cards’ order, named as compare names them', () => {
