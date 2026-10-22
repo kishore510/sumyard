@@ -181,6 +181,10 @@ The owner confirmed, at the start of 3c-1:
 - **The mileage flip point** (F22, F29) sets the **same annual mileage for both options**, "as one driver".
 - **The 3b bounds** (F30) as proposed.
 
+### Owner confirmation (slice 3c-2, 22 October 2026)
+
+The owner accepted, at the start of 3c-2, the starting horizon **`DEFAULT_HORIZON_MONTHS` = 48** (four years): a starting value for a fresh page, not a bound and not advice.
+
 ## Engine decisions (slice 3b, proposed; owner to confirm)
 
 ### F24. Time grid
