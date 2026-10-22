@@ -20,7 +20,7 @@ The **Take-home pay** calculator works out your pay after tax for one tax year, 
 
 - **Your pay** is always shown: salary, bonus, where you live and the tax year. Everything else is in sections you open and close: **Pension**, **Pension allowances**, **Benefits and deductions**, **Student loans**, **Child Benefit** and **Tax code**. Each closed section shows a one-line summary of what is in it, or "Not set". Sections you have filled in open by themselves, including when you load a saved scenario; which sections are open is not saved.
 - **Your result stays in view.** On a phone, a bar at the top shows your take-home for the year or a month (choose **Year** or **Month**) and the tax year. Once you scroll down it shrinks to one line; tap it to see the choice again. On a wider screen the results sit beside the inputs and stay put as you scroll. Screen readers hear the take-home figure once you stop typing, not on every key.
-- **Results, top to bottom:** your take-home; a bar showing where your gross pay goes (tax, National Insurance, student loan, pension, benefits, deductions and take-home), with the same figures as text and as a table; the **Pension contributions** chart and the cards that read it; the breakdown by year or month; and, with a tax code, the PAYE estimate.
+- **Results, top to bottom:** **Compare a pension contribution** (once you enter your pay); your take-home; a bar showing where your gross pay goes (tax, National Insurance, student loan, pension, benefits, deductions and take-home), with the same figures as text and as a table; the chart of what each pound into your pension costs, with sections for the detail; the breakdown by year or month; and, with a tax code, the PAYE estimate. On a phone, the bar at the top also shows the compare's one-sentence summary.
 - **With a tax code**, the take-home card shows two lines: **Estimated payslip net pay** uses the PAYE estimate for income tax, which is roughly what your payslips add up to; **Take-home after the year-end adjustment** uses the year's tax, once any difference has been refunded or collected. Only income tax differs between them: the Child Benefit charge, if any, is in both.
 - **Benefits and deductions** show as compact cards with their name and amounts. Use **Edit** to change one and **Done** to fold it away. **Remove** takes it out, with **Undo** for a few seconds; Undo won't work once you have loaded another scenario or filled the list.
 
@@ -29,9 +29,16 @@ The **Take-home pay** calculator works out your pay after tax for one tax year, 
 - It doesn't work out each payslip: the PAYE estimate assumes the same pay every month. See below.
 - Employment income only: no savings, dividends, property or self-employment income.
 
-## The pension contributions chart
+## Comparing a pension contribution
 
-Once you enter your pay, the chart below the split bar shows what you would have to spend at each candidate pension contribution, with cards below it for the cost of a pound more, the thresholds in words, the warnings and a comparison with your contribution now. See [Pension contributions and the optimiser](help:pension-optimiser) for how to read them.
+Once you enter your pay, **Compare a pension contribution** puts your contribution now beside one you choose: type it, drag the slider or tap a button (**Now**, each threshold ahead of you, **Maximum**). Three cards show **your pension contribution**, the **total paid into your pension** and **your take-home pay**, each **Now**, **New** and **Change**, per month and per year.
+
+- **Total paid into your pension** is your contribution plus any tax relief your provider adds (relief at source) and your employer's own contribution, as the calculator counts them. With salary sacrifice, the salary you give up is your contribution.
+- **% change** is the change as a share of the figure now: going from two thousand pounds a year to three thousand is a rise of half. It is left out when the figure now is nothing.
+- **pts** (percentage points) is the change in your share of pensionable pay: going from four to six per cent of pay is two points, though the amount itself rises by half. The two are always on separate rows.
+- A month is each year's figure divided by the months in a year, to the nearest penny; the month's change is worked out from the two month figures shown, so each row adds up.
+
+See [Pension contributions and the optimiser](help:pension-optimiser) for the chart, milestones and warnings.
 
 ## Annual figures, not payslips
 

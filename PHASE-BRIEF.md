@@ -1,28 +1,27 @@
-# PHASE-BRIEF: Slice 3 Car decision
+# PHASE-BRIEF: Take-home pension compare redesign
 
-Status: 3a (finance engine) Done (0.17.0, PR #21); 3a.1 (APR) Done (0.17.1, PR #22); 3b (cost-of-ownership engine) Done (0.18.0, PR #23); 3c-1 (the page) Done (0.19.0, PR #24); 3c-2 (chart, sensitivity, polish) Done (0.20.0, PR #25); 3c-3 (fifth chart style) Done (0.20.1, PR #26). Slice 3 is built; it stays In progress until the owner's checks below. Slices 1b and 2 are built and stay open in `PLAN.md` until the owner's checks below are done. Status per part lives only in `PLAN.md`. Finished part scopes are in `docs/history/phase-brief-archive.md`.
+Status: slices 1b (take-home and optimiser), 2 (compound interest) and 3 (car decision) are built; each stays In progress in `PLAN.md` until the owner's checks below. The current part is the **pension compare redesign** (1b-iii, 0.21.0), from the owner's use of the optimiser on a phone. Status per part lives only in `PLAN.md`. Finished part scopes are in `docs/history/phase-brief-archive.md`.
 
 ## Docs rule
 
 Close out every session with the tiered checklist in `CLAUDE.md` ("Session close-out checklist").
 
-## Goal
+## Part 1b-iii: pension compare redesign (0.21.0)
 
-Compare what a car costs over a fixed horizon under five options: keep the current car, buy outright, PCP, HP or a personal loan. Finance maths first, then the cost of ownership, then the page. Illustrative, not advice. Owner decisions F1 to F4, engine decisions F5 onwards: `docs/modelling-decisions-car.md`.
+### Goal
 
-## Part 3c-2: crossover chart, sensitivity, tap-to-pick, polish (0.20.0)
+On the take-home page (`#/c/optimiser`), one clear answer near the top: choose a contribution and see the change in your contribution, the total paid into your pension and your take-home, a month and a year, with the % change. Plain, non-judgemental words; warnings never hidden (G13). Decisions U23 to U28 (`docs/ui-patterns.md`).
 
 ### Scope
 
-- Pre-check: 3c-1 merged, CI green, Pages deployed; the owner's acceptance of `DEFAULT_HORIZON_MONTHS` = 48 recorded.
-- Empty optional boxes: costs and fees read as nothing (0 placeholder, hint); required boxes still hold the option back, named one per line; inputs version 2 with a migration giving identical figures.
-- Shared Chart: four line styles (a neutral one that is not the danger colour; the compound interest "Paid in" line uses it), end labels, a series ending early, pointer and keyboard selection of an x, the selected-position marker, the table row highlighted and selectable, the summary naming the position.
-- The car page below the cards: the crossover chart (engine's cumulative net cost, the case shown, lines stopping at coverage end, horizon and term markers) with a tap-to-pick month and a readout; "What changes the answer" for any pair, measured over the whole horizon; a sensitivity Section (end value, savings return, mileage, fuel price at minus and plus ten and twenty percent, engine reruns, largest first, after the inputs settle); a "how to read this page" line; assumptions and Help.
-- Tests first (red, then green), a property over 100 random inputs, banned words and the literal guard over the new files, mutation spot-checks; the browser matrix and Lighthouse, with compute times in `docs/performance.md`.
+- `compareContributions` (`src/calculators/optimiser/compare.ts`): two engine points, arithmetic only (`docs/money.md`, "Pension compare").
+- `ContributionPicker`: typed amount or percentage, a native slider to the engine's maximum (pay-bounded, owner's choice), pills (now, thresholds ahead, maximum), a clamp message; opens on the nearest threshold ahead.
+- `ChangeSummary`: the sentence (also in the sticky bar) and three Now / New / Change cards with % change and pts.
+- The cost chart (the engine's net cost per pound, an average from no contribution, owner's choice), milestones, warnings at the target in full and the rest counted in a Section, detail Sections; spendable only where it differs.
 
 ### Out of scope
 
-Tax or VED config, EV tax rules, replacement cars, early termination, Monte Carlo or varying returns, a worker, any new calculator, any engine change.
+Pot projection, growth, age or inflation; any config, tax rule or engine change; new storage keys; other calculators.
 
 ## Still with the owner
 
@@ -30,16 +29,17 @@ Confirm the benefit value from an annual statement (B1) and run the payslip chec
 
 Slice 3a: confirm decisions F5 to F14 and the bounds (`src/calculators/car-finance/README.md`); confirm F15 (one decimal place, the drawdown, an added fee as a charge) and settle CR-10 (a PCP's optional final payment, purchase and option fees in the APR) from a source before any page shows an APR for PCP or HP with an option fee; decide whether the hand-back path should also take condition charges. Slice 3b: confirm F24 to F31 (`src/calculators/car-ownership/README.md`); F18's two readings and the bounds were confirmed at the start of 3c-1; confirm litres per gallon from legislation.gov.uk (CO-1). Slice 3c-1: fill `docs/car-cross-checks.json` (six cases: a spreadsheet, or a real dealer quote for the payment; source and date) and `docs/compound-cross-checks.json`; spot-check the litres per gallon line in a fuel cost per mile; confirm the page decisions F32 to F37 (`DEFAULT_HORIZON_MONTHS` = 48 accepted at the start of 3c-2); check the page on a real phone. Slice 3c-2: confirm the page decisions F38 to F42 (optional boxes read as nothing, the chart, the selected month, the sensitivity's shifts, any pair); whether to move the flip search and the sensitivity to a worker (one flip search is a 250 to 430 ms task after the inputs settle, `docs/performance.md`); check the chart and its selection on a real phone and with a screen reader.
 
+Compare redesign (1b-iii): confirm U24's maximum (the engine's, pay-bounded) and U25's chart measure (net cost per pound, an average from no contribution); check the page on a real phone, with Safari and with a screen reader.
+
 ## Last session
 
-- 22 October 2026, slice 3c-3 (0.20.1, PR #26, user-visible fix): pre-check passed (PR #25 merged, CI green, PLAN row Done). The shared Chart has a fifth style, `secondary` (token `swatch-teal`, Chalkline's teal swatch; dash-dot-dot; triangle marker); the default order no longer picks danger; the car page's fourth option uses it. Tests red then green, plus a source guard (`dangerStyle.test.ts`).
-- Differs from the brief: the Chart test that asserted danger as the default third style now asserts neutral (the default order changed; no page relied on it).
-- Not verified: a real phone, Safari, Firefox, a screen reader, the deployed site. Browser matrix: Chromium 360 and 1280 px, light and dark, axe, four-option car page, 68 checks clean.
+- 22 October 2026, part 1b-iii (0.21.0, user-visible): pre-check passed (PR #26 merged, Pages deploy green; this file had moved on to slice 3, not 1b-ii). `compareContributions`, the picker, the change summary, the cost chart, milestones and warnings replace the dropdown, the zoomed chart and the compare block. Tests red then green; three mutation spot-checks caught.
+- Differs from the brief: the slider's top is the engine's maximum, not the allowance headroom; the chart is labelled as an average from no contribution; the Year / Month choice no longer drives the chart; decisions numbered U23 onwards (U10 to U22 were taken).
+- Not verified: a real phone, Safari, Firefox, a screen reader, the deployed site. Browser matrix: Chromium at 360, 768, 1024 and 1280 px, light and dark, nine states, 72 runs.
 
 ## Next
 
-- Slice 3 is built; it stays In progress until the owner's checks above (F5 to F15, F24 to F31, F32 to F42, the cross-checks, a real phone) are done.
-- CR-10: settle from a source whether a PCP's optional final payment and purchase or option fees count in the APR, before any card shows an APR for them.
-- Then propose the next slice: **mortgage overpayment** (`PLAN.md`), its brief and decisions first (daily versus monthly interest per lender).
+- The owner's checks above, then propose the next slice: **mortgage overpayment** (`PLAN.md`), its brief and decisions first (daily versus monthly interest per lender).
+- CR-10 (car finance): settle from a source whether a PCP's optional final payment and option fees count in the APR, before any card shows an APR for them.
 
 Full history (progress logs, finished part scopes, slice archives): `docs/history/` (grep it, don't read it whole).

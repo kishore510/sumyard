@@ -4,6 +4,18 @@ All notable changes to Sumyard are listed here, newest first. The format follows
 
 ## [Unreleased]
 
+## [0.21.0] - 2026-10-22
+
+### Changed
+- **Take-home pay: compare a pension contribution.** Near the top of the results, choose a contribution to compare with yours now: type it (as an amount a year, or as a percentage if you enter your contribution that way), drag the slider, or tap **Now**, a threshold ahead of you or **Maximum**. It opens on the nearest threshold ahead. Under it you see the amount a month and a year and its share of your pensionable pay. An amount above the most Sumyard models is brought down to it, and the page says so.
+- One sentence says what changes, for example how much your take-home falls and the total paid into your pension rises, a month and a year; on a phone it also sits in the bar at the top. Three cards (**Your pension contribution**, **Total paid into your pension** and **Your take-home pay**) show Now, New and Change, per month and per year, with the **% change**; your contribution also shows its **share of pay** and the change in **pts** (percentage points).
+- The chart now shows **what each £1 into your pension costs**, on average from no contribution, across the whole range from nothing to the most modelled, starting from zero. Your contribution now and your target are marked, and jumps are shown as lettered ranges.
+- **Milestones** list each threshold in plain words: already under it, how much more a year and a month, or out of reach and why.
+- **Warnings** at the contribution you're comparing are always shown in full, with a count of any that apply elsewhere in the range; those are in a section that says the own contribution they apply to (for example "if your own contribution is between £X and £Y a year").
+- The cost detail, the thresholds in detail and spendable income (only when it differs from take-home) are in sections you can open. The chart no longer follows the Year / Month choice, which now sets only the take-home figure and the breakdown.
+
+- Replaced: the list of contributions to choose from, the Spendable / Take-home switch, **Full range**, the "Change vs now" column and the "Your contribution now and the one you are looking at" card.
+
 ## [0.20.1] - 2026-10-22
 
 ### Fixed

@@ -34,3 +34,4 @@ Moved verbatim from `PLAN.md` on 21 October 2026. New ideas go here.
 - Chart: render the data table's rows only once it is opened; the car decision's 241-row table with a button per row makes the DOM large (Lighthouse dom-size).
 - Car decision: two option cards (or two refusal notices) with the same name are regions with the same name (axe landmark-unique); number them when names repeat.
 - Car decision: open the "Shared assumptions" section from the "No results yet" notice, since both values are needed before anything shows.
+- Pension compare: the chart's data table is the shared Chart's own disclosure, not a Section as the brief asked; move it if the owner wants all detail in Sections. The Chart draws cliffs as shaded lettered ranges; a step line (a vertical jump at a known x) would need the engine to say where inside the range the jump lies.

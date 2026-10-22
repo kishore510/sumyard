@@ -1492,7 +1492,7 @@ function CostDetail({ state, gbp }: { state: PensionCompareState; gbp: Gbp }) {
   return (
     <Section
       id="opt-cost-detail"
-      title={`Cost of each ${POUND} in: detail`}
+      title="Cost detail"
       summary={
         c.costPerPound === null
           ? 'No change in what goes in between now and your target'
