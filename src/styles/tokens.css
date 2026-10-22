@@ -46,6 +46,10 @@
   --sy-palette-red-700: #b3261e;
   --sy-palette-red-950: #1a0b09;
 
+  /* Teal: a chart line style (Chalkline's swatch-teal, light and dark). */
+  --sy-palette-teal-300: #5fd0c2;
+  --sy-palette-teal-700: #0f766e;
+
   /* Translucent: subtle fills, shadows and overlays (suffix is the alpha in %). */
   --sy-palette-blue-600-a12: #1f6aa51f;
   --sy-palette-blue-300-a15: #7cc0e626;
@@ -80,6 +84,8 @@
   --sy-danger: var(--sy-palette-red-700);
   --sy-on-danger: var(--sy-palette-white);
 
+  --sy-swatch-teal: var(--sy-palette-teal-700);
+
   --sy-shadow-color: var(--sy-palette-slate-850-a10);
   --sy-shadow-color-strong: var(--sy-palette-slate-850-a16);
   --sy-overlay: var(--sy-palette-slate-850-a40);
@@ -106,6 +112,8 @@
 
   --sy-danger: var(--sy-palette-red-300);
   --sy-on-danger: var(--sy-palette-red-950);
+
+  --sy-swatch-teal: var(--sy-palette-teal-300);
 
   --sy-shadow-color: var(--sy-palette-black-a35);
   --sy-shadow-color-strong: var(--sy-palette-black-a50);
@@ -170,6 +178,7 @@
   --color-focus: var(--sy-focus);
   --color-danger: var(--sy-danger);
   --color-on-danger: var(--sy-on-danger);
+  --color-swatch-teal: var(--sy-swatch-teal);
   --color-overlay: var(--sy-overlay);
   --color-transparent: transparent;
   --color-current: currentColor;

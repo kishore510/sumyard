@@ -1,6 +1,6 @@
 # PHASE-BRIEF: Slice 3 Car decision
 
-Status: 3a (finance engine) Done (0.17.0, PR #21); 3a.1 (APR) Done (0.17.1, PR #22); 3b (cost-of-ownership engine) Done (0.18.0, PR #23); 3c-1 (the page) Done (0.19.0, PR #24); 3c-2 (chart, sensitivity, polish) Done (0.20.0, PR #25). Slice 3 is built; it stays In progress until the owner's checks below. Slices 1b and 2 are built and stay open in `PLAN.md` until the owner's checks below are done. Status per part lives only in `PLAN.md`. Finished part scopes are in `docs/history/phase-brief-archive.md`.
+Status: 3a (finance engine) Done (0.17.0, PR #21); 3a.1 (APR) Done (0.17.1, PR #22); 3b (cost-of-ownership engine) Done (0.18.0, PR #23); 3c-1 (the page) Done (0.19.0, PR #24); 3c-2 (chart, sensitivity, polish) Done (0.20.0, PR #25); 3c-3 (fifth chart style) Done (0.20.1, PR #26). Slice 3 is built; it stays In progress until the owner's checks below. Slices 1b and 2 are built and stay open in `PLAN.md` until the owner's checks below are done. Status per part lives only in `PLAN.md`. Finished part scopes are in `docs/history/phase-brief-archive.md`.
 
 ## Docs rule
 
@@ -32,9 +32,9 @@ Slice 3a: confirm decisions F5 to F14 and the bounds (`src/calculators/car-finan
 
 ## Last session
 
-- 22 October 2026, part 3c-2 (0.20.0, PR #25, user-visible): pre-check passed, `DEFAULT_HORIZON_MONTHS` = 48 recorded; optional boxes read as nothing (inputs version 2, migration); shared Chart with four line styles, end labels and position selection; the crossover chart with tap-to-pick readout, flip points for any pair, sensitivity on demand; tests red then green (100-input property); mutation spot-checks all caught; browser matrix 158 checks clean after three fixes.
-- Differs from the brief: sensitivity is worked out only while its section is open (Lighthouse put 2.6 s of blocking time on it on a slow phone); the end value moves in the case shown only; a fourth option is drawn in the danger colour (the Chart's only fourth style); flip points are measured over the whole horizon (the engine's contract), said on the page.
-- Not verified: a real phone, Safari, Firefox, a screen reader, the deployed site. Flip search still one task of up to about 430 ms after settling (a worker needs the owner's go-ahead). OPEN: CR-10 carries over.
+- 22 October 2026, slice 3c-3 (0.20.1, PR #26, user-visible fix): pre-check passed (PR #25 merged, CI green, PLAN row Done). The shared Chart has a fifth style, `secondary` (token `swatch-teal`, Chalkline's teal swatch; dash-dot-dot; triangle marker); the default order no longer picks danger; the car page's fourth option uses it. Tests red then green, plus a source guard (`dangerStyle.test.ts`).
+- Differs from the brief: the Chart test that asserted danger as the default third style now asserts neutral (the default order changed; no page relied on it).
+- Not verified: a real phone, Safari, Firefox, a screen reader, the deployed site. Browser matrix: Chromium 360 and 1280 px, light and dark, axe, four-option car page, 68 checks clean.
 
 ## Next
 

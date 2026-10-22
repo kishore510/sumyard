@@ -29,9 +29,10 @@ import type { ChartMarker, ChartReference, ChartSeries, ChartSpan, ChartStyle } 
  *   `selectedX` highlights one point (on the line and in the table).
  * - `columns` adds text columns to the table after the series. The table
  *   scrolls sideways in its own keyboard-focusable region on a narrow screen.
- * - Up to four line styles (accent solid, contrast dashed, danger dotted,
- *   neutral dash-dot), each with its own marker shape; a series picks one
- *   by `style` or takes its place's. `endLabels` names each line at its
+ * - Five line styles (accent solid, contrast dashed, neutral dash-dot,
+ *   secondary dash-dot-dot, danger dotted), each with its own dash and
+ *   marker shape; a series picks one by `style` or takes its place's, and
+ *   the order of places never picks danger (a warning only, by name). `endLabels` names each line at its
  *   last value (a line may stop before the x range does), nudged apart so
  *   labels never overlap.
  * - With `onSelectX` (numeric x only) the plot is a slider: a tap or click
@@ -55,7 +56,7 @@ const MIN_SPAN = 3
 const END_LABEL_GAP = 12
 const PAGE_STEPS = 10
 
-type Shape = 'circle' | 'square' | 'diamond'
+type Shape = 'circle' | 'square' | 'diamond' | 'triangle'
 
 /** Per style: stroke or fill class, dash and marker shape. Only token colours; no two differ by colour alone. */
 const STYLES: Record<ChartStyle, { stroke: string; fill: string; dash: string | undefined; marker: Shape }> = {
@@ -63,16 +64,30 @@ const STYLES: Record<ChartStyle, { stroke: string; fill: string; dash: string | 
   contrast: { stroke: 'stroke-text', fill: 'fill-text-muted', dash: '6 3', marker: 'square' },
   danger: { stroke: 'stroke-danger', fill: 'fill-danger', dash: '2 3', marker: 'circle' },
   neutral: { stroke: 'stroke-text-muted', fill: 'fill-text-muted', dash: '10 3 2 3', marker: 'diamond' },
+  secondary: { stroke: 'stroke-swatch-teal', fill: 'fill-swatch-teal', dash: '8 3 2 3 2 3', marker: 'triangle' },
 }
 
 /** The style a series takes by its place when it names none (the first three as before 3c-2). */
-const ORDER: readonly ChartStyle[] = ['accent', 'contrast', 'danger', 'neutral']
+const ORDER: readonly ChartStyle[] = ['accent', 'contrast', 'neutral', 'secondary']
 
 const styleOf = (series: ChartSeries, index: number) => STYLES[series.style ?? ORDER[index % ORDER.length]!]
 
-/** A point marker of a shape, centred on (cx, cy). A diamond is a square turned, so its box still centres on the point. */
+/**
+ * A point marker of a shape, centred on (cx, cy). A diamond is a square turned and a triangle fills the same box, so
+ * each box still centres on the point.
+ */
 function MarkerShape({ shape, cx, cy, r, className, ...rest }: { shape: Shape; cx: number; cy: number; r: number; className: string }) {
   if (shape === 'circle') return <circle cx={cx} cy={cy} r={r} strokeWidth={2} className={className} {...rest} />
+  if (shape === 'triangle')
+    return (
+      <polygon
+        points={`${cx},${cy - r} ${cx + r},${cy + r} ${cx - r},${cy + r}`}
+        strokeWidth={2}
+        strokeLinejoin="round"
+        className={className}
+        {...rest}
+      />
+    )
   return (
     <rect
       x={cx - r}

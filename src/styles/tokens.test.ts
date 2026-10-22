@@ -77,6 +77,10 @@ const PAIRS: [foreground: string, background: string, min: number][] = [
   ['border-strong', 'surface', UI],
   ['border-strong', 'bg', UI],
   ['border-strong', 'surface-muted', UI],
+  // Chart lines (graphics): the secondary line style's colour. Its labels are drawn in text.
+  ['swatch-teal', 'surface', UI],
+  ['swatch-teal', 'bg', UI],
+  ['swatch-teal', 'surface-muted', UI],
 ]
 
 /** Translucent colours, blended over what they sit on first. */

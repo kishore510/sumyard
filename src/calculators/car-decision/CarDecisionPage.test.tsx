@@ -524,6 +524,19 @@ describe('the crossover chart (3c-2)', () => {
     expect($$('[data-crossover] [data-end-label]').map((l) => text(l))).toEqual(['Buy outright', 'Personal loan', 'PCP'])
   })
 
+  it('draws all four options, each in its own style, none in the danger colour (no line is a warning)', () => {
+    set(inputs([keep(), cash(), loan(), pcp()], { horizonMonths: 48 }))
+    expect(series()).toHaveLength(MAX_CAR_OPTIONS)
+    const lines = $$('[data-crossover] [data-series]').map((g) => g.querySelector('polyline')!)
+    expect(lines).toHaveLength(MAX_CAR_OPTIONS)
+    const looks = lines.map((l) => `${l.getAttribute('class')} / ${l.getAttribute('stroke-dasharray') ?? 'solid'}`)
+    expect(new Set(looks).size).toBe(MAX_CAR_OPTIONS)
+    for (const look of looks) expect(look).not.toMatch(/danger/)
+    expect($('[data-crossover] .stroke-danger, [data-crossover] .fill-danger')).toBeNull()
+    expect($$('[data-crossover] [data-end-label]')).toHaveLength(MAX_CAR_OPTIONS)
+    expect($$('[data-crossover] [data-end-marker]')).toHaveLength(MAX_CAR_OPTIONS)
+  })
+
   it('switching the case changes the chart to that case', () => {
     set(handBack)
     const before = rows()
