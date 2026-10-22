@@ -161,3 +161,31 @@ export interface CashFlows {
   readonly credit: Money
   readonly payments: readonly Money[]
 }
+
+/** A repayment or payment of a charge for the APR, a whole number of months after the drawdown (F15). */
+export interface DatedPayment {
+  readonly month: number
+  readonly amount: Money
+}
+
+/**
+ * The cash flows the statutory APR equates (F15): one drawdown, the total
+ * amount of credit, at month nothing; then the repayments and the payments of
+ * charges that the total charge for credit counts. Which payments count is
+ * the caller's (CR-2, CR-10).
+ */
+export interface AprFlows {
+  readonly drawdown: Money
+  readonly payments: readonly DatedPayment[]
+}
+
+/** The statutory APR (F15): the rate unrounded, and for display. Or why it has none. */
+export type AprOutcome =
+  | {
+      readonly ok: true
+      /** The annual rate that solves the equation, to fifteen decimal places. */
+      readonly annual: Ratio
+      /** The annual rate to one decimal place of a percentage (APR_DISPLAY_DIGITS). */
+      readonly display: Ratio
+    }
+  | { readonly ok: false; readonly reason: SolveFailure }

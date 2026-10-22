@@ -1,5 +1,6 @@
 import { MAX_EXCESS_PER_MILE, MAX_FINANCE_RATE, MAX_FINANCE_TERM_MONTHS, MAX_INPUT_AMOUNT, MAX_MILEAGE } from '@/lib/inputLimits'
 import {
+  APR_DISPLAY_DIGITS,
   add,
   compare,
   compareFactor,
@@ -30,11 +31,14 @@ import {
   type Ratio,
   ratio,
   roundFine,
+  roundRatio,
   subtract,
   ZERO,
 } from '@/lib/money'
 import { MONTHS_PER_YEAR } from '@/lib/periods'
 import type {
+  AprFlows,
+  AprOutcome,
   CashFlows,
   EndPath,
   FeeTiming,
@@ -68,7 +72,9 @@ import type {
  *   month's opening balance, to the nearest penny; the last month takes the
  *   rounding, so the schedule adds up.
  * - F8, F9: an effective rate solved by bisection from the cash flows, fees
- *   included. It is not the statutory APR, which could not be verified.
+ *   included. It is not labelled the statutory APR.
+ * - F15: the statutory APR from dated cash flows the caller counts, solved on
+ *   the same grid and shown rounded (docs/verification-log.md, CR-1 to CR-3).
  * - F10 to F12: fees, the end of the term, the outstanding balance.
  * - F13: typed refusals, never a wrong number.
  *
@@ -309,11 +315,43 @@ export function solveRate(
   return { ok: true, rate: factorMul(factorAdd(low, high), HALF) }
 }
 
+/**
+ * The statutory APR (F15): the annual rate X at which the drawdown equals the
+ * present value of the payments, Σ D_l (1 + X)^−S_l, S_l in years from the
+ * drawdown, a month a twelfth of a year (CR-1). With every payment on a whole
+ * month, write 1 + X = (1 + i)^12: the equation becomes the one solveRate
+ * solves per month, so X is annualRate of that monthly root, with no
+ * approximation beyond the solver's. Payments at month nothing count against
+ * the drawdown. Shown to APR_DISPLAY_DIGITS, to the nearest with a half
+ * rounding up (CR-3); rounded from the fifteen-place rate, so a rate on a
+ * display half to that precision counts as on it.
+ */
+export function apr(flows: AprFlows): AprOutcome {
+  refuseUnless(compare(flows.drawdown, ZERO) >= 0, 'the drawdown must be zero or more')
+  refuseUnless(
+    flows.payments.every(
+      ({ month, amount }) => isWhole(month) && month >= 0 && month <= MAX_FINANCE_TERM_MONTHS && compare(amount, ZERO) >= 0,
+    ),
+    'each payment needs a whole month from nothing to the bound and an amount of zero or more',
+  )
+  const last = Math.max(0, ...flows.payments.map(({ month }) => month))
+  const monthly: Money[] = Array.from({ length: last }, () => ZERO)
+  let credit = flows.drawdown
+  for (const { month, amount } of flows.payments) {
+    if (month === 0) credit = subtract(credit, amount)
+    else monthly[month - 1] = add(monthly[month - 1]!, amount)
+  }
+  const solved = solveRate({ credit, payments: monthly })
+  if (!solved.ok) return solved
+  const annual = annualRate(solved.rate)
+  return { ok: true, annual, display: roundRatio(annual, APR_DISPLAY_DIGITS, 'nearest') }
+}
+
 const COMMON_ASSUMPTIONS: readonly string[] = [
   'Payments are monthly and in arrears: the first a month after the start, the last at the end of the term. A month is a twelfth of a year; days are not counted.',
   'Interest is charged each month on the balance at the start of the month and rounded to the penny. When the rate is given, the last monthly payment takes the rounding; when the payment is given, the last month’s interest does.',
   'An arrangement fee is either paid at the start or added to the balance, where it earns interest.',
-  'The effective rate is the monthly rate at which every payment, fees included, discounts back to the credit received, compounded over a year for the annual figure. It is not the statutory APR: the APR rules could not be verified here, and the two can differ.',
+  'The effective rate is the monthly rate at which every payment, fees included, discounts back to the credit received, compounded over a year for the annual figure. It is not the statutory APR, which is worked out separately, counts only the charges the APR rules count, and is shown rounded, so the two can differ.',
   'The outstanding balance is the schedule’s balance after each payment, not a settlement figure: early settlement and voluntary termination are not modelled.',
   'No tax, insurance, running costs or depreciation are included.',
 ]
