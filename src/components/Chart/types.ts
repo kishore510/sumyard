@@ -2,9 +2,10 @@
 
 /**
  * A line's look: colour token, dash and marker shape together, so no two differ by colour alone. `neutral` is for a
- * reference-like line (money paid in) and is not the danger colour.
+ * reference-like line (money paid in); `secondary` is a fourth line that is not a warning. Neither is the danger
+ * colour; `danger` is for a genuine warning only (`dangerStyle.test.ts`).
  */
-export type ChartStyle = 'accent' | 'contrast' | 'danger' | 'neutral'
+export type ChartStyle = 'accent' | 'contrast' | 'danger' | 'neutral' | 'secondary'
 
 export interface ChartSeries {
   readonly id: string

@@ -13,8 +13,11 @@ import { cardOrder } from './results'
  * no money arithmetic. No UI.
  */
 
-/** Each option's line style, by its place in the editor, so a line keeps its look when the order changes. */
-export const SERIES_STYLES: readonly ChartStyle[] = ['accent', 'contrast', 'neutral', 'danger']
+/**
+ * Each option's line style, by its place in the editor, so a line keeps its look when the order changes. None is the
+ * danger colour: no option is a warning.
+ */
+export const SERIES_STYLES: readonly ChartStyle[] = ['accent', 'contrast', 'neutral', 'secondary']
 
 type Ok = Extract<PageOutcome, { kind: 'ok' }>
 type Costed = Extract<OptionStatus, { kind: 'ok' }>
