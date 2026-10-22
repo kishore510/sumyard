@@ -170,3 +170,19 @@ A small table, one row per option, the average cost per month owned in each case
 ### U33. Cost apart from cash; plain labels
 
 The headline is "Average cost per month owned" (the engine's net cost per month of coverage; engine names unchanged); each card adds its largest breakdown part in neutral words. Money that changes hands (upfront cash, a monthly payment, a final payment due at the end) sits in its own block at the foot of the card, apart from the economic cost; a kept car's forgone sale is never shown as cash. Input labels are questions or plain phrases ("What is the car worth today?", "Expected value at the end", with Low and High kept); hints carry no figures. An effective rate says which fees it includes.
+
+## 3d-1.1: car page fixes (0.22.1)
+
+Fixes from the owner's use of the 3d-1 page. Not owner decisions unless marked.
+
+### U34. Empty running costs said, never hidden
+
+An optional running-cost box left empty counts as nothing (F38, U22). Each costed option's card lists any of insurance, maintenance, VED and other costs left empty ("Left empty, counted as nothing: …"). When the options differ in which boxes are empty, one line under the verdict names each option and its empty boxes. Both come from the inputs (`emptyRunningCosts`, `narrative.ts`), never from figures.
+
+### U35. A threshold names the lower option on each side, or says it can't
+
+"What changes the answer" names the option lower on each side of a threshold. When the engine's search stops on a tie (OQ-flip-tie), the sentence says the two are level at that threshold and that the search doesn't say which is lower above it. It never says "above it, the two are level".
+
+### U36. A side-by-side table that can be read on a phone
+
+The sticky first column is opaque, 8rem wide, and its labels wrap. Each option's column keeps a minimum width, with its figures on one line, so every figure can be scrolled fully into view beside the first column at 360 px. Each cell shows the text its card shows for the same measure, from one function (`measures`, `CarResults.tsx`). Cards align to the top and keep their own heights. Table headers that are single words don't wrap. The bottom line leaves out "Cost of choosing the alternative" when a switch line in the verdict already gives the same pair. A chart legend names a series' kind ("bars", "line") only when bars and lines share the chart.

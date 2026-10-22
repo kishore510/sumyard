@@ -1051,7 +1051,9 @@ describe('3d-1.1 fixes', () => {
     ]
     for (const [label, marker] of measures) {
       const cells = $$('td', row(label))
-      order.forEach((index, k) => expect(text(cells[k]), `${label}, option ${index}`).toBe(text($(marker, card(index)))))
+      order.forEach((index, k) => {
+        expect(text(cells[k]), `${label}, option ${index}`).toBe(text($(marker, card(index))))
+      })
     }
     const rates = $$('td', row('Rate'))
     order.forEach((index, k) => {
@@ -1080,6 +1082,12 @@ describe('3d-1.1 fixes', () => {
     set(ownerPage())
     const header = $$('[data-scenario-table] thead th').find((th) => text(th) === 'Option')!
     expect(header.className).toMatch(/whitespace-nowrap/)
+  })
+
+  it('the phone bar’s verdict wraps a long unbroken option name instead of widening the page', () => {
+    set(inputs([keep({ name: 'Old' }), cash({ name: 'L'.repeat(80), value: fromPounds(19_000) })]))
+    expect(text($('[data-sticky-value]'))).toContain('L'.repeat(80))
+    expect($('[data-sticky-value]')!.className).toMatch(/\[overflow-wrap:anywhere\]/)
   })
 
   it('the chart legend names each option without a “(line)” suffix', () => {

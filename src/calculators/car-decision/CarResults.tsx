@@ -8,8 +8,16 @@ import { formatPercent, formatPercentFixed } from '@/lib/format'
 import { APR_DISPLAY_DIGITS, compare, fromPence, type Money, toPence, ZERO } from '@/lib/money'
 import { cn } from '@/lib/utils'
 import type { AcquisitionKind, Comparison, FlipPoints, ValueCase } from '../car-ownership/types'
-import { ACQUISITION_LABELS, CASE_LABELS, type CarDecisionInputs, coverageText, fieldList, type OptionStatus } from './definition'
-import { largestCost, moneyFlows } from './narrative'
+import {
+  ACQUISITION_LABELS,
+  CASE_LABELS,
+  type CarDecisionInputs,
+  coverageText,
+  fieldList,
+  type OptionInputs,
+  type OptionStatus,
+} from './definition'
+import { emptyRunningCosts, emptyRunningText, largestCost, moneyFlows } from './narrative'
 import { type RateShown, rateShown } from './rates'
 import {
   breakdownParts,
@@ -45,6 +53,28 @@ export interface CardData {
   readonly name: string
   readonly kind: AcquisitionKind
   readonly status: OptionStatus
+  /** The option's inputs: which optional boxes are left empty (3d-1 fix). */
+  readonly inputs: OptionInputs
+}
+
+type Ok = Extract<OptionStatus, { kind: 'ok' }>
+
+/**
+ * The figures a card and the side-by-side table both show, worked out once so each table cell reads exactly as its card
+ * does (3d-1 fix).
+ */
+function measures(status: Ok, valueCase: ValueCase, gbp: Gbp) {
+  const { result } = status
+  const c = result.cases[valueCase]
+  const equity = equityAtHorizon(result, valueCase)
+  return {
+    perMonth: gbp(c.netCostPerCoverageMonth),
+    total: gbp(c.netCost),
+    coverage: coverageText(result),
+    equity: equity === null ? 'None: handed back' : gbp(equity),
+    cashOut: gbp(c.cashOut),
+    opportunity: gbp(c.breakdown.opportunityCost),
+  }
 }
 
 /** Percentage places an APR is shown to: the engine's display digits less the two a percentage takes. */
@@ -53,7 +83,7 @@ const APR_PLACES = APR_DISPLAY_DIGITS - 2
 const RATE_TEST: Record<RateShown['kind'], string> = { apr: 'apr', effective: 'effective', none: 'none' }
 
 /** The rate an ok option shows, from its engine option and result. */
-function rateFor(status: Extract<OptionStatus, { kind: 'ok' }>): RateShown | null {
+function rateFor(status: Ok): RateShown | null {
   return rateShown(status.option.acquisition, status.result.finance)
 }
 
@@ -69,7 +99,10 @@ function Rate({ shown }: { shown: RateShown }) {
       ) : (
         <>
           <span>
-            <span className="text-text-muted">{shown.label}:</span> <span className="font-medium tabular-nums">{rateText(shown)}</span>
+            <span className="text-text-muted">{shown.label}:</span>{' '}
+            <span data-rate-value className="font-medium tabular-nums">
+              {rateText(shown)}
+            </span>
           </span>
           {shown.kind === 'effective' && (
             <>
@@ -143,17 +176,19 @@ function OptionCard({
       </ResultCard>
     )
   }
-  return <OkCard status={status} valueCase={valueCase} position={position} gbp={gbp} props={props} />
+  return <OkCard status={status} inputs={card.inputs} valueCase={valueCase} position={position} gbp={gbp} props={props} />
 }
 
 function OkCard({
   status,
+  inputs,
   valueCase,
   position,
   gbp,
   props,
 }: {
-  status: Extract<OptionStatus, { kind: 'ok' }>
+  status: Ok
+  inputs: OptionInputs
   valueCase: ValueCase
   position: string
   gbp: Gbp
@@ -165,10 +200,12 @@ function OkCard({
   const shown = rateFor(status)
   const parts = breakdownParts(c.breakdown)
   const largest = largestCost(c.breakdown, c.netCost, gbp)
+  const empty = emptyRunningText(emptyRunningCosts(inputs))
+  const shownAs = measures(status, valueCase, gbp)
   return (
     <ResultCard
       {...props}
-      headline={gbp(c.netCostPerCoverageMonth)}
+      headline={shownAs.perMonth}
       headlineLabel="Average cost per month owned"
       footer={
         <>
@@ -194,6 +231,11 @@ function OkCard({
               {largest.text}
             </p>
           )}
+          {empty && (
+            <p data-empty-costs className="text-sm text-text">
+              {empty}
+            </p>
+          )}
           {shown && <Rate shown={shown} />}
           <SplitBar
             title="Where the net cost goes"
@@ -208,18 +250,18 @@ function OkCard({
       }
     >
       <StatRow label="Order" value={position} />
-      <StatRow label="Total net cost" value={gbp(c.netCost)} marker="total" />
-      <StatRow label="Coverage" value={`Covers ${coverageText(result)}`} marker="coverage" />
+      <StatRow label="Total net cost" value={shownAs.total} marker="total" />
+      <StatRow label="Coverage" value={shownAs.coverage} marker="coverage" />
       <StatRow
         label="Equity at the horizon"
-        value={equity === null ? 'None: handed back before the horizon' : gbp(equity)}
+        value={shownAs.equity}
         detail="What the car is worth less anything still owed on it"
         marker="equity"
       />
-      <StatRow label="Cash out" value={gbp(c.cashOut)} detail="Everything paid over the months covered" marker="cash-out" />
+      <StatRow label="Cash out" value={shownAs.cashOut} detail="Everything paid over the months covered" marker="cash-out" />
       <StatRow
         label="Opportunity cost"
-        value={gbp(c.breakdown.opportunityCost)}
+        value={shownAs.opportunity}
         detail="What that cash could have earned at your savings return"
         marker="opportunity"
       />
@@ -236,7 +278,7 @@ const UPFRONT_DETAIL: Record<AcquisitionKind, string> = {
 }
 
 /** The money that changes hands (3d-1), apart from the net cost: upfront, monthly and at the end. */
-function MoneyFlowRows({ status, gbp }: { status: Extract<OptionStatus, { kind: 'ok' }>; gbp: Gbp }) {
+function MoneyFlowRows({ status, gbp }: { status: Ok; gbp: Gbp }) {
   const { result } = status
   const flows = moneyFlows(status.option, result)
   const kind = result.acquisition
@@ -329,7 +371,8 @@ export function OptionCards({
         tabIndex={0}
         className={cn(
           // Relative: screen-reader-only text in a card off to the side stays inside the row instead of widening the page.
-          'relative flex snap-x snap-mandatory gap-3 overflow-x-auto rounded-lg pb-2 outline-offset-2 md:grid md:overflow-visible md:pb-0',
+          // Items start: a short card keeps its own height instead of stretching to the tallest (3d-1 fix).
+          'relative flex items-start snap-x snap-mandatory gap-3 overflow-x-auto rounded-lg pb-2 outline-offset-2 md:grid md:overflow-visible md:pb-0',
           GRID_COLUMNS[cards.length],
         )}
       >
@@ -343,34 +386,37 @@ export function OptionCards({
 
 /** The cards' figures as a table (U17), the accessible equivalent: a column per option in the cards' order. */
 export function CompareTable({ cards, valueCase, gbp }: { cards: readonly CardData[]; valueCase: ValueCase; gbp: Gbp }) {
-  const cell = 'px-3 py-2 text-right tabular-nums whitespace-nowrap'
+  // Each option's column keeps a minimum width and its figures on one line, so with the first column sticky every figure
+  // can be scrolled fully into view on a phone (3d-1 fix).
+  const cell = 'min-w-28 px-3 py-2 text-right tabular-nums whitespace-nowrap'
+  // The first column is opaque over the figures scrolling under it, narrow enough to leave room for them, its labels wrapping.
+  const first = 'sticky left-0 z-10 w-32 min-w-32 bg-surface px-3 py-2 text-left'
   const ok = (card: CardData) => (card.status.kind === 'ok' ? card.status : null)
   const none = (card: CardData) =>
     card.status.kind === 'missing' ? 'Inputs missing' : card.status.kind === 'held' ? 'Input to fix' : 'No results'
-  const rows: [string, (card: CardData) => string][] = [
-    ['Average cost per month owned', (card) => (ok(card) ? gbp(ok(card)!.result.cases[valueCase].netCostPerCoverageMonth) : none(card))],
-    ['Total net cost', (card) => (ok(card) ? gbp(ok(card)!.result.cases[valueCase].netCost) : none(card))],
-    ['Coverage', (card) => (ok(card) ? coverageText(ok(card)!.result) : none(card))],
-    [
-      'Equity at the horizon',
-      (card) => {
-        const status = ok(card)
-        if (!status) return none(card)
-        const equity = equityAtHorizon(status.result, valueCase)
-        return equity === null ? 'None: handed back' : gbp(equity)
-      },
-    ],
-    ['Cash out', (card) => (ok(card) ? gbp(ok(card)!.result.cases[valueCase].cashOut) : none(card))],
-    ['Opportunity cost', (card) => (ok(card) ? gbp(ok(card)!.result.cases[valueCase].breakdown.opportunityCost) : none(card))],
+  const shown = (key: keyof ReturnType<typeof measures>) => (card: CardData) => {
+    const status = ok(card)
+    return status ? measures(status, valueCase, gbp)[key] : none(card)
+  }
+  const rows: [string, (card: CardData) => ReactNode][] = [
+    ['Average cost per month owned', shown('perMonth')],
+    ['Total net cost', shown('total')],
+    ['Coverage', shown('coverage')],
+    ['Equity at the horizon', shown('equity')],
+    ['Cash out', shown('cashOut')],
+    ['Opportunity cost', shown('opportunity')],
     [
       'Rate',
       (card) => {
         const status = ok(card)
-        const shown = status ? rateFor(status) : null
-        if (!shown) return status ? 'No finance' : none(card)
-        return shown.kind === 'none'
-          ? 'None'
-          : `${formatPercent(shown.rate, shown.kind === 'apr' ? 1 : 2)} ${shown.kind === 'apr' ? 'APR' : 'effective'}`
+        const rate = status ? rateFor(status) : null
+        if (!rate) return status ? 'No finance' : none(card)
+        if (rate.kind === 'none') return 'None'
+        return (
+          <>
+            <span data-rate-value>{rateText(rate)}</span> {rate.kind === 'apr' ? 'APR' : 'effective'}
+          </>
+        )
       },
     ],
   ]
@@ -385,17 +431,17 @@ export function CompareTable({ cards, valueCase, gbp }: { cards: readonly CardDa
         tabIndex={0}
         className="relative overflow-x-auto rounded-lg border border-border bg-surface shadow-sm"
       >
-        <table data-compare-table className="w-full min-w-max border-collapse text-sm text-text">
+        <table data-compare-table className="w-full border-collapse text-sm text-text">
           <caption className="sr-only">
             Each option’s figures in the {CASE_LABELS[valueCase].toLowerCase()} case, in the cards’ order
           </caption>
           <thead>
             <tr className="text-text-muted">
-              <th scope="col" className="sticky left-0 bg-surface px-3 py-2 text-left font-medium">
+              <th scope="col" className={`${first} font-medium`}>
                 Measure
               </th>
               {cards.map((card) => (
-                <th key={card.index} scope="col" className="max-w-48 px-3 py-2 text-right font-medium [overflow-wrap:anywhere]">
+                <th key={card.index} scope="col" className="min-w-28 max-w-48 px-3 py-2 text-right font-medium [overflow-wrap:anywhere]">
                   {card.name}
                 </th>
               ))}
@@ -404,7 +450,7 @@ export function CompareTable({ cards, valueCase, gbp }: { cards: readonly CardDa
           <tbody>
             {rows.map(([label, value]) => (
               <tr key={label} className="border-t border-border">
-                <th scope="row" className="sticky left-0 bg-surface px-3 py-2 text-left font-normal">
+                <th scope="row" className={`${first} font-normal`}>
                   {label}
                 </th>
                 {cards.map((card) => (

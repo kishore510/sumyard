@@ -15,15 +15,21 @@ type Gbp = (amount: Money) => string
 const PANEL =
   'flex min-w-0 flex-col gap-3 rounded-lg border border-border bg-surface p-5 text-sm text-text shadow-sm [overflow-wrap:anywhere]'
 
-/** The verdict (lowest net cost, by how much, the savings return used) and, with a Keep option, what switching costs. */
+/**
+ * The verdict (lowest net cost, by how much, the savings return used), when the options differ in the running costs left
+ * empty a line saying which, and with a Keep option, what switching costs.
+ */
 export function VerdictPanel({
   verdict,
+  emptyNote,
   comparison,
   valueCase,
   names,
   gbp,
 }: {
   verdict: Verdict
+  /** When the options differ in which running-cost boxes are left empty: which, by option (3d-1 fix). */
+  emptyNote: string | null
   comparison: Comparison
   valueCase: ValueCase
   names: readonly string[]
@@ -38,6 +44,11 @@ export function VerdictPanel({
       <p data-verdict data-verdict-kind={verdict.kind} className="text-base">
         {verdict.text}
       </p>
+      {emptyNote && (
+        <p data-empty-costs-differ className="text-text-muted">
+          {emptyNote}
+        </p>
+      )}
       {switches.length > 0 && (
         <ul data-switch-costs className="flex list-disc flex-col gap-1 pl-5">
           {switches.map((s) => (
@@ -51,7 +62,10 @@ export function VerdictPanel({
   )
 }
 
-/** The bottom line: the lowest net cost, running cost and depreciation per month owned, and the cost of the alternative, each defined. */
+/**
+ * The bottom line: the lowest net cost, running cost and depreciation per month owned, and the cost of the alternative
+ * unless a switch line above already gives it, each defined.
+ */
 export function BottomLine({
   comparison,
   valueCase,
@@ -123,7 +137,7 @@ export function ScenarioTable({
           <caption className="sr-only">Average cost per month owned for each option in each end-value case</caption>
           <thead>
             <tr className="text-text-muted">
-              <th scope="col" className="px-3 py-2 text-left font-medium">
+              <th scope="col" className="px-3 py-2 text-left font-medium whitespace-nowrap">
                 Option
               </th>
               {VALUE_CASES.map((c) => (
