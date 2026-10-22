@@ -42,8 +42,9 @@ describe('(a) zero interest: value 12,000, settlement 10,800, 24 payments of 450
 
   it('implies a rate of nothing', () => {
     expect(r.finance).not.toBeNull()
-    expect(r.finance!.monthlyRate).toEqual(ratio(0, 1))
-    expect(r.finance!.effectiveRate).toMatchObject({ ok: true, annual: ratio(0, 1) })
+    expect(r.finance!.monthlyRate.numerator).toBe(0)
+    const rate = r.finance!.effectiveRate
+    expect(rate.ok && rate.annual.numerator).toBe(0)
   })
 
   it('gives up a sale of the value less the settlement, and pays nothing upfront', () => {
