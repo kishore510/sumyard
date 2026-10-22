@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { compareOptions, flipPoints, ownershipCost } from './calc'
 import * as before from './fixtures/before3e'
 import { generator, KINDS, randomCase } from './fixtures/inputs'
-import type { CarOption, Shared, ValueCase } from './types'
+import type { CarOption, FlipOutcome, Shared, ValueCase } from './types'
 
 /*
  * Session 3e adds finance still owed on a kept car. Without it, every result
@@ -41,11 +41,32 @@ const pairs: { options: [CarOption, CarOption]; shared: Shared; valueCase: Value
   valueCase: CASES[i % 3]!,
 }))
 
+/**
+ * 3d-2 (F53): where the engine before 3e stopped at a tie on the way, the search now carries on to the option lower
+ * past it. That flip only is checked for that; every other result must still be identical.
+ */
+function pastTie(now: FlipOutcome, then: FlipOutcome): FlipOutcome {
+  if (!now.ok || !then.ok) return now
+  const old = then.result
+  const searched = ['savingsReturn', 'annualMileage'] as const
+  const result = { ...now.result }
+  for (const key of searched) {
+    const was = old[key]
+    if (was.kind !== 'crossing' || was.lowerBelow === 'tie' || was.lowerAbove !== 'tie') continue
+    const is = now.result[key]
+    expect(is).toMatchObject({ kind: 'crossing', lowerBelow: was.lowerBelow })
+    expect(is.kind === 'crossing' && is.lowerAbove).not.toBe('tie')
+    Object.assign(result, { [key]: was })
+  }
+  return { ok: true, result }
+}
+
 describe('flip points: identical to the engine before 3e', () => {
   it.each(pairs.map((p, i) => [i, p] as const))(
     'pair %i',
     (_i, { options, shared, valueCase }) => {
-      expect(flipPoints(options, shared, valueCase)).toEqual(before.flipPoints(options, shared, valueCase))
+      const then = before.flipPoints(options, shared, valueCase)
+      expect(pastTie(flipPoints(options, shared, valueCase), then)).toEqual(then)
     },
     20_000,
   )

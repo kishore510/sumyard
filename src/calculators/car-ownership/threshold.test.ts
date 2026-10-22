@@ -1,6 +1,19 @@
 import { describe, expect, it } from 'vitest'
 import { MAX_ANNUAL_MILEAGE, MAX_PENCE_PER_UNIT, MAX_SAVINGS_RETURN } from '@/lib/inputLimits'
-import { compareExact, type ExactPence, exact, exactMul, FLIP_RATE_DENOMINATOR, fromPence, type Ratio, ratio, toPence } from '@/lib/money'
+import {
+  compareExact,
+  type ExactPence,
+  exact,
+  exactMul,
+  exactSubtract,
+  FLIP_RATE_DENOMINATOR,
+  fromPence,
+  type Ratio,
+  ratio,
+  roundExact,
+  toPence,
+} from '@/lib/money'
+import { LITRES_PER_GALLON } from '@/lib/units'
 import { costPerMile, flipPoints, fuelPriceFlip, ownershipCost, pencePerLitreFor } from './calc'
 import { CASH, flat, generator, KINDS, option, randomCase, randomOwingCase, shared } from './fixtures/inputs'
 import type { CarOption, Flip, Lower, Shared, ValueCase } from './types'
@@ -214,7 +227,14 @@ describe('the fuel or energy price threshold (F54)', () => {
     if (f.kind !== 'crossing' || thirsty.car.fuel.kind !== 'fuel') throw new Error('no crossing')
     const { milesPerGallon } = thirsty.car.fuel
     const litre = pencePerLitreFor(f.above, milesPerGallon)
-    expect(costPerMile({ kind: 'fuel', milesPerGallon, pencePerLitre: toRatio(litre) })).toEqual(f.above)
+    // F21 (a): price per litre × litres per gallon ÷ miles per gallon, as costPerMile works it.
+    expect(exactMul(exactMul(litre, LITRES_PER_GALLON), ratio(milesPerGallon.denominator, milesPerGallon.numerator))).toEqual(f.above)
+    // At the threshold's own price per litre, rounded to a tenth of a penny, costPerMile gives a pence per mile that close.
+    const tenth = roundExact(exactMul(litre, ratio(10, 1)), 'nearest')
+    const back = costPerMile({ kind: 'fuel', milesPerGallon, pencePerLitre: ratio(toPence(tenth), 10) })
+    const gap = exactSubtract(back, f.above)
+    expect(compareExact(gap, exact(fromPence(1)))).toBeLessThan(0)
+    expect(compareExact(gap, exact(fromPence(-1)))).toBeGreaterThan(0)
   })
 
   it('a first option driven no miles: no crossing', () => {
@@ -223,10 +243,12 @@ describe('the fuel or energy price threshold (F54)', () => {
   })
 
   it('no crossing in range when the first is lower even at the most Sumyard accepts', () => {
+    // At the most, 100 miles a year cost £1,000 a year: still below the dear car's £50,000 fall in value.
+    const few = withMileage(thirsty, 100)
     const dear = option(CASH, { value: fromPence(5_000_000), horizonValue: flat(fromPence(0)), annualMileage: 10 })
-    const f = flip(thirsty, dear, s)
+    const f = flip(few, dear, s)
     expect(f).toEqual({ kind: 'no-crossing-in-range', lowerThroughout: 0 })
-    expect(lower(atPerMile(thirsty, exactMul(exact(fromPence(1)), MAX_PENCE_PER_UNIT)), dear, s, 'expected')).toBe(0)
+    expect(lower(atPerMile(few, exactMul(exact(fromPence(1)), MAX_PENCE_PER_UNIT)), dear, s, 'expected')).toBe(0)
   })
 
   it('passes on problems in either option', () => {

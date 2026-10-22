@@ -54,6 +54,8 @@ import { hirePurchase, loan, outstandingBalance, pcp } from '../car-finance/calc
 import type { DatedPayment, FinanceField, FinanceOutcome, FinanceProblemReason, FinanceResult } from '../car-finance/types'
 import type {
   Breakdown,
+  Bridge,
+  BridgePart,
   CarOption,
   CaseResult,
   Comparison,
@@ -62,6 +64,7 @@ import type {
   Flip,
   FlipOutcome,
   FuelCost,
+  FuelFlipOutcome,
   Lower,
   MonthPoint,
   OwnershipField,
@@ -731,29 +734,58 @@ function valueFlip(subject: Prepared, other: Prepared, savingsReturn: Ratio, val
   return { kind: 'crossing', below: x, above: x, lowerBelow: otherLower, lowerAbove: subjectLower }
 }
 
-/** The first change of order on a grid of FLIP_SCAN_STEPS steps over [0, top], narrowed by bisection to neighbours (F29). */
+/** The flip found on the grid, its values mapped to what was searched. */
+function mapFlip<T>(flip: Flip<number>, to: (k: number) => T): Flip<T> {
+  if (flip.kind !== 'crossing') return flip
+  const { level, ...rest } = flip
+  return { ...rest, below: to(flip.below), above: to(flip.above), ...(level ? { level: { from: to(level.from), to: to(level.to) } } : {}) }
+}
+
+/** Neighbours (low, high) in [from, to] by bisection: `holds` is false at `from` and true at `to`, so false at low and true at high. */
+function narrow(from: number, to: number, holds: (k: number) => boolean): readonly [number, number] {
+  let low = from
+  let high = to
+  while (high - low > 1) {
+    const middle = low + Math.floor((high - low) / 2)
+    if (holds(middle)) high = middle
+    else low = middle
+  }
+  return [low, high]
+}
+
+/**
+ * The first crossing on a grid of FLIP_SCAN_STEPS steps over [0, top], narrowed by bisection to neighbours (F29). From a
+ * strict order, a tie on the way is carried past to the first value where the other option is lower; a band of ties
+ * between is reported as `level` (F53). From a tie at the start, the first value with one option lower is the crossing.
+ */
 function search(top: number, lowerAt: (k: number) => Lower): Flip<number> {
   const gridPoint = (j: number) => Number(divideRound(BigInt(top) * BigInt(j), BigInt(FLIP_SCAN_STEPS), 'down'))
+  const first = lowerAt(0)
   let previous = 0
-  let previousOrder = lowerAt(0)
+  // The last grid value with the order at the start.
+  let same = 0
   for (let j = 1; j <= FLIP_SCAN_STEPS; j++) {
     const k = gridPoint(j)
     if (k === previous) continue
-    const now = lowerAt(k)
-    if (now !== previousOrder) {
-      let low = previous
-      let high = k
-      while (high - low > 1) {
-        const middle = low + Math.floor((high - low) / 2)
-        if (lowerAt(middle) === previousOrder) low = middle
-        else high = middle
-      }
-      return { kind: 'crossing', below: low, above: high, lowerBelow: previousOrder, lowerAbove: lowerAt(high) }
-    }
     previous = k
-    previousOrder = now
+    const now = lowerAt(k)
+    if (now === first) {
+      same = k
+      continue
+    }
+    if (first === 'tie') {
+      const [low, high] = narrow(same, k, (x) => lowerAt(x) !== 'tie')
+      return { kind: 'crossing', below: low, above: high, lowerBelow: 'tie', lowerAbove: lowerAt(high) }
+    }
+    if (now === 'tie') continue
+    // The other option lower: narrow to where it starts, then, past any ties, to where the first order stops.
+    const [tied, above] = narrow(same, k, (x) => lowerAt(x) === now)
+    if (lowerAt(tied) === first) return { kind: 'crossing', below: tied, above, lowerBelow: first, lowerAbove: now }
+    const [below, from] = narrow(same, tied, (x) => lowerAt(x) !== first)
+    if (lowerAt(from) === now) return { kind: 'crossing', below, above: from, lowerBelow: first, lowerAbove: now }
+    return { kind: 'crossing', below, above, lowerBelow: first, lowerAbove: now, level: { from, to: tied } }
   }
-  return { kind: 'no-crossing-in-range', lowerThroughout: previousOrder }
+  return { kind: 'no-crossing-in-range', lowerThroughout: first }
 }
 
 /** Two options' flip points in one value case (F22, F29): thresholds, never a recommendation. */
@@ -769,9 +801,10 @@ export function flipPoints(options: readonly [CarOption, CarOption], shared: Sha
       divideRound(BigInt(MAX_SAVINGS_RETURN.numerator) * BigInt(denominator), BigInt(MAX_SAVINGS_RETURN.denominator), 'down'),
     )
     const rateAt = (k: number) => ratio(k, denominator)
-    const rates = search(top, (k) => order(a, b, rateAt(k), valueCase))
-    const savingsReturn: Flip<Ratio> =
-      rates.kind === 'crossing' ? { ...rates, below: rateAt(rates.below), above: rateAt(rates.above) } : rates
+    const savingsReturn: Flip<Ratio> = mapFlip(
+      search(top, (k) => order(a, b, rateAt(k), valueCase)),
+      rateAt,
+    )
 
     const withMileage = (prepared: Prepared, miles: number, index: number): Prepared => {
       const again = prepare({ ...prepared.option, car: { ...prepared.option.car, annualMileage: miles } }, shared.horizonMonths, index)
@@ -784,4 +817,87 @@ export function flipPoints(options: readonly [CarOption, CarOption], shared: Sha
 
     return { ok: true, result: { valueCase, horizonValue, savingsReturn, annualMileage } }
   })
+}
+
+/**
+ * The fuel or energy price threshold (F54): option 0's cost per mile, in pence, at which the two are equal per month of
+ * coverage at the end, everything else as entered. Option 0's fuel becomes a direct cost per mile, searched from nothing
+ * to MAX_PENCE_PER_UNIT in steps of 1 / FLIP_RATE_DENOMINATOR of a penny (F29, F53).
+ */
+export function fuelPriceFlip(options: readonly [CarOption, CarOption], shared: Shared, valueCase: ValueCase): FuelFlipOutcome {
+  return guarded(() => {
+    const all = prepareAll(options, shared)
+    if (!all.ok) return all
+    const [a, b] = all.prepared as [Prepared, Prepared]
+    const denominator = FLIP_RATE_DENOMINATOR
+    const top = Number(
+      divideRound(BigInt(MAX_PENCE_PER_UNIT.numerator) * BigInt(denominator), BigInt(MAX_PENCE_PER_UNIT.denominator), 'down'),
+    )
+    const perMileAt = (k: number) => ratio(k, denominator)
+    const otherNet = endNet(b, shared.savingsReturn, valueCase)
+    const lowerAt = (k: number): Lower => {
+      const car = { ...a.option.car, fuel: { kind: 'per-mile', pencePerMile: perMileAt(k) } as const }
+      const again = prepare({ ...a.option, car }, shared.horizonMonths, 0)
+      if (!again.ok) throw new EngineInputError('the fuel price search left the bounds')
+      const net = endNet(again.prepared, shared.savingsReturn, valueCase)
+      return lowerOf(comparePerMonth(net, again.prepared.coverage, otherNet, b.coverage))
+    }
+    return { ok: true, result: mapFlip(search(top, lowerAt), (k) => exactMul(PENNY, perMileAt(k))) }
+  })
+}
+
+/** A cost per mile as a price per litre (F54): pence per mile × miles per gallon ÷ litres per gallon, F21's (a) turned round. */
+export function pencePerLitreFor(pencePerMile: ExactPence, milesPerGallon: Ratio): ExactPence {
+  return exactMul(exactMul(pencePerMile, milesPerGallon), inverse(LITRES_PER_GALLON))
+}
+
+// The cost bridge (F55) ---------------------------------------------------------
+
+const BRIDGE_PARTS: readonly (keyof Breakdown)[] = [
+  'interestAndFees',
+  'depreciation',
+  'equityHandedBack',
+  'fuel',
+  'insurance',
+  'maintenance',
+  'ved',
+  'other',
+  'opportunityCost',
+]
+
+/**
+ * The difference in average cost per month owned, first less second, split by the breakdown's parts (F55); null unless
+ * both cover the whole horizon. The total is shown rounded once to the nearest penny; each part is cut to whole pence
+ * towards nothing and the pennies still needed go one each to the largest remainders that way, so the shown parts add up.
+ */
+export function costBridge(first: OwnershipResult, second: OwnershipResult, valueCase: ValueCase): Bridge | null {
+  if (!first.fullCoverage || !second.fullCoverage || first.horizonMonths !== second.horizonMonths) return null
+  const months = first.horizonMonths
+  const perMonth = ratio(1, months)
+  const a = first.cases[valueCase]
+  const b = second.cases[valueCase]
+  const diffs = BRIDGE_PARTS.map((id) => BigInt(toPence(subtract(a.breakdown[id], b.breakdown[id]))))
+  const total = subtract(a.netCost, b.netCost)
+  const size = BigInt(months)
+  const shownTotal = divideRound(BigInt(toPence(total)), size, 'nearest')
+  const shown = diffs.map((n) => n / size)
+  const remainders = diffs.map((n, i) => n - shown[i]! * size)
+  let need = shownTotal - shown.reduce((x, y) => x + y, 0n)
+  const way = need < 0n ? -1n : 1n
+  const takers = remainders
+    .map((r, i) => ({ r: r * way, i }))
+    .filter(({ r }) => r > 0n)
+    .sort((x, y) => (x.r === y.r ? x.i - y.i : x.r > y.r ? -1 : 1))
+  refuseUnless(BigInt(takers.length) >= need * way, 'the bridge could not share out its pennies')
+  for (const { i } of takers) {
+    if (need === 0n) break
+    shown[i] = shown[i]! + way
+    need -= way
+  }
+  const parts: BridgePart[] = BRIDGE_PARTS.map((id, i) => ({
+    id,
+    exact: exactMul(exact(fromPence(Number(diffs[i]!))), perMonth),
+    shown: fromPence(Number(shown[i]!)),
+  }))
+  return { valueCase, months, total: { exact: exactMul(exact(total), perMonth), shown: fromPence(Number(shownTotal)) }, parts }
 }

@@ -82,13 +82,17 @@ describe('savings return and mileage: bounded search (F29)', () => {
   const cash = option(CASH, { value: p(2_000_000), horizonValue: flat(p(1_100_000)) })
   const pcp = option(pcpOf('buy', p(100_000), 36, ratio(3, 100), p(900_000)), { value: p(2_000_000), horizonValue: flat(p(1_100_000)) })
 
-  it('finds the savings return where the order changes, either side of one step', () => {
+  it('finds the savings return where the order changes, either side of one step or of a band where the two are level (F53)', () => {
     const f = crossing(flips(cash, pcp, s).savingsReturn)
     expect(f.lowerBelow).not.toBe(f.lowerAbove)
     expect(lower(cash, pcp, { ...s, savingsReturn: f.below }, 'expected')).toBe(f.lowerBelow)
     expect(lower(cash, pcp, { ...s, savingsReturn: f.above }, 'expected')).toBe(f.lowerAbove)
     const step = (r: Ratio) => r.numerator / r.denominator
-    expect(step(f.above) - step(f.below)).toBeCloseTo(1e-9, 15)
+    // 3d-2: past a tie the search goes on to the other option lower, so the two neighbour the band, one step either side.
+    if (f.level) {
+      expect(step(f.level.from) - step(f.below)).toBeCloseTo(1e-9, 15)
+      expect(step(f.above) - step(f.level.to)).toBeCloseTo(1e-9, 15)
+    } else expect(step(f.above) - step(f.below)).toBeCloseTo(1e-9, 15)
   })
 
   // A cheap thirsty car against a dear frugal one: more miles favour the frugal one.
