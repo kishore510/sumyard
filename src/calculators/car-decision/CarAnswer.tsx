@@ -114,7 +114,7 @@ export function ScenarioTable({
       </h2>
       <p data-scenario-sentence>{table.sentence}</p>
       <section
-        aria-labelledby="cd-scenarios-title"
+        aria-label="Each option in the three cases, as a table"
         // biome-ignore lint/a11y/noNoninteractiveTabindex: a scrollable region must be keyboard-focusable (axe scrollable-region-focusable).
         tabIndex={0}
         className="relative overflow-x-auto rounded-lg border border-border outline-offset-2"

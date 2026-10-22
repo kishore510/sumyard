@@ -4,6 +4,18 @@ All notable changes to Sumyard are listed here, newest first. The format follows
 
 ## [Unreleased]
 
+## [0.22.0] - 2026-10-22
+
+### Changed
+- **Car decision: the answer first.** The results now open with one sentence: which option has the lowest net cost under your assumptions, how much less a month than the next, and how much over the horizon, with the savings return it uses (at nothing, tying up cash costs nothing in the comparison). Ties are stated, and when there is no answer to give (one option, fewer than two covering the whole horizon, or a PCP handed back early that costs less a month) it says why. On a phone it is in the bar at the top.
+- With a **Keep current car** option, a line for each other option says what switching to it costs a month more or less than keeping, and over the horizon.
+- The headline on each card is now **Average cost per month owned** (the same figure as before). Each card also names the **largest part of the cost**, and a **Money in and out** block shows the upfront cash, the monthly payment and any final payment due at the end, apart from the cost.
+- Clearer labels: **What is the car worth today?** for a car you keep, and **Low, Expected and High value at the end**. An effective interest rate now says which fees it includes.
+
+### Added
+- **Bottom line**: the lowest net cost, running cost and depreciation per month owned, and what choosing the next option costs a month, each with what it measures.
+- **Low, expected and high end values** side by side: each option's average cost per month owned in all three cases, and whether the lowest changes between them.
+
 ## [0.21.0] - 2026-10-22
 
 ### Changed

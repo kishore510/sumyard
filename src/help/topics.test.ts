@@ -69,13 +69,17 @@ describe('content/help', () => {
       expect(text).toMatch(word)
   })
 
-  it('the car decision topic covers the options, net cost per month of coverage, coverage, the cases, flip points, rates and what is not modelled', () => {
+  it('the car decision topic covers the options, the verdict, average cost per month owned, money in and out, coverage, the cases, flip points, rates and what is not modelled', () => {
     const text = JSON.stringify(topicById('car-decision')!.blocks)
     for (const word of [
       /keep/i,
       /PCP/,
       /hire purchase/i,
-      /net cost per month of coverage/i,
+      /average cost per month owned/i,
+      /no verdict/i,
+      /bottom line/i,
+      /money in and out/i,
+      /switching/i,
       /coverage/i,
       /low, expected (and|or) high/i,
       /opportunity cost/i,

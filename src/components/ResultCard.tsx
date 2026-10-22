@@ -59,7 +59,7 @@ export function StatRow({ label, value, detail, marker }: { label: string; value
   return (
     <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-0.5 border-t border-border py-2 first:border-t-0 first:pt-0">
       <dt className="min-w-0 text-sm text-text-muted">{label}</dt>
-      <dd className="text-right text-sm font-medium text-text tabular-nums">
+      <dd className="ml-auto text-right text-sm font-medium text-text tabular-nums">
         <span {...(marker ? { [`data-${marker}`]: '' } : {})}>{value}</span>
         {detail && <span className="block text-xs font-normal text-text-muted">{detail}</span>}
       </dd>

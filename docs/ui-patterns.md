@@ -145,3 +145,28 @@ A line always visible gives the count of warnings at the target and the count fu
 ### U28. Detail behind sections
 
 The cost-of-£1 detail, the chart's table, the milestone audit and the assumptions sit in `Section`s with live one-line summaries; no new accordion. Spendable is shown only where it differs from take-home (Child Benefit or an annual allowance charge).
+
+
+## 3d-1: the car decision results, answer first (0.22.0)
+
+Patterns from the owner's use of the car page: the results answer "which has the lowest net cost, by how much, and why" before any detail. Not owner decisions unless marked; change them with a note here.
+
+### U29. A verdict sentence first, generated from the ranking
+
+The results column (sticky from md) opens with one sentence from the engine's full-coverage ranking (`verdict`, `narrative.ts`): the lowest option, the gap a month and over the horizon to the next option not tied with it, and the savings return used (at nothing: "tying up cash costs nothing in this comparison"). The gap is the difference of the engine's whole-penny net costs, and a month is that difference over the horizon, rounded once to the nearest penny, as the engine rounds its own per-month figure. No verdict, with the reason, for one option, fewer than two covering the horizon, or a partial-coverage option lower per month owned: partial coverage is never compared by total. The phone bar carries a short form; the full sentence is the one polite announcement after the inputs settle. Words: never best, recommended, cheapest, cheaper, guaranteed or should; tested over every generated sentence.
+
+### U30. Switch cost against keeping
+
+When an option is Keep current car, each other full-coverage option gets one line: switching to it costs £X a month more or less than keeping, and the total over the horizon. Nothing without a Keep option.
+
+### U31. A bottom line with definitions
+
+Four rows, full coverage only, ties stated: lowest net cost, lowest running cost (fuel or energy, insurance, maintenance, VED, other), lowest depreciation, each per month owned, and the cost a month of choosing the next option. Each row carries its definition in words under it.
+
+### U32. Low, expected and high side by side
+
+A small table, one row per option, the average cost per month owned in each case (the case the cards show in bold), and a sentence saying whether the lowest changes between cases. It reads the one comparison's three rankings (one `compareOptions` call ranks all three cases), so it costs nothing extra and updates as you type; only the announcement waits for the inputs to settle.
+
+### U33. Cost apart from cash; plain labels
+
+The headline is "Average cost per month owned" (the engine's net cost per month of coverage; engine names unchanged); each card adds its largest breakdown part in neutral words. Money that changes hands (upfront cash, a monthly payment, a final payment due at the end) sits in its own block at the foot of the card, apart from the economic cost; a kept car's forgone sale is never shown as cash. Input labels are questions or plain phrases ("What is the car worth today?", "Expected value at the end", with Low and High kept); hints carry no figures. An effective rate says which fees it includes.

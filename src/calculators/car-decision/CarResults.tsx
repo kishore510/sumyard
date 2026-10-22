@@ -228,11 +228,11 @@ function OkCard({
 }
 
 const UPFRONT_DETAIL: Record<AcquisitionKind, string> = {
-  keep: 'Nothing is paid: the car’s value counts in the net cost as a sale given up, not as cash.',
-  cash: 'The price, paid at the start.',
-  loan: 'The part of the price the loan doesn’t cover, and any fee paid at the start.',
-  'hire-purchase': 'The deposit and any fee paid at the start.',
-  pcp: 'The deposit and any fee paid at the start.',
+  keep: 'None: its value counts as a sale given up, not cash',
+  cash: 'The price, at the start',
+  loan: 'What the loan doesn’t cover, and any fee then',
+  'hire-purchase': 'The deposit and any fee then',
+  pcp: 'The deposit and any fee then',
 }
 
 /** The money that changes hands (3d-1), apart from the net cost: upfront, monthly and at the end. */
@@ -245,7 +245,8 @@ function MoneyFlowRows({ status, gbp }: { status: Extract<OptionStatus, { kind: 
   const monthlyDetail = monthly
     ? [
         `${monthly.payments} payment${monthly.payments === 1 ? '' : 's'}`,
-        monthly.last !== monthly.amount ? `the last ${gbp(monthly.last)}` : null,
+        // Only when it shows differently: a last payment pennies apart reads the same in whole pounds.
+        gbp(monthly.last) !== gbp(monthly.amount) ? `the last ${gbp(monthly.last)}` : null,
         monthly.payments > result.horizonMonths ? `${result.horizonMonths} of them within the horizon` : null,
       ]
         .filter(Boolean)
@@ -264,7 +265,7 @@ function MoneyFlowRows({ status, gbp }: { status: Extract<OptionStatus, { kind: 
       <dl className="flex flex-col">
         <StatRow label="Upfront cash" value={gbp(flows.upfront)} detail={UPFRONT_DETAIL[kind]} marker="upfront" />
         {monthly && <StatRow label="Monthly payment" value={`${gbp(monthly.amount)} a month`} detail={monthlyDetail} marker="monthly" />}
-        {final && <StatRow label="Final payment due at the end" value={gbp(final.amount)} detail={`${finalDetail}.`} marker="final" />}
+        {final && <StatRow label="Final payment due at the end" value={gbp(final.amount)} detail={finalDetail} marker="final" />}
       </dl>
     </div>
   )
