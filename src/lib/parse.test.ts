@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest'
-import { fromPence, ratio } from './money'
-import { parseIntegerText, parseMoneyText, parsePercentText, percentRatio } from './parse'
+import { compareRatio, fromPence, ratio } from './money'
+import {
+  decimalRatio,
+  isCanonicalDecimal,
+  parseDecimalText,
+  parseIntegerText,
+  parseMoneyText,
+  parsePercentText,
+  percentRatio,
+} from './parse'
 
 /* Made-up amounts and percentages; none is a tax figure. */
 
@@ -153,5 +161,35 @@ describe('parseIntegerText', () => {
   it('applies min and max', () => {
     expect(error(parseIntegerText('1', { min: 2, max: 10 }))).toBe('Enter at least 2.')
     expect(error(parseIntegerText('11', { min: 2, max: 10 }))).toBe('Enter no more than 10.')
+  })
+})
+
+describe('parseDecimalText (slice 3c-1: miles per gallon, pence per litre)', () => {
+  it('reads plain decimals to an exact Ratio, with the canonical text', () => {
+    const parsed = parseDecimalText('45.5')
+    expect(parsed.ok && parsed.value.text).toBe('45.5')
+    expect(parsed.ok && compareRatio(parsed.value.ratio, ratio(91, 2))).toBe(0)
+    expect(parseDecimalText(' 007.50 ').ok && (parseDecimalText(' 007.50 ') as { value: { text: string } }).value.text).toBe('7.5')
+    expect(parseDecimalText('1,234.5').ok).toBe(true)
+  })
+
+  it('refuses text that is not a decimal, too many places, and values outside the limits', () => {
+    expect(parseDecimalText('')).toEqual({ ok: false, error: 'Enter a number.' })
+    expect(parseDecimalText('abc').ok).toBe(false)
+    expect(parseDecimalText('1.234', { maxDecimals: 2 })).toEqual({ ok: false, error: 'Use at most two decimal places.' })
+    expect(parseDecimalText('-1', { min: ratio(0, 1) }).ok).toBe(false)
+    expect(parseDecimalText('0', { min: ratio(0, 1), minExclusive: true }).ok).toBe(false)
+    expect(parseDecimalText('0.01', { min: ratio(0, 1), minExclusive: true }).ok).toBe(true)
+    expect(parseDecimalText('20.01', { max: ratio(20, 1) }).ok).toBe(false)
+    expect(parseDecimalText('20', { max: ratio(20, 1) }).ok).toBe(true)
+  })
+
+  it('decimalRatio and isCanonicalDecimal round-trip the stored text', () => {
+    expect(compareRatio(decimalRatio('12.25'), ratio(49, 4))).toBe(0)
+    expect(() => decimalRatio('12.50')).toThrow()
+    expect(isCanonicalDecimal('12.5', { max: ratio(20, 1) })).toBe(true)
+    expect(isCanonicalDecimal('12.50')).toBe(false)
+    expect(isCanonicalDecimal('21', { max: ratio(20, 1) })).toBe(false)
+    expect(isCanonicalDecimal(12)).toBe(false)
   })
 })

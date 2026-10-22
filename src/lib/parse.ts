@@ -145,3 +145,14 @@ export function parseIntegerText(text: string, limits: IntegerLimits = {}): Pars
   if (limits.max !== undefined && value > limits.max) return fail(`Enter no more than ${limits.max}.`)
   return { ok: true, value }
 }
+
+/* Stubs (red). */
+export function parseDecimalText(_text: string, _limits: PercentLimits & { minExclusive?: boolean } = {}): Parsed<PercentValue> {
+  return fail('not built')
+}
+export function decimalRatio(_text: string): Ratio {
+  throw new MoneyError('not built')
+}
+export function isCanonicalDecimal(_text: unknown, _limits: PercentLimits & { minExclusive?: boolean } = {}): _text is string {
+  return false
+}

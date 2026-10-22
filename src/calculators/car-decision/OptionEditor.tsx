@@ -1,0 +1,2 @@
+/* Stub (red). */
+export {}

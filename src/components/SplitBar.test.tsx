@@ -115,3 +115,20 @@ describe('SplitBar', () => {
     act(() => themeStore.set('system'))
   })
 })
+
+describe('SplitBar with nothing to draw (slice 3c-1)', () => {
+  it('says the caller’s words when the total is nothing or below', () => {
+    view = mount(
+      <SplitBar
+        {...props}
+        title="Where the cost goes"
+        totalLabel="Net cost"
+        segments={[{ id: 'a', label: 'Alpha', value: -5 }]}
+        total={-5}
+        emptyText="No net cost to split."
+      />,
+    )
+    expect(view.host.textContent).toContain('No net cost to split.')
+    expect(view.host.textContent).not.toMatch(/pay/i)
+  })
+})

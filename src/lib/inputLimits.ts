@@ -66,6 +66,9 @@ export const MAX_CAR_OPTIONS = 4
 /** Car ownership: the longest horizon, in whole months (F30). */
 export const MAX_HORIZON_MONTHS = 240
 
+/** Car decision page: the horizon a fresh page starts with, in months (slice 3c-1). A starting value, not a bound and not advice. */
+export const DEFAULT_HORIZON_MONTHS = 48
+
 /** Car ownership: a horizon value may be at most this times the starting value (F17, F30): zero depreciation and a modest rise are allowed. */
 export const MAX_HORIZON_VALUE_RATIO = ratio(3, 2)
 

@@ -6,9 +6,10 @@ import {
   formatGBPDelta,
   formatIsoDate,
   formatPercent,
+  formatPence,
   formatPercentPointDelta,
 } from './format'
-import { fromPence, ratio } from './money'
+import { exact, fromPence, ratio } from './money'
 
 /* Made-up amounts and rates; none is a tax figure. */
 
@@ -144,5 +145,16 @@ describe('deltas', () => {
     expect(formatPercentPointDelta(ratio(25, 1000))).toBe('+2.5 percentage points')
     expect(formatPercentPointDelta(ratio(-1, 100))).toBe('-1 percentage point')
     expect(formatPercentPointDelta(ratio(0, 1))).toBe('No change')
+  })
+})
+
+describe('formatPence (slice 3c-1: a cost per mile)', () => {
+  it('shows exact pence to at most the places asked, trailing zeros dropped, halves away from zero', () => {
+    expect(formatPence({ numerator: 1_363_827n, denominator: 100_000n })).toBe('13.64p')
+    expect(formatPence({ numerator: 1_363_827n, denominator: 100_000n }, 1)).toBe('13.6p')
+    expect(formatPence(exact(fromPence(12)))).toBe('12p')
+    expect(formatPence({ numerator: 25n, denominator: 1000n })).toBe('0.03p')
+    expect(formatPence({ numerator: -25n, denominator: 10n })).toBe('-2.5p')
+    expect(formatPence({ numerator: 123_456_789n, denominator: 1n })).toBe('123,456,789p')
   })
 })

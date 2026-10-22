@@ -103,3 +103,8 @@ export function formatPercentPointDelta(change: Ratio, maxDecimals = 2): string 
   const unit = text.replace('-', '') === '1' ? 'percentage point' : 'percentage points'
   return `${change.numerator > 0 ? '+' : ''}${text} ${unit}`
 }
+
+/* Stub (red). */
+export function formatPence(_amount: { readonly numerator: bigint; readonly denominator: bigint }, _maxDecimals = 2): string {
+  return ''
+}
