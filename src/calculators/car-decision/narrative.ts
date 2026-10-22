@@ -424,9 +424,9 @@ export function scenarioTable(comparison: Comparison, names: readonly string[]):
 export interface MoneyFlows {
   /** Cash paid at the start (month 0 of the engine's timeline): the price, or the deposit and fees paid then. Never a kept car's forgone sale. */
   readonly upfront: Money
-  /** Finance only: the regular monthly payment, the last (which takes the rounding) and how many. */
+  /** Finance only (a kept car's finance still owed included): the regular monthly payment, the last (which takes the rounding) and how many. */
   readonly monthly: { readonly amount: Money; readonly last: Money; readonly payments: number } | null
-  /** A PCP bought at the end or HP with a balloon or fee: what is due with the last payment, and in which month. */
+  /** A PCP bought at the end, HP with a balloon or fee, or a kept car's final payment: what is due with the last payment, and in which month. */
   readonly final: { readonly amount: Money; readonly fee: Money; readonly month: number; readonly withinHorizon: boolean } | null
 }
 
@@ -442,7 +442,8 @@ export function moneyFlows(option: CarOption, result: OwnershipResult): MoneyFlo
   const term = schedule.rows.length
   const monthly = { amount: schedule.regularPayment, last: schedule.lastPayment, payments: term }
   const { acquisition } = option
-  const buys = acquisition.kind === 'hire-purchase' || (acquisition.kind === 'pcp' && acquisition.end === 'buy')
+  const buys =
+    acquisition.kind === 'hire-purchase' || acquisition.kind === 'keep' || (acquisition.kind === 'pcp' && acquisition.end === 'buy')
   const due = compare(own.finalPayment, ZERO) > 0 || compare(own.purchaseFee, ZERO) > 0
   const final =
     buys && due ? { amount: own.finalPayment, fee: own.purchaseFee, month: term, withinHorizon: term <= result.horizonMonths } : null

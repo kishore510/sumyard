@@ -20,7 +20,7 @@ import {
 import { divideRound, fromPence, fromPounds, type Ratio, ratio, toPence } from '@/lib/money'
 import { decimalRatio, percentRatio } from '@/lib/parse'
 import { MONTHS_PER_YEAR } from '@/lib/periods'
-import { compareOptions } from '../car-ownership/calc'
+import { compareOptions, ownershipCost } from '../car-ownership/calc'
 import { CALCULATORS } from '../index'
 import {
   type CarDecisionInputs,
@@ -50,6 +50,7 @@ import {
   type V1Inputs,
   type V2Inputs,
 } from './fixtures/inputs'
+import { sensitivityOf } from './sensitivity'
 
 /*
  * Slice 3c-1: the car decision page's registry entry (definition.ts). Inputs
@@ -651,7 +652,7 @@ describe('finance still owed on a kept car (3e, F43 to F51)', () => {
   it('missing: with the switch on, the settlement, payment and payments left; an empty final payment reads as 0', () => {
     expect(missingFields({ ...keep(), settlement: null })).toEqual([])
     expect(missingFields({ ...keep(), owesFinance: true })).toEqual(['settlement', 'owedPayment', 'paymentsLeft'])
-    expect(missingFields(keepOwing({ owedFinalPayment: fromPounds(0) }))).toEqual([])
+    expect(missingFields(keepOwing({ owedPayment: fromPounds(320), owedFinalPayment: fromPounds(0) }))).toEqual([])
   })
 
   it('maps to the engine’s existing finance only with the switch on', () => {
@@ -687,6 +688,16 @@ describe('finance still owed on a kept car (3e, F43 to F51)', () => {
     expect(status.refusal.problems.map((p) => p.label)).toEqual([label])
     expect(status.refusal.problems[0]!.message).toMatch(message)
     expect(outcome.statuses[1]!.kind).toBe('ok')
+  })
+
+  it('the sensitivity works with it: every move inside the bounds has the engine’s figure', () => {
+    const option = toEngineOption(keepOwing(), increase)
+    const shared = { horizonMonths: 48, savingsReturn: percentRatio('4') }
+    const base = ownershipCost(option, shared)
+    if (!base.ok) throw new Error('refused')
+    const rows = sensitivityOf(option, shared, 'expected', base.result)
+    expect(rows.length).toBeGreaterThan(0)
+    for (const row of rows) expect(row.cells.every((cell) => cell.change !== null)).toBe(true)
   })
 
   it('summarise lists the finance still owed and the implied rate', () => {

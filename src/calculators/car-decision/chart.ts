@@ -32,9 +32,12 @@ function costedInOrder(outcome: Ok, inputs: CarDecisionInputs): [number, Costed]
   })
 }
 
-/** A finance agreement's term in months; null for keep and cash. */
-const termOf = (option: CarOption) =>
-  option.acquisition.kind === 'keep' || option.acquisition.kind === 'cash' ? null : option.acquisition.finance.term
+/** A finance agreement's term in months (a kept car's payments left); null for cash and keep without finance. */
+function termOf(option: CarOption): number | null {
+  const { acquisition } = option
+  if (acquisition.kind === 'keep') return acquisition.existingFinance?.paymentsLeft ?? null
+  return acquisition.kind === 'cash' ? null : acquisition.finance.term
+}
 
 export interface Crossover {
   readonly categories: readonly string[]

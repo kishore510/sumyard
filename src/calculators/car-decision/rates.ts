@@ -12,11 +12,14 @@ import type { Acquisition } from '../car-ownership/types'
  * whether the APR counts them is still OPEN, so the card shows the finance
  * engine's effective rate with its label instead. Every rate is the
  * engine's: `apr` from car-finance on the agreement's own payments, or the
- * result's effective rate. Nothing is worked out here but which flows count.
+ * result's effective rate. A kept car with finance still owed shows the rate
+ * implied from its figures (F45), labelled as such. Nothing is worked out
+ * here but which flows count.
  */
 
 export const APR_LABEL = 'APR'
 export const EFFECTIVE_LABEL = 'Effective interest rate, not the lender’s APR'
+export const IMPLIED_LABEL = 'Implied rate from your figures, not the lender’s APR'
 
 export type RateShown =
   | { readonly kind: 'apr'; readonly label: typeof APR_LABEL; readonly rate: Ratio }
@@ -28,6 +31,8 @@ export type RateShown =
       /** Which fees the rate includes, in words. */
       readonly fees: string
     }
+  /** Finance still owed on a kept car: the rate 3a's solver implies from the person's figures (F45). */
+  | { readonly kind: 'implied'; readonly label: typeof IMPLIED_LABEL; readonly rate: Ratio; readonly why: string }
   | { readonly kind: 'none'; readonly why: string }
 
 const WHY_EFFECTIVE = {
@@ -42,6 +47,9 @@ const FEES_INCLUDED = {
 } as const
 
 const NO_RATE = 'No rate of nothing or more fits these payments.'
+
+const WHY_IMPLIED =
+  'The yearly rate at which your payments and any final payment repay the settlement figure, worked out from what you entered.'
 
 /** True when the APR rules read so far settle every payment of this agreement (F15). */
 export function aprVerified(acquisition: Acquisition): boolean {
@@ -59,9 +67,13 @@ function aprPayments(acquisition: Acquisition, finance: FinanceResult): DatedPay
   return payments
 }
 
-/** The rate a finance option's card shows, and its label; null for keep and cash. */
+/** The rate a finance option's card shows, and its label; null for cash and for keep without finance owed. */
 export function rateShown(acquisition: Acquisition, finance: FinanceResult | null): RateShown | null {
-  if (!finance || acquisition.kind === 'keep' || acquisition.kind === 'cash') return null
+  if (!finance || acquisition.kind === 'cash') return null
+  if (acquisition.kind === 'keep') {
+    if (!finance.effectiveRate.ok) return { kind: 'none', why: NO_RATE }
+    return { kind: 'implied', label: IMPLIED_LABEL, rate: finance.effectiveRate.annual, why: WHY_IMPLIED }
+  }
   if (aprVerified(acquisition)) {
     const outcome = apr({ drawdown: finance.amountFinanced, payments: aprPayments(acquisition, finance) })
     return outcome.ok ? { kind: 'apr', label: APR_LABEL, rate: outcome.display } : { kind: 'none', why: NO_RATE }

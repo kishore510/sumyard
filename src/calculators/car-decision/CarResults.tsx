@@ -80,7 +80,7 @@ function measures(status: Ok, valueCase: ValueCase, gbp: Gbp) {
 /** Percentage places an APR is shown to: the engine's display digits less the two a percentage takes. */
 const APR_PLACES = APR_DISPLAY_DIGITS - 2
 
-const RATE_TEST: Record<RateShown['kind'], string> = { apr: 'apr', effective: 'effective', none: 'none' }
+const RATE_TEST: Record<RateShown['kind'], string> = { apr: 'apr', effective: 'effective', implied: 'implied', none: 'none' }
 
 /** The rate an ok option shows, from its engine option and result. */
 function rateFor(status: Ok): RateShown | null {
@@ -104,6 +104,7 @@ function Rate({ shown }: { shown: RateShown }) {
               {rateText(shown)}
             </span>
           </span>
+          {shown.kind === 'implied' && <span className="text-xs text-text-muted">{shown.why}</span>}
           {shown.kind === 'effective' && (
             <>
               <span className="text-xs text-text-muted">{shown.why}</span>
@@ -219,6 +220,16 @@ function OkCard({
               </InlineNotice>
             </div>
           )}
+          {result.acquisition === 'keep' && isNegative(result.forgoneSale) && (
+            <div data-negative-equity-now>
+              <InlineNotice tone="warning" title="Negative equity now">
+                <p>
+                  The settlement figure is more than the car is worth today, so selling it now would not clear the finance. That shortfall
+                  counts as a sale given up below nothing.
+                </p>
+              </InlineNotice>
+            </div>
+          )}
           {equity !== null && isNegative(equity) && (
             <div data-negative-equity>
               <InlineNotice tone="warning" title="Negative equity at the horizon">
@@ -277,16 +288,19 @@ const UPFRONT_DETAIL: Record<AcquisitionKind, string> = {
   pcp: 'The deposit and any fee then',
 }
 
+const UPFRONT_OWING = 'None: what a sale would leave after clearing the finance counts as a sale given up, not cash'
+
 /** The money that changes hands (3d-1), apart from the net cost: upfront, monthly and at the end. */
 function MoneyFlowRows({ status, gbp }: { status: Ok; gbp: Gbp }) {
   const { result } = status
   const flows = moneyFlows(status.option, result)
   const kind = result.acquisition
+  const owing = kind === 'keep' && result.finance !== null
   const feeName = kind === 'hire-purchase' ? 'option to purchase fee' : 'purchase fee'
   const { monthly, final } = flows
   const monthlyDetail = monthly
     ? [
-        `${monthly.payments} payment${monthly.payments === 1 ? '' : 's'}`,
+        `${monthly.payments} payment${monthly.payments === 1 ? '' : 's'}${owing ? ' left' : ''}`,
         // Only when it shows differently: a last payment pennies apart reads the same in whole pounds.
         gbp(monthly.last) !== gbp(monthly.amount) ? `the last ${gbp(monthly.last)}` : null,
         monthly.payments > result.horizonMonths ? `${result.horizonMonths} of them within the horizon` : null,
@@ -305,7 +319,7 @@ function MoneyFlowRows({ status, gbp }: { status: Ok; gbp: Gbp }) {
       <h4 className="text-sm font-semibold text-text">Money in and out</h4>
       <p className="text-xs text-text-muted">The cash that changes hands, apart from the net cost above.</p>
       <dl className="flex flex-col">
-        <StatRow label="Upfront cash" value={gbp(flows.upfront)} detail={UPFRONT_DETAIL[kind]} marker="upfront" />
+        <StatRow label="Upfront cash" value={gbp(flows.upfront)} detail={owing ? UPFRONT_OWING : UPFRONT_DETAIL[kind]} marker="upfront" />
         {monthly && <StatRow label="Monthly payment" value={`${gbp(monthly.amount)} a month`} detail={monthlyDetail} marker="monthly" />}
         {final && <StatRow label="Final payment due at the end" value={gbp(final.amount)} detail={finalDetail} marker="final" />}
       </dl>

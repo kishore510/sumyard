@@ -6,6 +6,7 @@ import { NumberInput } from '@/components/inputs/NumberInput'
 import { PercentInput } from '@/components/inputs/PercentInput'
 import { Segmented } from '@/components/inputs/Segmented'
 import { TextInput } from '@/components/inputs/TextInput'
+import { Toggle } from '@/components/inputs/Toggle'
 import { Section } from '@/components/Section'
 import { InlineNotice } from '@/components/states'
 import { Button } from '@/components/ui/button'
@@ -25,7 +26,7 @@ import {
   FUEL_MODES,
   fieldList,
   fuelCost,
-  isFinance,
+  hasFinanceSection,
   LIMITS,
   OPTIONAL_FIELDS,
   type OptionField,
@@ -88,6 +89,21 @@ const HINTS: Partial<Record<OptionField, string>> = {
   publicPencePerKwh: 'What public charging costs you, in pence a kWh.',
   pencePerMile: 'Your own figure for fuel or energy, in pence a mile.',
   fuelPriceChange: 'Its own yearly change, apart from the shared increase. It can be negative.',
+  owesFinance: 'Turn on if a loan, HP or PCP on this car isn’t paid off yet. The rate is worked out from your figures.',
+  settlement:
+    'Use the lender’s current settlement quote, from your account or by asking them. Sumyard doesn’t work out early settlement charges.',
+  owedPayment: 'The regular payment on your agreement or statement. The next one is taken as a month from today.',
+  paymentsLeft: 'Whole monthly payments still to make.',
+  owedFinalPayment:
+    'A larger last payment, such as a PCP’s optional final payment if you will keep the car. It is paid with the last monthly payment.',
+}
+
+/** A kept car's finance boxes are asked as questions (3e). */
+const QUESTIONS: Partial<Record<OptionField, string>> = {
+  settlement: 'What does the lender say you owe to clear it today?',
+  owedPayment: 'How much do you pay each month?',
+  paymentsLeft: 'How many payments are left?',
+  owedFinalPayment: 'Any final payment due at the end? Enter 0 if none.',
 }
 
 const VALUE_HINTS = {
@@ -106,6 +122,7 @@ const SUFFIXES: Partial<Record<OptionField, string>> = {
   pencePerMile: 'p',
   mileageAllowance: 'miles',
   excessPerMile: 'p',
+  paymentsLeft: 'payments',
 }
 
 /** Each field's id suffix: cd-o<key>-<suffix>. */
@@ -146,6 +163,11 @@ export const ID_SUFFIXES: Record<OptionField, string> = {
   pcpEnd: 'pcp-end',
   mileageAllowance: 'allowance',
   excessPerMile: 'excess',
+  owesFinance: 'owes-finance',
+  settlement: 'settlement',
+  owedPayment: 'owed-payment',
+  paymentsLeft: 'payments-left',
+  owedFinalPayment: 'owed-final-payment',
 }
 
 const CHOICE_LABELS = {
@@ -159,6 +181,8 @@ const SECTION_TITLES: Record<SectionId, string> = { car: 'The car', finance: 'Fi
 
 export const NOT_SET = 'Not set'
 export const NEEDS_FIXING = 'Fix the highlighted input'
+/** A kept car's finance section with its switch off. */
+export const NO_FINANCE = 'No finance owed'
 
 /** The invalid-field name the session tracks for an option's box. */
 export const fieldName = (key: number, field: OptionField) => `o${key}.${field}`
@@ -183,6 +207,7 @@ function perMileCost(option: OptionInputs): string | null {
 export function sectionSummary(id: SectionId, option: OptionInputs, invalid: readonly OptionField[], gbp: Gbp): string {
   const fields = sectionFields(id, option)
   if (fields.some((f) => invalid.includes(f))) return NEEDS_FIXING
+  if (id === 'finance' && option.acquisition === 'keep' && !option.owesFinance) return NO_FINANCE
   if (entered(option, fields).length === 0) return NOT_SET
   const parts: string[] = []
   const money = (field: OptionField, label?: string) => {
@@ -198,6 +223,12 @@ export function sectionSummary(id: SectionId, option: OptionInputs, invalid: rea
     for (const field of ['insurance', 'maintenance', 'ved', 'other'] as const) money(field, FIELD_LABELS[field])
     const perMile = perMileCost(option)
     if (perMile) parts.push(`${FUEL_LABELS[option.fuelMode].toLowerCase()} ${perMile} a mile`)
+  } else if (option.acquisition === 'keep') {
+    if (!option.owesFinance) return NO_FINANCE
+    money('settlement', 'settle')
+    money('owedPayment', 'paying')
+    if (option.paymentsLeft !== null) parts.push(`${option.paymentsLeft} payment${option.paymentsLeft === 1 ? '' : 's'} left`)
+    money('owedFinalPayment', 'final')
   } else {
     money(option.acquisition === 'loan' ? 'loanAmount' : 'deposit', option.acquisition === 'loan' ? 'Loan' : 'Deposit')
     if (option.term !== null) parts.push(`${option.term} months`)
@@ -249,14 +280,14 @@ export function OptionEditor({
   const id = (field: OptionField) => `${base}-${ID_SUFFIXES[field]}`
   const [openOnMount] = useState(() => ({
     car: entered(option, sectionFields('car', option)).length > 0,
-    finance: entered(option, sectionFields('finance', option)).length > 0,
+    finance: entered(option, sectionFields('finance', option)).length > 0 || (option.acquisition === 'keep' && option.owesFinance),
     running: entered(option, sectionFields('running', option)).length > 0,
   }))
   const name = optionName(option, index)
   const hintOf = (field: OptionField, hint = HINTS[field]) => (isOptional(field) ? `${hint ?? ''} ${EMPTY_AS_NOTHING}`.trim() : hint)
   const common = (field: OptionField) => ({
     id: id(field),
-    label: FIELD_LABELS[field],
+    label: QUESTIONS[field] ?? FIELD_LABELS[field],
     hint: hintOf(field),
     onValidityChange: (ok: boolean) => setValid(field, ok),
   })
@@ -268,7 +299,7 @@ export function OptionEditor({
   const money = (field: OptionField, label?: string, hint?: string) => (
     <CurrencyInput
       {...common(field)}
-      label={label ?? FIELD_LABELS[field]}
+      label={label ?? QUESTIONS[field] ?? FIELD_LABELS[field]}
       hint={hintOf(field, hint ?? HINTS[field])}
       {...emptiness(field, ZERO)}
       value={option[field] as Money | null}
@@ -345,7 +376,7 @@ export function OptionEditor({
     </Section>
   )
   const perMile = perMileCost(option)
-  const finance = isFinance(option.acquisition)
+  const finance = hasFinanceSection(option.acquisition)
 
   return (
     <fieldset id={base} data-option-editor className="flex min-w-0 flex-col gap-4 rounded-lg border border-border bg-surface-muted p-3">
@@ -403,36 +434,56 @@ export function OptionEditor({
       {finance &&
         section(
           'finance',
-          <>
-            {option.acquisition === 'loan' ? money('loanAmount') : money('deposit')}
-            {whole('term')}
-            {choice('pricing', PRICING_MODES)}
-            {option.pricing === 'rate' ? (
-              <>
-                {rate('rate')}
-                {choice('basis', BASES)}
-              </>
-            ) : (
-              money('payment')
-            )}
-            {money('arrangementFee')}
-            {choice('arrangementFeeTiming', TIMINGS)}
-            {option.acquisition === 'hire-purchase' && (
-              <>
-                {money('balloon')}
-                {money('optionFee')}
-              </>
-            )}
-            {option.acquisition === 'pcp' && (
-              <>
-                {money('finalPayment')}
-                {money('purchaseFee')}
-                {choice('pcpEnd', PCP_ENDS)}
-                {whole('mileageAllowance')}
-                {whole('excessPerMile')}
-              </>
-            )}
-          </>,
+          option.acquisition === 'keep' ? (
+            <>
+              <Toggle
+                id={id('owesFinance')}
+                label={FIELD_LABELS.owesFinance}
+                hint={HINTS.owesFinance}
+                checked={option.owesFinance}
+                onChange={(owesFinance) => update({ owesFinance })}
+              />
+              {option.owesFinance && (
+                <>
+                  {money('settlement')}
+                  {money('owedPayment')}
+                  {whole('paymentsLeft')}
+                  {money('owedFinalPayment')}
+                </>
+              )}
+            </>
+          ) : (
+            <>
+              {option.acquisition === 'loan' ? money('loanAmount') : money('deposit')}
+              {whole('term')}
+              {choice('pricing', PRICING_MODES)}
+              {option.pricing === 'rate' ? (
+                <>
+                  {rate('rate')}
+                  {choice('basis', BASES)}
+                </>
+              ) : (
+                money('payment')
+              )}
+              {money('arrangementFee')}
+              {choice('arrangementFeeTiming', TIMINGS)}
+              {option.acquisition === 'hire-purchase' && (
+                <>
+                  {money('balloon')}
+                  {money('optionFee')}
+                </>
+              )}
+              {option.acquisition === 'pcp' && (
+                <>
+                  {money('finalPayment')}
+                  {money('purchaseFee')}
+                  {choice('pcpEnd', PCP_ENDS)}
+                  {whole('mileageAllowance')}
+                  {whole('excessPerMile')}
+                </>
+              )}
+            </>
+          ),
         )}
       {section(
         'running',
