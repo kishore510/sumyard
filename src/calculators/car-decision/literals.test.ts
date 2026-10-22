@@ -14,7 +14,7 @@ import { ALLOWED, engineFiles, FIGURE, numbersIn, split } from '../fixtures/lite
 
 const HERE = import.meta.dirname
 const ENGINE_FILES = engineFiles(HERE)
-const PAGE_FILES = ['CarDecisionPage.tsx', 'OptionEditor.tsx', 'CarResults.tsx', 'CarViews.tsx', 'CarAnswer.tsx']
+const PAGE_FILES = ['CarDecisionPage.tsx', 'OptionEditor.tsx', 'CarResults.tsx', 'CarViews.tsx', 'CarAnswer.tsx', 'CarBridge.tsx']
 
 describe('literal guard: the car decision page', () => {
   it('finds the page’s logic files', () => {

@@ -143,6 +143,9 @@ const driverLabel = (driver: Driver, valueCase: ValueCase) =>
 
 const shiftLabel = (shift: number) => `${shift > 0 ? '+' : '−'}${Math.abs(shift)}%`
 
+/** The sticky first column, opaque and narrow, its labels wrapping (U36). */
+const FIRST = 'sticky left-0 z-10 w-32 min-w-32 bg-surface px-3 py-2 text-left'
+
 /** A cell's change in whole pence, for the drawn bar; null without a figure. */
 const pence = (cell: Cell | undefined) => (cell && cell.change !== null ? toPence(cell.change) : null)
 
@@ -269,17 +272,19 @@ export function SensitivityView({
                   tabIndex={0}
                   className="relative overflow-x-auto rounded-md border border-border"
                 >
-                  <table className="w-full min-w-max border-collapse text-sm text-text">
+                  {/* As the side-by-side table (U36, 3d-2 fix): the first column opaque over the figures scrolling under it,
+                      narrow enough to leave room for them, its labels wrapping; each figure keeps a minimum width on one line. */}
+                  <table className="w-full border-collapse text-sm text-text">
                     <caption className="sr-only">
                       {names[o.index]}: change in average cost per month owned when one input moves, largest first
                     </caption>
                     <thead>
                       <tr className="text-text-muted">
-                        <th scope="col" className="sticky left-0 bg-surface px-3 py-2 text-left font-medium">
+                        <th scope="col" className={`${FIRST} font-medium`}>
                           Input moved
                         </th>
                         {SENSITIVITY_SHIFTS.map((shift) => (
-                          <th key={shift} scope="col" className="px-3 py-2 text-right font-medium whitespace-nowrap">
+                          <th key={shift} scope="col" className="min-w-28 px-3 py-2 text-right font-medium whitespace-nowrap">
                             {shiftLabel(shift)}
                           </th>
                         ))}
@@ -291,7 +296,7 @@ export function SensitivityView({
                     <tbody>
                       {o.rows.map((row) => (
                         <tr key={row.driver} data-driver={row.driver} className="border-t border-border">
-                          <th scope="row" className="sticky left-0 bg-surface px-3 py-2 text-left font-normal">
+                          <th scope="row" className={`${FIRST} font-normal`}>
                             {driverLabel(row.driver, inputs.valueCase)}
                           </th>
                           {row.cells.map((cell) => (
@@ -299,7 +304,7 @@ export function SensitivityView({
                               key={cell.shift}
                               data-shift={cell.shift}
                               className={cn(
-                                'px-3 py-2 text-right whitespace-nowrap',
+                                'min-w-28 px-3 py-2 text-right whitespace-nowrap',
                                 cell.change === null ? 'text-xs text-text-muted' : 'tabular-nums',
                               )}
                             >

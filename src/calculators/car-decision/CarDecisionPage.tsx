@@ -26,6 +26,7 @@ import { toasts } from '@/toast/toasts'
 import type { ValueCase } from '../car-ownership/types'
 import { sessionFor } from '../session'
 import { BottomLine, ScenarioTable, VerdictPanel } from './CarAnswer'
+import { BridgeSection, type BridgeState } from './CarBridge'
 import { type CardData, CompareTable, type FlipState, OptionCards, OrderSummary, positions, WhatChanges } from './CarResults'
 import { CrossoverView, SensitivityView, useSensitivity } from './CarViews'
 import {
@@ -49,7 +50,7 @@ import {
 } from './definition'
 import { emptyCostsDiffer, emptyRunningCosts, engineNames, type NoVerdict, verdict } from './narrative'
 import { fieldName, OptionEditor } from './OptionEditor'
-import { cardOrder, flipPair, flipsFor, pairChoices } from './results'
+import { bridgeFor, bridgeUnavailable, cardOrder, flipPair, flipsFor, fuelFlipFor, pairChoices, pairNames } from './results'
 
 /*
  * The car decision page (slice 3c-1) at #/c/car-decision, on the 3a and 3b
@@ -62,8 +63,9 @@ import { cardOrder, flipPair, flipsFor, pairChoices } from './results'
  * snapping row on a phone) and the comparison table, then (3c-2) the
  * crossover chart with the readout at the selected month, "What changes the
  * answer" for a pair of options, and the sensitivity view. The selected
- * month and the pair are the page's only, never stored. Uses no tax rules. Every figure is the engine's (compareOptions,
- * flipPoints, costPerMile, apr) through ./definition.ts, ./results.ts and
+ * month and the pair are the page's only, never stored; (3d-2) the pair's cost bridge sits in the results under the
+ * verdict, sharing the pair. Uses no tax rules. Every figure is the engine's (compareOptions,
+ * flipPoints, fuelPriceFlip, costBridge, costPerMile, apr) through ./definition.ts, ./results.ts and
  * ./rates.ts; the page writes none and does no arithmetic on money.
  */
 
@@ -106,6 +108,9 @@ const PAGE_ASSUMPTIONS = [
   'An optional cost or fee left empty counts as nothing. The price, the end values, the mileage, the fuel figures and the finance terms an option needs are never assumed: until they are entered, the option has no figures.',
   'The month-by-month chart shows each option’s net cost so far at the end of each month, in the end-value case chosen, from the same engine as the cards. A line stops where its car is handed back. Lines that cross are not an order: the cards are ordered at the horizon.',
   'The thresholds in “What changes the answer” are measured over the whole horizon, whatever month the chart shows.',
+  'Near a threshold the two penny-rounded totals can be level, or pennies apart either way, over a narrow band: the search carries on past it and names the option lower on each side.',
+  'The fuel or energy price threshold changes only the first option’s fuel or energy cost per mile, with its mileage, yearly fuel price change and everything else as entered. For an electric car it is home and public charging together, the split as entered.',
+  '“Where the difference comes from” splits the difference in average cost per month owned between two options that cover the whole horizon into the parts each card shows: each part’s difference divided by the months owned, to the penny, so the parts add up to the difference.',
   'The sensitivity view moves one input at a time by a constant percentage of its current value (the end value in the case chosen, the savings return, the annual mileage or the fuel or energy price), with every other input held at its current value, and shows the engine’s change in average cost per month owned. Illustrative only, not a forecast and not advice.',
   'Average cost per month owned is the engine’s net cost per month of coverage: the net cost divided by the months the option covers.',
   'The verdict, the bottom line and the switch cost compare only options that cover the whole horizon. An option that covers less is never compared by total.',
@@ -162,6 +167,35 @@ export default function CarDecisionPage() {
     next[which] = index
     setChosenPair({ revision: state.revision, pair: next })
   }
+  // One pair, two places to choose it (F56): the bridge in the results and "What changes the answer" below the cards.
+  const pairPicker = (prefix: 'cd-pair' | 'cd-bridge') =>
+    choices.length >= 2 &&
+    pair && (
+      <div data-pair-picker className="grid min-w-0 gap-3 sm:grid-cols-2 [&>*]:min-w-0">
+        {([0, 1] as const).map((which) => (
+          <Select
+            key={which}
+            id={`${prefix}-${which === 0 ? 'first' : 'second'}`}
+            label={which === 0 ? 'First option' : 'Second option'}
+            value={String(pair[which])}
+            options={choices.map((index) => ({ value: String(index), label: uniques[index]! }))}
+            onChange={(value) => pickPair(which, Number(value))}
+          />
+        ))}
+      </div>
+    )
+  const bridge: BridgeState | null = !okOutcome
+    ? null
+    : choices.length < 2 || !pair
+      ? { kind: 'no-pair', reason: bridgeUnavailable(okOutcome, uniques) }
+      : pair[0] === pair[1]
+        ? { kind: 'same' }
+        : (() => {
+            const found = bridgeFor(okOutcome, inputs, pair)
+            return found
+              ? { kind: 'ready', names: pairNames(inputs, pair), bridge: found }
+              : { kind: 'no-pair', reason: bridgeUnavailable(okOutcome, uniques) }
+          })()
 
   const ok = outcome?.kind === 'ok' ? outcome : null
   const names = inputs.options.map(optionName)
@@ -279,6 +313,9 @@ export default function CarDecisionPage() {
                   <ScenarioTable comparison={comparison} valueCase={inputs.valueCase} names={answerNames} gbp={gbp} />
                 </>
               )}
+              {bridge && (
+                <BridgeSection state={bridge} valueCase={inputs.valueCase} gbp={gbp} amounts={amounts} picker={pairPicker('cd-bridge')} />
+              )}
               <OrderSummary comparison={outcome.comparison} cards={cards} valueCase={inputs.valueCase} gbp={gbp} />
             </>
           )
@@ -315,28 +352,7 @@ export default function CarDecisionPage() {
             onMonth={(next) => setPicked({ revision: state.revision, month: next })}
             gbp={gbp}
           />
-          <WhatChanges
-            state={flips}
-            inputs={inputs}
-            gbp={gbp}
-            picker={
-              choices.length >= 2 &&
-              pair && (
-                <div data-pair-picker className="grid min-w-0 gap-3 sm:grid-cols-2 [&>*]:min-w-0">
-                  {([0, 1] as const).map((which) => (
-                    <Select
-                      key={which}
-                      id={which === 0 ? 'cd-pair-first' : 'cd-pair-second'}
-                      label={which === 0 ? 'First option' : 'Second option'}
-                      value={String(pair[which])}
-                      options={choices.map((index) => ({ value: String(index), label: uniques[index]! }))}
-                      onChange={(value) => pickPair(which, Number(value))}
-                    />
-                  ))}
-                </div>
-              )
-            }
-          />
+          <WhatChanges state={flips} inputs={inputs} gbp={gbp} picker={pairPicker('cd-pair')} />
           <SensitivityView state={sensitivity} inputs={inputs} amounts={amounts} onOpenChange={setSensitivityOpen} />
         </>
       )}
@@ -390,21 +406,40 @@ function useFlips(
       inputs.valueCase,
       pair,
     ])
+    let timer: ReturnType<typeof setTimeout>
+    const show = (state: FlipState) => setReady({ for: outcome, pair: pair.join(), state })
+    // The fuel or energy price threshold a step after the rest (F54): each search is one task, so the page can respond between.
+    const fuelStep = (state: Extract<FlipState, { kind: 'ready' }>) => {
+      timer = setTimeout(() => {
+        const first = status(pair[0])
+        const flip = fuelFlipFor(outcome, inputs, pair)
+        const done: FlipState =
+          flip && first.kind === 'ok' ? { ...state, fuel: { flip, fuel: first.option.car.fuel } } : { kind: 'refused' }
+        if (flipMemo.size >= FLIP_MEMO_SIZE) flipMemo.clear()
+        flipMemo.set(key, done)
+        show(done)
+      }, 0)
+    }
     const work = () => {
       let state = flipMemo.get(key)
       if (!state) {
         const lowestPair = flipPair(outcome, inputs.valueCase)
         const found = flipsFor(outcome, inputs, pair)
         state = found
-          ? { kind: 'ready', ...found, lowest: lowestPair !== null && lowestPair[0] === pair[0] && lowestPair[1] === pair[1] }
+          ? {
+              kind: 'ready',
+              ...found,
+              lowest: lowestPair !== null && lowestPair[0] === pair[0] && lowestPair[1] === pair[1],
+              fuel: null,
+            }
           : { kind: 'refused' }
-        if (flipMemo.size >= FLIP_MEMO_SIZE) flipMemo.clear()
-        flipMemo.set(key, state)
       }
       settled.current = outcome
-      setReady({ for: outcome, pair: pair.join(), state })
+      show(state)
+      if (state.kind === 'ready' && !state.fuel) fuelStep(state)
+      else if (!flipMemo.has(key)) flipMemo.set(key, state)
     }
-    const timer = setTimeout(work, settled.current === outcome ? 0 : SETTLE_MS)
+    timer = setTimeout(work, settled.current === outcome ? 0 : SETTLE_MS)
     return () => clearTimeout(timer)
   }, [pairable, outcome, inputs, pairKey, same])
   if (!pairable) return { kind: 'no-pair' }

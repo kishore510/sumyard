@@ -2,10 +2,20 @@ import { describe, expect, it } from 'vitest'
 import { formatPence } from '@/lib/format'
 import { type ExactPence, exact, exactMul, fromPence, type Money, ratio, toPence } from '@/lib/money'
 import { pencePerLitreFor } from '../car-ownership/calc'
-import type { Bridge, BridgePart, Breakdown, Flip, FuelCost } from '../car-ownership/types'
+import type { Breakdown, Bridge, BridgePart, Flip, FuelCost } from '../car-ownership/types'
 import { calculate } from './definition'
 import { cash, electric, hp, inputs, keep, keepOwing, loan, pcp, perMile, randomInputs, seeded } from './fixtures/inputs'
-import { bridgeFor, bridgeRows, bridgeSentences, flipSentences, flipsFor, fuelFlipFor, fuelSentence, pairChoices, pairNames } from './results'
+import {
+  bridgeFor,
+  bridgeRows,
+  bridgeSentences,
+  flipSentences,
+  flipsFor,
+  fuelFlipFor,
+  fuelSentence,
+  pairChoices,
+  pairNames,
+} from './results'
 
 /*
  * Session 3d-2: the fuel or energy price threshold in words (F54) and where
@@ -168,7 +178,9 @@ describe('where the difference comes from, in words (F55)', () => {
       'high',
       gbp,
     )
-    expect(balanced.largest).toBe('The largest parts, tied, are depreciation and fuel or energy: £20.00 a month each, one more and one less for A.')
+    expect(balanced.largest).toBe(
+      'The largest parts, tied, are depreciation and fuel or energy: £20.00 a month each, one more and one less for A.',
+    )
   })
 
   it('rows: each part labelled as the cards label it, in the breakdown’s order, the shown figures', () => {
@@ -189,7 +201,12 @@ describe('where the difference comes from, in words (F55)', () => {
 })
 
 describe('bridge and fuel threshold for a pair from the page (F55, F56)', () => {
-  const four = inputs([keep({ name: 'Old' }), cash({ name: 'New' }), loan({ name: 'Loan' }), pcp({ name: 'Hand back', pcpEnd: 'hand-back', term: 24 })])
+  const four = inputs([
+    keep({ name: 'Old' }),
+    cash({ name: 'New' }),
+    loan({ name: 'Loan' }),
+    pcp({ name: 'Hand back', pcpEnd: 'hand-back', term: 24 }),
+  ])
 
   it('the bridge for two full-coverage options; none when either is handed back before the horizon', () => {
     const outcome = calculate(four)
