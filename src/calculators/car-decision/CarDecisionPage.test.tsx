@@ -4,21 +4,23 @@ import { join } from 'node:path'
 import { act } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { SETTLE_MS } from '@/components/StickyResult'
-import { formatGBP, formatPence, formatPercentFixed } from '@/lib/format'
-import { MAX_CAR_OPTIONS } from '@/lib/inputLimits'
-import { APR_DISPLAY_DIGITS, fromPence, fromPounds, type Money, roundRatio, toPence } from '@/lib/money'
+import { formatGBP, formatGBPDelta, formatPence, formatPercentFixed } from '@/lib/format'
+import { MAX_CAR_OPTIONS, SENSITIVITY_SHIFTS } from '@/lib/inputLimits'
+import { APR_DISPLAY_DIGITS, fromPence, fromPounds, type Money, roundRatio, subtract, toPence } from '@/lib/money'
 import { percentRatio } from '@/lib/parse'
 import { STORAGE_KEYS } from '@/lib/storageKeys'
 import { scenarioStore } from '@/scenarios/index'
 import { settingsStore } from '@/settings/settings'
 import { byText, click, mount, type } from '@/test/dom'
 import { toasts } from '@/toast/toasts'
-import { compareOptions, costPerMile } from '../car-ownership/calc'
+import { compareOptions, costPerMile, flipPoints, ownershipCost } from '../car-ownership/calc'
 import type { Comparison, OwnershipResult, ValueCase } from '../car-ownership/types'
 import { sessionFor } from '../session'
 import CarDecisionPage from './CarDecisionPage'
-import { type CarDecisionInputs, carDecisionCalculator, type OptionInputs, toEngineOption } from './definition'
-import { blank, cash, electric, hp, inputs, keep, loan, pcp, perMile } from './fixtures/inputs'
+import { type CarDecisionInputs, carDecisionCalculator, type OptionInputs, toEngineOption, toEngineShared } from './definition'
+import { blank, blankV1, cash, electric, hp, inputs, keep, loan, pcp, perMile } from './fixtures/inputs'
+import { flipSentences } from './results'
+import { DRIVERS, shiftOption } from './sensitivity'
 
 /*
  * Slice 3c-1: the car decision page at #/c/car-decision. Every expected
@@ -330,9 +332,12 @@ describe('refusals and input errors', () => {
     expect($('[data-headline]', card(0))).not.toBeNull()
   })
 
-  it('an option missing inputs says which, on its card; the others keep their figures', () => {
+  it('an option missing inputs says which, on its card, one line per box; the others keep their figures', () => {
     set(inputs([cash(), blank('cash')]))
     expect(text($('[data-card-missing]', card(1)))).toMatch(/Price/)
+    const lines = $$('[data-card-missing] li', card(1)).map(text)
+    expect(lines).toHaveLength(8)
+    expect(lines[0]).toMatch(/^Price: needed/)
     expect($('[data-headline]', card(0))).not.toBeNull()
   })
 
@@ -430,13 +435,335 @@ describe('the option editor', () => {
   })
 })
 
+describe('empty optional boxes (3c-2)', () => {
+  const OPTIONAL_SUFFIXES = ['insurance', 'maintenance', 'ved', 'other']
+
+  it('optional costs show a 0 placeholder, start empty, and their hints say an empty box counts as nothing', () => {
+    set(inputs([hp()]))
+    for (const suffix of [...OPTIONAL_SUFFIXES, 'deposit', 'fee', 'balloon', 'option-fee']) {
+      const box = field(0, suffix)
+      expect(box.getAttribute('placeholder'), suffix).toBe('0')
+      expect(text($(`[id="${box.id}-hint"]`)), suffix).toMatch(/empty box counts as nothing/i)
+    }
+    act(() => session.startNew())
+    for (const suffix of OPTIONAL_SUFFIXES) expect(field(0, suffix).value).toBe('')
+  })
+
+  it('an empty optional box reads as 0: the same figures as typing 0', () => {
+    set(inputs([cash(), loan()]))
+    type(field(1, 'insurance'), '')
+    type(field(1, 'fee'), '')
+    expect(session.get().inputs.options[1]!.insurance).toBe(fromPounds(0))
+    expect(session.get().inputs.options[1]!.arrangementFee).toBe(fromPounds(0))
+    const emptied = cards().map((c) => text(c))
+    type(field(1, 'insurance'), '0')
+    type(field(1, 'fee'), '0')
+    expect(cards().map((c) => text(c))).toEqual(emptied)
+    const zero = inputs([cash(), loan({ insurance: fromPounds(0), arrangementFee: fromPounds(0) })])
+    for (const [i, option] of engine(zero).options.entries()) expectCard(i, option, 'expected')
+  })
+
+  it('a required box left empty still holds its option back, with that box named on its card', () => {
+    set(inputs([cash(), pcp()]))
+    type(field(1, 'allowance'), '')
+    expect($('[data-headline]', card(1))).toBeNull()
+    expect($$('[data-card-missing] li', card(1)).map(text)).toEqual([expect.stringMatching(/^Mileage allowance: needed/)])
+    type(field(1, 'value'), '')
+    expect($$('[data-card-missing] li', card(1)).map(text)[0]).toMatch(/^Price: needed/)
+  })
+
+  it('a version 1 scenario loads with identical card figures', () => {
+    set(example)
+    click(byText(view.host, 'button', 'Save'))
+    click(byText(view.host, 'form button', 'Save'))
+    const key = STORAGE_KEYS.scenarios.key
+    const stored = JSON.parse(localStorage.getItem(key)!)
+    // As 3c-1 saved it: version 1, an optional fee left empty on the keep option (which has no finance, so it was never read).
+    stored.scenarios[0].inputsVersion = 1
+    stored.scenarios[0].inputs = { ...example, options: [{ ...example.options[0], deposit: null }, ...example.options.slice(1)] }
+    localStorage.setItem(key, JSON.stringify(stored))
+    act(() => scenarioStore.reload())
+    act(() => session.startNew())
+    act(() => session.load(scenarioStore.get().scenarios[0]!))
+    expect(session.get().inputs).toEqual(example)
+    for (const [i, option] of engine(example).options.entries()) expectCard(i, option, 'expected')
+    expect(blankV1('cash').insurance).toBeNull()
+  })
+})
+
+describe('the crossover chart (3c-2)', () => {
+  const handBack = inputs([cash(), loan(), pcp({ pcpEnd: 'hand-back', term: 36 })], { horizonMonths: 48 })
+  const chart = () => $('[data-crossover]')!
+  const rows = () => $$('[data-crossover] [data-chart] tbody tr').map((tr) => [...tr.children].map(text))
+  const series = () => $$('[data-crossover] [data-chart] thead th').slice(1).map(text)
+
+  it('sits below the cards; its points are the engine’s cumulative net cost per month, a line per option by name', () => {
+    set(handBack)
+    const result = engine(handBack)
+    expect(series()).toEqual(['Buy outright', 'Personal loan', 'PCP'])
+    const table = rows()
+    expect(table).toHaveLength(49)
+    for (let m = 0; m <= 48; m++) {
+      expect(table[m]![0]).toBe(`Month ${m}`)
+      result.options.forEach((option, k) => {
+        const point = option.cases.expected.months[m]
+        expect(table[m]![k + 1]).toBe(point ? money(point.netCost) : '–')
+      })
+    }
+    expect(text($('[data-crossover] figcaption'))).toMatch(/cumulative net cost/i)
+  })
+
+  it('a line stops at its coverage end, with a labelled end marker; the horizon and finance terms are marked', () => {
+    set(handBack)
+    expect(rows()[36]![3]).not.toBe('–')
+    expect(rows()[37]![3]).toBe('–')
+    const list = text($('[data-crossover] [data-marker-list]'))
+    expect(list).toContain('PCP: handed back at month 36')
+    expect(list).toContain('Personal loan: finance term ends at month 48')
+    expect(list).toContain('Horizon: month 48')
+    expect($$('[data-crossover] [data-end-label]').map((l) => text(l))).toEqual(['Buy outright', 'Personal loan', 'PCP'])
+  })
+
+  it('switching the case changes the chart to that case', () => {
+    set(handBack)
+    const before = rows()
+    chooseCase('Low')
+    const low = engine({ ...handBack, valueCase: 'low' })
+    expect(rows()).not.toEqual(before)
+    expect(rows()[48]![1]).toBe(money(low.options[0]!.cases.low.months[48]!.netCost))
+  })
+
+  it('crossings are drawn, not announced as a ranking', () => {
+    set(handBack)
+    // The chart's own summary names each line's highest and lowest value; what is banned is an order of options.
+    expect(text(chart())).not.toMatch(/\b(cheaper|cheapest|ranks?|ranked|first place|winner)\b|lowest net cost/i)
+  })
+})
+
+describe('the selected month and readout (3c-2)', () => {
+  const handBack = inputs([cash(), loan(), pcp({ pcpEnd: 'hand-back', term: 36 })], { horizonMonths: 48 })
+  const readoutOf = (index: number) => $(`[data-readout] [data-readout-row="${index}"]`)!
+  const slider = () => $('[data-crossover] [role="slider"]') as HTMLElement
+  const key = (k: string) => act(() => slider().dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true })))
+
+  function expectReadout(month: number, i = handBack) {
+    const result = engine(i)
+    expect(text($('[data-readout] h3, [data-readout] h2'))).toContain(`month ${month}`)
+    result.options.forEach((option, k) => {
+      const point = option.cases[i.valueCase].months[month]
+      const row = readoutOf(k)
+      if (!point) {
+        expect(text(row)).toMatch(/handed back at month/i)
+        return
+      }
+      expect(text($('[data-readout-net]', row))).toBe(money(point.netCost))
+      expect(text($('[data-readout-equity]', row))).toBe(money(point.equity))
+      expect(text($('[data-readout-cash]', row))).toBe(money(point.cashOut))
+    })
+  }
+
+  it('starts at the horizon, says what is held fixed, and each option’s figures are the engine’s at that month', () => {
+    set(handBack)
+    expect(slider().getAttribute('aria-valuenow')).toBe('48')
+    expectReadout(48)
+    expect(text($('[data-readout-held]'))).toMatch(/everything else as entered/i)
+    expect(text($('[data-readout-held]'))).toMatch(/expected end value/i)
+  })
+
+  it('keyboard on the chart picks a month: Home, arrows and End; the readout follows', () => {
+    set(handBack)
+    key('Home')
+    expectReadout(0)
+    key('ArrowRight')
+    key('ArrowRight')
+    expectReadout(2)
+    key('End')
+    expectReadout(48)
+  })
+
+  it('a table row picks its month; the row is highlighted; after a hand-back the readout says so', () => {
+    set(handBack)
+    const buttons = $$('[data-crossover] tbody th button') as HTMLButtonElement[]
+    click(buttons[40])
+    expectReadout(40)
+    expect(
+      $$('[data-crossover] tbody tr')
+        .map((r) => r.hasAttribute('data-selected-row'))
+        .indexOf(true),
+    ).toBe(40)
+    expect(text(readoutOf(2))).toMatch(/handed back at month 36/i)
+    click(buttons[12])
+    expectReadout(12)
+  })
+
+  it('a shorter horizon brings a later month back to the horizon; the month is never stored', () => {
+    set(handBack)
+    click(($$('[data-crossover] tbody th button') as HTMLButtonElement[])[40])
+    expect(session.get().inputs).toEqual(handBack)
+    set({ horizonMonths: 24 })
+    expectReadout(24, { ...handBack, horizonMonths: 24 })
+    click(byText(view.host, 'button', 'Save'))
+    click(byText(view.host, 'form button', 'Save'))
+    const stored = JSON.parse(localStorage.getItem(STORAGE_KEYS.scenarios.key)!)
+    expect(JSON.stringify(stored)).not.toMatch(/selected/i)
+    expect(stored.scenarios[0].inputs).toEqual({ ...handBack, horizonMonths: 24 })
+  })
+})
+
+describe('flip points for any pair (3c-2)', () => {
+  const settle = () => act(() => vi.advanceTimersByTime(SETTLE_MS))
+  const four = inputs([cash({ name: 'Newer car' }), keep({ name: 'Older car' }), loan({ name: 'Loan car' })])
+  const pick = (id: string, value: string) => {
+    const select = $(id) as HTMLSelectElement
+    act(() => {
+      select.value = value
+      select.dispatchEvent(new Event('change', { bubbles: true }))
+    })
+  }
+
+  it('defaults to the two lowest by the engine’s ordering, options by name; another pair gives its own sentences', () => {
+    vi.useFakeTimers()
+    set(four)
+    settle()
+    const ranking = engine(four).ranking.expected.full
+    const first = $('#cd-pair-first') as HTMLSelectElement
+    const second = $('#cd-pair-second') as HTMLSelectElement
+    expect([Number(first.value), Number(second.value)]).toEqual([ranking[0]!.option, ranking[1]!.option])
+    expect([...first.options].map((o) => o.textContent)).toEqual(['Newer car', 'Older car', 'Loan car'])
+
+    pick('#cd-pair-first', '0')
+    pick('#cd-pair-second', '2')
+    settle()
+    const options = four.options.map((o) => toEngineOption(o, percentRatio(four.generalIncrease!)))
+    const flips = flipPoints([options[0]!, options[2]!], toEngineShared(four), 'expected')
+    if (!flips.ok) throw new Error('refused')
+    const expected = flipSentences(flips.result, ['Newer car', 'Loan car'], money)
+    for (const sentence of expected) expect(text($(`[data-flip="${sentence.id}"]`))).toBe(sentence.text)
+    expect(text($('[data-flip="mileage"]'))).toMatch(/as one driver/i)
+  })
+
+  it('says the same option twice is not a pair', () => {
+    vi.useFakeTimers()
+    set(four)
+    settle()
+    pick('#cd-pair-first', '1')
+    pick('#cd-pair-second', '1')
+    settle()
+    expect(text($('[data-flips]'))).toMatch(/two different options/i)
+    expect($('[data-flip]')).toBeNull()
+  })
+
+  it('“no crossing in range” is shown as such', () => {
+    vi.useFakeTimers()
+    set(inputs([cash({ name: 'Cheaper deal' }), cash({ name: 'Dearer deal', value: fromPounds(19_000) })]))
+    settle()
+    expect(text($('[data-flip="savings"]'))).toMatch(/no crossing in range/i)
+  })
+
+  it('says the thresholds are measured over the whole horizon, whatever month the chart shows', () => {
+    vi.useFakeTimers()
+    set(four)
+    settle()
+    click(($$('[data-crossover] tbody th button') as HTMLButtonElement[])[5])
+    expect(text($('[data-flips-measured]'))).toMatch(/whole horizon.*month 48/i)
+  })
+})
+
+describe('sensitivity (3c-2)', () => {
+  const settle = () => act(() => vi.advanceTimersByTime(SETTLE_MS))
+  const two = inputs([cash(), loan()])
+
+  const openSection = () => click($('#cd-section-sensitivity-button'))
+
+  it('works out nothing while its section is closed', () => {
+    vi.useFakeTimers()
+    set(two)
+    settle()
+    act(() => vi.runAllTimers())
+    expect($('[data-sensitivity-option]')).toBeNull()
+    expect($('[data-sensitivity-status]')).toBeNull()
+    expect(text($('#cd-section-sensitivity-summary'))).toMatch(/open to work out/i)
+  })
+
+  it('shows “updating” until the inputs settle, then a table per option equal to engine reruns, largest effect first', () => {
+    vi.useFakeTimers()
+    set(two)
+    openSection()
+    expect(text($('[data-sensitivity-status]'))).toMatch(/updating/i)
+    expect($('[data-sensitivity-option]')).toBeNull()
+    settle()
+    act(() => vi.runAllTimers())
+    expect($('[data-sensitivity-status]')).toBeNull()
+    const shared = toEngineShared(two)
+    two.options.forEach((o, index) => {
+      const option = toEngineOption(o, percentRatio(two.generalIncrease!))
+      const base = ownershipCost(option, shared)
+      if (!base.ok) throw new Error('refused')
+      const table = $(`[data-sensitivity-option="${index}"]`)!
+      const drivers = $$('tbody tr', table).map((tr) => tr.getAttribute('data-driver'))
+      expect([...drivers].sort()).toEqual([...DRIVERS].sort())
+      const largest = drivers.map((driver) => {
+        const changes = SENSITIVITY_SHIFTS.map((shift) => {
+          const moved = shiftOption(option, shared, driver as (typeof DRIVERS)[number], shift, 'expected')
+          const run = ownershipCost(moved.option, moved.shared)
+          const change = run.ok
+            ? subtract(run.result.cases.expected.netCostPerCoverageMonth, base.result.cases.expected.netCostPerCoverageMonth)
+            : null
+          const cell = text($(`tr[data-driver="${driver}"] td[data-shift="${shift}"]`, table))
+          expect(cell).toBe(change === null ? 'Outside the range' : formatGBPDelta(change, 'pence'))
+          return change === null ? 0 : Math.abs(toPence(change))
+        })
+        return Math.max(...changes)
+      })
+      for (let k = 1; k < largest.length; k++) expect(largest[k - 1]!).toBeGreaterThanOrEqual(largest[k]!)
+    })
+    expect(text($('[data-sensitivity]'))).toMatch(/what moves the answer most/i)
+    expect(text($('[data-sensitivity]'))).toMatch(/one at a time.*held at (their|its) current value/i)
+  })
+
+  it('never works out on each keystroke: typing restarts the wait', () => {
+    vi.useFakeTimers()
+    set(two)
+    openSection()
+    settle()
+    act(() => vi.runAllTimers())
+    type(field(0, 'insurance'), '600')
+    expect(text($('[data-sensitivity-status]'))).toMatch(/updating/i)
+    act(() => vi.advanceTimersByTime(SETTLE_MS / 2))
+    type(field(0, 'insurance'), '650')
+    act(() => vi.advanceTimersByTime(SETTLE_MS / 2))
+    expect(text($('[data-sensitivity-status]'))).toMatch(/updating/i)
+  })
+})
+
+describe('layout (3c-2)', () => {
+  it('has a one-line “how to read this page” under the title, and the sections in order', () => {
+    vi.useFakeTimers()
+    set(example)
+    act(() => vi.advanceTimersByTime(SETTLE_MS))
+    expect(text($('[data-how-to-read]')).length).toBeGreaterThan(0)
+    const order = [
+      '[data-shared-controls]',
+      '[data-cards]',
+      '[data-crossover]',
+      '[data-flips]',
+      '[data-sensitivity]',
+      'details#assumptions',
+    ].map((selector) => $(selector)!)
+    for (let k = 1; k < order.length; k++) {
+      expect(order[k - 1]!.compareDocumentPosition(order[k]!) & Node.DOCUMENT_POSITION_FOLLOWING, `${k}`).toBeTruthy()
+    }
+    expect(byText(view.host, 'button', 'Go to the cards')).toBeDefined()
+  })
+})
+
 describe('scenarios', () => {
   it('saves through the page with no tax year, loads back, and compare rows name each option', () => {
     set(example)
     click(byText(view.host, 'button', 'Save'))
     click(byText(view.host, 'form button', 'Save'))
     const stored = JSON.parse(localStorage.getItem(STORAGE_KEYS.scenarios.key)!)
-    expect(stored.scenarios[0]).toMatchObject({ calculatorId: 'car-decision', inputsVersion: 1, inputs: example })
+    expect(stored.scenarios[0]).toMatchObject({ calculatorId: 'car-decision', inputsVersion: 2, inputs: example })
     expect(Object.hasOwn(stored.scenarios[0], 'taxYear')).toBe(false)
     act(() => session.startNew())
     expect(session.get().inputs).toEqual(carDecisionCalculator.defaultInputs())
@@ -533,8 +860,12 @@ describe('words', () => {
   it('the page never uses the banned words (filled, assumptions open, flips shown, a refusal, missing inputs)', () => {
     vi.useFakeTimers()
     set(example)
+    click($('#cd-section-sensitivity-button'))
     act(() => vi.advanceTimersByTime(SETTLE_MS))
+    act(() => vi.runAllTimers())
     ;($('details#assumptions') as HTMLDetailsElement).open = true
+    expect($('[data-sensitivity-option]')).not.toBeNull()
+    expect($('[data-readout]')).not.toBeNull()
     expect(view.host.textContent).not.toMatch(BANNED)
     set(inputs([cash(), hp({ deposit: fromPounds(18_000) }), blank('pcp')]))
     expect(view.host.textContent).not.toMatch(BANNED)
@@ -542,7 +873,17 @@ describe('words', () => {
 
   it('nor do the page’s sources, the engines’ assumptions or the Help topic', () => {
     const here = import.meta.dirname
-    for (const file of ['CarDecisionPage.tsx', 'OptionEditor.tsx', 'CarResults.tsx', 'definition.ts', 'results.ts', 'rates.ts'])
+    for (const file of [
+      'CarDecisionPage.tsx',
+      'OptionEditor.tsx',
+      'CarResults.tsx',
+      'CarViews.tsx',
+      'definition.ts',
+      'results.ts',
+      'rates.ts',
+      'chart.ts',
+      'sensitivity.ts',
+    ])
       expect(readFileSync(join(here, file), 'utf8'), file).not.toMatch(BANNED)
     const result = engine(example)
     for (const line of [...result.assumptions, ...result.options.flatMap((o) => [...o.assumptions, ...(o.finance?.assumptions ?? [])])])

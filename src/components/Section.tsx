@@ -9,6 +9,8 @@ import { cn } from '@/lib/utils'
  * summary of what is inside. Closed by default unless `defaultOpen` (the calculator
  * opens sections whose inputs differ from the defaults). The panel stays
  * mounted while closed, so typed text and invalid-input state survive.
+ * `onOpenChange` tells the page when it opens or closes (work that only an
+ * open section shows can wait for it).
  * No motion, so reduced motion needs nothing more. The open state is the
  * page's only, never stored: remount (a new key) to reset it.
  */
@@ -17,6 +19,7 @@ export function Section({
   title,
   summary,
   defaultOpen = false,
+  onOpenChange,
   children,
 }: {
   id: string
@@ -24,6 +27,7 @@ export function Section({
   /** One line about what is inside, kept current by the caller. */
   summary: string
   defaultOpen?: boolean
+  onOpenChange?: (open: boolean) => void
   children: ReactNode
 }) {
   const [open, setOpen] = useState(defaultOpen)
@@ -35,7 +39,10 @@ export function Section({
           type="button"
           aria-expanded={open}
           aria-controls={`${id}-panel`}
-          onClick={() => setOpen((o) => !o)}
+          onClick={() => {
+            setOpen(!open)
+            onOpenChange?.(!open)
+          }}
           className="flex min-h-touch w-full items-center gap-3 rounded-lg px-4 py-2 text-left hover:bg-surface-muted"
         >
           <span className="flex min-w-0 flex-1 flex-col">

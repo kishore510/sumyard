@@ -1,5 +1,5 @@
 {
-  "about": "Cross-check cases for the car decision page (src/calculators/car-decision). Each case is one option on a 48-month horizon, seeded as the page stores it (amounts as pounds strings, rates as percentage text, decimals as text), with no savings return, no yearly increases, a flat cost per mile and the same end value in every case, so a spreadsheet can reproduce it. Expected results are null until the owner fills them from an independent source. Never fill them from Sumyard's own engine or from memory. crossChecks.test.ts shows an unfilled case as a todo and compares a filled one with the engine's expected case.",
+  "about": "Cross-check cases for the car decision page (src/calculators/car-decision). Each case is one option on a 48-month horizon, seeded as the page stores it (inputs version 2: an optional cost or fee left empty is 0; amounts as pounds strings, rates as percentage text, decimals as text), with no savings return, no yearly increases, a flat cost per mile and the same end value in every case, so a spreadsheet can reproduce it. Expected results are null until the owner fills them from an independent source. Never fill them from Sumyard's own engine or from memory. crossChecks.test.ts shows an unfilled case as a todo and compares a filled one with the engine's expected case.",
   "howToFill": "For a case, enter as pounds strings (\"12345.67\") any of: netCost (the total net cost at the end of coverage: cash paid out, less what the car is worth then after anything still owed, plus the opportunity cost, which is nothing here; keep also counts its current value as a sale given up at the start, docs/modelling-decisions-car.md F18), netCostPerCoverageMonth (that divided by the months covered, to the penny) and regularPayment (finance only: the monthly payment). Work them out in a spreadsheet (PMT for the payment on the rate basis given: annual means (1 + rate)^(1/12) - 1 a month, monthly means rate / 12; running costs are the yearly amounts over the months covered; fuel is the cost per mile times the miles), or take the payment from a real dealer or lender quote for the same price, deposit, term, rate and final payment. Add source (the spreadsheet and its formulas, or the quote: who, what and the reference) and checkedOn (YYYY-MM-DD); both are required once any value is filled. Leave a value null if you can't source it. tolerancePence is the largest difference accepted; change it only with a note in docs/worked-examples.md.",
   "tolerancePence": 1,
   "cases": [
@@ -34,21 +34,21 @@
             "ved": "0.00",
             "other": "0.00",
             "loanAmount": null,
-            "deposit": null,
+            "deposit": "0.00",
             "term": null,
             "pricing": "rate",
             "rate": null,
             "basis": "annual",
             "payment": null,
-            "arrangementFee": null,
+            "arrangementFee": "0.00",
             "arrangementFeeTiming": "start",
-            "balloon": null,
-            "optionFee": null,
+            "balloon": "0.00",
+            "optionFee": "0.00",
             "finalPayment": null,
-            "purchaseFee": null,
+            "purchaseFee": "0.00",
             "pcpEnd": "buy",
             "mileageAllowance": null,
-            "excessPerMile": null
+            "excessPerMile": 0
           }
         ]
       },
@@ -91,7 +91,7 @@
             "ved": "0.00",
             "other": "0.00",
             "loanAmount": "20000.00",
-            "deposit": null,
+            "deposit": "0.00",
             "term": 48,
             "pricing": "rate",
             "rate": "7",
@@ -99,13 +99,13 @@
             "payment": null,
             "arrangementFee": "0.00",
             "arrangementFeeTiming": "start",
-            "balloon": null,
-            "optionFee": null,
+            "balloon": "0.00",
+            "optionFee": "0.00",
             "finalPayment": null,
-            "purchaseFee": null,
+            "purchaseFee": "0.00",
             "pcpEnd": "buy",
             "mileageAllowance": null,
-            "excessPerMile": null
+            "excessPerMile": 0
           }
         ]
       },
@@ -159,10 +159,10 @@
             "balloon": "0.00",
             "optionFee": "0.00",
             "finalPayment": null,
-            "purchaseFee": null,
+            "purchaseFee": "0.00",
             "pcpEnd": "buy",
             "mileageAllowance": null,
-            "excessPerMile": null
+            "excessPerMile": 0
           }
         ]
       },
@@ -213,8 +213,8 @@
             "payment": null,
             "arrangementFee": "0.00",
             "arrangementFeeTiming": "start",
-            "balloon": null,
-            "optionFee": null,
+            "balloon": "0.00",
+            "optionFee": "0.00",
             "finalPayment": "9000.00",
             "purchaseFee": "0.00",
             "pcpEnd": "buy",
@@ -270,8 +270,8 @@
             "payment": null,
             "arrangementFee": "0.00",
             "arrangementFeeTiming": "start",
-            "balloon": null,
-            "optionFee": null,
+            "balloon": "0.00",
+            "optionFee": "0.00",
             "finalPayment": "11000.00",
             "purchaseFee": "0.00",
             "pcpEnd": "hand-back",
@@ -319,21 +319,21 @@
             "ved": "0.00",
             "other": "0.00",
             "loanAmount": null,
-            "deposit": null,
+            "deposit": "0.00",
             "term": null,
             "pricing": "rate",
             "rate": null,
             "basis": "annual",
             "payment": null,
-            "arrangementFee": null,
+            "arrangementFee": "0.00",
             "arrangementFeeTiming": "start",
-            "balloon": null,
-            "optionFee": null,
+            "balloon": "0.00",
+            "optionFee": "0.00",
             "finalPayment": null,
-            "purchaseFee": null,
+            "purchaseFee": "0.00",
             "pcpEnd": "buy",
             "mileageAllowance": null,
-            "excessPerMile": null
+            "excessPerMile": 0
           }
         ]
       },

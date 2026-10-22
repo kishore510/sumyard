@@ -5,6 +5,7 @@ import { Field } from '@/components/inputs/Field'
 import { NumberInput } from '@/components/inputs/NumberInput'
 import { PercentInput } from '@/components/inputs/PercentInput'
 import { Segmented } from '@/components/inputs/Segmented'
+import { Select } from '@/components/inputs/Select'
 import { NoTaxRulesBadge } from '@/components/NoTaxRulesBadge'
 import { RefusalNotice } from '@/components/RefusalNotice'
 import { ScenarioBar } from '@/components/ScenarioBar'
@@ -22,9 +23,10 @@ import { useStore } from '@/lib/store'
 import { settingsStore } from '@/settings/settings'
 import { DISCLAIMER } from '@/sheets/parts'
 import { toasts } from '@/toast/toasts'
-import type { FlipPoints, ValueCase } from '../car-ownership/types'
+import type { ValueCase } from '../car-ownership/types'
 import { sessionFor } from '../session'
-import { type CardData, CompareTable, OptionCards, OrderSummary, positions, WhatChanges } from './CarResults'
+import { type CardData, CompareTable, type FlipState, OptionCards, OrderSummary, positions, WhatChanges } from './CarResults'
+import { CrossoverView, SensitivityView, useSensitivity } from './CarViews'
 import {
   blankOption,
   CASE_LABELS,
@@ -40,10 +42,12 @@ import {
   SHARED_LIMITS,
   type SharedField,
   sectionFields,
+  toEngineShared,
+  uniqueNames,
   VALUE_CASES,
 } from './definition'
 import { fieldName, OptionEditor } from './OptionEditor'
-import { cardOrder, flipsFor, lowest } from './results'
+import { cardOrder, flipPair, flipsFor, lowest, pairChoices } from './results'
 
 /*
  * The car decision page (slice 3c-1) at #/c/car-decision, on the 3a and 3b
@@ -51,10 +55,12 @@ import { cardOrder, flipsFor, lowest } from './results'
  * case always visible, the shared assumptions in a section, then each
  * option's editor (add, duplicate, remove with Undo; up to the most
  * compared). Results first (StickyResult): the lowest net cost per month of
- * coverage under these assumptions in the phone bar, the order and "What
- * changes the answer" in the results column; below the columns, a card per
- * option (columns from md, a snapping row on a phone) and the comparison
- * table. Uses no tax rules. Every figure is the engine's (compareOptions,
+ * coverage under these assumptions in the phone bar, the order in the
+ * results column; below the columns, a card per option (columns from md, a
+ * snapping row on a phone) and the comparison table, then (3c-2) the
+ * crossover chart with the readout at the selected month, "What changes the
+ * answer" for a pair of options, and the sensitivity view. The selected
+ * month and the pair are the page's only, never stored. Uses no tax rules. Every figure is the engine's (compareOptions,
  * flipPoints, costPerMile, apr) through ./definition.ts, ./results.ts and
  * ./rates.ts; the page writes none and does no arithmetic on money.
  */
@@ -87,6 +93,10 @@ const PAGE_ASSUMPTIONS = [
   'VED, insurance and the other running costs are the amounts you enter. Sumyard holds no VED figures and models no tax rules or electric car benefit rules.',
   'No replacement car is modelled: a car handed back at the end of a PCP leaves the rest of the horizon uncovered, so it is shown per month of coverage and not ordered against options that cover the whole horizon.',
   'A loan’s APR, and HP’s when there is no option to purchase fee, is worked out from the agreement’s payments under the APR rules. For a PCP, and HP with an option fee, the card shows the effective interest rate instead, which is not the lender’s APR.',
+  'An optional cost or fee left empty counts as nothing. The price, the end values, the mileage, the fuel figures and the finance terms an option needs are never assumed: until they are entered, the option has no figures.',
+  'The month-by-month chart shows each option’s net cost so far at the end of each month, in the end-value case chosen, from the same engine as the cards. A line stops where its car is handed back. Lines that cross are not an order: the cards are ordered at the horizon.',
+  'The thresholds in “What changes the answer” are measured over the whole horizon, whatever month the chart shows.',
+  'The sensitivity view moves one input at a time by a constant percentage of its current value (the end value in the case chosen, the savings return, the annual mileage or the fuel or energy price), with every other input held at its current value, and shows the engine’s change in net cost per month of coverage. Illustrative only, not a forecast and not advice.',
   'Uses no tax rules: nothing here depends on the tax rules of any year.',
   'Illustrative only, not financial advice.',
 ]
@@ -118,7 +128,27 @@ export default function CarDecisionPage() {
     const held = new Set(keys.flatMap((key, index) => (invalidFor(key).length > 0 ? [index] : [])))
     return calculate(inputs, held)
   }, [sharedInvalid, inputs, heldKey])
-  const flips = useFlips(outcome, inputs)
+  // The month the chart and readout show (the horizon until one is picked) and the flip pair: the page's, reset by a load.
+  const [picked, setPicked] = useState<{ revision: number; month: number } | null>(null)
+  const month = picked && picked.revision === state.revision ? Math.min(picked.month, inputs.horizonMonths) : inputs.horizonMonths
+  const [chosenPair, setChosenPair] = useState<{ revision: number; pair: [number, number] } | null>(null)
+  const okOutcome = outcome?.kind === 'ok' ? outcome : null
+  const choices = okOutcome ? pairChoices(okOutcome, inputs.valueCase) : []
+  const defaultPair = okOutcome ? flipPair(okOutcome, inputs.valueCase) : null
+  const pair: readonly [number, number] | null =
+    chosenPair && chosenPair.revision === state.revision && chosenPair.pair.every((i) => choices.includes(i))
+      ? chosenPair.pair
+      : defaultPair
+  const flips = useFlips(outcome, inputs, pair)
+  // Sensitivity is worked out only while its section is open: it reruns the engine many times (docs/performance.md).
+  const [sensitivityOpen, setSensitivityOpen] = useState(false)
+  const sensitivity = useSensitivity(okOutcome, inputs, sensitivityOpen)
+  const uniques = uniqueNames(inputs.options)
+  const pickPair = (which: 0 | 1, index: number) => {
+    const next: [number, number] = [pair?.[0] ?? index, pair?.[1] ?? index]
+    next[which] = index
+    setChosenPair({ revision: state.revision, pair: next })
+  }
 
   const ok = outcome?.kind === 'ok' ? outcome : null
   const names = inputs.options.map(optionName)
@@ -164,6 +194,10 @@ export default function CarDecisionPage() {
           {carDecisionCalculator.name}
         </h1>
         <p className="text-text-muted">{carDecisionCalculator.summary}</p>
+        <p data-how-to-read className="text-sm text-text">
+          How to read this page: fill in each option, then compare the cards; the chart below them shows how each option’s cost builds up
+          month by month, and the sections after it show what would change the order.
+        </p>
         {/* On a phone the badge is in the sticky bar instead. */}
         <div className="hidden md:flex">
           <NoTaxRulesBadge />
@@ -200,10 +234,7 @@ export default function CarDecisionPage() {
           ) : outcome.kind === 'refused' ? (
             <RefusalNotice refusal={outcome.refusal} />
           ) : (
-            <>
-              <OrderSummary comparison={outcome.comparison} cards={cards} valueCase={inputs.valueCase} gbp={gbp} />
-              <WhatChanges state={flips} inputs={inputs} gbp={gbp} />
-            </>
+            <OrderSummary comparison={outcome.comparison} cards={cards} valueCase={inputs.valueCase} gbp={gbp} />
           )
         }
       >
@@ -231,6 +262,36 @@ export default function CarDecisionPage() {
             gbp={gbp}
           />
           <CompareTable cards={cards} valueCase={inputs.valueCase} gbp={gbp} />
+          <CrossoverView
+            outcome={ok}
+            inputs={inputs}
+            month={month}
+            onMonth={(next) => setPicked({ revision: state.revision, month: next })}
+            gbp={gbp}
+          />
+          <WhatChanges
+            state={flips}
+            inputs={inputs}
+            gbp={gbp}
+            picker={
+              choices.length >= 2 &&
+              pair && (
+                <div data-pair-picker className="grid min-w-0 gap-3 sm:grid-cols-2 [&>*]:min-w-0">
+                  {([0, 1] as const).map((which) => (
+                    <Select
+                      key={which}
+                      id={which === 0 ? 'cd-pair-first' : 'cd-pair-second'}
+                      label={which === 0 ? 'First option' : 'Second option'}
+                      value={String(pair[which])}
+                      options={choices.map((index) => ({ value: String(index), label: uniques[index]! }))}
+                      onChange={(value) => pickPair(which, Number(value))}
+                    />
+                  ))}
+                </div>
+              )
+            }
+          />
+          <SensitivityView state={sensitivity} inputs={inputs} amounts={amounts} onOpenChange={setSensitivityOpen} />
         </>
       )}
 
@@ -251,29 +312,58 @@ function Waiting({ children }: { children: ReactNode }) {
   )
 }
 
-type FlipState =
-  | { readonly kind: 'no-pair' }
-  | { readonly kind: 'pending' }
-  | { readonly kind: 'refused' }
-  | { readonly kind: 'ready'; readonly pair: readonly [number, number]; readonly flips: FlipPoints }
+/** Flip points by inputs and pair: going back to a pair or inputs already seen shows them at once. Small, cleared when full. */
+const flipMemo = new Map<string, FlipState>()
+const FLIP_MEMO_SIZE = MAX_CAR_OPTIONS * MAX_CAR_OPTIONS
 
 /**
- * The flip points, worked out once the inputs have settled (SETTLE_MS, as the announcement): a search costs both options
- * many times, too slow to redo on each keystroke (docs/performance.md).
+ * The flip points for the pair, worked out once the inputs have settled (SETTLE_MS, as the announcement): a search costs
+ * both options many times, too slow to redo on each keystroke (docs/performance.md). Another pair on the same inputs is
+ * worked out at once.
  */
-function useFlips(outcome: ReturnType<typeof calculate> | null, inputs: CarDecisionInputs): FlipState {
-  const [ready, setReady] = useState<{ for: unknown; state: FlipState } | null>(null)
+function useFlips(
+  outcome: ReturnType<typeof calculate> | null,
+  inputs: CarDecisionInputs,
+  pair: readonly [number, number] | null,
+): FlipState {
+  const [ready, setReady] = useState<{ for: unknown; pair: string; state: FlipState } | null>(null)
+  const settled = useRef<unknown>(null)
   const pairable = outcome?.kind === 'ok' && outcome.comparison !== null && outcome.comparison.ranking[inputs.valueCase].full.length >= 2
+  const same = pair !== null && pair[0] === pair[1]
+  const pairKey = pair ? pair.join() : ''
+  // biome-ignore lint/correctness/useExhaustiveDependencies: pairKey stands for the pair.
   useEffect(() => {
-    if (!pairable || !outcome) return
-    const timer = setTimeout(() => {
-      const found = flipsFor(outcome, inputs)
-      setReady({ for: outcome, state: found ? { kind: 'ready', ...found } : { kind: 'refused' } })
-    }, SETTLE_MS)
+    if (!pairable || !outcome || !pair || same || outcome.kind !== 'ok') return
+    const status = (index: number) => outcome.statuses[index]!
+    const key = JSON.stringify([
+      pair.map((index) => {
+        const s = status(index)
+        return s.kind === 'ok' ? s.option : index
+      }),
+      toEngineShared(inputs),
+      inputs.valueCase,
+      pair,
+    ])
+    const work = () => {
+      let state = flipMemo.get(key)
+      if (!state) {
+        const lowestPair = flipPair(outcome, inputs.valueCase)
+        const found = flipsFor(outcome, inputs, pair)
+        state = found
+          ? { kind: 'ready', ...found, lowest: lowestPair !== null && lowestPair[0] === pair[0] && lowestPair[1] === pair[1] }
+          : { kind: 'refused' }
+        if (flipMemo.size >= FLIP_MEMO_SIZE) flipMemo.clear()
+        flipMemo.set(key, state)
+      }
+      settled.current = outcome
+      setReady({ for: outcome, pair: pair.join(), state })
+    }
+    const timer = setTimeout(work, settled.current === outcome ? 0 : SETTLE_MS)
     return () => clearTimeout(timer)
-  }, [pairable, outcome, inputs])
+  }, [pairable, outcome, inputs, pairKey, same])
   if (!pairable) return { kind: 'no-pair' }
-  return ready && ready.for === outcome && ready.state.kind !== 'pending' ? ready.state : { kind: 'pending' }
+  if (same) return { kind: 'same' }
+  return ready && ready.for === outcome && ready.pair === pairKey ? ready.state : { kind: 'pending' }
 }
 
 const validShared = (field: SharedField) => (ok: boolean) => session.setFieldValid(field, ok)

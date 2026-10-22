@@ -4,6 +4,21 @@ All notable changes to Sumyard are listed here, newest first. The format follows
 
 ## [Unreleased]
 
+## [0.20.0] - 2026-10-22
+
+### Added
+- **Car decision: month by month.** Below the cards, a chart shows each option's net cost so far at the end of every month up to the end of the horizon, in the end-value case you chose, so you can see where two options' running totals cross. Each line is named at its end and drawn in its own pattern, so they can be told apart without colour. A PCP handed back early stops at the month it goes back, and the horizon and each finance term are marked. Tap the chart, use the arrow keys on it (Home and End for the first and last month), or pick a month in its table: a card under the chart shows each option's net cost so far, equity and cash out at that month. The chart has a table of every value. The month you pick isn't saved.
+- **Sensitivity: what moves the answer most.** A section shows, for each option, how its net cost per month would change if the end value, your savings return, your mileage or the fuel or energy price moved 10 or 20 percent either way, one at a time with everything else as entered, with the inputs that matter most first. It is worked out when you open the section, after you stop typing.
+- **What changes the answer** now works for any two options that cover the whole horizon: choose them by name. It starts with the two lowest, says when there is no crossing in range, and says the thresholds are measured over the whole horizon.
+- A one-line "how to read this page" under the title.
+
+### Changed
+- **Car decision: optional costs can be left empty.** Insurance, maintenance, VED, other costs, a deposit, fees, an HP balloon and a PCP's excess mileage charge show a 0 and an empty box counts as nothing, so you no longer have to type 0 for each. Boxes an option can't do without (the price, the end values, the mileage, fuel figures, and the term and rate or payment) still hold it back, and its card lists each one. Saved scenarios load with the same figures as before.
+- In the compound interest chart, the "Paid in" line is drawn in a neutral style instead of the warning colour.
+
+### Fixed
+- A long name in a chart's legend now wraps instead of widening the page.
+
 ## [0.19.0] - 2026-10-22
 
 ### Added

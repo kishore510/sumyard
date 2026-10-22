@@ -11,7 +11,7 @@ import { InlineNotice } from '@/components/states'
 import { Button } from '@/components/ui/button'
 import { formatPence, formatPercent } from '@/lib/format'
 import { MAX_ITEM_NAME_LENGTH } from '@/lib/inputLimits'
-import type { Money } from '@/lib/money'
+import { type Money, ZERO } from '@/lib/money'
 import { percentRatio } from '@/lib/parse'
 import { costPerMile } from '../car-ownership/calc'
 import {
@@ -27,6 +27,7 @@ import {
   fuelCost,
   isFinance,
   LIMITS,
+  OPTIONAL_FIELDS,
   type OptionField,
   type OptionInputs,
   type OptionStatus,
@@ -43,8 +44,9 @@ import {
  * One option in the car decision's editor (slice 3c-1): its name and how the
  * car is had, then sections with live one-line summaries (docs/ui-patterns.md,
  * U1 to U3): the car, its finance (loan, HP and PCP only) and its running
- * costs with fuel or energy. Every amount and rate starts empty; the hints
- * say each convention in words and hold no figure. The cost per mile shown
+ * costs with fuel or energy. Every amount and rate starts empty; an optional
+ * cost or fee shows a 0 placeholder and its empty box reads as nothing (from
+ * 3c-2). The hints say each convention in words and hold no figure. The cost per mile shown
  * under the fuel boxes is the engine's (costPerMile). Duplicate and Remove
  * are the page's (Remove has Undo).
  */
@@ -161,7 +163,15 @@ export const NEEDS_FIXING = 'Fix the highlighted input'
 /** The invalid-field name the session tracks for an option's box. */
 export const fieldName = (key: number, field: OptionField) => `o${key}.${field}`
 
-const entered = (option: OptionInputs, fields: readonly OptionField[]) => fields.filter((f) => option[f] !== null)
+/** Shown after an optional box's hint (its empty box reads as nothing). */
+export const EMPTY_AS_NOTHING = 'An empty box counts as nothing.'
+
+const isOptional = (field: OptionField) => OPTIONAL_FIELDS.includes(field)
+
+/** Set: not empty, and for an optional cost or fee, not nothing (an empty box). */
+const isSet = (option: OptionInputs, field: OptionField) => option[field] !== null && !(isOptional(field) && option[field] === 0)
+
+const entered = (option: OptionInputs, fields: readonly OptionField[]) => fields.filter((f) => isSet(option, f))
 
 /** The engine's cost per mile once the fuel boxes are filled, else null. */
 function perMileCost(option: OptionInputs): string | null {
@@ -177,7 +187,7 @@ export function sectionSummary(id: SectionId, option: OptionInputs, invalid: rea
   const parts: string[] = []
   const money = (field: OptionField, label?: string) => {
     const value = option[field] as Money | null
-    if (value !== null) parts.push(label ? `${label} ${gbp(value)}` : gbp(value))
+    if (isSet(option, field)) parts.push(label ? `${label} ${gbp(value!)}` : gbp(value!))
   }
   if (id === 'car') {
     money('value', valueLabel(option.acquisition))
@@ -243,22 +253,28 @@ export function OptionEditor({
     running: entered(option, sectionFields('running', option)).length > 0,
   }))
   const name = optionName(option, index)
+  const hintOf = (field: OptionField, hint = HINTS[field]) => (isOptional(field) ? `${hint ?? ''} ${EMPTY_AS_NOTHING}`.trim() : hint)
   const common = (field: OptionField) => ({
     id: id(field),
     label: FIELD_LABELS[field],
-    hint: HINTS[field],
+    hint: hintOf(field),
     onValidityChange: (ok: boolean) => setValid(field, ok),
+  })
+  // An optional box reads empty as nothing (and shows nothing as empty, with a 0 placeholder); the others as not entered.
+  const emptiness = <T,>(field: OptionField, nothing: T) => ({
+    allowEmpty: true as const,
+    ...(isOptional(field) ? { emptyValue: nothing, placeholder: '0' } : {}),
   })
   const money = (field: OptionField, label?: string, hint?: string) => (
     <CurrencyInput
       {...common(field)}
       label={label ?? FIELD_LABELS[field]}
-      hint={hint ?? HINTS[field]}
-      allowEmpty
+      hint={hintOf(field, hint ?? HINTS[field])}
+      {...emptiness(field, ZERO)}
       value={option[field] as Money | null}
       min={AMOUNT_LIMITS.min}
       max={AMOUNT_LIMITS.max}
-      onChange={(value) => update({ [field]: value })}
+      onChange={(value: Money | null) => update({ [field]: value })}
     />
   )
   const whole = (field: Bounded) => {
@@ -266,12 +282,12 @@ export function OptionEditor({
     return (
       <NumberInput
         {...common(field)}
-        allowEmpty
+        {...emptiness(field, 0)}
         value={option[field] as number | null}
         min={limit.kind === 'whole' ? limit.min : undefined}
         max={limit.kind === 'whole' ? limit.max : undefined}
         suffix={SUFFIXES[field]}
-        onChange={(value) => update({ [field]: value })}
+        onChange={(value: number | null) => update({ [field]: value })}
       />
     )
   }

@@ -36,8 +36,9 @@ import type {
 import { type CalculatorDefinition, defineCalculator, type InputRefusal, type SummaryRow } from '../registry'
 
 /*
- * The car decision page's registry entry (slice 3c-1, inputs version 1): the
- * inputs a scenario stores, their defaults (every amount and rate empty),
+ * The car decision page's registry entry (slice 3c-1; inputs version 2 from
+ * 3c-2): the inputs a scenario stores, their defaults (every required amount
+ * and rate empty, optional costs and fees 0, which an empty box reads as),
  * validation, how they map to the 3b engine's CarOption and Shared, which
  * fields an option still needs, the comparison with incomplete and refused
  * options set apart, the compare summary and the words for each refusal.
@@ -52,8 +53,9 @@ export type PcpEnd = 'buy' | 'hand-back'
 
 /**
  * One option as the page stores it. Money is integer pence, a rate its canonical percentage text, miles per gallon and
- * prices per unit their canonical decimal text, and null is an empty box (not entered). Every field is kept whatever the
- * kind or fuel type, so switching back finds what was typed.
+ * prices per unit their canonical decimal text, and null is an empty box (not entered). An optional cost or fee
+ * (OPTIONAL_FIELDS) is never null: its empty box reads as nothing and is stored as 0 (inputs version 2). Every field is
+ * kept whatever the kind or fuel type, so switching back finds what was typed.
  */
 export interface OptionInputs {
   readonly name: string
@@ -72,28 +74,28 @@ export interface OptionInputs {
   readonly publicPencePerKwh: string | null
   readonly pencePerMile: string | null
   readonly fuelPriceChange: string | null
-  readonly insurance: Money | null
-  readonly maintenance: Money | null
-  readonly ved: Money | null
-  readonly other: Money | null
+  readonly insurance: Money
+  readonly maintenance: Money
+  readonly ved: Money
+  readonly other: Money
   readonly loanAmount: Money | null
-  readonly deposit: Money | null
+  readonly deposit: Money
   readonly term: number | null
   readonly pricing: PricingMode
   readonly rate: string | null
   readonly basis: RateBasis
   readonly payment: Money | null
-  readonly arrangementFee: Money | null
+  readonly arrangementFee: Money
   readonly arrangementFeeTiming: FeeTiming
-  readonly balloon: Money | null
-  readonly optionFee: Money | null
+  readonly balloon: Money
+  readonly optionFee: Money
   readonly finalPayment: Money | null
-  readonly purchaseFee: Money | null
+  readonly purchaseFee: Money
   readonly pcpEnd: PcpEnd
   /** Whole miles a year; over the agreement it is this × term ÷ a year's months, to the nearest mile (as the engine's expected mileage). */
   readonly mileageAllowance: number | null
   /** Whole pence a mile. */
-  readonly excessPerMile: number | null
+  readonly excessPerMile: number
 }
 
 export type OptionField = keyof OptionInputs
@@ -194,6 +196,20 @@ export const MONEY_FIELDS: readonly OptionField[] = [
   'purchaseFee',
 ]
 
+/** Optional costs and fees (inputs version 2): an empty box reads as nothing, stored as 0. */
+export const OPTIONAL_FIELDS: readonly OptionField[] = [
+  'insurance',
+  'maintenance',
+  'ved',
+  'other',
+  'deposit',
+  'arrangementFee',
+  'balloon',
+  'optionFee',
+  'purchaseFee',
+  'excessPerMile',
+]
+
 /** Decimal places a rate, a decimal and a percentage accept. */
 export const DECIMALS = 2
 
@@ -269,7 +285,7 @@ function optionFieldProblem(field: OptionField, value: unknown): string | undefi
   }
   const limit = LIMITS[field]
   if (limit.kind === 'choice') return limit.options.includes(value as string) ? undefined : 'must be one of the options.'
-  if (value === null) return undefined
+  if (value === null) return OPTIONAL_FIELDS.includes(field) ? 'must be a number: an empty optional box is stored as nothing.' : undefined
   switch (limit.kind) {
     case 'money':
       return isAmount(value) ? undefined : 'must be whole pence from nothing up to the input limit, or empty.'
@@ -362,26 +378,44 @@ export function blankOption(acquisition: AcquisitionKind): OptionInputs {
     publicPencePerKwh: null,
     pencePerMile: null,
     fuelPriceChange: null,
-    insurance: null,
-    maintenance: null,
-    ved: null,
-    other: null,
+    insurance: ZERO,
+    maintenance: ZERO,
+    ved: ZERO,
+    other: ZERO,
     loanAmount: null,
-    deposit: null,
+    deposit: ZERO,
     term: null,
     pricing: 'rate',
     rate: null,
     basis: 'annual',
     payment: null,
-    arrangementFee: null,
+    arrangementFee: ZERO,
     arrangementFeeTiming: 'start',
-    balloon: null,
-    optionFee: null,
+    balloon: ZERO,
+    optionFee: ZERO,
     finalPayment: null,
-    purchaseFee: null,
+    purchaseFee: ZERO,
     pcpEnd: 'buy',
     mileageAllowance: null,
-    excessPerMile: null,
+    excessPerMile: 0,
+  }
+}
+
+/**
+ * Inputs version 1 (3c-1) to 2: an optional cost or fee left empty was "not entered", holding its option back; from
+ * version 2 an empty one is nothing, stored as 0. Every other field is kept as it was, so an option that had figures
+ * has the same ones. What isn't a set of inputs is passed on for validation to refuse.
+ */
+function fromVersion1(old: unknown): unknown {
+  if (!isRecord(old) || Array.isArray(old) || !Array.isArray(old.options)) return old
+  return {
+    ...old,
+    options: old.options.map((option: unknown) => {
+      if (!isRecord(option) || Array.isArray(option)) return option
+      const fresh: Record<string, unknown> = { ...option }
+      for (const field of OPTIONAL_FIELDS) if (fresh[field] === null) fresh[field] = 0
+      return fresh
+    }),
   }
 }
 
@@ -661,7 +695,7 @@ export const carDecisionCalculator: CalculatorDefinition<CarDecisionInputs> = de
   summary:
     'What a car costs over the same horizon if you keep your current car, buy with cash, or take a loan, HP or PCP: net cost per month of coverage in low, expected and high cases for its value, with what would change the order.',
   taxRules: 'none',
-  inputsVersion: 1,
+  inputsVersion: 2,
   defaultInputs: () => ({
     horizonMonths: DEFAULT_HORIZON_MONTHS,
     valueCase: 'expected',
@@ -670,8 +704,8 @@ export const carDecisionCalculator: CalculatorDefinition<CarDecisionInputs> = de
     options: [blankOption('keep'), blankOption('cash')],
   }),
   validateInputs: validate,
-  migrateInputs(from) {
-    // Version 1 is the first: there is nothing older to migrate from.
+  migrateInputs(from, old) {
+    if (from === 1) return fromVersion1(old)
     throw new Error(`The car decision calculator has no inputs version ${from} to migrate from`)
   },
   summarise(inputs) {

@@ -121,4 +121,16 @@ describe('Section', () => {
     expect(button().className).toMatch(/\bmin-h-touch\b/)
     expect(view.host.innerHTML).not.toMatch(/transition|animate-/)
   })
+
+  it('tells the page when it opens and closes (3c-2)', () => {
+    const changes: boolean[] = []
+    view = mount(
+      <Section id="sec" title="Sensitivity" summary="Closed" onOpenChange={(open) => changes.push(open)}>
+        <p>Inside</p>
+      </Section>,
+    )
+    click(button())
+    click(button())
+    expect(changes).toEqual([true, false])
+  })
 })

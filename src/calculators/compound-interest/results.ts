@@ -41,6 +41,8 @@ export function chartData(result: CompoundResult, view: View) {
       id: 'paidIn',
       label: 'Paid in',
       kind: 'line',
+      // A reference for the balances, not a warning: the neutral style, not the danger colour.
+      style: 'neutral',
       values: [start, ...withFee.rows.map((r) => toPence(add(withFee.lumpSum, r.cumulativeContributions)))],
     },
   ]

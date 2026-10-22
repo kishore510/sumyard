@@ -10,6 +10,9 @@ import { boxClass, describedBy, Field } from './Field'
  * a valid value is shown in its tidy form ("1,234.50"). When `value`
  * changes from outside (a scenario loaded), the text follows it. With
  * `allowEmpty`, an empty box is valid and its value is null (not entered).
+ * With `emptyValue`, an empty box is valid and its value is that one (an
+ * optional cost read as nothing), and that value shows as an empty box,
+ * where `placeholder` can show it.
  */
 
 export interface TextValueProps<T> {
@@ -20,6 +23,10 @@ export interface TextValueProps<T> {
   onChange: (value: T) => void
   onValidityChange?: (valid: boolean) => void
   disabled?: boolean
+  /** Shown in an empty box. */
+  placeholder?: string
+  /** What an empty box is: valid, this value; and this value shows as an empty box. */
+  emptyValue?: T
 }
 
 /** A typed input's props: a value always, or (with `allowEmpty`) a value or null for an empty box. */
@@ -33,6 +40,8 @@ export function TextValueInput<T extends string | number | null>({
   onChange,
   onValidityChange,
   disabled,
+  placeholder,
+  emptyValue,
   parse: parseText,
   format: formatValue,
   prefix,
@@ -47,8 +56,10 @@ export function TextValueInput<T extends string | number | null>({
   suffix?: string
   inputMode: 'decimal' | 'numeric' | 'text'
 }) {
-  const parse = (next: string): Parsed<T> => (allowEmpty && !next.trim() ? { ok: true, value: null as T } : parseText(next))
-  const format = (next: T) => (next === null ? '' : formatValue(next))
+  const empty = emptyValue !== undefined
+  const parse = (next: string): Parsed<T> =>
+    (allowEmpty || empty) && !next.trim() ? { ok: true, value: (empty ? emptyValue : null) as T } : parseText(next)
+  const format = (next: T) => (next === null || (empty && next === emptyValue) ? '' : formatValue(next))
   const [text, setText] = useState(() => format(value))
   const [error, setError] = useState<string | null>(null)
   const [shown, setShown] = useState(value)
@@ -89,6 +100,7 @@ export function TextValueInput<T extends string | number | null>({
           autoComplete="off"
           spellCheck={false}
           disabled={disabled}
+          placeholder={placeholder}
           value={text}
           aria-invalid={error ? true : undefined}
           aria-describedby={describedBy(id, { hint, error })}

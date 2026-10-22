@@ -107,7 +107,13 @@ function OptionCard({
           status.kind === 'missing' ? (
             <div data-card-missing>
               <InlineNotice title="Needs inputs">
-                <p>Enter these to see this option: {fieldList(status.missing, card.kind)}.</p>
+                <ul className="flex list-disc flex-col gap-1 pl-5">
+                  {status.missing.map((field) => (
+                    <li key={field}>
+                      <span className="font-medium">{fieldList([field], card.kind)}:</span> needed for this option’s figures.
+                    </li>
+                  ))}
+                </ul>
               </InlineNotice>
             </div>
           ) : status.kind === 'held' ? (
@@ -430,23 +436,22 @@ export function OrderSummary({
   )
 }
 
-/** "What changes the answer" (F22): the flip points between the two lowest options, once worked out. */
-export function WhatChanges({
-  state,
-  inputs,
-  gbp,
-}: {
-  state:
-    | { readonly kind: 'no-pair' }
-    | { readonly kind: 'pending' }
-    | { readonly kind: 'refused' }
-    | { readonly kind: 'ready'; readonly pair: readonly [number, number]; readonly flips: FlipPoints }
-  inputs: CarDecisionInputs
-  gbp: Gbp
-}) {
+export type FlipState =
+  | { readonly kind: 'no-pair' }
+  | { readonly kind: 'same' }
+  | { readonly kind: 'pending' }
+  | { readonly kind: 'refused' }
+  | { readonly kind: 'ready'; readonly pair: readonly [number, number]; readonly flips: FlipPoints; readonly lowest: boolean }
+
+/**
+ * "What changes the answer" (F22): the flip points for a pair of options (by default the two lowest; `picker` chooses
+ * another), once worked out, and that they are measured over the whole horizon.
+ */
+export function WhatChanges({ state, inputs, gbp, picker }: { state: FlipState; inputs: CarDecisionInputs; gbp: Gbp; picker?: ReactNode }) {
   let body: ReactNode
   if (state.kind === 'no-pair')
     body = <p>Thresholds need two options that cover the whole horizon with results. Each card says what its option needs.</p>
+  else if (state.kind === 'same') body = <p>Choose two different options to see the thresholds between them.</p>
   else if (state.kind === 'pending') body = <p>Working out the thresholds once the inputs settle…</p>
   else if (state.kind === 'refused') body = <p>The thresholds can’t be worked out for these inputs.</p>
   else {
@@ -455,8 +460,9 @@ export function WhatChanges({
     body = (
       <>
         <p>
-          Between {names[0]} and {names[1]}, the two lowest net costs per month of coverage in the{' '}
-          {CASE_LABELS[inputs.valueCase].toLowerCase()} case. Each line changes one thing.
+          Between {names[0]} and {names[1]}
+          {state.lowest ? ', the two lowest net costs per month of coverage,' : ','} in the {CASE_LABELS[inputs.valueCase].toLowerCase()}{' '}
+          case. Each line changes one thing.
         </p>
         <ul className="flex list-disc flex-col gap-2 pl-5">
           {sentences.map((s) => (
@@ -472,11 +478,19 @@ export function WhatChanges({
     <section
       data-flips
       aria-labelledby="cd-flips-title"
-      className="flex flex-col gap-3 rounded-lg border border-border bg-surface p-5 text-sm text-text shadow-sm"
+      // A long unbroken option name wraps instead of widening the page.
+      className="flex min-w-0 flex-col gap-3 rounded-lg border border-border bg-surface p-5 text-sm text-text shadow-sm [overflow-wrap:anywhere]"
     >
       <h2 id="cd-flips-title" className="text-base font-semibold">
         What changes the answer
       </h2>
+      {picker}
+      {state.kind !== 'no-pair' && (
+        <p data-flips-measured className="text-text-muted">
+          Measured over the whole horizon, to month {inputs.horizonMonths}, whatever month the chart shows: each threshold is where the two
+          net costs per month of coverage are equal at the end.
+        </p>
+      )}
       {body}
     </section>
   )

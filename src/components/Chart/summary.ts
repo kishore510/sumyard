@@ -4,7 +4,8 @@ import type { ChartMarker, ChartReference, ChartSeries, ChartSpan } from './type
  * The chart's text summary, read by screen readers with the chart and shown
  * under it: for each series where it starts and ends, and its highest and
  * lowest values; then each reference line, each marker by its number and
- * each range by its letter (as the chart and its list show them).
+ * each range by its letter (as the chart and its list show them), and the
+ * selected position with each series' value there.
  */
 
 /** A range's letter: A, B and so on, then A2, B2 after the alphabet. */
@@ -21,6 +22,7 @@ export function describeChart({
   markers = [],
   spans = [],
   format,
+  selectedIndex,
 }: {
   categories: readonly string[]
   series: readonly ChartSeries[]
@@ -28,6 +30,8 @@ export function describeChart({
   markers?: readonly ChartMarker[]
   spans?: readonly ChartSpan[]
   format: (value: number) => string
+  /** The selected category, said last. */
+  selectedIndex?: number
 }): string {
   if (series.length === 0 || categories.length === 0) return 'No data to show.'
   const parts = series.map((s) => {
@@ -45,5 +49,12 @@ export function describeChart({
   for (const ref of references) parts.push(`Reference line: ${ref.label} at ${format(ref.value)}.`)
   parts.push(...markers.map((marker, i) => `Marked ${i + 1}: ${marker.label}.`))
   parts.push(...spans.map((span, i) => `Range ${spanKey(i)}: ${span.label}.`))
+  if (selectedIndex !== undefined && categories[selectedIndex] !== undefined) {
+    const at = series.map((s) => {
+      const value = s.values[selectedIndex]
+      return `${s.label} ${value === null || value === undefined || !Number.isFinite(value) ? 'no value' : format(value)}`
+    })
+    parts.push(`Selected: ${categories[selectedIndex]}. ${at.join(', ')}.`)
+  }
   return parts.join(' ')
 }

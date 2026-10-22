@@ -69,6 +69,12 @@ export const MAX_HORIZON_MONTHS = 240
 /** Car decision page: the horizon a fresh page starts with, in months (slice 3c-1). A starting value, not a bound and not advice. */
 export const DEFAULT_HORIZON_MONTHS = 48
 
+/**
+ * Car decision page: the percentage changes the sensitivity view applies to one input at a time (slice 3c-2). A display
+ * convention, not a forecast or a market figure.
+ */
+export const SENSITIVITY_SHIFTS: readonly number[] = [-20, -10, 10, 20]
+
 /** Car ownership: a horizon value may be at most this times the starting value (F17, F30): zero depreciation and a modest rise are allowed. */
 export const MAX_HORIZON_VALUE_RATIO = ratio(3, 2)
 

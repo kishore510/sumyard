@@ -190,6 +190,49 @@ describe('Select, Toggle and Segmented', () => {
   })
 })
 
+describe('an empty box read as a value (emptyValue, slice 3c-2)', () => {
+  it('CurrencyInput: an empty box is the empty value (shown empty, with a placeholder), and the empty value shows empty', () => {
+    const onChange = vi.fn()
+    const onValidityChange = vi.fn()
+    function Harness() {
+      const [value, setValue] = useState<Money>(fromPence(1_250))
+      return (
+        <CurrencyInput
+          id="a"
+          label="A"
+          emptyValue={fromPence(0)}
+          placeholder="0"
+          value={value}
+          onChange={(next) => {
+            onChange(next)
+            setValue(next)
+          }}
+          onValidityChange={onValidityChange}
+        />
+      )
+    }
+    view = mount(<Harness />)
+    expect(input().getAttribute('placeholder')).toBe('0')
+    type(input(), '')
+    expect(onChange).toHaveBeenLastCalledWith(fromPence(0))
+    expect(onValidityChange).toHaveBeenLastCalledWith(true)
+    act(() => input().dispatchEvent(new FocusEvent('focusout', { bubbles: true })))
+    expect(input().value).toBe('')
+    view.unmount()
+    view = mount(<CurrencyInput id="a" label="A" emptyValue={fromPence(0)} value={fromPence(0)} onChange={onChange} />)
+    expect(input().value).toBe('')
+    type(input(), '3')
+    expect(onChange).toHaveBeenLastCalledWith(fromPence(300))
+  })
+
+  it('NumberInput takes emptyValue too', () => {
+    const onNumber = vi.fn()
+    view = mount(<NumberInput id="n" label="N" emptyValue={0} placeholder="0" value={5} min={0} onChange={onNumber} />)
+    type(input(), '')
+    expect(onNumber).toHaveBeenLastCalledWith(0)
+  })
+})
+
 describe('inputs that may be left empty (allowEmpty, slice 3c-1)', () => {
   it('CurrencyInput: an empty box is a valid null, shown empty, and a typed amount still parses', () => {
     const onChange = vi.fn()

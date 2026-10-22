@@ -665,3 +665,25 @@ The page, registry entry, scenarios, Chart changes, tax or VED config, EV tax ru
 - Differs from the brief: O3 read as minus equity (value less any balance owed) and keep's value counted as a sale forgone (F18); totals at the end of coverage; litres per gallon from legislation.gov.uk (no GOV.UK page defines it); flips on mileage set both options' mileage; no overflow reachable within the bounds, so that test checks the largest inputs.
 - Not verified: no published ownership-cost example (hand-checkable OWN-1 to OWN-6 instead); nothing in a browser (no UI). OPEN: CR-10 (APR for PCP and fees) carries over.
 - Next: 3c-1 (the page), its brief first.
+
+## Archive: part 3c-1 scope (as of 0.19.0)
+
+### Part 3c-1: the car decision page (0.19.0)
+
+#### Scope
+
+- Pre-check: 3b merged and deployed; the owner's confirmation of F18 (equity), keep as a sale given up, the mileage flip (one driver) and the 3b bounds recorded in `docs/modelling-decisions-car.md`.
+- `src/calculators/car-decision/` (`definition.ts`, `rates.ts`, `results.ts`, `CarDecisionPage.tsx`, `OptionEditor.tsx`, `CarResults.tsx`, tests, `fixtures/`, `README.md`) at `#/c/car-decision`, inputs version 1, no tax rules: every amount and rate empty to start; the horizon (box and slider, months or years) and the Low / Expected / High case always visible; savings return (after tax) and the yearly cost increase in a section; up to four options (add, duplicate, remove with Undo), each with the car, finance (loan, HP, PCP) and running costs with fuel in sections with live summaries and the engine's cost per mile.
+- Results: cards ordered by the engine's ranking (full coverage first, partial apart, ties stated), each with net cost per month of coverage and the total, coverage, equity at the horizon (negative flagged), cash out, opportunity cost and the breakdown; "What changes the answer" (flip points as sentences); the APR where verified, else the effective-rate label; the comparison table; refusals and missing inputs per option. Scenarios and compare. Help, assumptions.
+- Tests first (red, then green), a property over 150 random inputs, banned words, the literal guard, mutation spot-checks. `docs/car-cross-checks.json` pending (six cases, all null).
+
+#### Out of scope
+
+3c-2 (below), tax or VED config, EV tax rules, replacement cars, early termination, any engine change.
+
+## Archive: last-session entry, part 3c-1
+
+- 22 October 2026, part 3c-1 (0.19.0, PR #24, user-visible): owner's F18, keep, mileage flip and 3b bounds recorded; the car decision page at `#/c/car-decision` (definition, rates, results, page, editor, cards, table, Help); tests red then green; 150-input property; mutation spot-checks all caught (one test added after "coverage ignored in ordering" survived); browser matrix (360, 768, 1024, 1280; light and dark; axe) clean after three fixes; Lighthouse mobile 96/100/100/91.
+- Differs from the brief: every field shown must be filled for an option to be costed (no empty-as-nothing); a PCP's mileage allowance is entered a year; flip points are for the two lowest options only, worked out once inputs settle (one pair costs about 300 ms at four options and 240 months); HP with no option fee shows the APR (F15), as a loan does; the rate rule lives in the page's `rates.ts` (the engines carry no labels); shared component extensions (allowEmpty, DecimalInput, SplitBar and RefusalNotice, ResultCard, StatRow, useItemKeys).
+- Not verified: a real phone, Safari, Firefox, a screen reader, the deployed site; no cross-check value filled (all six pending). OPEN: CR-10 carries over.
+- Next: 3c-2 (crossover chart, sensitivity, polish), its brief first.

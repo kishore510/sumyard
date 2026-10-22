@@ -108,9 +108,23 @@ export function flipPair(outcome: PageOutcome, valueCase: ValueCase): readonly [
   return [byEngine[full[0]!.option]!, byEngine[full[1]!.option]!]
 }
 
-/** The engine's flip points for the pair (F22, F29); null when there is no pair or the engine refuses. */
-export function flipsFor(outcome: PageOutcome, inputs: CarDecisionInputs): { pair: readonly [number, number]; flips: FlipPoints } | null {
-  const pair = flipPair(outcome, inputs.valueCase)
+/** The options a flip pair can be chosen from: those covering the whole horizon with results, in the editor's order (page indexes). */
+export function pairChoices(outcome: PageOutcome, valueCase: ValueCase): number[] {
+  if (outcome.kind !== 'ok' || !outcome.comparison) return []
+  const byEngine = pageIndexes(outcome.statuses)
+  return outcome.comparison.ranking[valueCase].full.map((entry) => byEngine[entry.option]!).sort((a, b) => a - b)
+}
+
+/**
+ * The engine's flip points for a pair (F22, F29): the one given, or by default the two lowest; null when there is no
+ * pair or the engine refuses. Measured at the end of coverage, whatever month the chart shows (the engine's contract).
+ */
+export function flipsFor(
+  outcome: PageOutcome,
+  inputs: CarDecisionInputs,
+  chosen: readonly [number, number] | null = null,
+): { pair: readonly [number, number]; flips: FlipPoints } | null {
+  const pair = chosen ?? flipPair(outcome, inputs.valueCase)
   if (!pair || outcome.kind !== 'ok') return null
   const option = (index: number) => {
     const status = outcome.statuses[index]!

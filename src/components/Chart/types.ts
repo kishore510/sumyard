@@ -1,10 +1,18 @@
 /* Chart data. Values are plain numbers (for money, integer pence); null is a gap. */
 
+/**
+ * A line's look: colour token, dash and marker shape together, so no two differ by colour alone. `neutral` is for a
+ * reference-like line (money paid in) and is not the danger colour.
+ */
+export type ChartStyle = 'accent' | 'contrast' | 'danger' | 'neutral'
+
 export interface ChartSeries {
   readonly id: string
   readonly label: string
   readonly kind: 'line' | 'bar'
   readonly values: readonly (number | null)[]
+  /** Its look; by default the series' place in the list picks one. */
+  readonly style?: ChartStyle
 }
 
 /** A horizontal reference line (a threshold), labelled. */

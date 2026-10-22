@@ -1,7 +1,7 @@
 ---
 title: Car decision
 order: 5
-summary: How the car decision page works: the options, the horizon and the three end-value cases, net cost per month of coverage, coverage, equity, the breakdown, what changes the answer, rates, and what is not modelled.
+summary: How the car decision page works: the options, the horizon and the three end-value cases, net cost per month of coverage, coverage, equity, the breakdown, the month-by-month chart, what changes the answer, sensitivity, rates, and what is not modelled.
 ---
 The **Car decision** page costs up to four ways of having a car over the same stretch of time: **keep** your current car, **buy with cash**, a personal **loan**, **hire purchase** (HP) or a **PCP**. It is an illustration under your own assumptions, not advice, and it never says which option to choose: it shows which has the **lowest net cost under these assumptions**, and what would change that. It **uses no tax rules**, so it has no tax year and shows "Uses no tax rules" where other pages show when their tax figures were last verified.
 
@@ -19,7 +19,7 @@ Results wait until both are entered.
 
 ## Each option
 
-Give it a name (optional) and choose how you get the car. Then fill in its sections; each header says what is entered, or what is still needed.
+Give it a name (optional) and choose how you get the car. Then fill in its sections; each header says what is entered, or what is still needed. The **optional costs and fees** (insurance, maintenance, VED, other costs, a deposit, an arrangement fee, an HP balloon, option and purchase fees, a PCP's excess mileage charge) show a 0 in an empty box: **an empty box counts as nothing**. The price, the end values, the mileage, the fuel figures, and for finance the term and the rate or payment (and a PCP's final payment and mileage allowance) are needed: until they are filled, the card lists each one.
 
 - **The car**: its price (for keep, what it would sell for today) and its low, expected and high end values, and the miles you drive a year. Between today and the end, the value falls (or rises) by the same percentage every year: an illustrative shape, not a forecast. Keeping a car counts its value as a sale given up, so keeping a car and buying the same car for the same money cost the same.
 - **Finance** (loan, HP and PCP only): the loan amount or the deposit, the term in months, and either the interest rate with its basis (effective a year, or nominal with a twelfth charged each month) or the monthly payment from a quote. An arrangement fee is paid at the start or added to what you borrow. HP can have a balloon and an option to purchase fee. A PCP has an optional final payment and a purchase fee, and you choose to **buy the car** or **hand it back** at the end; handing it back pays any excess mileage over the allowance.
@@ -36,9 +36,19 @@ Give it a name (optional) and choose how you get the car. Then fill in its secti
 - **Order**: the cards and the list in the results column are ordered by net cost per month of coverage, lowest first, under these assumptions, with ties stated. Options without results yet say what they need.
 - On a phone the cards are in a row that scrolls sideways; you can also move through them with Tab. **The options side by side** table below has the same figures.
 
+## Month by month
+
+Below the cards, a chart shows each option's **net cost so far** at the end of every month, from the start to the horizon, in the end-value case chosen: the cash paid out so far, plus any sale given up, less the equity in the car then, plus the opportunity cost so far. Each line is named at its end and drawn in its own pattern. A PCP handed back before the horizon stops at the month it goes back, marked "handed back at month …"; the horizon and each finance term are marked and listed under the chart. Where two lines cross, their running totals swap over; the order of the cards is still the one at the horizon.
+
+**Pick a month** by tapping the chart, with the arrow keys (Home and End for the first and last month) once the chart has focus, or with a month's button in **Show the data as a table**. The card below the chart shows, for each option at that month, the net cost so far, the equity and the cash out so far, with everything else as entered. It starts at the horizon; the month you pick isn't saved with a scenario.
+
 ## What changes the answer
 
-For the two options with the lowest net cost per month of coverage, the page says, once your inputs settle, the point at which their order would swap: each one's end value, your savings return, and the annual mileage **if both cars are driven the same distance, as one driver**. Each line changes one thing and holds everything else as entered. Where nothing in the range searched would swap them, it says **no crossing in range**.
+For two options that cover the whole horizon, the page says, once your inputs settle, the point at which their order would swap: each one's end value, your savings return, and the annual mileage **if both cars are driven the same distance, as one driver**. It starts with the two lowest net costs per month of coverage; choose any other two with **First option** and **Second option**. Each line changes one thing and holds everything else as entered. Where nothing in the range searched would swap them, it says **no crossing in range**. The thresholds are always measured over the whole horizon, whatever month the chart shows.
+
+## Sensitivity: what moves the answer most
+
+This section shows, for each option, how its net cost per month of coverage would change if one input moved by a fixed percentage up or down, **one at a time, with every other input held at its current value**: the end value (in the case chosen), the savings return, the annual mileage and the fuel or energy price. The inputs that move the answer most come first, with a small bar for the largest moves either way. A move that would take an input past what Sumyard models says **Outside the range**. It is worked out when you open the section, once you stop typing ("Updating" until then), since it reruns every option many times. The changes are constant percentages of today's inputs: illustrative only, not a forecast and not advice.
 
 ## Rates
 

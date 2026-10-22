@@ -135,6 +135,19 @@ Decisions F17, F18, F21, F25 and F29 in `docs/modelling-decisions-car.md`. No ta
 
 **`futureValueOfFlows` against `project()`.** For level monthly payments the compound engine's closing balance (annual compounding with monthly contributions at the end, C2) and this function agree within a penny on 60 seeded cases (`properties.test.ts`).
 
+## Car decision page (slice 3c-2)
+
+The page does no money arithmetic of its own except two things through `money.ts`, both on engine figures:
+
+| Step | Mode | Where | Basis |
+|---|---|---|---|
+| Sensitivity: an end value moved by p percent | `mulRound(value, (100 + p) / 100, 'nearest')` | `shiftOption` | F41 |
+| Sensitivity: the savings return, a fuel or energy price moved by p percent | Exact `Ratio` (numerator × (100 + p), denominator × 100) | `shiftOption` | F41 |
+| Sensitivity: the annual mileage moved by p percent | `divideRound(miles × (100 + p), 100, 'nearest')`, whole miles | `shiftOption` | F41 |
+| Sensitivity: the change | `subtract` of two engine figures (net cost per month of coverage), exact | `driverRow` | F41 |
+
+The chart's points and the readout are the engine's `MonthPoint`s, unchanged.
+
 ## Display (`format.ts`)
 
 Locale en-GB. Formatting works from integer pence in `BigInt`, never by dividing a float, so the digits are exact at any size. **Display rounding is nearest, halves away from zero**; it is for showing results and is not a tax rule.
