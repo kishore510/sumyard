@@ -309,6 +309,9 @@ export const APR_DISPLAY_DIGITS = 3
 /** Flip points (slice 3b, F29): a savings return is searched in steps of 10^-FLIP_RATE_DIGITS. */
 export const FLIP_RATE_DIGITS = 9
 
+/** 10^FLIP_RATE_DIGITS: a searched savings return is a whole number over this. */
+export const FLIP_RATE_DENOMINATOR = 10 ** FLIP_RATE_DIGITS
+
 /** Flip points (F29): the grid a range is scanned on before bisection. */
 export const FLIP_SCAN_STEPS = 64
 

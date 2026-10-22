@@ -68,9 +68,11 @@ describe('horizon value: closed form (F29)', () => {
     expect(flips(handBack, keep, s).horizonValue[0].kind).toBe('no-crossing-in-range')
   })
 
-  it('two identical options tie throughout', () => {
-    expect(flips(keep, keep, s).horizonValue[0]).toEqual({ kind: 'no-crossing-in-range', lowerThroughout: 'tie' })
-    expect(flips(keep, keep, s).savingsReturn).toEqual({ kind: 'no-crossing-in-range', lowerThroughout: 'tie' })
+  it('two identical options tie throughout the shared searches, and cross at their own horizon value', () => {
+    const f = flips(keep, keep, s)
+    expect(f.savingsReturn).toEqual({ kind: 'no-crossing-in-range', lowerThroughout: 'tie' })
+    expect(f.annualMileage).toEqual({ kind: 'no-crossing-in-range', lowerThroughout: 'tie' })
+    expect(f.horizonValue[0]).toEqual({ kind: 'crossing', below: p(500_000), above: p(500_000), lowerBelow: 1, lowerAbove: 0 })
   })
 })
 
