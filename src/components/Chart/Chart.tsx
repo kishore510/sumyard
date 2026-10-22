@@ -1,10 +1,10 @@
 import { ChevronDown } from 'lucide-react'
-import { useEffect, useId, useRef, useState } from 'react'
+import { type KeyboardEvent, type MouseEvent, useEffect, useId, useRef, useState } from 'react'
 import { useTheme } from '@/hooks/useTheme'
 import { cn } from '@/lib/utils'
 import { bandScale, linearScale, niceDomain, ticksWithin } from './scale'
 import { describeChart, spanKey } from './summary'
-import type { ChartMarker, ChartReference, ChartSeries, ChartSpan } from './types'
+import type { ChartMarker, ChartReference, ChartSeries, ChartSpan, ChartStyle } from './types'
 
 /*
  * A hand-rolled SVG chart (no library): bars and lines over categories,
@@ -29,6 +29,15 @@ import type { ChartMarker, ChartReference, ChartSeries, ChartSpan } from './type
  *   `selectedX` highlights one point (on the line and in the table).
  * - `columns` adds text columns to the table after the series. The table
  *   scrolls sideways in its own keyboard-focusable region on a narrow screen.
+ * - Up to four line styles (accent solid, contrast dashed, danger dotted,
+ *   neutral dash-dot), each with its own marker shape; a series picks one
+ *   by `style` or takes its place's. `endLabels` names each line at its
+ *   last value (a line may stop before the x range does), nudged apart so
+ *   labels never overlap.
+ * - With `onSelectX` (numeric x only) the plot is a slider: a tap or click
+ *   picks the nearest x, arrows step, Home and End jump; the selected x is
+ *   marked across the plot and on every line, its table row is highlighted
+ *   (each row's x is a button that selects it) and the summary names it.
  *
  * Geometry constants below are chart layout, not design tokens.
  */
@@ -43,12 +52,55 @@ const ROW = 14
 const MARKER_GAP = 16
 const MIN_SPAN = 3
 
-/** Per series: stroke or fill class, dash and marker shape. Only token colours. */
-const STYLES = [
-  { stroke: 'stroke-accent', fill: 'fill-accent', dash: undefined, marker: 'circle' },
-  { stroke: 'stroke-text', fill: 'fill-text-muted', dash: '6 3', marker: 'square' },
-  { stroke: 'stroke-danger', fill: 'fill-danger', dash: '2 3', marker: 'circle' },
-] as const
+const END_LABEL_GAP = 12
+const PAGE_STEPS = 10
+
+type Shape = 'circle' | 'square' | 'diamond'
+
+/** Per style: stroke or fill class, dash and marker shape. Only token colours; no two differ by colour alone. */
+const STYLES: Record<ChartStyle, { stroke: string; fill: string; dash: string | undefined; marker: Shape }> = {
+  accent: { stroke: 'stroke-accent', fill: 'fill-accent', dash: undefined, marker: 'circle' },
+  contrast: { stroke: 'stroke-text', fill: 'fill-text-muted', dash: '6 3', marker: 'square' },
+  danger: { stroke: 'stroke-danger', fill: 'fill-danger', dash: '2 3', marker: 'circle' },
+  neutral: { stroke: 'stroke-text-muted', fill: 'fill-text-muted', dash: '10 3 2 3', marker: 'diamond' },
+}
+
+/** The style a series takes by its place when it names none (the first three as before 3c-2). */
+const ORDER: readonly ChartStyle[] = ['accent', 'contrast', 'danger', 'neutral']
+
+const styleOf = (series: ChartSeries, index: number) => STYLES[series.style ?? ORDER[index % ORDER.length]!]
+
+/** A point marker of a shape, centred on (cx, cy). A diamond is a square turned, so its box still centres on the point. */
+function MarkerShape({ shape, cx, cy, r, className, ...rest }: { shape: Shape; cx: number; cy: number; r: number; className: string }) {
+  if (shape === 'circle') return <circle cx={cx} cy={cy} r={r} strokeWidth={2} className={className} {...rest} />
+  return (
+    <rect
+      x={cx - r}
+      y={cy - r}
+      width={r * 2}
+      height={r * 2}
+      strokeWidth={2}
+      transform={shape === 'diamond' ? `rotate(45 ${cx} ${cy})` : undefined}
+      className={className}
+      {...rest}
+    />
+  )
+}
+
+/** End-label heights, nudged apart to at least the gap, kept inside [top, bottom]. Ys in, in any order; the same order out. */
+function spreadLabels(ys: readonly number[], top: number, bottom: number): number[] {
+  const order = ys.map((y, i) => [y, i] as const).sort((a, b) => a[0] - b[0])
+  const placed: number[] = []
+  for (const [y] of order) placed.push(Math.max(y, top, (placed.at(-1) ?? -Infinity) + END_LABEL_GAP))
+  // Pushed past the bottom: shift the run back up, keeping the gaps.
+  const over = (placed.at(-1) ?? bottom) - bottom
+  const shifted = over > 0 ? placed.map((y) => y - over) : placed
+  const out: number[] = []
+  order.forEach(([, i], k) => {
+    out[i] = shifted[k]!
+  })
+  return out
+}
 
 export interface ChartProps {
   title: string
@@ -86,6 +138,16 @@ export interface ChartProps {
   selectLabel?: string
 }
 
+/** One label's most characters before it is cut short (the legend and table carry the whole name). */
+const END_LABEL_CHARS = 18
+
+const shorten = (label: string) =>
+  Array.from(label).length > END_LABEL_CHARS
+    ? `${Array.from(label)
+        .slice(0, END_LABEL_CHARS - 1)
+        .join('')}…`
+    : label
+
 function useWidth() {
   const ref = useRef<HTMLDivElement>(null)
   const [width, setWidth] = useState(FALLBACK_WIDTH)
@@ -120,9 +182,13 @@ export function Chart({
   pointMarkers = true,
   columns = [],
   selectedX,
+  endLabels = false,
+  onSelectX,
+  selectLabel,
 }: ChartProps) {
   const { theme } = useTheme()
   const [ref, width] = useWidth()
+  const svgRef = useRef<SVGSVGElement>(null)
   const id = useId()
   const titleId = `${id}-title`
   const descId = `${id}-desc`
@@ -155,7 +221,17 @@ export function Chart({
   }
   const extraTop = (groups.length > 0 ? ROW : 0) + (shownSpans.length > 0 ? ROW : 0)
   const merged = groups.map((group) => ({ x: group.markers[0]!.x, label: group.markers.map((m) => m.label).join('; ') }))
-  const summary = describeChart({ categories, series, references, markers: merged, spans: shownSpans, format: formatValue })
+  const interactive = numeric && onSelectX !== undefined
+  const selectedIndex = numeric && selectedX !== undefined ? xValues.indexOf(selectedX) : -1
+  const summary = describeChart({
+    categories,
+    series,
+    references,
+    markers: merged,
+    spans: shownSpans,
+    format: formatValue,
+    selectedIndex: interactive && selectedIndex >= 0 ? selectedIndex : undefined,
+  })
   const height = HEIGHT + extraTop
   const plot = { left, right, top: PAD.top + extraTop, bottom: height - PAD.bottom }
   const y = linearScale([domain.min, domain.max], [plot.bottom, plot.top])
@@ -169,9 +245,69 @@ export function Chart({
   const longest = Math.max(...categories.map((c) => c.length), 1)
   const every = Math.max(1, Math.ceil(((longest * CHAR + 8) * categories.length) / Math.max(1, plot.right - plot.left)))
   const zero = domain.min <= 0 && domain.max >= 0 ? y(0) : null
-  const selectedIndex = numeric && selectedX !== undefined ? xValues.indexOf(selectedX) : -1
-  const selectedSeries = series.find((s) => s.kind === 'line')
-  const selectedValue = selectedIndex >= 0 ? selectedSeries?.values[selectedIndex] : null
+  const lines = series.filter((s) => s.kind === 'line')
+  // Without selection the highlight is on the first line only (as before 3c-2); with it, on every line.
+  const highlighted = selectedIndex < 0 ? [] : interactive ? lines : lines.slice(0, 1)
+  const ends = endLabels
+    ? lines.flatMap((s) => {
+        const last = s.values.findLastIndex((v) => v !== null)
+        return last < 0 ? [] : [{ s, at: last, x: px(last), y: y(s.values[last]!) }]
+      })
+    : []
+  const endYs = spreadLabels(
+    ends.map((e) => e.y - MARKER - 4),
+    plot.top + ROW / 2,
+    plot.bottom - 4,
+  )
+  const valueText = (i: number) =>
+    `${categories[i] ?? ''}: ${lines.map((s) => `${s.label} ${s.values[i] === null || s.values[i] === undefined ? 'no value' : formatValue(s.values[i]!)}`).join(', ')}`
+  const select = (i: number) => {
+    if (interactive && xValues[i] !== undefined) onSelectX(xValues[i]!)
+  }
+  const onKey = (event: KeyboardEvent<HTMLDivElement>) => {
+    const last = categories.length - 1
+    const at = selectedIndex >= 0 ? selectedIndex : last
+    const page = Math.max(1, Math.round(categories.length / PAGE_STEPS))
+    const next: Record<string, number> = {
+      ArrowRight: at + 1,
+      ArrowUp: at + 1,
+      ArrowLeft: at - 1,
+      ArrowDown: at - 1,
+      PageUp: at + page,
+      PageDown: at - page,
+      Home: 0,
+      End: last,
+    }
+    if (!(event.key in next)) return
+    event.preventDefault()
+    select(Math.min(last, Math.max(0, next[event.key]!)))
+  }
+  const onClick = (event: MouseEvent<HTMLDivElement>) => {
+    const svg = svgRef.current
+    if (!svg) return
+    const box = svg.getBoundingClientRect()
+    if (box.width <= 0) return
+    const at = (event.clientX - box.left) * (width / box.width)
+    let nearest = 0
+    categories.forEach((_, i) => {
+      if (Math.abs(px(i) - at) < Math.abs(px(nearest) - at)) nearest = i
+    })
+    select(nearest)
+  }
+  const sliderProps = interactive
+    ? {
+        role: 'slider',
+        tabIndex: 0,
+        'aria-label': selectLabel ?? xLabel,
+        'aria-valuemin': xMin,
+        'aria-valuemax': xMax,
+        'aria-valuenow': selectedIndex >= 0 ? xValues[selectedIndex] : xMax,
+        'aria-valuetext': valueText(selectedIndex >= 0 ? selectedIndex : categories.length - 1),
+        'aria-describedby': descId,
+        onKeyDown: onKey,
+        onClick,
+      }
+    : {}
 
   return (
     <figure data-chart data-theme={theme} className="flex min-w-0 flex-col gap-3">
@@ -184,13 +320,14 @@ export function Chart({
           {summary}
         </span>
       </figcaption>
-      <div ref={ref} className="w-full min-w-0">
+      <div ref={ref} {...sliderProps} className={cn('w-full min-w-0', interactive && 'cursor-pointer rounded-md')}>
         {empty ? (
           <p className="rounded-md border border-dashed border-border-strong px-4 py-10 text-center text-sm text-text-muted">
             No data to show.
           </p>
         ) : (
           <svg
+            ref={svgRef}
             role="img"
             aria-labelledby={titleId}
             aria-describedby={descId}
@@ -228,7 +365,7 @@ export function Chart({
             <line x1={plot.left} x2={plot.left} y1={plot.top} y2={plot.bottom} className="stroke-border-strong" />
 
             {bars.map((s, b) => {
-              const style = STYLES[series.indexOf(s) % STYLES.length]!
+              const style = styleOf(s, series.indexOf(s))
               return (
                 <g key={s.id} data-series={s.id}>
                   {s.values.map((value, i) => {
@@ -255,7 +392,8 @@ export function Chart({
             {series
               .filter((s) => s.kind === 'line')
               .map((s) => {
-                const style = STYLES[series.indexOf(s) % STYLES.length]!
+                const style = styleOf(s, series.indexOf(s))
+                const end = ends.find((e) => e.s === s)
                 const points = s.values.flatMap((value, i) => (value === null ? [] : [[px(i), y(value), i] as const]))
                 // Runs of segments drawn alike: dashed inside a range, the series' own dash elsewhere.
                 const runs: { dashed: boolean; points: (readonly [number, number, number])[] }[] = []
@@ -281,20 +419,25 @@ export function Chart({
                         className={style.stroke}
                       />
                     ))}
-                    {(pointMarkers ? points : []).map(([px, py]) =>
-                      style.marker === 'circle' ? (
-                        <circle key={`${px}`} cx={px} cy={py} r={MARKER} strokeWidth={2} className={cn('fill-surface', style.stroke)} />
-                      ) : (
-                        <rect
-                          key={`${px}`}
-                          x={px - MARKER}
-                          y={py - MARKER}
-                          width={MARKER * 2}
-                          height={MARKER * 2}
-                          strokeWidth={2}
-                          className={cn('fill-surface', style.stroke)}
-                        />
-                      ),
+                    {(pointMarkers ? points : []).map(([px, py]) => (
+                      <MarkerShape
+                        key={`${px}`}
+                        shape={style.marker}
+                        cx={px}
+                        cy={py}
+                        r={MARKER}
+                        className={cn('fill-surface', style.stroke)}
+                      />
+                    ))}
+                    {end && !pointMarkers && (
+                      <MarkerShape
+                        shape={style.marker}
+                        cx={end.x}
+                        cy={end.y}
+                        r={MARKER}
+                        className={cn('fill-surface', style.stroke)}
+                        {...{ 'data-end-marker': '' }}
+                      />
                     )}
                   </g>
                 )
@@ -317,16 +460,57 @@ export function Chart({
               </g>
             ))}
 
-            {selectedValue !== null && selectedValue !== undefined && (
-              <circle
-                data-selected
-                cx={px(selectedIndex)}
-                cy={y(selectedValue)}
-                r={MARKER + 2}
+            {interactive && selectedIndex >= 0 && (
+              <line
+                data-selected-position
+                x1={px(selectedIndex)}
+                x2={px(selectedIndex)}
+                y1={plot.top}
+                y2={plot.bottom}
                 strokeWidth={2}
-                className="fill-accent stroke-surface"
+                className="stroke-accent"
               />
             )}
+            {highlighted.map((s) => {
+              const value = s.values[selectedIndex]
+              if (value === null || value === undefined) return null
+              return interactive ? (
+                <MarkerShape
+                  key={s.id}
+                  shape={styleOf(s, series.indexOf(s)).marker}
+                  cx={px(selectedIndex)}
+                  cy={y(value)}
+                  r={MARKER + 2}
+                  className={cn('fill-surface', styleOf(s, series.indexOf(s)).stroke)}
+                  {...{ 'data-selected': '' }}
+                />
+              ) : (
+                <circle
+                  key={s.id}
+                  data-selected
+                  cx={px(selectedIndex)}
+                  cy={y(value)}
+                  r={MARKER + 2}
+                  strokeWidth={2}
+                  className="fill-accent stroke-surface"
+                />
+              )
+            })}
+
+            {ends.map((e, k) => (
+              <g key={e.s.id} data-end-label={e.s.id}>
+                <text
+                  x={Math.max(plot.left + CHAR, e.x - MARKER - 4)}
+                  y={endYs[k]}
+                  textAnchor="end"
+                  strokeWidth={3}
+                  paintOrder="stroke"
+                  className="fill-text stroke-surface text-xs font-medium"
+                >
+                  {shorten(e.s.label)}
+                </text>
+              </g>
+            ))}
 
             {xScale &&
               groups.map((group, i) => (
@@ -388,7 +572,7 @@ export function Chart({
       {(series.length > 1 || references.length > 0) && !empty && (
         <ul className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-text">
           {series.map((s, i) => {
-            const style = STYLES[i % STYLES.length]!
+            const style = styleOf(s, i)
             return (
               <li key={s.id} className="flex items-center gap-1.5">
                 <svg aria-hidden="true" width={24} height={10}>
@@ -472,8 +656,19 @@ export function Chart({
                   data-selected-row={i === selectedIndex ? '' : undefined}
                   className={cn('border-t border-border', i === selectedIndex && 'bg-accent-subtle')}
                 >
-                  <th scope="row" className="px-3 py-2 text-left font-normal text-text">
-                    {category}
+                  <th scope="row" className={cn('text-left font-normal text-text', interactive ? 'p-0' : 'px-3 py-2')}>
+                    {interactive ? (
+                      <button
+                        type="button"
+                        aria-pressed={i === selectedIndex}
+                        onClick={() => select(i)}
+                        className="min-h-touch w-full cursor-pointer px-3 text-left whitespace-nowrap underline-offset-2 hover:underline"
+                      >
+                        {category}
+                      </button>
+                    ) : (
+                      category
+                    )}
                   </th>
                   {series.map((s) => {
                     const value = s.values[i]
