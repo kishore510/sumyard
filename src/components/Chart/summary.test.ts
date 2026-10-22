@@ -37,4 +37,17 @@ describe('describeChart', () => {
     })
     expect(text).toBe('X: £1 at A to £2 at B; highest £2 at B, lowest £1 at A. Marked 1: Start. Range A: A step.')
   })
+
+  it('names the selected position last, with each series’ value there (or no value)', () => {
+    const text = describeChart({
+      categories: ['A', 'B'],
+      series: [
+        { id: 'a', label: 'X', kind: 'line', values: [1, 2] },
+        { id: 'b', label: 'Y', kind: 'line', values: [3, null] },
+      ],
+      selectedIndex: 1,
+      format,
+    })
+    expect(text).toMatch(/ Selected: B\. X £2, Y no value\.$/)
+  })
 })

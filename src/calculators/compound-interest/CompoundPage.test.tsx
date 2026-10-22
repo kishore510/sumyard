@@ -205,6 +205,15 @@ describe('the chart', () => {
     expect($('[data-chart] figcaption')?.textContent).toContain(money(nominal.closing))
     expect($$('[data-chart] tbody tr')).toHaveLength(example.years + 1)
   })
+
+  it('draws “Paid in” in the neutral style, not the danger colour; the balances keep theirs', () => {
+    set(example)
+    const line = (id: string) => $(`[data-chart] [data-series="${id}"] polyline`)!.getAttribute('class')!
+    expect(line('paidIn')).toMatch(/stroke-text-muted/)
+    expect(line('paidIn')).not.toMatch(/danger/)
+    expect(line('withFee')).toMatch(/stroke-accent/)
+    expect(line('noFee')).toMatch(/stroke-text\b/)
+  })
 })
 
 describe('refusals and input errors', () => {

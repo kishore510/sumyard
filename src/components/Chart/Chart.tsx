@@ -78,6 +78,12 @@ export interface ChartProps {
   columns?: readonly { readonly label: string; readonly values: readonly string[]; readonly numeric?: boolean }[]
   /** Numeric x only: the x value of a point to highlight on the first line series and in the table. */
   selectedX?: number
+  /** Label each line at its last value with its name and marker. */
+  endLabels?: boolean
+  /** Numeric x only: makes the chart a slider (pointer, arrows, Home, End) and the table rows buttons that report the x chosen. */
+  onSelectX?: (x: number) => void
+  /** The slider's name, such as "Month on the chart". */
+  selectLabel?: string
 }
 
 function useWidth() {

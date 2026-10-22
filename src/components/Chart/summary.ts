@@ -28,6 +28,8 @@ export function describeChart({
   markers?: readonly ChartMarker[]
   spans?: readonly ChartSpan[]
   format: (value: number) => string
+  /** The selected category, said last. */
+  selectedIndex?: number
 }): string {
   if (series.length === 0 || categories.length === 0) return 'No data to show.'
   const parts = series.map((s) => {

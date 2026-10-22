@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { act } from 'react'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { themeStore } from '@/hooks/useTheme'
 import { mount } from '@/test/dom'
 import { Chart, type ChartProps } from './Chart'
@@ -206,6 +206,157 @@ describe('Chart', () => {
 
     it('uses token colour classes only', () => {
       view = mount(<Chart {...numeric} />)
+      expect(view.host.innerHTML).not.toMatch(/#[0-9a-f]{3,8}\b|rgb\(|hsl\(/i)
+    })
+  })
+
+  describe('four line series, a series ending early and selecting a position (3c-2)', () => {
+    const four: ChartProps = {
+      ...props,
+      title: 'Cumulative',
+      categories: ['Month 0', 'Month 1', 'Month 2', 'Month 3', 'Month 4'],
+      xValues: [0, 1, 2, 3, 4],
+      xLabel: 'Month',
+      references: [],
+      pointMarkers: false,
+      endLabels: true,
+      series: [
+        { id: 'a', label: 'Alpha', kind: 'line', values: [0, 10, 20, 30, 40] },
+        { id: 'b', label: 'Bravo', kind: 'line', values: [5, 12, 18, 25, 33] },
+        { id: 'c', label: 'Charlie', kind: 'line', values: [2, 9, 15, null, null], style: 'neutral' },
+        { id: 'd', label: 'Delta', kind: 'line', values: [8, 11, 14, 17, 19], style: 'danger' },
+      ],
+    }
+    const desc = () => {
+      const svg = view!.host.querySelector('svg[role="img"]')!
+      return document.getElementById(svg.getAttribute('aria-describedby')!)!.textContent!
+    }
+    const style = (id: string) => {
+      const line = view!.host.querySelector(`[data-series="${id}"] polyline`)!
+      return `${line.getAttribute('class')} / ${line.getAttribute('stroke-dasharray') ?? 'solid'}`
+    }
+    const dash = (id: string) => view!.host.querySelector(`[data-series="${id}"] polyline`)!.getAttribute('stroke-dasharray') ?? 'solid'
+    const lastX = (id: string) =>
+      Math.max(
+        ...[...view!.host.querySelectorAll(`[data-series="${id}"] polyline`)].flatMap((l) =>
+          l
+            .getAttribute('points')!
+            .split(' ')
+            .map((p) => Number(p.split(',')[0])),
+        ),
+      )
+
+    it('draws four lines with four distinct styles, each a different dash pattern, not by colour alone', () => {
+      view = mount(<Chart {...four} />)
+      const ids = ['a', 'b', 'c', 'd']
+      expect(new Set(ids.map(style)).size).toBe(4)
+      expect(new Set(ids.map(dash)).size).toBe(4)
+      // The legend draws each series' own dash.
+      const legend = [...view.host.querySelectorAll('ul li svg line')].map((l) => l.getAttribute('stroke-dasharray') ?? 'solid')
+      expect(legend).toEqual(ids.map(dash))
+    })
+
+    it('has a neutral style that is not the danger colour', () => {
+      view = mount(<Chart {...four} />)
+      const neutral = view.host.querySelector('[data-series="c"] polyline')!.getAttribute('class')!
+      expect(neutral).not.toMatch(/danger/)
+      expect(neutral).toMatch(/stroke-text-muted/)
+      expect(view.host.querySelector('[data-series="d"] polyline')!.getAttribute('class')).toMatch(/stroke-danger/)
+    })
+
+    it('without a style, series keep their order’s style (the first three as before)', () => {
+      const plain = four.series.map(({ style: _style, ...s }) => s)
+      view = mount(<Chart {...four} series={plain} />)
+      expect(view.host.querySelector('[data-series="a"] polyline')!.getAttribute('class')).toMatch(/stroke-accent/)
+      expect(view.host.querySelector('[data-series="c"] polyline')!.getAttribute('class')).toMatch(/stroke-danger/)
+      expect(view.host.querySelector('[data-series="d"] polyline')!.getAttribute('class')).toMatch(/stroke-text-muted/)
+    })
+
+    it('labels the end of each line with its name and its own marker shape', () => {
+      view = mount(<Chart {...four} />)
+      const labels = [...view.host.querySelectorAll('[data-end-label]')]
+      expect(labels.map((l) => l.getAttribute('data-end-label'))).toEqual(['a', 'b', 'c', 'd'])
+      expect(labels.map((l) => l.textContent)).toEqual(['Alpha', 'Bravo', 'Charlie', 'Delta'])
+      for (const id of ['a', 'b', 'c', 'd']) expect(view.host.querySelector(`[data-series="${id}"] [data-end-marker]`)).not.toBeNull()
+      // Labels never sit on top of each other.
+      const ys = labels.map((l) => Number(l.querySelector('text')!.getAttribute('y'))).sort((p, q) => p - q)
+      for (let k = 1; k < ys.length; k++) expect(ys[k]! - ys[k - 1]!).toBeGreaterThanOrEqual(10)
+    })
+
+    it('a series may end before the x range does: its line stops at its last value, and the table shows a dash after', () => {
+      view = mount(<Chart {...four} />)
+      expect(lastX('c')).toBeLessThan(lastX('a'))
+      const marker = view.host.querySelector('[data-series="c"] [data-end-marker]')!
+      const at = Number(marker.getAttribute('cx') ?? Number(marker.getAttribute('x')) + Number(marker.getAttribute('width')) / 2)
+      expect(at).toBeCloseTo(lastX('c'), 5)
+      const rows = [...view.host.querySelectorAll('tbody tr')].map((tr) => [...tr.children].map((c) => c.textContent))
+      expect(rows[3]![3]).toBe('–')
+      expect(desc()).toContain('Charlie: 2 pence at Month 0 to 15 pence at Month 2')
+    })
+
+    it('with onSelectX, the chart is a slider named for the selection: arrows, Home and End report the x selected', () => {
+      const onSelectX = vi.fn()
+      view = mount(<Chart {...four} selectedX={2} onSelectX={onSelectX} selectLabel="Month on the chart" />)
+      const slider = view.host.querySelector('[role="slider"]') as HTMLElement
+      expect(slider.getAttribute('tabindex')).toBe('0')
+      expect(slider.getAttribute('aria-label')).toBe('Month on the chart')
+      expect(slider.getAttribute('aria-valuenow')).toBe('2')
+      expect(slider.getAttribute('aria-valuemin')).toBe('0')
+      expect(slider.getAttribute('aria-valuemax')).toBe('4')
+      expect(slider.getAttribute('aria-valuetext')).toMatch(/^Month 2: Alpha 20 pence, Bravo 18 pence, Charlie 15 pence, Delta 14 pence$/)
+      const key = (k: string) => act(() => slider.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true })))
+      key('ArrowRight')
+      key('ArrowUp')
+      key('ArrowLeft')
+      key('ArrowDown')
+      key('Home')
+      key('End')
+      expect(onSelectX.mock.calls.map((c) => c[0])).toEqual([3, 3, 1, 1, 0, 4])
+    })
+
+    it('a series with no value at the selected x says so in the slider’s text', () => {
+      view = mount(<Chart {...four} selectedX={4} onSelectX={() => {}} selectLabel="Month" />)
+      expect(view.host.querySelector('[role="slider"]')!.getAttribute('aria-valuetext')).toContain('Charlie no value')
+    })
+
+    it('a tap or click selects the nearest x', () => {
+      const onSelectX = vi.fn()
+      view = mount(<Chart {...four} selectedX={0} onSelectX={onSelectX} selectLabel="Month" />)
+      const svg = view.host.querySelector('svg[role="img"]') as SVGSVGElement
+      const width = Number(svg.getAttribute('width'))
+      svg.getBoundingClientRect = () => ({ left: 0, top: 0, width, height: 300, right: width, bottom: 300, x: 0, y: 0, toJSON: () => ({}) })
+      act(() => svg.dispatchEvent(new MouseEvent('click', { clientX: width - 1, clientY: 100, bubbles: true })))
+      expect(onSelectX).toHaveBeenLastCalledWith(4)
+    })
+
+    it('marks the selected position across the plot and on every line, highlights its row, and says it in the summary', () => {
+      view = mount(<Chart {...four} selectedX={1} onSelectX={() => {}} selectLabel="Month" />)
+      expect(view.host.querySelectorAll('[data-selected-position]')).toHaveLength(1)
+      expect(view.host.querySelectorAll('[data-selected]')).toHaveLength(4)
+      const rows = [...view.host.querySelectorAll('tbody tr')]
+      expect(rows.map((r) => r.hasAttribute('data-selected-row'))).toEqual([false, true, false, false, false])
+      expect(desc()).toContain('Selected: Month 1. Alpha 10 pence, Bravo 12 pence, Charlie 9 pence, Delta 11 pence.')
+    })
+
+    it('a table row selects its x: each row has a button, pressed for the selected one', () => {
+      const onSelectX = vi.fn()
+      view = mount(<Chart {...four} selectedX={1} onSelectX={onSelectX} selectLabel="Month" />)
+      const buttons = [...view.host.querySelectorAll('tbody tr th button')] as HTMLButtonElement[]
+      expect(buttons).toHaveLength(5)
+      expect(buttons.map((b) => b.getAttribute('aria-pressed'))).toEqual(['false', 'true', 'false', 'false', 'false'])
+      act(() => buttons[3]!.click())
+      expect(onSelectX).toHaveBeenLastCalledWith(3)
+    })
+
+    it('without onSelectX nothing is a slider and rows have no buttons', () => {
+      view = mount(<Chart {...four} selectedX={1} />)
+      expect(view.host.querySelector('[role="slider"]')).toBeNull()
+      expect(view.host.querySelector('tbody button')).toBeNull()
+      expect(view.host.querySelectorAll('[data-selected]')).toHaveLength(1)
+    })
+
+    it('uses token colour classes only', () => {
+      view = mount(<Chart {...four} selectedX={1} onSelectX={() => {}} selectLabel="Month" />)
       expect(view.host.innerHTML).not.toMatch(/#[0-9a-f]{3,8}\b|rgb\(|hsl\(/i)
     })
   })
