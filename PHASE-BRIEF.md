@@ -1,6 +1,6 @@
 # PHASE-BRIEF: Slice 3 Car decision
 
-Status: 3a (finance engine) Done (0.17.0, PR #21); 3a.1 (APR) Done (0.17.1, PR #22); 3b (cost-of-ownership engine) Done (0.18.0, PR #23); 3c-1 (the page) built (0.19.0), In progress until its PR merges; 3c-2 next. Slices 1b and 2 are built and stay open in `PLAN.md` until the owner's checks below are done. Status per part lives only in `PLAN.md`. Finished part scopes are in `docs/history/phase-brief-archive.md`.
+Status: 3a (finance engine) Done (0.17.0, PR #21); 3a.1 (APR) Done (0.17.1, PR #22); 3b (cost-of-ownership engine) Done (0.18.0, PR #23); 3c-1 (the page) Done (0.19.0, PR #24); 3c-2 next, its brief first. Slices 1b and 2 are built and stay open in `PLAN.md` until the owner's checks below are done. Status per part lives only in `PLAN.md`. Finished part scopes are in `docs/history/phase-brief-archive.md`.
 
 ## Docs rule
 
@@ -35,7 +35,7 @@ Slice 3a: confirm decisions F5 to F14 and the bounds (`src/calculators/car-finan
 
 ## Last session
 
-- 22 October 2026, part 3c-1 (0.19.0, PR pending, user-visible): owner's F18, keep, mileage flip and 3b bounds recorded; the car decision page at `#/c/car-decision` (definition, rates, results, page, editor, cards, table, Help); tests red then green; 150-input property; mutation spot-checks all caught (one test added after "coverage ignored in ordering" survived); browser matrix (360, 768, 1024, 1280; light and dark; axe) clean after three fixes; Lighthouse mobile 96/100/100/91.
+- 22 October 2026, part 3c-1 (0.19.0, PR #24, user-visible): owner's F18, keep, mileage flip and 3b bounds recorded; the car decision page at `#/c/car-decision` (definition, rates, results, page, editor, cards, table, Help); tests red then green; 150-input property; mutation spot-checks all caught (one test added after "coverage ignored in ordering" survived); browser matrix (360, 768, 1024, 1280; light and dark; axe) clean after three fixes; Lighthouse mobile 96/100/100/91.
 - Differs from the brief: every field shown must be filled for an option to be costed (no empty-as-nothing); a PCP's mileage allowance is entered a year; flip points are for the two lowest options only, worked out once inputs settle (one pair costs about 300 ms at four options and 240 months); HP with no option fee shows the APR (F15), as a loan does; the rate rule lives in the page's `rates.ts` (the engines carry no labels); shared component extensions (allowEmpty, DecimalInput, SplitBar and RefusalNotice, ResultCard, StatRow, useItemKeys).
 - Not verified: a real phone, Safari, Firefox, a screen reader, the deployed site; no cross-check value filled (all six pending). OPEN: CR-10 carries over.
 - Next: 3c-2 (crossover chart, sensitivity, polish), its brief first.
