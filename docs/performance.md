@@ -131,3 +131,35 @@ Lighthouse 12.8.2, mobile form factor, headless Chromium 1194, `#/c/car-decision
 SEO's one failure is robots.txt, as before (`vite preview` answers it with the app's HTML).
 
 Not checked: a real phone, Safari, Firefox, a screen reader, the deployed site.
+
+## Browser checks, compute time and Lighthouse (mobile), part 3c-2, 22 October 2026
+
+The same scratch Playwright (1.56) and axe-core 4.10 setup against `vite preview`, on the car decision page at 360, 768, 1024 and 1280 px in light and dark (system colour scheme). Two states each: empty (as the page starts) and filled (a saved scenario of four options loaded: keep, a loan with an 80-character unbroken name, HP with an option fee and electric charging, a PCP handed back at month 36; a 240-month horizon; every section, the sensitivity section, the chart's table and the assumptions open). Filled, at each width and theme: the chart has four lines; on the chart, Home, two Right arrows and End give months 0, 2 and 240, the readout follows, and the slider's focus is visible; a tap mid-chart picks a middle month; choosing another flip pair gives that pair's sentences; then at 360 px the page at 200% text. 158 checks passed and none failed: axe (WCAG 2.0/2.1 A and AA, best practice) found no violations; no horizontal page scroll; no external requests; no console errors; every visible control at least 44 px tall (Segmented's visually hidden radios aside).
+
+Fixes that came out of it (first runs):
+- At 360 and 768 px the filled page scrolled sideways by about 500 px: the flip pair Selects took the width of the 80-character option name and the flip sentences didn't wrap it. The picker's grid items may now shrink and the section wraps long words; the Chart's legend wraps a long series name too.
+- axe landmark-unique: the readout's blocks and the sensitivity tables were regions named by the option alone, as its card is. The readout is a plain list; each sensitivity table is named "<option>: sensitivity".
+- Lighthouse (below) put about 2.6 s of blocking time on the sensitivity after a load on a slowed CPU, so it now runs only while its section is open (U21).
+
+**Compute time** with four options (keep, a loan over 60 months, HP with an option fee, a PCP over 36 months) and a 240-month horizon.
+
+| Work | Node (three runs) | Chromium, headless, on this machine (eight runs) |
+|---|---|---|
+| The page's results (`compareOptions`, all three cases), Load click to cards | 38 to 70 ms | 181 to 275 ms, with one long task of 106 to 172 ms |
+| Sensitivity, all four options (64 engine reruns) | 610 to 960 ms in all; 120 to 280 ms an option | one step per option and input: 16 steps of under 50 ms up to 74 ms each; about 0.9 to 1.2 s of work spread after `SETTLE_MS` |
+| Flip points, the default pair | about 1.0 to 1.1 s; another pair about 190 to 210 ms | one task of 244 to 428 ms after `SETTLE_MS` |
+
+Both exceed 300 ms an update, so neither runs on the typing path: both wait for the inputs to settle (`SETTLE_MS`), both are memoised by their engine inputs (and the pair), the sensitivity runs in steps and only while its section is open, and the flip search for a pair already seen is shown at once. The flip search can't be split without an engine change, so it is still one task of up to about 430 ms after the inputs settle; moving it (and the sensitivity) to a worker is in the backlog, for the owner to decide. Bundle (gzip): the car decision page about 16 KB (from about 12 KB); the main script about 133 KB.
+
+Lighthouse 12.8.2, mobile form factor, headless Chromium 1194 (Chrome 141), `vite preview`:
+
+| Run | Performance | Accessibility | Best practices | SEO | FCP | LCP | TBT | CLS |
+|---|---|---|---|---|---|---|---|---|
+| Navigation, `#/c/car-decision` as it loads (empty) | 96 | 100 | 100 | 91 | 2.1 s | 2.4 s | 20 ms | 0 |
+| Timespan: load the four-option, 240-month scenario (to the flip points shown) | 49 | n/a | 100 | n/a | n/a | n/a | 2,010 ms | 0.013 |
+| Timespan: open the sensitivity section (to every row shown) | 48 | n/a | 100 | n/a | n/a | n/a | 2,587 ms | 0 |
+| Snapshot of the filled page | n/a | 100 | 100 | 80 | n/a | n/a | n/a | n/a |
+
+The timespans run with Lighthouse's mobile CPU slowdown, so the blocking time is the cards, the flip search and the sensitivity steps on a slow phone: one load of a four-option, 240-month scenario, and one opening of the sensitivity. SEO's failures are robots.txt, as before, and the snapshot's DOM size (the chart's 241-row table with a button per row and four sensitivity tables; in the backlog).
+
+Not checked: a real phone, Safari, Firefox, a screen reader, the deployed site.

@@ -95,8 +95,25 @@ The same figures as the cards, a column per option in the cards' order and a row
 
 ### U18. Inputs that start empty; one option held back at a time
 
-Amount, rate, decimal and whole-number inputs can be left empty (`allowEmpty`: an empty box is null, not an error), so a page can start with no made-up figures. An item that needs inputs says which on its card and its section summaries ("needs …"); a box being typed that isn't valid yet holds back only its own item (the session tracks it as `o<key>.<field>`), and boxes a choice hides (another kind, fuel type or pricing) are cleared from that list so they can't hold an item back unseen. Shared inputs hold back everything, as before. `DecimalInput` takes a plain decimal with its unit beside the box.
+(From 3c-2, an optional cost or fee reads empty as nothing: U22.) Amount, rate, decimal and whole-number inputs can be left empty (`allowEmpty`: an empty box is null, not an error), so a page can start with no made-up figures. An item that needs inputs says which on its card and its section summaries ("needs …"); a box being typed that isn't valid yet holds back only its own item (the session tracks it as `o<key>.<field>`), and boxes a choice hides (another kind, fuel type or pricing) are cleared from that list so they can't hold an item back unseen. Shared inputs hold back everything, as before. `DecimalInput` takes a plain decimal with its unit beside the box.
 
 ### U19. Slow results after the inputs settle
 
-A result that takes long enough to stall typing (the flip-point search, about 300 ms) is worked out once the inputs have stopped changing for `SETTLE_MS`, the same wait as the sticky announcement, and says "Working out … once the inputs settle" until then. Everything else stays live.
+A result that takes long enough to stall typing (the flip-point search, about 300 ms) is worked out once the inputs have stopped changing for `SETTLE_MS`, the same wait as the sticky announcement, and says "Working out … once the inputs settle" until then. Everything else stays live. (3c-2 adds memoising by inputs and splitting work into steps: U21.)
+
+## 3c-2: the car decision chart, readout and sensitivity
+
+Patterns from part 3c-2. Not owner decisions; change them with a note here.
+
+### U20. Picking a position on a chart
+
+A chart a page reads at one x (the car decision's month) passes `onSelectX`: the plot becomes a slider (focusable, `aria-valuenow` and a value text naming the position and each line's value there, described by the summary), a tap or click picks the nearest x, the arrow keys step, Page Up and Page Down jump a tenth, Home and End go to the ends; each table row's x is a button (`aria-pressed`, 44 px). The selected x is marked across the plot and on every line, its row highlighted, and the summary ends with it. The page holds one selected x (the end of the range until one is picked), never stored; a readout below the chart shows that x's figures and says what is held fixed. Up to four lines, each its own style (colour token, dash, marker), named at their ends; a line may stop early (null values), with a marker saying why.
+
+### U21. Heavy work on demand, in steps
+
+Work that reruns an engine many times (the sensitivity view) runs only while its Section is open (`onOpenChange`), once the inputs settle, one small step at a time with a break between steps, and says "Updating" until done; its Section summary says what opening it does. Results are memoised by the engine inputs they came from, so going back to inputs already seen shows them at once. Work that can't be split without an engine change (one flip-point search) still runs as one task after the inputs settle (`docs/performance.md`).
+
+### U22. Optional amounts read empty as nothing
+
+An optional amount (a fee, a running cost) passes `emptyValue` (0) and a "0" placeholder to its input: an empty box is valid and is that value, the value shows as an empty box, and the hint ends "An empty box counts as nothing." Required boxes keep `allowEmpty` (null: not entered) and hold their item back, named one per line on its card.
+

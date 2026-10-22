@@ -30,8 +30,8 @@ Moved verbatim from `PLAN.md` on 21 October 2026. New ideas go here.
 - Optimiser: choose the contribution to look at by tapping the chart or a table row (today a select of the points shown), and measure thresholds from the chosen contribution as well as from now.
 - Compound interest: flat fees and charges on contributions; tax wrappers (ISA, pension) on the projection; sequence-of-returns or Monte Carlo ranges instead of a steady rate (all out of scope for slice 2).
 - Compound interest: on a laptop the results column (headline, fee, rates, chart) is taller than the screen and scrolls on its own; consider moving the chart below the columns with the yearly table.
-- Chart: only three series styles (solid, dashed, dotted); a fourth series would reuse one. The compound interest chart uses all three, with the danger colour for "Paid in".
-- Car decision: flip points for every pair of options, not only the two lowest; worked off the main thread (a worker) if more pairs make the wait noticeable.
+- Car decision: the flip-point search and the sensitivity off the main thread (a worker): one flip search is a single 250 to 430 ms task in Chromium after the inputs settle (about 1 s in Node), and the sensitivity about a second of steps (`docs/performance.md`). Needs the owner's go-ahead (no worker yet).
+- Car decision: a fifth chart style (or a pattern) so a fourth option isn't drawn in the danger colour (F39).
+- Chart: render the data table's rows only once it is opened; the car decision's 241-row table with a button per row makes the DOM large (Lighthouse dom-size).
 - Car decision: two option cards (or two refusal notices) with the same name are regions with the same name (axe landmark-unique); number them when names repeat.
 - Car decision: open the "Shared assumptions" section from the "No results yet" notice, since both values are needed before anything shows.
-- Car decision: let an empty fee count as nothing (with a visible "counted as nothing" note) if entering 0 for every fee proves tedious.

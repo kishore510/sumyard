@@ -246,7 +246,7 @@ How the car decision page (`src/calculators/car-decision/`) uses the engines whe
 
 ### F32. Empty boxes and what an option needs
 
-Every amount and rate starts empty (null in the stored inputs: not entered). Nothing is defaulted to a number. An option is costed only when every box it shows for its kind, fuel type and pricing is filled (`missingFields`); until then its card lists what it needs. An empty fee is not read as nothing: enter 0 for none. The shared savings return and yearly increase are needed before any option is costed. The horizon starts at `DEFAULT_HORIZON_MONTHS` (a starting value, not a bound and not advice).
+Every amount and rate starts empty (null in the stored inputs: not entered). Nothing is defaulted to a number. An option is costed only when every box it shows for its kind, fuel type and pricing is filled (`missingFields`); until then its card lists what it needs. An empty fee is not read as nothing: enter 0 for none. (Superseded for optional costs and fees by F38 in 3c-2.) The shared savings return and yearly increase are needed before any option is costed. The horizon starts at `DEFAULT_HORIZON_MONTHS` (a starting value, not a bound and not advice).
 
 ### F33. Shared and per-option yearly changes
 
@@ -266,4 +266,29 @@ Cards follow `compareOptions`' ranking for the case shown: full-coverage options
 
 ### F37. Flip points on the page
 
-"What changes the answer" shows `flipPoints` for the two lowest full-coverage options in the case shown, as sentences that say what is held fixed; none when fewer than two options cover the horizon. One pair costs about 300 ms at four options and the longest horizon (`docs/performance.md`), so it is worked out once the inputs have settled (`SETTLE_MS`), not on every keystroke. More pairs are left to 3c-2.
+"What changes the answer" shows `flipPoints` for the two lowest full-coverage options in the case shown, as sentences that say what is held fixed; none when fewer than two options cover the horizon. One pair costs about 300 ms at four options and the longest horizon (`docs/performance.md`), so it is worked out once the inputs have settled (`SETTLE_MS`), not on every keystroke. More pairs are left to 3c-2 (F42).
+
+## Page decisions (slice 3c-2, proposed; owner to confirm)
+
+How the 3c-2 additions use the engines where the brief left a choice. No figure; no engine change.
+
+### F38. Optional boxes read as nothing (inputs version 2)
+
+The optional costs and fees (`OPTIONAL_FIELDS`: insurance, maintenance, VED, other, a deposit, an arrangement fee, an HP balloon, option and purchase fees, a PCP's excess charge per mile) are stored as amounts, never null: an empty box reads as nothing and is stored as 0, shown empty with a 0 placeholder and a hint that says so. Everything else an option needs is still required (the price or value, the three end values, the annual mileage, the fuel figures for its type, the yearly fuel price change, the loan amount, the term, the rate or payment, a PCP's final payment and mileage allowance), and its card lists each missing one on its own line. Inputs version 2; the migration from version 1 turns those fields' nulls into 0 and keeps every other field, so an option that was costed has the same figures and one that waited only for an optional fee is now costed as if 0 had been typed.
+
+### F39. The crossover chart
+
+x is the month, 0 to the horizon; y is each option's cumulative net cost (`MonthPoint.netCost`) in the case shown, straight from the engine's months. A line stops at the end of its coverage (a PCP handed back), marked "handed back at month N"; the horizon and each finance term that ends inside it are marked. A line keeps its style by its place in the editor (accent, contrast, neutral, then danger for a fourth option: the Chart has four styles, each with its own dash and marker, and names each line at its end). Lines that cross are not called an order; the cards' order is at the horizon (F27).
+
+### F40. The selected month
+
+One month for the page, the horizon until another is picked (a tap, the arrow keys, Home or End on the chart, or a row's button in its table); a month past a shorter horizon reads as the horizon. The readout shows each option's net cost so far, equity and cash out at that month from the engine's months; a car handed back shows the month it went back and no figures. Never stored (no new storage key, not in scenarios), reset by a load.
+
+### F41. Sensitivity
+
+For each costed option, one input at a time moved by each of `SENSITIVITY_SHIFTS` (−20, −10, +10 and +20 percent of its current value), every other input held at its current value: the end value in the case shown (to the nearest penny, `mulRound`), the savings return (exactly), the annual mileage (to the nearest whole mile; a PCP's expected mileage follows it, as in the flip search) and the fuel or energy price (every price its fuel type uses, exactly). Each cell is `ownershipCost` with the move less the engine's figure without it, in net cost per month of coverage; a move past a bound the engine refuses has no figure ("Outside the range"). Rows are sorted by the largest size of change in the row, largest first. Worked out only while its section is open, once the inputs settle, one input of one option per step (`docs/performance.md`).
+
+### F42. Flip points for any pair
+
+Any two options that cover the whole horizon with results, chosen by name (two Selects); the default is the two lowest in the engine's ordering (F37). The same option twice is not a pair. `flipPoints` measures at the end of coverage, so the page says the thresholds are measured over the whole horizon, whatever month the chart shows. Memoised by the pair and its engine inputs.
+
