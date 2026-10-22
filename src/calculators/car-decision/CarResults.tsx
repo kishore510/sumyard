@@ -3,8 +3,9 @@ import { RefusalNotice } from '@/components/RefusalNotice'
 import { ResultCard, StatRow } from '@/components/ResultCard'
 import { SplitBar } from '@/components/SplitBar'
 import { InlineNotice } from '@/components/states'
-import { formatPercent } from '@/lib/format'
-import { fromPence, type Money, toPence } from '@/lib/money'
+import { Button } from '@/components/ui/button'
+import { formatPercent, formatPercentFixed } from '@/lib/format'
+import { APR_DISPLAY_DIGITS, fromPence, type Money, toPence } from '@/lib/money'
 import { cn } from '@/lib/utils'
 import type { AcquisitionKind, Comparison, FlipPoints, ValueCase } from '../car-ownership/types'
 import { ACQUISITION_LABELS, CASE_LABELS, type CarDecisionInputs, coverageText, fieldList, type OptionStatus } from './definition'
@@ -45,12 +46,19 @@ export interface CardData {
   readonly status: OptionStatus
 }
 
+/** Percentage places an APR is shown to: the engine's display digits less the two a percentage takes. */
+const APR_PLACES = APR_DISPLAY_DIGITS - 2
+
 const RATE_TEST: Record<RateShown['kind'], string> = { apr: 'apr', effective: 'effective', none: 'none' }
 
 /** The rate an ok option shows, from its engine option and result. */
 function rateFor(status: Extract<OptionStatus, { kind: 'ok' }>): RateShown | null {
   return rateShown(status.option.acquisition, status.result.finance)
 }
+
+/** An APR to one fixed decimal place (F15: the engine's display rounding), an effective rate to two at most. */
+const rateText = (shown: Exclude<RateShown, { kind: 'none' }>) =>
+  shown.kind === 'apr' ? formatPercentFixed(shown.rate, APR_PLACES) : formatPercent(shown.rate)
 
 function Rate({ shown }: { shown: RateShown }) {
   return (
@@ -60,8 +68,7 @@ function Rate({ shown }: { shown: RateShown }) {
       ) : (
         <>
           <span>
-            <span className="text-text-muted">{shown.label}:</span>{' '}
-            <span className="font-medium tabular-nums">{formatPercent(shown.rate, shown.kind === 'apr' ? 1 : 2)}</span>
+            <span className="text-text-muted">{shown.label}:</span> <span className="font-medium tabular-nums">{rateText(shown)}</span>
           </span>
           {shown.kind === 'effective' && <span className="text-xs text-text-muted">{shown.why}</span>}
         </>
@@ -90,7 +97,7 @@ function OptionCard({
     tabIndex: 0,
     'data-option-card': '',
     'data-option-index': index,
-    className: 'min-w-0 shrink-0 basis-11/12 snap-start p-4 sm:basis-2/3 md:basis-auto',
+    className: 'relative min-w-0 shrink-0 basis-11/12 snap-start p-4 sm:basis-2/3 md:basis-auto',
   }
   if (status.kind !== 'ok') {
     return (
@@ -217,6 +224,9 @@ export function positions(comparison: Comparison | null, statuses: readonly Opti
   return out
 }
 
+/** The card row's id: "Go to the cards" moves focus to it. */
+const CARDS_ID = 'cd-cards'
+
 /** The grid's columns from md for one to four cards, by count. */
 const GRID_COLUMNS = ['', 'md:grid-cols-1', 'md:grid-cols-2', 'md:grid-cols-2 lg:grid-cols-3', 'md:grid-cols-2 xl:grid-cols-4']
 
@@ -243,12 +253,14 @@ export function OptionCards({
         </p>
       )}
       <section
+        id={CARDS_ID}
         data-cards
         aria-labelledby="cd-cards-title"
         // biome-ignore lint/a11y/noNoninteractiveTabindex: a region that scrolls sideways on a phone must be keyboard-focusable (axe scrollable-region-focusable).
         tabIndex={0}
         className={cn(
-          'flex snap-x snap-mandatory gap-3 overflow-x-auto rounded-lg pb-2 outline-offset-2 md:grid md:overflow-visible md:pb-0',
+          // Relative: screen-reader-only text in a card off to the side stays inside the row instead of widening the page.
+          'relative flex snap-x snap-mandatory gap-3 overflow-x-auto rounded-lg pb-2 outline-offset-2 md:grid md:overflow-visible md:pb-0',
           GRID_COLUMNS[cards.length],
         )}
       >
@@ -302,7 +314,7 @@ export function CompareTable({ cards, valueCase, gbp }: { cards: readonly CardDa
         aria-labelledby="cd-table-title"
         // biome-ignore lint/a11y/noNoninteractiveTabindex: a scrollable region must be keyboard-focusable (axe scrollable-region-focusable).
         tabIndex={0}
-        className="overflow-x-auto rounded-lg border border-border bg-surface shadow-sm"
+        className="relative overflow-x-auto rounded-lg border border-border bg-surface shadow-sm"
       >
         <table data-compare-table className="w-full min-w-max border-collapse text-sm text-text">
           <caption className="sr-only">
@@ -403,6 +415,16 @@ export function OrderSummary({
         <p data-ties className="text-sm text-text">
           {ties.join(' ')}
         </p>
+      )}
+      {cards.length > 0 && (
+        <Button
+          variant="secondary"
+          className="self-start"
+          onClick={() => document.getElementById(CARDS_ID)?.focus()}
+          aria-describedby="cd-order-title"
+        >
+          Go to the cards
+        </Button>
       )}
     </section>
   )

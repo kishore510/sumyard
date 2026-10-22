@@ -31,3 +31,7 @@ Moved verbatim from `PLAN.md` on 21 October 2026. New ideas go here.
 - Compound interest: flat fees and charges on contributions; tax wrappers (ISA, pension) on the projection; sequence-of-returns or Monte Carlo ranges instead of a steady rate (all out of scope for slice 2).
 - Compound interest: on a laptop the results column (headline, fee, rates, chart) is taller than the screen and scrolls on its own; consider moving the chart below the columns with the yearly table.
 - Chart: only three series styles (solid, dashed, dotted); a fourth series would reuse one. The compound interest chart uses all three, with the danger colour for "Paid in".
+- Car decision: flip points for every pair of options, not only the two lowest; worked off the main thread (a worker) if more pairs make the wait noticeable.
+- Car decision: two option cards (or two refusal notices) with the same name are regions with the same name (axe landmark-unique); number them when names repeat.
+- Car decision: open the "Shared assumptions" section from the "No results yet" notice, since both values are needed before anything shows.
+- Car decision: let an empty fee count as nothing (with a visible "counted as nothing" note) if entering 0 for every fee proves tedious.

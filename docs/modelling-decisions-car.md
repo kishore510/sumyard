@@ -235,3 +235,31 @@ As 3a: `{ ok: false, problems: [{ field, reason }] }`, with `option` (its index)
 ### F31. Not modelled
 
 Replacement cars, early termination and settlement, part exchange, leasing, finance on a kept car, tax on savings beyond the after-tax rate entered, EV tax rules, benefit in kind, VED rules, insurance or servicing models, condition charges at hand-back.
+
+## Page decisions (slice 3c-1, proposed; owner to confirm)
+
+How the car decision page (`src/calculators/car-decision/`) uses the engines where the brief left a choice. No figure; no engine change.
+
+### F32. Empty boxes and what an option needs
+
+Every amount and rate starts empty (null in the stored inputs: not entered). Nothing is defaulted to a number. An option is costed only when every box it shows for its kind, fuel type and pricing is filled (`missingFields`); until then its card lists what it needs. An empty fee is not read as nothing: enter 0 for none. The shared savings return and yearly increase are needed before any option is costed. The horizon starts at `DEFAULT_HORIZON_MONTHS` (a starting value, not a bound and not advice).
+
+### F33. Shared and per-option yearly changes
+
+The yearly increase in insurance, maintenance, VED and other costs is one shared assumption, passed to every option as the engine's `generalIncrease`. The fuel or energy price has its own yearly change per option (petrol and electricity prices need not move together).
+
+### F34. A PCP's mileage allowance
+
+Entered a year, as agreements quote it. Over the agreement it is the yearly allowance × term ÷ `MONTHS_PER_YEAR`, to the nearest whole mile: the rule the engine uses for the expected mileage (F24), so the two are counted alike. A PCP option always takes the final payment, purchase fee, allowance and excess charge, whichever end is chosen.
+
+### F35. Which rate a card shows
+
+One rule, in `rates.ts`: a loan, and HP with no option to purchase fee, show the statutory APR from `apr()` on the agreement's own payments (the drawdown is the amount financed; an arrangement fee paid at the start is a payment at month nothing; each monthly payment; an HP balloon at the end), shown to one decimal place (F15, CR-1 to CR-3, CR-10's HP balloon). A PCP (its final payment is optional) and HP with an option fee show the finance engine's effective rate labelled "Effective interest rate, not the lender's APR", while CR-10 is OPEN for them. Keep and cash show no rate.
+
+### F36. Order, and options set apart
+
+Cards follow `compareOptions`' ranking for the case shown: full-coverage options in order, ties stated, then partial-coverage options (never ordered against them), then options without results. An option missing inputs, one with a box being typed that isn't valid yet, or one the engine refuses is left out of the comparison, with its reason on its card; the rest are compared without it. A refusal with no option (a sum past the safe range) is traced by costing each option alone.
+
+### F37. Flip points on the page
+
+"What changes the answer" shows `flipPoints` for the two lowest full-coverage options in the case shown, as sentences that say what is held fixed; none when fewer than two options cover the horizon. One pair costs about 300 ms at four options and the longest horizon (`docs/performance.md`), so it is worked out once the inputs have settled (`SETTLE_MS`), not on every keystroke. More pairs are left to 3c-2.

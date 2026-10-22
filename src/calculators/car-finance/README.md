@@ -1,6 +1,6 @@
 # Car finance (slice 3a)
 
-The car finance engine (**3a, 0.17.0**; the statutory APR in **3a.1, 0.17.1**; internal: no page yet). It works out a personal loan, hire purchase (HP) or PCP month by month: the payment, the schedule, the cost of credit, an effective rate and what each end of the term costs. Slice 3b builds the cost of ownership on it and 3c the page. Illustrative, not financial advice; no tax.
+The car finance engine (**3a, 0.17.0**; the statutory APR in **3a.1, 0.17.1**; used by the car decision page, 3c-1, 0.19.0). It works out a personal loan, hire purchase (HP) or PCP month by month: the payment, the schedule, the cost of credit, an effective rate and what each end of the term costs. Slice 3b builds the cost of ownership on it, and the 3c-1 page shows its APR for a loan and for HP with no option fee (`../car-decision/rates.ts`). Illustrative, not financial advice; no tax.
 
 Decisions: F1 to F15 in `docs/modelling-decisions-car.md`. Sources and what could not be verified: `docs/verification-log.md`, "Car finance (slice 3a)" (CR-1 to CR-18). Rounding and the solver's precision: `docs/money.md`, "Car finance (slice 3a)".
 

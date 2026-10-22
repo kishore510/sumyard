@@ -4,6 +4,18 @@ All notable changes to Sumyard are listed here, newest first. The format follows
 
 ## [Unreleased]
 
+## [0.19.0] - 2026-10-22
+
+### Added
+- **Car decision calculator.** Compare up to four ways of having a car over the same number of months: keep your current car, buy with cash, a personal loan, hire purchase or a PCP (buying the car at the end or handing it back). For each car you enter its price or current value, what it could be worth at the end in a low, expected and high case, your mileage, insurance, maintenance, vehicle tax (VED, as an amount you enter: check it on GOV.UK), other costs, and fuel or charging (petrol or diesel by miles per gallon, electric by miles per kWh with home and public charging, or your own cost per mile). Every amount starts empty.
+- Each option gets a card with its **net cost per month of coverage** and the total: what you pay out, less what the car is worth at the end after anything still owed, plus what that money could have earned at your own after-tax savings return. Cards show coverage, equity at the end (with negative equity flagged), cash out, the opportunity cost and where the net cost goes. A PCP handed back early covers fewer months: it is flagged and never put in order against options that cover the whole time. Options are ordered by the lowest net cost under your assumptions, with ties stated; the page never calls one the best.
+- **What changes the answer**: for the two lowest options, the end value, savings return or yearly mileage (if both cars are driven the same distance) at which their order would swap, or "no crossing in range".
+- A loan, and hire purchase with no option fee, show the **APR**. A PCP, and hire purchase with an option fee, show the **effective interest rate, not the lender's APR**, because the APR rules for those aren't settled yet.
+- Add, duplicate and remove options (with Undo). On a phone the cards scroll sideways; a table below has the same figures. Scenarios, export, import and compare work for it, with each option's net cost per month, total, coverage and equity side by side. It uses no tax rules. A Help topic, **Car decision**.
+
+### Fixed
+- The table under a split bar can now be scrolled sideways with the keyboard when it is wider than its space.
+
 ## [0.18.0] - 2026-10-22
 
 ### Added

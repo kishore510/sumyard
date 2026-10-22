@@ -646,3 +646,22 @@ Ownership costs, fuel, depreciation, the page, registry entry, scenarios, Chart 
 - Differs from the brief: no published APR example exists on either source (CR-17), so APR-1 to APR-4 are hand-checkable; no agreement-level APR (CR-10 still OPEN); the effective-rate assumption text no longer says the APR rules could not be verified.
 - Not verified: CR-10 for PCP and purchase/option fees; what the 18/12/2025 change to CONC App 1.2.6R was (CR-18); CR-12, CR-13 (statutes not read); no UI to check.
 - Next: 3b (cost-of-ownership engine), its brief and decisions first.
+
+## Archive: part 3b scope (as of 0.18.0)
+
+### Scope
+
+- Step 1 (gate, before any engine code): this brief and the `PLAN.md` rows; owner decisions O1 to O8 as F16 to F23 and engine decisions F24 to F31 in `docs/modelling-decisions-car.md`; proposed bounds in `src/lib/inputLimits.ts` (F30); the litres in a gallon verified and logged (`docs/verification-log.md`, CO-1) in `src/lib/units.ts`.
+- `src/calculators/car-ownership/` (`calc.ts`, `types.ts`, tests, `fixtures/`, `README.md`): `valueCurve`, `costPerMile`, `futureValueOfFlows`, the monthly cash-flow timeline per option, `ownershipCost` (per value case: totals, per-month cumulative net cost and equity, the breakdown, coverage, net cost per month of coverage), `compareOptions` (one horizon, coverage flags, ordering with ties) and `flipPoints`. Pure, no tax figure, money through `money.ts`, assumptions with no figures, typed refusals by field, overflow refused.
+- Tests first (red, then green): hand-checkable cases; keep versus buy parity; the breakdown adds up; an exact-fraction reference on 300 seeded cases (loan, HP, PCP buy, PCP hand back, cash, keep); properties; edge cases; the literal guard. Mutation spot-checks (value curve fitted to the wrong end, opportunity cost omitted, hand back treated as covering the horizon, equity sign flipped, the general increase applied to fuel) must fail the suite.
+
+### Out of scope
+
+The page, registry entry, scenarios, Chart changes, tax or VED config, EV tax rules, replacement cars, early termination, any change to the 3a engine (unless a failing test proves a bug: then stop and report).
+
+## Archive: last-session entry, part 3b
+
+- 22 October 2026, part 3b (0.18.0, PR #23, internal): brief and decisions F16 to F31 (owner O1 to O8 as F16 to F23); bounds in `inputLimits.ts`; litres per gallon verified (CO-1, `units.ts`); the engine in `src/calculators/car-ownership/` (value curve, cost per mile, future value of flows, ownership cost, comparison, flip points); tests red then green; 300-case exact reference; mutation spot-checks all caught.
+- Differs from the brief: O3 read as minus equity (value less any balance owed) and keep's value counted as a sale forgone (F18); totals at the end of coverage; litres per gallon from legislation.gov.uk (no GOV.UK page defines it); flips on mileage set both options' mileage; no overflow reachable within the bounds, so that test checks the largest inputs.
+- Not verified: no published ownership-cost example (hand-checkable OWN-1 to OWN-6 instead); nothing in a browser (no UI). OPEN: CR-10 (APR for PCP and fees) carries over.
+- Next: 3c-1 (the page), its brief first.

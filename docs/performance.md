@@ -110,3 +110,24 @@ Lighthouse 12.8.2, mobile form factor, headless Chromium 1194, against `vite pre
 
 SEO's one failure is robots.txt, as before (`vite preview` answers it with the app's HTML).
 
+
+## Browser checks and Lighthouse (mobile), part 3c-1, 22 October 2026
+
+The same scratch Playwright (1.56) and axe-core 4.10 setup against `vite preview`, on the car decision page at 360, 768, 1024 and 1280 px in light and dark (system colour scheme). Five states each: empty (as the page starts); filled (four options: keep, a loan with an 80-character unbroken name, HP with an option fee and electric charging, a PCP handed back before the horizon; every section, the assumptions and every card's split-bar table open; the flip points shown); negative equity; an option the engine refuses plus one missing inputs; a box typed invalid. Plus, filled: Tab from the top reaches every card, the card row and the comparison table; at 360 px the card row scrolls sideways inside itself; 200% text at 360 px in both themes. 188 checks passed and none failed: axe (WCAG 2.0/2.1 A and AA, best practice) found no violations; no horizontal page scroll; no external requests; no console errors; every visible control at least 44 px tall (Segmented's visually hidden radios aside; their labels are the targets).
+
+Fixes that came out of it (first runs):
+- At 360 px the filled page scrolled sideways by 612 px: the screen-reader-only captions of the split-bar tables in cards off to the side were positioned against the page, not the card row. The row, the cards and the table region are now `relative` (U16).
+- From 768 px the sticky results column (the order and the flip points, nothing focusable) could scroll without being reachable by keyboard (axe scrollable-region-focusable). It now has a "Go to the cards" button.
+- At 1280 px a split bar's table in a narrow card scrolled sideways in a region that couldn't be focused. `SplitBar`'s table now scrolls in a focusable group.
+
+Compute time with four options (keep, a loan, HP, a PCP bought at the end) and a 240-month horizon, all three end-value cases (`compareOptions` costs every case at once): from the Load click to the cards rendered, 203 to 249 ms in headless Chromium on this machine (three runs), with one long task of 128 to 177 ms. The engine alone takes about 50 ms in Node. The flip points for the two lowest options run once the inputs settle (`SETTLE_MS`): one long task of 273 to 296 ms; in Node one pair takes 350 to 430 ms. Bundle (gzip): the car decision page about 12 KB; the definitions and engines are in the main script, which is about 133 KB.
+
+Lighthouse 12.8.2, mobile form factor, headless Chromium 1194, `#/c/car-decision` as it loads (every amount empty; Lighthouse loads the page, so the four-option horizon is timed above instead):
+
+| Page | Performance | Accessibility | Best practices | SEO | FCP | LCP | TBT | CLS |
+|---|---|---|---|---|---|---|---|---|
+| Car decision | 96 | 100 | 100 | 91 | 2.1 s | 2.3 s | 50 ms | 0 |
+
+SEO's one failure is robots.txt, as before (`vite preview` answers it with the app's HTML).
+
+Not checked: a real phone, Safari, Firefox, a screen reader, the deployed site.

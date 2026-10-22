@@ -69,6 +69,15 @@ export function formatPercent(rate: Ratio, maxDecimals = 2): string {
   return `${scaled < 0n ? '-' : ''}${group(whole)}${fraction ? `.${fraction}` : ''}%`
 }
 
+/** A Ratio as a percentage to exactly `decimals` places, trailing zeros kept: an APR to one place, "10.0%". */
+export function formatPercentFixed(rate: Ratio, decimals: number): string {
+  const scale = 10n ** BigInt(decimals)
+  const scaled = divideRound(BigInt(rate.numerator) * 100n * scale, BigInt(rate.denominator), 'nearest')
+  const size = scaled < 0n ? -scaled : scaled
+  const fraction = decimals > 0 ? `.${String(size % scale).padStart(decimals, '0')}` : ''
+  return `${scaled < 0n ? '-' : ''}${group(size / scale)}${fraction}%`
+}
+
 const DATE = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' })
 
 /** "2 January 2098" from "2098-01-02", the same in every time zone. */

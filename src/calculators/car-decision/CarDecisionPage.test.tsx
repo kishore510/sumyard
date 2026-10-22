@@ -165,7 +165,11 @@ describe('ordering', () => {
     // The precondition: the partial option is cheaper per month than a full one, so only the coverage rule puts it last.
     expect(result.options[0]!.fullCoverage).toBe(false)
     expect(perMonth(0)).toBeLessThan(perMonth(1))
-    expect(cards().map((c) => Number(c.getAttribute('data-option-index'))).at(-1)).toBe(0)
+    expect(
+      cards()
+        .map((c) => Number(c.getAttribute('data-option-index')))
+        .at(-1),
+    ).toBe(0)
     expect(text($('[data-headline]', card(0)))).toBe(money(result.options[0]!.cases.expected.netCostPerCoverageMonth))
   })
 

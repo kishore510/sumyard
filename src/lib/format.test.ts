@@ -6,8 +6,8 @@ import {
   formatGBPDelta,
   formatIsoDate,
   formatPence,
-  formatPercentFixed,
   formatPercent,
+  formatPercentFixed,
   formatPercentPointDelta,
 } from './format'
 import { exact, fromPence, ratio } from './money'
