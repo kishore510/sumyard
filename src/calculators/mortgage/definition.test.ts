@@ -46,7 +46,7 @@ const example: MortgagePageInputs = {
   reversionRate: '7',
   monthly: fromPounds(200),
   effect: 'reduce-term',
-  lumpSums: [{ date: '2026-06-01', amount: fromPounds(5_000) }],
+  lumpSums: [{ date: '2026-06-01', amount: fromPounds(25_000) }],
   erc: true,
   ercRate: '3',
   ercEndDate: null,
@@ -93,7 +93,14 @@ describe('defaults', () => {
   it('are valid, with no made-up figures: the contract boxes start empty', () => {
     const d = defaults()
     expect(check(d)).toEqual({ ok: true, inputs: d })
-    expect([d.startDate, d.balance, d.termYears, d.fixedRate, d.fixedEndDate, d.reversionRate]).toEqual([null, null, null, null, null, null])
+    expect([d.startDate, d.balance, d.termYears, d.fixedRate, d.fixedEndDate, d.reversionRate]).toEqual([
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+    ])
     expect(d.monthly).toBe(ZERO)
     expect(d.lumpSums).toEqual([])
     expect(d.erc).toBe(false)
@@ -218,7 +225,7 @@ describe('the engine’s inputs', () => {
       reversionRate: percent('7'),
       effect: 'reduce-term',
       regular: { amount: fromPounds(200), fromMonth: 1, toMonth: 300 },
-      lumpSums: [{ month: 5, amount: fromPounds(5_000) }],
+      lumpSums: [{ month: 5, amount: fromPounds(25_000) }],
       erc: {
         rate: percent('3'),
         endMonth: 24,
@@ -231,8 +238,13 @@ describe('the engine’s inputs', () => {
   })
 
   it('no fixed rate: the reversion rate is the rate from the start', () => {
-    const engine = toEngineInputs({ ...example, fixed: false, fixedRate: null, fixedEndDate: null })
+    const engine = toEngineInputs({ ...example, fixed: false, fixedRate: null, fixedEndDate: null, ercEndDate: '2027-01-15' })
     expect(engine.ok && [engine.inputs.fixedEndMonth, engine.inputs.fixedRate]).toEqual([0, percent('7')])
+  })
+
+  it('with no fixed rate, a charge needs its own end date', () => {
+    const engine = toEngineInputs({ ...example, fixed: false, fixedRate: null, fixedEndDate: null })
+    expect(!engine.ok && engine.kind === 'missing' && engine.fields).toEqual(['ercEndDate'])
   })
 
   it('a charge with its own end date, as an amount; none when switched off; no regular overpayment at nothing', () => {
@@ -244,7 +256,14 @@ describe('the engine’s inputs', () => {
 
   it('names what is still needed, by field', () => {
     const d = toEngineInputs(defaults())
-    expect(!d.ok && d.kind === 'missing' && d.fields).toEqual(['startDate', 'balance', 'termYears', 'fixedRate', 'fixedEndDate', 'reversionRate'])
+    expect(!d.ok && d.kind === 'missing' && d.fields).toEqual([
+      'startDate',
+      'balance',
+      'termYears',
+      'fixedRate',
+      'fixedEndDate',
+      'reversionRate',
+    ])
     const erc = toEngineInputs({ ...example, ercRate: null, allowanceRate: null })
     expect(!erc.ok && erc.kind === 'missing' && erc.fields).toEqual(['ercRate', 'allowanceRate'])
     const lump = toEngineInputs({ ...example, lumpSums: [{ date: null, amount: fromPounds(1) }] })
@@ -272,7 +291,9 @@ describe('the engine’s inputs', () => {
   it('the result is the engine’s, on the mapped inputs', () => {
     const out = calculate(example)
     const engine = toEngineInputs(example)
-    expect(out.kind === 'ok' && engine.ok && out.result).toEqual((overpay(engine.inputs) as { result: unknown }).result)
+    if (out.kind !== 'ok' || !engine.ok) throw new Error('expected a result')
+    const direct = overpay(engine.inputs)
+    expect(direct.ok && out.result).toEqual(direct.ok && direct.result)
   })
 
   it('a what-if replaces only the monthly overpayment', () => {
@@ -357,7 +378,10 @@ describe('section summaries (U2)', () => {
     expect(sectionSummary('fixed', example, [])).toBe('4.5% to 31 January 2028, then 7%')
     expect(sectionSummary('fixed', { ...example, fixed: false }, [])).toBe('No fixed rate; 7%')
     expect(sectionSummary('overpay', example, [])).toBe('£200 a month and one lump sum; shorten the term')
-    expect(sectionSummary('erc', example, [])).toBe('3% above 10% a year, until the fixed rate ends')
+    expect(sectionSummary('erc', example, [])).toBe('3% above 10% a year, until the fixed rate ends; £1,000 used, 4 payments to the reset')
+    expect(sectionSummary('erc', { ...example, allowanceUsed: ZERO, paymentsToReset: 0 }, [])).toBe(
+      '3% above 10% a year, until the fixed rate ends',
+    )
     expect(sectionSummary('erc', d, [])).toBe('Not set')
     expect(sectionSummary('advanced', { ...example, interestMethod: 'daily' }, [])).toBe('Daily, actual/365')
     expect(sectionSummary('loan', example, ['balance'])).toBe('Fix the highlighted input')

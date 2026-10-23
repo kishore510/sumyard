@@ -20,7 +20,7 @@ const FILES = engineFiles(HERE)
 
 describe('literal guard: the mortgage overpayment engine', () => {
   it('finds the engine files', () => {
-    expect(FILES).toEqual(['calc.ts', 'types.ts'])
+    expect(FILES).toEqual(['calc.ts', 'definition.ts', 'types.ts'])
   })
 
   it.each(FILES)('%s uses no numeric literal other than 0, 1, 2 and 100', (name) => {
