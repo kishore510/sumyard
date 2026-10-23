@@ -785,3 +785,25 @@ On the car decision page, "What changes the answer" names the option lower on ea
 ### Out of scope
 
 A bridge for partial coverage or across the three cases; a joint price threshold for an electric and a petrol pair (`docs/open-questions.md`); any config change.
+
+## Household budget (0.25.0)
+
+Prioritised by the owner on 23 October 2026, ahead of the mortgage overpayment slice.
+
+### Goal
+
+`#/c/budget`: income after tax, outgoings by kind, what is left and how much goes where, a month or a year, with what-if sliders. No tax or ISA rules (`taxRules: 'none'`), "Uses no tax rules" in place of the badge. Decisions BD1 to BD9 (`docs/modelling-decisions.md`), U40 and U41 (`docs/ui-patterns.md`).
+
+### Scope
+
+Engine (`budget/calc.ts`, tests first), `definition.ts` (inputs version 1), the page, the shared `SliderInput`, scenarios, compare, Help topic `budget`, README, `MAX_BUDGET_LINES`. No new storage key.
+
+### Out of scope
+
+Tax or ISA rules, interest or projections, importing from the take-home calculator, categories beyond BD1, charts beyond SplitBar, per-pay-period payroll, changes to other calculators.
+
+### Progress log
+
+- Pre-check: PR #33 merged and its Pages deploy succeeded. The no-tax-year path already existed (`taxRules: 'none'`, from compound interest); no registry change was needed, only a budget test of it. The brief's version 0.13.0 was taken (1b-ii-a), so this is 0.25.0.
+- Engine red then green; mutation spot-checks all caught. Definition, `SliderInput` and page red then green. Browser matrix: 226 checks, two layout fixes (`docs/performance.md`).
+- Owner to confirm: BD8 (savings rate excludes what is left over), BD9 (`MAX_BUDGET_LINES` = 40 per list), the template lines' periods (Fixed saver monthly), the shared `Field` label now wrapping anywhere.

@@ -1,6 +1,6 @@
 # Phase plan: Sumyard
 
-Last updated: 23 October 2026 (household budget added and Done, 0.25.0, prioritised by the owner; slices 1 to 3 Done, owner confirmations still open are listed in `PHASE-BRIEF.md`)
+Last updated: 23 October 2026 (mortgage overpayment started: M0 brief and decisions in review; household budget Done, 0.25.0; slices 1 to 3 Done, owner confirmations still open are listed in `PHASE-BRIEF.md`)
 
 Sumyard is a set of personal UK finance calculators in one clean, ad-free web app, for the owner's own use. Constraints: client-side only, a static site on GitHub Pages, UK rules from versioned per-tax-year config, illustrative not advice.
 
@@ -38,7 +38,10 @@ Rules for this file: add a row when scope is added; update the Status cell when 
 | 3d-2 Car thresholds and cost bridge | Flip search carries on past a tie and names the option lower on each side, a level band in words (closes OQ-flip-tie); the first option's fuel or energy price threshold (pence per mile, a price per litre for petrol or diesel); "Where the difference comes from" under the verdict, the pair's difference in average cost per month owned split by part (shared `BridgeBar`, table fallback); sensitivity table readable at 360 px (engine and page; no config, storage or inputs-version change) | Done (0.24.0, PR #31, 22 October 2026) |
 | Take-home pay | Shipped inside 1b (1b-i to 0.12.0) at `#/c/optimiser`; 1b-ii added the optimiser to the same page | Done (0.14.0, PR #17, 21 October 2026) |
 | Household budget | `#/c/budget`: income after tax, outgoings by kind (spending, joint account, debt, savings), what is left and each part's share of income, a month or a year, split bar and table by kind, what-if sliders (page state only) with Reset and Apply; shared `SliderInput`; no tax rules | Done (0.25.0, PR #34, 23 October 2026) |
-| Mortgage overpayment | Check daily vs monthly interest handling per lender | Not started |
+| Mortgage overpayment | `#/c/mortgage`: regular and lump-sum overpayments on a repayment or interest-only mortgage with a fixed rate, its end and a reversion rate; daily or monthly interest (a policy, monthly by default); early repayment charge and penalty-free allowance as contract inputs; reduce the term or the payment; interest saved before and after the charge, with its effective guaranteed return; no tax rules. Built in the parts below | In progress |
+| M0 Mortgage brief and decisions | Reuse audit, GOV.UK research (MR-1 to MR-10), decisions MO1 to MO14, rounding per step, the brief (docs only) | In progress |
+| M1 Mortgage engine | Pure engine, tests first: schedule with and without overpayments, both interest methods, fixed-rate end, both effects, ERC and allowance, interest saved and return, refusals; calendar helper; independent reference (internal, no UI) | Not started |
+| M2 Mortgage page | The page on M1: inputs in sections, sticky result, balance chart with a table fallback, assumptions, "Uses no tax rules", scenarios, compare, Help | Not started |
 | Loan / APR | Verify the APR definition against official guidance | Not started |
 | ISA vs pension vs mortgage | Builds on 1b and the overpayment calculator | Not started |
 | Bonus and salary sacrifice | Largely an input mode of 1b; may fold into it | Not started |
