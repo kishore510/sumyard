@@ -770,3 +770,18 @@ On the car decision page, a kept car can carry finance still owed: the lender's 
 ### Out of scope
 
 Early-settlement charges and rights, handing back an existing PCP, a second agreement on the new car (`docs/open-questions.md`); any config change.
+
+## Part 3d-2: thresholds past a tie, the fuel price threshold and the cost bridge (0.24.0)
+
+### Goal
+
+On the car decision page, "What changes the answer" names the option lower on each side of every threshold (the search carries on past a tie) and adds the first option's fuel or energy price threshold; "Where the difference comes from", under the verdict, splits the pair's difference in average cost per month owned by part. Decisions F53 to F56 (`docs/modelling-decisions-car.md`), U38 and U39 (`docs/ui-patterns.md`).
+
+### Scope
+
+- Engine: `flipPoints`' search past a tie (closes OQ-flip-tie), `fuelPriceFlip`, `pencePerLitreFor`, `costBridge`; pure, no config.
+- Page: the band and fuel sentences, the bridge section with its own pair Selects sharing the pair, `BridgeBar`, the sensitivity table on a phone; Help, assumptions, READMEs. No new inputs, no inputs-version, storage, scenario or compare change.
+
+### Out of scope
+
+A bridge for partial coverage or across the three cases; a joint price threshold for an electric and a petrol pair (`docs/open-questions.md`); any config change.

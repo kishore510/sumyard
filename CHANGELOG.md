@@ -4,6 +4,12 @@ All notable changes to Sumyard are listed here, newest first. The format follows
 
 ## [Unreleased]
 
+## [0.25.1] - 2026-10-23
+
+### Fixed
+- The tax year badge on a calculator page is read out by screen readers as it appears on screen, then "(see tax data)", instead of a different wording.
+- The **Take-home pay** page's description says what its chart shows: what each pound into your pension costs in take-home, beside the comparison of your contribution now with one you choose.
+
 ## [0.25.0] - 2026-10-23
 
 ### Added
