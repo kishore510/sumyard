@@ -167,7 +167,7 @@ describe('validateInputs', () => {
     ['no kind', { kind: undefined }],
     ['a line that is not an object', null],
   ])('refuses an outgoing line with %s', (_, patch) => {
-    const line = patch === null ? null : { ...example.outgoings[0], ...patch }
+    const line = patch === null ? null : JSON.parse(JSON.stringify({ ...example.outgoings[0], ...patch }))
     expect(errorsOf({ ...example, outgoings: [line] }).join(' ')).toMatch(/line 1/)
   })
 

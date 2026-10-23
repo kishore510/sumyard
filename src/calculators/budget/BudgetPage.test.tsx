@@ -87,6 +87,26 @@ describe('the page', () => {
       expect($(`#bd-section-${id}-button`)?.getAttribute('aria-expanded'), id).toBe('false')
   })
 
+  it('a loaded scenario opens only the sections it sets', () => {
+    const inputs = budgetCalculator.defaultInputs()
+    const outgoings = inputs.outgoings.map((l) => (l.kind === 'debt' ? { ...l, amount: fromPounds(90) } : l))
+    act(() =>
+      session.load({
+        id: 's1',
+        calculatorId: 'budget',
+        name: 'Loaded',
+        inputs: { ...inputs, pay: fromPounds(2_000), outgoings },
+        inputsVersion: 1,
+        createdAt: '2026-10-23T00:00:00Z',
+        updatedAt: '2026-10-23T00:00:00Z',
+      }),
+    )
+    const open = (id: string) => $(`#bd-section-${id}-button`)?.getAttribute('aria-expanded')
+    expect(open('debt')).toBe('true')
+    for (const id of ['income', 'spending', 'joint', 'savings', 'whatif']) expect(open(id), id).toBe('false')
+    expect($('#bd-section-debt-summary')?.textContent).toBe(`1 line, ${money(fromPounds(90))} a month`)
+  })
+
   it('prefills the named lines, blank, in their sections', () => {
     const names = (id: string) => $$(`#bd-section-${id}-panel [data-line] input[id$="-name"]`).map((i) => (i as HTMLInputElement).value)
     expect(names('spending')).toEqual(['Groceries', 'Car insurance', 'Mobile', 'Other spending'])
@@ -127,17 +147,24 @@ describe('results', () => {
     expect(headline()).toMatch(money(month.leftover.year))
   })
 
-  it('splits income into spending, joint, debt, savings and left over', () => {
+  it('splits income into spending, joint, debt, savings and left over, drawn from the exact year figures and labelled in the view', () => {
     typical()
     const r = engine()
     const segments = $$('[data-segment]').map((g) => [g.getAttribute('data-segment'), Number(g.getAttribute('data-value'))])
     expect(segments).toEqual([
-      ['spending', toPence(r.perKind[0]!.month)],
-      ['joint', toPence(r.perKind[1]!.month)],
-      ['debt', toPence(r.perKind[2]!.month)],
-      ['savings', toPence(r.perKind[3]!.month)],
-      ['leftover', toPence(r.leftover.month)],
+      ['spending', toPence(r.perKind[0]!.year)],
+      ['joint', toPence(r.perKind[1]!.year)],
+      ['debt', toPence(r.perKind[2]!.year)],
+      ['savings', toPence(r.perKind[3]!.year)],
+      ['leftover', toPence(r.leftover.year)],
     ])
+    expect($('[data-legend]')?.textContent).toContain(money(r.perKind[0]!.month))
+  })
+
+  it('with outgoings over income, the bar shows where outgoings go', () => {
+    type(box('bd-pay'), '100')
+    type(amountOf(0), '150')
+    expect($$('[data-segment]').map((g) => g.getAttribute('data-segment'))).toEqual(['spending'])
   })
 
   it('has a per-kind table with each kind’s amount and share of your income', () => {

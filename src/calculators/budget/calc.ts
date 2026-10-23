@@ -41,7 +41,7 @@ const ASSUMPTIONS: readonly string[] = [
   'A weekly amount counts as the weeks in a year, a quarterly one as the quarters, so a year is exact; a month is the year divided by the months, to the nearest penny.',
   'Every share is of your total income for the year: your pay and any extra income.',
   'A blank amount counts as nothing.',
-  'A card or loan payment is an outgoing in its own right: enter the payment or the spending on that card, not both.',
+  'A card or loan payment is an outgoing in its own right: enter the card payment or the spending on that card, not both.',
   'A transfer to a joint account counts as an outgoing from this account; what is spent from the joint account is not entered again.',
   'The savings rate is what goes to savings and investing as a share of your income; what is left over is not counted as saved.',
   'No interest, growth, inflation or change over time is modelled.',
