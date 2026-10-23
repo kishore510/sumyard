@@ -76,7 +76,7 @@ Compare redesign (1b-iii): confirm U24's maximum (the engine's, pay-bounded) and
 
 ## Last session
 
-- 23 October 2026, M2 (0.27.0): MO16 in the engine (allowance used this year, payments to the reset; red then green, six mutants killed, the reference lays out allowance years its own way); the page at `#/c/mortgage` (definition, results, page, `DateInput` and `parseDateText`, Help), tests first.
+- 23 October 2026, M2 (0.27.0, then 0.27.1 from the owner's phone: time to clear, what you pay each month, interest saved shown once): MO16 in the engine (allowance used this year, payments to the reset; red then green, six mutants killed, the reference lays out allowance years its own way); the page at `#/c/mortgage` (definition, results, page, `DateInput` and `parseDateText`, Help), tests first.
 - Browser: 30 runs at 360, 768 and 1280 px, light and dark, axe clean; Lighthouse CLS 0 (`docs/performance.md`). Two fixes from it (warning noise, a repeated figure).
 - Readings for the owner: `docs/open-questions.md`, "Mortgage page readings (M2)" (MO16's number and allowance on the balance now, dates to months, the drift threshold).
 - Not verified: a real phone, Safari, a screen reader, any real statement (MR-1, MR-2, MR-4 OPEN).
