@@ -168,9 +168,9 @@ Total paid into the pension is the engine's `pension.total` at each point (own c
 
 ## Mortgage overpayment (session M0)
 
-Decisions MO3, MO9, MO10 and MO15 in `docs/modelling-decisions.md`, confirmed by the owner on 23 October 2026; not built yet. No tax rule is involved, and no lender's rounding was found (`docs/verification-log.md`, MR-1, MR-2, MR-10): every mode below is a modelling choice, one per step, named in the result's assumptions, so a real statement can correct one line. "Shared" is the `src/lib/` module M1 extracts from car finance (MO15).
+Decisions MO3, MO9, MO10 and MO15 in `docs/modelling-decisions.md`, confirmed by the owner on 23 October 2026; built in M1 (0.26.0, `src/calculators/mortgage/calc.ts`). No tax rule is involved, and no lender's rounding was found (`docs/verification-log.md`, MR-1, MR-2, MR-10): every mode below is a modelling choice, one per step, named in the result's assumptions, so a real statement can correct one line. "Shared" is `src/lib/amortising.ts`, moved from car finance in M1 (MO15).
 
-| Step | Mode | Where (to come) | Basis |
+| Step | Mode | Where | Basis |
 |---|---|---|---|
 | Monthly rate, `'monthly'` method | Exact `Ratio`, a twelfth of the annual rate | shared `monthlyRate` | MO3; MR-5 (described) |
 | Regular payment, and each recalculation (fixed-rate end, `'reduce-payment'`) | Closed form in fine fixed point, rounded once to the nearest penny | shared `regularPayment` | F7, MO4, MO5 |

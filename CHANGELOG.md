@@ -4,6 +4,11 @@ All notable changes to Sumyard are listed here, newest first. The format follows
 
 ## [Unreleased]
 
+## [0.26.0] - 2026-10-23
+
+### Added
+- **Internal only: the mortgage overpayment engine.** Nothing you can see in the app has changed. The behind-the-scenes calculations for the coming mortgage overpayment calculator now work out a repayment or interest-only mortgage month by month, with a fixed rate that ends and a reversion rate after it, with and without overpayments: a regular amount each month and lump sums, each either shortening the term or lowering the payment. Interest can be worked out monthly (the default) or daily. They take an early repayment charge and a penalty-free allowance from your contract, and give the interest saved, the time saved, the balance when the fixed rate ends, what a pound overpaid earns for each rate period, and with a charge the saving left after it and the month it is earned back. They are tested against exact calculations of the standard formulas; a check against a real mortgage statement is still to come. The page comes in a later release.
+
 ## [0.25.1] - 2026-10-23
 
 ### Fixed
