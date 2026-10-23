@@ -755,3 +755,18 @@ Any engine, config, storage or inputs-version change (the monthly penny drift is
 - Item 2: `flipPoints` returns a real crossing, not a clamped bound, but stops on a penny-rounding tie band, so the engine doesn't say which option is lower above the threshold. The sentence now says the two are level there and that the search can't say what comes above. It does not say "no crossing found", because there is a crossing. The engine gap is logged (OQ-flip-tie) with a skipped test that fails today. Item 8 is logged again with the exact-twelfths proposal.
 - Also fixed: the phone bar overflowed with an 80-character name (from 3d-1). Matrix: Chromium + axe 4.10, 360/768/1024/1280, light and dark, two pages, 184 checks clean; `main` fails 11 of the same checks at 360 px.
 - Not verified: a real phone, Safari, Firefox, a screen reader, the deployed site.
+
+## Part 3e: keep the current car with finance still owed (0.23.0)
+
+### Goal
+
+On the car decision page, a kept car can carry finance still owed: the lender's settlement figure, the monthly payment, the payments left and any final payment. Its net cost counts the sale given up as the value less the settlement, only the interest as a finance cost, and the rate implied from the figures by 3a's solver. Decisions F43 to F52 (`docs/modelling-decisions-car.md`), U37 (`docs/ui-patterns.md`).
+
+### Scope
+
+- Engine: an optional `existingFinance` on the keep acquisition (through 3a's `hirePurchase` priced by the payment); without it, every result bit-identical.
+- Page: the switch and four boxes in the Keep option's Finance section; inputs version 3; the card's implied rate, payments left, final payment and negative equity now; compare rows; Help and assumptions.
+
+### Out of scope
+
+Early-settlement charges and rights, handing back an existing PCP, a second agreement on the new car (`docs/open-questions.md`); any config change.

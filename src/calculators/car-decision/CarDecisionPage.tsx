@@ -313,9 +313,7 @@ export default function CarDecisionPage() {
                   <ScenarioTable comparison={comparison} valueCase={inputs.valueCase} names={answerNames} gbp={gbp} />
                 </>
               )}
-              {bridge && (
-                <BridgeSection state={bridge} valueCase={inputs.valueCase} gbp={gbp} amounts={amounts} picker={pairPicker('cd-bridge')} />
-              )}
+              {bridge && <BridgeSection state={bridge} valueCase={inputs.valueCase} gbp={gbp} picker={pairPicker('cd-bridge')} />}
               <OrderSummary comparison={outcome.comparison} cards={cards} valueCase={inputs.valueCase} gbp={gbp} />
             </>
           )

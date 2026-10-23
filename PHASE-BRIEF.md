@@ -1,25 +1,25 @@
-# PHASE-BRIEF: Keep a car with finance still owed
+# PHASE-BRIEF: Car thresholds and the cost bridge
 
-Status: slices 1b (take-home and optimiser), 2 (compound interest) and 3 (car decision) are built; each stays In progress in `PLAN.md` until the owner's checks below. The **pension compare redesign** (1b-iii) is Done (0.21.0, PR #27). The **car results redesign** (3d-1) is Done (0.22.0, PR #28), from the owner's use of the car page. **Keeping a car with finance still owed** (3e) is Done (0.23.0). Status per part lives only in `PLAN.md`. Finished part scopes are in `docs/history/phase-brief-archive.md`.
+Status: slices 1b (take-home and optimiser), 2 (compound interest) and 3 (car decision) are built; each stays In progress in `PLAN.md` until the owner's checks below. The **pension compare redesign** (1b-iii) is Done (0.21.0, PR #27). The **car results redesign** (3d-1) is Done (0.22.0, PR #28), from the owner's use of the car page. **Keeping a car with finance still owed** (3e) is Done (0.23.0). **Thresholds and the cost bridge** (3d-2) is Done (0.24.0). Status per part lives only in `PLAN.md`. Finished part scopes are in `docs/history/phase-brief-archive.md`.
 
 ## Docs rule
 
 Close out every session with the tiered checklist in `CLAUDE.md` ("Session close-out checklist").
 
-## Part 3e: keep the current car with finance still owed (0.23.0)
+## Part 3d-2: thresholds past a tie, the fuel price threshold and the cost bridge (0.24.0)
 
 ### Goal
 
-On the car decision page, a kept car can carry finance still owed: the lender's settlement figure, the monthly payment, the payments left and any final payment. Its net cost counts the sale given up as the value less the settlement, only the interest as a finance cost, and the rate implied from the figures by 3a's solver. Decisions F43 to F52 (`docs/modelling-decisions-car.md`), U37 (`docs/ui-patterns.md`).
+On the car decision page, "What changes the answer" names the option lower on each side of every threshold (the search carries on past a tie) and adds the first option's fuel or energy price threshold; "Where the difference comes from", under the verdict, splits the pair's difference in average cost per month owned by part. Decisions F53 to F56 (`docs/modelling-decisions-car.md`), U38 and U39 (`docs/ui-patterns.md`).
 
 ### Scope
 
-- Engine: an optional `existingFinance` on the keep acquisition (through 3a's `hirePurchase` priced by the payment); without it, every result bit-identical.
-- Page: the switch and four boxes in the Keep option's Finance section; inputs version 3; the card's implied rate, payments left, final payment and negative equity now; compare rows; Help and assumptions.
+- Engine: `flipPoints`' search past a tie (closes OQ-flip-tie), `fuelPriceFlip`, `pencePerLitreFor`, `costBridge`; pure, no config.
+- Page: the band and fuel sentences, the bridge section with its own pair Selects sharing the pair, `BridgeBar`, the sensitivity table on a phone; Help, assumptions, READMEs. No new inputs, no inputs-version, storage, scenario or compare change.
 
 ### Out of scope
 
-Early-settlement charges and rights, handing back an existing PCP, a second agreement on the new car (`docs/open-questions.md`); any config change.
+A bridge for partial coverage or across the three cases; a joint price threshold for an electric and a petrol pair (`docs/open-questions.md`); any config change.
 
 ## Still with the owner
 
@@ -31,14 +31,16 @@ Car results redesign (3d-1): confirm U29 to U33, the verdict's wording and the p
 
 Finance on a kept car (3e): confirm F43 to F52 as built (the refusal of a final payment above the settlement and of no payments left even with no monthly payment, F50; the implied rate through `hirePurchase`, F45); check the page against a real lender statement and settlement quote; on a real phone and with a screen reader.
 
+Thresholds and the cost bridge (3d-2): confirm F53 to F56 as built (the band said as "about", level or pennies apart; equity handed back as a bridge part; "Most of the difference" only past half and on the total's side; the bridge in pence whatever Settings shows; the bridge's own Selects sharing the pair); check the bridge on a real phone and with a screen reader.
+
 Compare redesign (1b-iii): confirm U24's maximum (the engine's, pay-bounded) and U25's chart measure (net cost per pound, an average from no contribution); check the page on a real phone, with Safari and with a screen reader.
 
 ## Last session
 
-- 22 October 2026, 3e (0.23.0, user-visible): pre-check passed (PR #29 merged as 134232c; names as the brief). Decisions F43 to F52 first; engine tests red then green (no config change); page tests red then green; inputs version 3.
-- The rate is implied through 3a's `hirePurchase` priced by the payment (`solveRate`, `buildSchedule`, `outstandingBalance`); no second solver. Without existing finance every result equals a frozen copy of the engine before 3e (286 checks).
-- Differs from the brief: no payments left is refused even with no monthly payment; a final payment above the settlement and a settlement of nothing are refused (3a's checks). Mutants: 6 of 6 caught. Matrix: Chromium + axe 4.10, 360/768/1024/1280, light and dark, 192 checks clean.
-- Not verified: a real phone, Safari, Firefox, a screen reader, the deployed site, a real lender statement.
+- 22 October 2026, 3d-2 (0.24.0, user-visible): pre-check passed (3e merged as e1356eb; names as the brief). Decisions F53 to F56 first; engine tests red then green; page tests red then green.
+- Search past a tie closes OQ-flip-tie (12 of 21 seeded savings crossings had a band; mileage showed none). Fuel threshold via a direct cost per mile on the rate grid; the bridge rounds by largest remainder, shown in pence.
+- Differs: two existing tests narrowed (flip.test's one-step gap, unchanged.test's tie pair); the "reproduces" test dropped; equity handed back is a bridge part; the page test file split (happy-dom select leak). Mutants 5 of 5 caught; matrix 120 checks clean.
+- Not verified: a real phone, Safari, Firefox, a screen reader, the deployed site.
 
 ## Next
 

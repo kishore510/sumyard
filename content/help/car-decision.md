@@ -1,7 +1,7 @@
 ---
 title: Car decision
 order: 5
-summary: How the car decision page works: the options, the horizon and the three end-value cases, the verdict and bottom line, average cost per month owned, money in and out, coverage, equity, the breakdown, the month-by-month chart, what changes the answer, sensitivity, rates, and what is not modelled.
+summary: How the car decision page works: the options, the horizon and the three end-value cases, the verdict and bottom line, where the difference between two options comes from, average cost per month owned, money in and out, coverage, equity, the breakdown, the month-by-month chart, what changes the answer, sensitivity, rates, and what is not modelled.
 ---
 The **Car decision** page costs up to four ways of having a car over the same stretch of time: **keep** your current car, **buy with cash**, a personal **loan**, **hire purchase** (HP) or a **PCP**. It is an illustration under your own assumptions, not advice, and it never says which option to choose: it shows which has the **lowest net cost under these assumptions**, and what would change that. It **uses no tax rules**, so it has no tax year and shows "Uses no tax rules" where other pages show when their tax figures were last verified.
 
@@ -37,6 +37,8 @@ The top of the results (beside the inputs on a laptop, where it stays in view as
 - **Bottom line**: the lowest net cost, the lowest **running cost** (fuel or energy, insurance, maintenance, VED and other costs) and the lowest **depreciation** (what the car loses in value), each per month owned, and what choosing the next option instead costs a month (left out when a switch line above already gives it). Only options that cover the whole horizon; ties stated; each line says what it measures.
 - **Low, expected and high end values**: each option's average cost per month owned in all three cases, one row each, and a sentence saying whether the option with the lowest net cost changes between them.
 
+- **Where the difference comes from**: for two options that cover the whole horizon, the first option's average cost per month owned less the second's, split into the parts each card shows (interest and fees, depreciation, equity handed back, fuel or energy, insurance, maintenance, VED, other and the opportunity cost). Each part is the difference between the two cards' parts, divided by the months owned, to the penny, so the parts add up to the difference, which is the verdict's gap a month. A sentence names the largest part ("Most of the difference is …" when it is more than half of the difference and on the same side), and bars go right of a centre line for parts that are more for the first option and left for less; **Show as a table** lists every part. It starts with the two lowest and uses the same two options as **What changes the answer**: choosing **First option** or **Second option** in either place changes both. With fewer than two options that cover the whole horizon, it says which cover less or have no results yet. It describes the difference; it doesn't say why.
+
 The order, the cards and everything below them are the detail.
 
 ## Reading the cards
@@ -58,6 +60,10 @@ Below the cards, a chart shows each option's **net cost so far** at the end of e
 ## What changes the answer
 
 For two options that cover the whole horizon, the page says, once your inputs settle, the point at which their order would swap: each one's end value, your savings return, and the annual mileage **if both cars are driven the same distance, as one driver**. It starts with the two lowest average costs per month owned; choose any other two with **First option** and **Second option**. Each line changes one thing and holds everything else as entered. Where nothing in the range searched would swap them, it says **no crossing in range**. The thresholds are always measured over the whole horizon, whatever month the chart shows.
+
+A last line gives the **fuel or energy price** at which the order would swap: the first option's cost per mile, in pence per mile, with its mileage, its yearly fuel price change and everything else as entered. For petrol or diesel it is also given as a price per litre, from the car's miles per gallon. For an electric car it is pence per mile only: home and public charging together, with the split as you entered it. It is worked out a moment after the other lines.
+
+Near a threshold the two totals, each rounded to the penny, can be level or pennies apart either way over a narrow band. The search carries on past that band and names the option lower on each side; each value is "about", and where the band shows as a range the line gives it.
 
 ## Sensitivity: what moves the answer most
 

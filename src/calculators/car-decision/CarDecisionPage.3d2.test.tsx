@@ -117,6 +117,16 @@ describe('where the difference comes from (3d-2, F55, F56)', () => {
     )
   })
 
+  it('parts are shown to the penny whatever Settings shows, so they add up to the difference shown', () => {
+    act(() => settingsStore.update({ amounts: 'pounds' }))
+    set(four)
+    const ranking = engine(four).ranking.expected.full
+    const b = bridgeOf(four, [ranking[0]!.option, ranking[1]!.option])
+    const cells = $$('[data-bridge-table] tbody td').map(text)
+    expect(cells).toEqual(b.parts.map((p) => formatGBPDelta(p.shown, 'pence')))
+    expect(text($('[data-bridge-table] tfoot td'))).toBe(formatGBPDelta(b.total.shown, 'pence'))
+  })
+
   it('the same option twice is not a pair', () => {
     set(four)
     pick('#cd-bridge-first', '1')

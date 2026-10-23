@@ -181,7 +181,7 @@ An optional running-cost box left empty counts as nothing (F38, U22). Each coste
 
 ### U35. A threshold names the lower option on each side, or says it can't
 
-"What changes the answer" names the option lower on each side of a threshold. When the engine's search stops on a tie (OQ-flip-tie), the sentence says the two are level at that threshold and that the search doesn't say which is lower above it. It never says "above it, the two are level".
+"What changes the answer" names the option lower on each side of a threshold. When the engine's search stops on a tie (OQ-flip-tie), the sentence says the two are level at that threshold and that the search doesn't say which is lower above it. It never says "above it, the two are level". Since 3d-2 (F53) the search carries on past a tie, so it always names the option lower on each side, with any band between in words (U38's section, the same pair).
 
 ### U36. A side-by-side table that can be read on a phone
 
@@ -192,3 +192,13 @@ The sticky first column is opaque, 8rem wide, and its labels wrap. Each option's
 ### U37. A switch that reveals its boxes
 
 A Keep option's Finance section holds one switch ("Still owe finance on it?", the shared `Toggle`, off by default). Its boxes appear only while it is on, directly after it, so the keyboard path is the switch, then each box in order; Space turns it on and off. The boxes are asked as plain questions with short hints that hold no figure. The section summary says "No finance owed" while the switch is off. On the card, the rate is labelled "Implied rate from your figures, not the lender’s APR" with one line saying what it is; the money in and out says how many payments are left; a settlement above today's value is a warning notice, "Negative equity now", beside the one for the horizon.
+
+## 3d-2: thresholds and where the difference comes from (0.24.0)
+
+### U38. Where the difference comes from: bars either way from nothing
+
+A section in the results, under the verdict's panels (the verdict, the bottom line, the three cases) and above the order: "Where the difference comes from". It has its own two Selects ("First option", "Second option") on the same pair as "What changes the answer" (F56), and says so; choosing in either place changes both. Two generated sentences first (the difference, then its largest part, F55), then `BridgeBar` (`src/components/BridgeBar.tsx`), a small shared component built as `SplitBar` is, not a new Chart type: a row per part that differs, its label and signed figure in text with a bar under it from a centre line of nothing (right for more for the first option, left for less), the total last; token colours only (the accent above nothing, the muted text below, the text colour for the total), never the danger colour; a key in words says which side is which, so sides differ by position, sign and words as well as colour. The drawing is one image named by its title and described by a text summary of every part (those the same for both named too); **Show as a table** lists every part and the total in a focusable scroll region. Parts and the total are always shown to the penny, whatever Settings > amounts says: rounded to whole pounds one by one they would not always add up (F55); the sentences follow Settings. Bars scale with their container (a 0 to 100 viewBox), so four options with 80-character names fit at 360 px: names wrap in the sentences and the key, never in the bars. With fewer than two options covering the horizon with results, the section stays, saying which cover less and which have no results yet.
+
+### U39. The sensitivity table on a phone
+
+As the side-by-side table (U36): the sticky first column is opaque, 8rem wide, above the figures scrolling under it, and its labels wrap; each change keeps a minimum width on one line, so every figure can be scrolled fully into view beside it at 360 px. Each cell shows the engine's change for that input and shift, as before.

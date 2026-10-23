@@ -368,7 +368,7 @@ Each part's exact value is (first's part − second's part) ÷ the months owned,
 - the shown total is the exact difference rounded once to the nearest penny, halves away from nothing: the verdict's gap a month (the total difference over the horizon, rounded once), so it can differ by a penny from the two cards' rounded averages subtracted;
 - each part is first cut to whole pence towards nothing; the pennies still needed to reach the shown total go one each to the parts with the largest remainders in that direction (by size, then by the parts' order); each shown part is within a penny of its exact value.
 
-So the bridge of an option against itself is nothing in every part, and swapping the pair turns every exact and shown figure to its negative.
+So the bridge of an option against itself is nothing in every part, and swapping the pair turns every exact and shown figure to its negative. The page shows the parts and total in pence whatever Settings says, since parts rounded to whole pounds one by one need not add up.
 
 The page names the largest part by its shown size: "Most of the difference is X: £N a month." when it is on the same side as the total and more than half of it; otherwise "The largest part is X: £N a month", saying it is on the other side from the total or less than half of it. Tied largest parts are named together. Described, never explained: nothing says why a part differs.
 

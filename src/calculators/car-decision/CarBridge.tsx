@@ -2,7 +2,6 @@ import type { ReactNode } from 'react'
 import { BridgeBar } from '@/components/BridgeBar'
 import { formatGBPDelta } from '@/lib/format'
 import { fromPence, type Money, toPence } from '@/lib/money'
-import type { AmountStyle } from '@/settings/settings'
 import type { Bridge, ValueCase } from '../car-ownership/types'
 import { CASE_LABELS } from './definition'
 import { bridgeRows, bridgeSentences } from './results'
@@ -27,14 +26,11 @@ export function BridgeSection({
   state,
   valueCase,
   gbp,
-  amounts,
   picker,
 }: {
   state: BridgeState
   valueCase: ValueCase
   gbp: Gbp
-  /** The Settings amount style: parts are shown signed (formatGBPDelta). */
-  amounts: AmountStyle
   picker?: ReactNode
 }) {
   const caseWord = CASE_LABELS[valueCase].toLowerCase()
@@ -53,7 +49,8 @@ export function BridgeSection({
           rows={bridgeRows(state.bridge).map((row) => ({ id: row.id, label: row.label, value: toPence(row.value) }))}
           total={toPence(state.bridge.total.shown)}
           totalLabel="Difference"
-          formatValue={(v) => formatGBPDelta(fromPence(v), amounts)}
+          // Always to the penny, whatever Settings shows: the parts add up to the difference only in pence (F55).
+          formatValue={(v) => formatGBPDelta(fromPence(v), 'pence')}
           more={`more for ${a}`}
           less={`less for ${a}`}
         />
