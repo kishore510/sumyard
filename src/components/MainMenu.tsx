@@ -1,4 +1,4 @@
-import { CircleHelp, FolderOpen, Info, Menu, Settings } from 'lucide-react'
+import { CircleHelp, FolderOpen, House, Info, Menu, Settings } from 'lucide-react'
 import { type KeyboardEvent, type ReactNode, useEffect, useId, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Panel } from '@/components/ui/panel'
@@ -128,6 +128,16 @@ export function MainMenu() {
           className="absolute top-full right-0 z-40 mt-1 flex max-h-(--sy-drawer-max-height) w-72 flex-col overflow-y-auto p-1 shadow-lg"
         >
           <div id={menuId} role="menu" aria-label="Menu" tabIndex={-1} onKeyDown={onMenuKeyDown} className="flex flex-col">
+            <Item
+              icon={<House />}
+              onSelect={() => {
+                setOpen(false)
+                location.hash = '#/'
+              }}
+            >
+              All calculators
+            </Item>
+            <hr className="my-1 h-px border-0 bg-border" />
             <Item icon={<Settings />} onSelect={go({ kind: 'settings' })}>
               Settings
             </Item>

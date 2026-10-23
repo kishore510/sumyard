@@ -4,6 +4,11 @@ All notable changes to Sumyard are listed here, newest first. The format follows
 
 ## [Unreleased]
 
+## [0.27.2] - 2026-10-23
+
+### Added
+- A way back to every calculator from any page: the **Sumyard** name at the top is now a link to the home page, and the menu starts with **All calculators**.
+
 ## [0.27.1] - 2026-10-23
 
 ### Changed

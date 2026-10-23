@@ -12,7 +12,7 @@ Sumyard is a set of personal UK finance calculators in one clean, ad-free place.
 - **Calculators**: the home page lists them. Each has its own page and address.
 - **Scenarios**: save a calculator’s inputs under a name, load them again, compare two or three, and export or import them. See [Scenarios and saving](help:scenarios-and-saving).
 - **Theme**: the button in the top bar cycles through **System**, **Light** and **Dark**. System follows your device.
-- **Menu**: the menu button in the top bar opens Settings, Help and what’s new, About Sumyard and Scenarios.
+- **Menu**: the menu button in the top bar opens All calculators (the home page), Settings, Help and what’s new, About Sumyard and Scenarios. The **Sumyard** name at the top also goes to the home page.
 - **Settings**: your theme, a default region, a default tax year, how amounts are shown, and backup and restore.
 - **What’s new**: the changes in each version. A **New** marker shows until you open it.
 - **About**: the version, how much Sumyard stores in this browser, privacy and credits.
