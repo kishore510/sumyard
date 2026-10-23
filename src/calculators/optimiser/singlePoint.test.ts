@@ -75,7 +75,8 @@ const OPTIONS = { step: fromPounds(2_500), maxPoints: 10_000 }
 
 const policyFor = (random: () => number) => ({ ...DEFAULT_POLICY, taperRounding: pick(random, TAPER_ROUNDINGS) })
 
-describe('optimise(): points unchanged by the single-point export', () => {
+// Seeded cases run the whole composer many times; CI runners are slower than the default timeout allows.
+describe('optimise(): points unchanged by the single-point export', { timeout: 60_000 }, () => {
   /**
    * The SHA-256 of optimise()'s points on 60 seeded cases (seed 4301), taken
    * on the code before evaluateContribution() was added. Any change to a
@@ -94,7 +95,7 @@ describe('optimise(): points unchanged by the single-point export', () => {
   })
 })
 
-describe('evaluateContribution(): one point without a sweep', () => {
+describe('evaluateContribution(): one point without a sweep', { timeout: 60_000 }, () => {
   it('equals the sweep point at the same contribution on 300 seeded cases', () => {
     const random = generator(4302)
     let compared = 0

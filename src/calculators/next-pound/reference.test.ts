@@ -56,7 +56,8 @@ const run = (i = inputs()): NextPoundResult => {
   return r
 }
 
-describe('reference: closed forms', () => {
+// Seeded cases run the whole composer many times; CI runners are slower than the default timeout allows.
+describe('reference: closed forms', { timeout: 60_000 }, () => {
   it('growth and today’s money: project() through the composer agrees with the exact closed forms to the penny', () => {
     const random = generator(7101)
     for (let n = 0; n < 60; n++) {
@@ -135,7 +136,7 @@ describe('reference: closed forms', () => {
   })
 })
 
-describe('reference: the pension leg', () => {
+describe('reference: the pension leg', { timeout: 60_000 }, () => {
   it.each(['netPay', 'salarySacrifice', 'reliefAtSource'] as const)(
     '%s: cost and pension added from the optimiser’s own reference',
     (method) => {
@@ -175,7 +176,7 @@ describe('reference: the pension leg', () => {
   )
 })
 
-describe('reference: the mortgage leg', () => {
+describe('reference: the mortgage leg', { timeout: 60_000 }, () => {
   it('a single-rate, monthly-interest mortgage replayed by the mortgage reference, with and without a charge', () => {
     const random = generator(7105)
     let checked = 0

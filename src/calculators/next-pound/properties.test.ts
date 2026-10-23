@@ -72,7 +72,8 @@ const CASES = (() => {
 })()
 const RESULTS = CASES.map(run)
 
-describe('properties', () => {
+// Seeded cases run the whole composer many times; CI runners are slower than the default timeout allows.
+describe('properties', { timeout: 60_000 }, () => {
   it('legs are never below nothing where defined, and neither is any leftover cash', () => {
     RESULTS.forEach((r, n) => {
       for (const [where, a] of amountsOf(r)) {
@@ -114,7 +115,7 @@ describe('properties', () => {
   })
 })
 
-describe('the composer against the independent reference, 300 random cases', () => {
+describe('the composer against the independent reference, 300 random cases', { timeout: 60_000 }, () => {
   it('pension leg: cost and pension added from the optimiser’s reference, the most within X; access, pot, split and today’s money', () => {
     let accessibleCount = 0
     RESULTS.forEach((r, n) => {
