@@ -95,3 +95,6 @@ export const MAX_MILES_PER_KWH = ratio(20, 1)
 
 /** Car ownership: the largest price per litre, per kWh or per mile, in pence (F30). */
 export const MAX_PENCE_PER_UNIT = ratio(1_000, 1)
+
+/** Household budget: the most lines one list (extra income, outgoings) holds (decision BD9 in docs/modelling-decisions.md). */
+export const MAX_BUDGET_LINES = 40
