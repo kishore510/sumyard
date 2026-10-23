@@ -271,3 +271,43 @@ Inputs version 3 changes each benefit item to `{ name, period, value, taken, pay
 ### B17. PAYE taxes the year's taxable pay, benefits included (owner; supersedes part of B13)
 
 Given by the owner on 18 October 2026, after a payslip check (B15) showed the PAYE estimate below the year's liability by the benefits taxed at the marginal rate. PAYE's pay (`TakeHomeResult.payrollPay`) is the same measure as the annual income tax's taxable pay: gross pay, less salary given up for pension or benefits and net pay contributions, plus the full taxable amount of every benefit (B1, B10), as if the employer payrolls them, spread evenly over the months. Relief at source is still not in it. A code that also takes the benefits off the allowance (benefits not payrolled) counts them twice; the assumptions and Help say so. Whether the owner's employer payrolls each benefit, and HMRC's payrolling rules themselves, were not read on GOV.UK in this fix.
+
+## Household budget (0.25.0)
+
+Owner decisions given in the session brief on 23 October 2026. The calculator uses no tax rules (`taxRules: 'none'`): no tax, National Insurance, ISA or pension rule, and no tax year. Engine: `src/calculators/budget/calc.ts`.
+
+### BD1. Kinds (owner)
+
+Every outgoing is one of four fixed kinds: **spending**; **joint** (a transfer to a joint account); **debt** (a card or loan payment); **savings** (cash, an ISA, a fixed saver, stocks and shares: what it is goes in the line's name, not its kind). No other categories.
+
+### BD2. Lines and periods (owner)
+
+A line is `{ name, amount, period, kind }`, `period` weekly, monthly, quarterly or yearly. A line's yearly amount is its amount times the whole number of periods in a year from `PERIODS_PER_YEAR` (`src/lib/periods.ts`; a weekly year is exactly that many weeks), so the yearly figure is exact and canonical. Every month figure (each line, each kind total, income, outgoings, what is left) is its own yearly figure divided by `MONTHS_PER_YEAR` with `mulRound`, to the nearest penny (halves away from zero). Totals come from the yearly totals, never from adding rounded month figures, so the month rows can differ from their month total by a penny or two; the page says so beside the total, as the take-home breakdown does (B14).
+
+### BD3. Income (owner)
+
+Income is **Your pay** (after tax, entered a month or a year) plus any extra income lines, each with its own period. Every share is of total income for the year and is labelled "of your income".
+
+### BD4. Blank amounts (owner)
+
+A blank amount is nothing, with no warning: the named lines are a template. A negative or unreadable amount is an input error and the page shows no results until it is fixed.
+
+### BD5. Never cap or hide (owner)
+
+What is left may be below nothing: it is shown as it is, with a warning, never capped at nothing. With no income, every share is "n/a" (`null` in the engine), never a division by nothing.
+
+### BD6. Double counting (owner)
+
+Beside debt lines and in the assumptions: enter a card payment or the spending on that card, not both. A transfer to a joint account counts as an outgoing from this account; what is spent from the joint account is not entered again.
+
+### BD7. What if (owner)
+
+What-if sliders overlay the inputs on the page only, never stored or saved. While a what-if differs from the inputs, the results show the inputs and the what-if side by side with the change. **Reset what-ifs** drops them; **Apply** writes them into the inputs, with Undo.
+
+### BD8. Savings rate (session, flagged for the owner)
+
+The savings rate is the savings kind's yearly total over yearly income. What is left over is not counted as saved, since nothing says where it goes; the page shows it as its own share.
+
+### BD9. Bounds (session)
+
+Each amount is from nothing up to `MAX_INPUT_AMOUNT`; each list (extra income, outgoings) holds at most `MAX_BUDGET_LINES` (`src/lib/inputLimits.ts`). Within these every sum is a safe whole number of pence; the engine refuses anything outside them, by field, rather than throw, and refuses a result past the safe range the same way.

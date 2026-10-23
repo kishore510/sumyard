@@ -83,7 +83,7 @@ describe('registration', () => {
     expect(CALCULATORS.get('car-decision')).toBe(carDecisionCalculator)
     expect(carDecisionCalculator.inputsVersion).toBe(3)
     expect(carDecisionCalculator.taxRules).toBe('none')
-    expect(CALCULATORS.list().map((c) => c.id)).toEqual(['optimiser', 'compound-interest', 'car-decision'])
+    expect(CALCULATORS.list().map((c) => c.id)).toEqual(['optimiser', 'compound-interest', 'car-decision', 'budget'])
   })
 })
 

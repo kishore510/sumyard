@@ -202,3 +202,13 @@ A section in the results, under the verdict's panels (the verdict, the bottom li
 ### U39. The sensitivity table on a phone
 
 As the side-by-side table (U36): the sticky first column is opaque, 8rem wide, above the figures scrolling under it, and its labels wrap; each change keeps a minimum width on one line, so every figure can be scrolled fully into view beside it at 360 px. Each cell shows the engine's change for that input and shift, as before.
+
+## Household budget (0.25.0)
+
+### U40. An amount with a slider (`SliderInput`)
+
+`src/components/inputs/SliderInput.tsx`: a `CurrencyInput` (`<id>-amount`, the source of truth: label, hint, validation) with a native range (`<id>`) under it, named "<label>, slider", saying its amount in words (`aria-valuetext`, "250 pounds per month"). The range runs from nothing to about twice the amount it was scaled from (`SLIDER_RANGE_FACTOR`), at least `SLIDER_MIN_MAX`, in about `SLIDER_STEPS` round steps (one, two or five times a power of ten, from `SLIDER_MIN_STEP`), never past the box's own limit; all exact in pence. Typing or a change from outside (a reset) rescales it; sliding does not, so the range never moves under a finger. An amount past its end shows at its end while the box keeps it; an invalid box leaves the slider at the last valid amount. At least 44 px tall, no motion. Built for the budget's what-ifs; the take-home picker and the car horizon keep their own ranges.
+
+### U41. What-ifs over the inputs
+
+A "What if" section holds a `SliderInput` for each amount, its hint giving the input's own amount. What-ifs are page state, keyed to each line (so adding or removing other lines keeps them), dropped on a load or a fresh start, never in a scenario. While any differs from the inputs, the sticky figure and the results show the what-if (labelled "with your what-ifs") and a table puts your inputs, the what-if and the change side by side. **Reset what-ifs** drops them; **Apply to my inputs** writes them into the inputs with Undo. Both are disabled with nothing to reset or apply; Apply also while a what-if box is invalid.

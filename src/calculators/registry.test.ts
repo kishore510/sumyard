@@ -80,8 +80,8 @@ describe('readInputs', () => {
 })
 
 describe('the app registry', () => {
-  it('has the optimiser, compound interest (2b) and the car decision (3c-1); the Hello placeholder is gone (removed in 1b-i)', () => {
-    expect(CALCULATORS.list().map((c) => c.id)).toEqual(['optimiser', 'compound-interest', 'car-decision'])
+  it('has the optimiser, compound interest (2b), the car decision (3c-1) and the household budget; the Hello placeholder is gone (removed in 1b-i)', () => {
+    expect(CALCULATORS.list().map((c) => c.id)).toEqual(['optimiser', 'compound-interest', 'car-decision', 'budget'])
     expect(CALCULATORS.get('optimiser')?.placeholder).toBeUndefined()
     expect(CALCULATORS.get('hello')).toBeUndefined()
   })

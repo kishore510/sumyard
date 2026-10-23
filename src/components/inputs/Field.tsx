@@ -33,7 +33,7 @@ export function Field({
 }) {
   return (
     <div className={cn('flex min-w-0 flex-col gap-1.5', className)}>
-      <label htmlFor={id} className="text-sm font-medium text-text">
+      <label htmlFor={id} className="text-sm font-medium text-text [overflow-wrap:anywhere]">
         {label}
       </label>
       {children}
