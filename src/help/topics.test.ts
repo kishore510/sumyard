@@ -39,13 +39,14 @@ describe('buildTopics', () => {
 })
 
 describe('content/help', () => {
-  it('has Quick start first, then the take-home topic (1b-i), the optimiser topic (1b-ii-b), compound interest (2b) and the car decision (3c-1), then the slice 0 topics', () => {
+  it('has Quick start first, then the take-home topic (1b-i), the optimiser topic (1b-ii-b), compound interest (2b), the car decision (3c-1) and the household budget, then the slice 0 topics', () => {
     expect(HELP_TOPICS.map((t) => t.id)).toEqual([
       'quick-start',
       'take-home-pay',
       'pension-optimiser',
       'compound-interest',
       'car-decision',
+      'budget',
       'scenarios-and-saving',
       'tax-data-and-last-verified',
       'troubleshooting',
@@ -63,6 +64,29 @@ describe('content/help', () => {
       /fee drag/i,
       /yearly table/i,
       /not a forecast/i,
+      /uses no tax rules/i,
+      /not modelled/i,
+    ])
+      expect(text).toMatch(word)
+  })
+
+  it('the budget topic covers income, the kinds, periods, shares, double counting, what if and what is not modelled', () => {
+    const text = JSON.stringify(topicById('budget')!.blocks)
+    for (const word of [
+      /your pay/i,
+      /after tax/i,
+      /spending/i,
+      /joint account/i,
+      /debt/i,
+      /savings and investing/i,
+      /weekly/i,
+      /of your income/i,
+      /savings rate/i,
+      /not both/i,
+      /what if/i,
+      /apply/i,
+      /never saved/i,
+      /penny/i,
       /uses no tax rules/i,
       /not modelled/i,
     ])
