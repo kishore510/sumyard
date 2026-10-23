@@ -37,4 +37,14 @@ describe('MainMenu', () => {
     act(() => (item as HTMLElement).click())
     expect(location.hash).toBe('#/scenarios')
   })
+
+  it('All calculators comes first and goes to the home page', () => {
+    history.replaceState(null, '', '/#/c/mortgage')
+    act(() => host.querySelector('button')!.click())
+    const items = [...host.querySelectorAll('[role="menuitem"]')]
+    expect(items[0]!.textContent).toContain('All calculators')
+    act(() => (items[0] as HTMLElement).click())
+    expect(location.hash).toBe('#/')
+    expect(host.querySelector('[role="menu"]')).toBeNull()
+  })
 })
