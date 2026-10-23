@@ -166,6 +166,24 @@ The chart's points and the readout are the engine's `MonthPoint`s, unchanged.
 
 Total paid into the pension is the engine's `pension.total` at each point (own contribution, provider relief, other employer contributions); it is never the contribution change added on.
 
+## Mortgage overpayment (proposed, session M0)
+
+Decisions MO3, MO9 and MO10 in `docs/modelling-decisions.md`. Proposed, not built, and for the owner to confirm. No tax rule is involved, and no lender's rounding was found (`docs/verification-log.md`, MR-1, MR-2, MR-10): every mode below is a modelling choice, one per step, so a real statement can correct one line.
+
+| Step | Mode (proposed) | Where (to come) | Basis |
+|---|---|---|---|
+| Monthly rate, `'monthly'` method | Exact `Ratio`, a twelfth of the annual rate | as car finance's `monthlyRate` | MO3; MR-5 (described) |
+| Regular payment, and each recalculation (fixed-rate end, `'reduce-payment'`) | Closed form in fine fixed point, rounded once to the nearest penny | car finance's `regularPayment` | F7, MO4, MO5 |
+| Interest-only payment | The month's interest, as charged | engine | MO2 |
+| Each month's interest, `'monthly'` | Opening balance × monthly rate, `mulRound` to the nearest penny | engine | MO10 |
+| Each month's interest, `'daily'` | Each day's balance × annual rate ÷ day basis, summed exactly (`ExactPence`), rounded once to the nearest penny when charged on the payment date | engine | MO3, MO10 |
+| Last payment | Brings the balance to exactly nothing, so it takes the rounding | engine | F7 |
+| Overpayment past the balance | Limited to what clears it: whole pence, exact | engine | MO8 |
+| Penalty-free allowance (percentage) | Balance at the allowance year's start × percentage, `mulRound` down | engine | MO7, MO10 |
+| ERC | Overpaid above the allowance × ERC rate, `mulRound` to the nearest penny | engine | MO7 |
+| Interest saved, before and after the ERC | Differences of whole-pence totals: exact | engine | MO9 |
+| Effective guaranteed return | `'monthly'`: compound interest's `effectiveAnnualRate(rate, 'monthly')`. `'daily'`: twelve monthly factors multiplied in `Factor` fixed point (C9). Shown with `roundRatio`, nearest | engine | MO9 |
+
 ## Display (`format.ts`)
 
 Locale en-GB. Formatting works from integer pence in `BigInt`, never by dividing a float, so the digits are exact at any size. **Display rounding is nearest, halves away from zero**; it is for showing results and is not a tax rule.
