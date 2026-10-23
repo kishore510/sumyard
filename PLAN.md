@@ -1,6 +1,6 @@
 # Phase plan: Sumyard
 
-Last updated: 23 October 2026 (mortgage overpayment: M2 page Done, 0.27.0; M1 engine Done, 0.26.0; M0 brief and decisions Done, confirmed by the owner; household budget Done, 0.25.0; slices 1 to 3 Done, owner confirmations still open are listed in `PHASE-BRIEF.md`)
+Last updated: 23 October 2026 (next pound decision started: C0 brief and decisions in review; remaining not-started rows parked, `docs/backlog.md`; mortgage overpayment: M0 to M2 Done, owner checks open; household budget Done, 0.25.0; slices 1 to 3 Done, owner confirmations still open are listed in `PHASE-BRIEF.md`)
 
 Sumyard is a set of personal UK finance calculators in one clean, ad-free web app, for the owner's own use. Constraints: client-side only, a static site on GitHub Pages, UK rules from versioned per-tax-year config, illustrative not advice.
 
@@ -42,14 +42,18 @@ Rules for this file: add a row when scope is added; update the Status cell when 
 | M0 Mortgage brief and decisions | Reuse audit, GOV.UK research (MR-1 to MR-10), decisions MO1 to MO15 confirmed by the owner, rounding per step, the brief, a cross-check placeholder (docs only) | Done (0.25.1, PR #36, 23 October 2026) |
 | M1 Mortgage engine | Car finance's rate and payment helpers moved to `src/lib/` first (no behaviour change); then the pure engine, tests first: schedule with and without overpayments, both interest methods, fixed-rate end, both effects, ERC and allowance, interest saved, net saving and break-even, return per rate period, refusals; calendar helper; independent reference (internal, no UI) | Done (0.26.0, PR #38, 23 October 2026) |
 | M2 Mortgage page | Allowance alignment for a mortgage already running (MO16, engine); the page on M1: inputs in sections, sticky result, balance chart with a table fallback, what-if slider, warnings, assumptions, "Uses no tax rules", scenarios, compare, Help | Done (0.27.0, PR #39, 23 October 2026) |
-| Loan / APR | Verify the APR definition against official guidance | Not started |
-| ISA vs pension vs mortgage | Builds on 1b and the overpayment calculator | Not started |
-| Bonus and salary sacrifice | Largely an input mode of 1b; may fold into it | Not started |
-| Fee impact | Builds on compound interest (slice 2) | Not started |
-| Retirement / FIRE | Builds on slice 2 | Not started |
-| EV vs petrol running cost | Builds on the car decision (slice 3) | Not started |
-| Stamp duty | Needs per-nation rules (England, Scotland, Wales are separate taxes); verify | Not started |
-| Child-related costs | Shares HICBC and childcare thresholds with 1a config | Not started |
+| Next pound decision | `#/c/next-pound`, "Where does the next £X go?": one lump sum of take-home into a pension (through the optimiser at the person's own pay), a mortgage overpayment (the mortgage engine, the only guaranteed leg) or an ISA (compound interest, low/mid/high), as the change in net worth at a horizon in today's money, after tax on withdrawal, with the break-even ISA return; nothing called best. Composes verified engines. Built in the parts below | In progress |
+| C0 Next pound brief and decisions | Reuse audit, GOV.UK lookups (NP-1 to NP-12), decisions CP1 to CP10, rounding per step, the engine import rule (CP9), the brief, a cross-check placeholder (docs only) | In progress |
+| C1 Next pound composer | Config leaves first in their own PR; the pure composer, tests first, with an independent reference: pension, mortgage and ISA legs, horizon and access age, today's money, break-even, warnings, refusals; the engine import guard test (internal, no UI) | Not started |
+| C2 Next pound page | The page on C1: inputs in sections, sticky result, three columns with the break-even, warnings, assumptions, verified badge, scenarios, compare, Help | Not started |
+| Loan / APR | Verify the APR definition against official guidance | Parked |
+| ISA vs pension vs mortgage | Builds on 1b and the overpayment calculator | Parked |
+| Bonus and salary sacrifice | Largely an input mode of 1b; may fold into it | Parked |
+| Fee impact | Builds on compound interest (slice 2) | Parked |
+| Retirement / FIRE | Builds on slice 2 | Parked |
+| EV vs petrol running cost | Builds on the car decision (slice 3) | Parked |
+| Stamp duty | Needs per-nation rules (England, Scotland, Wales are separate taxes); verify | Parked |
+| Child-related costs | Shares HICBC and childcare thresholds with 1a config | Parked |
 
 ## Pointers
 
