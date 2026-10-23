@@ -3,6 +3,7 @@ import { compareRatio, fromPence, ratio } from './money'
 import {
   decimalRatio,
   isCanonicalDecimal,
+  parseDateText,
   parseDecimalText,
   parseIntegerText,
   parseMoneyText,
@@ -191,5 +192,21 @@ describe('parseDecimalText (slice 3c-1: miles per gallon, pence per litre)', () 
     expect(isCanonicalDecimal('12.50')).toBe(false)
     expect(isCanonicalDecimal('21', { max: ratio(20, 1) })).toBe(false)
     expect(isCanonicalDecimal(12)).toBe(false)
+  })
+})
+
+describe('parseDateText (M2: mortgage dates)', () => {
+  it.each([
+    ['2026-01-15', '2026-01-15'],
+    [' 2028-02-29 ', '2028-02-29'],
+    ['15/01/2026', '2026-01-15'],
+    ['5/1/2026', '2026-01-05'],
+    ['29/02/2028', '2028-02-29'],
+  ])('reads %j as %s', (text, iso) => {
+    expect(parseDateText(text)).toEqual({ ok: true, value: iso })
+  })
+
+  it.each(['', '2026-02-30', '29/02/2027', '2026-1-15', '15-01-2026', '01/15/2026', 'tomorrow', '20260115'])('refuses %j', (text) => {
+    expect(parseDateText(text).ok).toBe(false)
   })
 })

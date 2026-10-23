@@ -188,3 +188,15 @@ Compute, the same scenario at 1280 px, three runs from the Load click: the defau
 Scratch Playwright (1.56) and axe-core 4.10 against `vite preview`, on `#/c/budget` at 360, 768, 1024 and 1280 px in light and dark (system colour scheme), in five states: empty; filled (every section open, an extra income line, an 80-character unbroken line name, a weekly and a yearly line, the split bar's table and the assumptions open); negative leftover; what-ifs active (a slider moved and a box typed); an invalid amount. Plus at 360 px, filled: 200% text; Remove by keyboard (focus to the section's Add) then Undo (focus to the restored line's name); the sticky bar collapses on scroll. 226 checks passed and none failed: axe (WCAG 2.0/2.1 A and AA, best practice) found no violations; no horizontal page scroll; every visible control at least 44 px tall (visually hidden radios aside); no external requests; no console errors. Fixes that came out of it: a long unbroken name widened the page through its what-if slider's label (the shared `Field` label now wraps anywhere), and Reset and Apply now wrap at 200% text.
 
 Bundle (gzip): the budget page about 7 KB. The engine is a few additions per line; every input change reruns it with no noticeable cost. Lighthouse not run.
+
+## Mortgage overpayment (0.27.0)
+
+Scratch Playwright (1.56) and axe-core 4.10 against `vite preview`, on `#/c/mortgage` at 360, 768 and 1280 px in light and dark (system colour scheme), in five states: empty (the boxes the results need listed); filled (start date, balance, term, a fixed rate to its end and a rate after it, a monthly overpayment, a lump sum, an early repayment charge with allowance already used and payments to the reset, a what-if typed, every disclosure open); daily interest over 39 years with no fixed rate (the drift warning); a lump sum dated before the start (refused by field); an invalid balance. 30 runs, none failing: axe (WCAG 2.0/2.1 A and AA, best practice) found no violations; no horizontal page scroll; every visible control at least 44 px tall (visually hidden radios aside); no external requests; no console errors; "best" nowhere on the page. Fixes that came out of it (looking at the 1280 and 360 px screenshots): a regular overpayment stopping at the payoff raised the capped-at-the-balance warning on every shortened schedule (it now warns about lump sums not needed only); interest saved was shown twice in the answer card.
+
+Lighthouse 12.8.2, mobile form factor, headless Chromium 1194, against `vite preview`, `#/c/mortgage` as it loads (empty: Lighthouse can't fill the boxes):
+
+| Page | Performance | Accessibility | Best practices | SEO | FCP | LCP | TBT | CLS |
+|---|---|---|---|---|---|---|---|---|
+| `#/c/mortgage` | 94 | 100 | 100 | 91 | 2.2 s | 2.6 s | 50 ms | 0 |
+
+SEO's one failure is the `vite preview` robots.txt answer, as before. Bundle (gzip): the mortgage page about 8 KB. The engine runs two schedules of up to 480 months per change (a third with a what-if); no noticeable cost while typing. CLS of a filled page (results appearing as the last box is typed) not measured.

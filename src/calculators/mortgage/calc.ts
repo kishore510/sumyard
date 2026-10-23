@@ -42,6 +42,7 @@ import type {
   BalancePoint,
   ChargeOutcome,
   DayCount,
+  EarlyRepaymentCharge,
   InterestMethod,
   MonthRow,
   MortgageField,
@@ -160,7 +161,13 @@ function chargeChecks(erc: unknown, term: number): readonly Check[] {
       : allowance.kind === 'amount'
         ? ['allowanceAmount', moneyProblem(allowance.amount, 0)]
         : ['allowance', 'not-a-choice']
-  return [['ercRate', rateProblem(erc.rate)], ['ercEndMonth', wholeProblem(erc.endMonth, 0, term)], allowanceCheck]
+  return [
+    ['ercRate', rateProblem(erc.rate)],
+    ['ercEndMonth', wholeProblem(erc.endMonth, 0, term)],
+    allowanceCheck,
+    ['allowanceUsed', erc.usedThisYear === undefined ? undefined : moneyProblem(erc.usedThisYear, 0)],
+    ['paymentsToReset', erc.paymentsToReset === undefined ? undefined : wholeProblem(erc.paymentsToReset, 0, MONTHS_PER_YEAR)],
+  ]
 }
 
 /** Every problem with the inputs, by field (MO12); empty when the engine can run. Never throws on untrusted shapes. */
@@ -241,13 +248,37 @@ interface Run {
 
 const yearOf = (month: number) => Math.floor((month - 1) / MONTHS_PER_YEAR) + 1
 
+/** Payments left in the allowance year running at the start (MO16): twelve for a fresh year (absent or nothing). */
+const firstYearLength = (erc: EarlyRepaymentCharge) => (erc.paymentsToReset ? erc.paymentsToReset : MONTHS_PER_YEAR)
+
+/** Already overpaid in that year: nothing for a fresh year from a reset of nothing (MO16). */
+const usedAtStart = (erc: EarlyRepaymentCharge) => (erc.paymentsToReset === 0 ? ZERO : (erc.usedThisYear ?? ZERO))
+
+/** Whether an allowance year starts at this month (MO7, MO16): the first month, after the first year's payments, then every twelve. */
+function allowanceYearStarts(month: number, erc: EarlyRepaymentCharge): boolean {
+  const first = firstYearLength(erc)
+  return month === 1 || (month > first && (month - first - 1) % MONTHS_PER_YEAR === 0)
+}
+
+/** A year already running at the start (MO16): part-used, or ending before twelve payments. */
+const runningYear = (erc: EarlyRepaymentCharge | null) =>
+  erc !== null && (compare(usedAtStart(erc), ZERO) > 0 || firstYearLength(erc) < MONTHS_PER_YEAR)
+
 /** One schedule to the end of the term, with the overpayments asked for (none for the baseline). */
 function schedule(plan: Plan, asked: ReadonlyMap<number, Money>): Run {
   const { inputs } = plan
   const { termMonths: term, fixedEndMonth: fixedEnd, repaymentType, effect, erc } = inputs
   const repayment = repaymentType === 'repayment'
   const rows: MonthRow[] = []
-  const allowances: { year: number; allowance: Money; overpaid: Money; charged: Money }[] = []
+  const allowances: {
+    year: number
+    fromMonth: number
+    toMonth: number
+    allowance: Money
+    usedBefore: Money
+    overpaid: Money
+    charged: Money
+  }[] = []
   let balance = inputs.balance
   let payment = repayment ? regularPayment(balance, monthlyFactor(plan.rates[periodOf(1, fixedEnd)], 'monthly'), term, ZERO) : ZERO
   let lastMonth = term
@@ -261,9 +292,18 @@ function schedule(plan: Plan, asked: ReadonlyMap<number, Money>): Run {
     const opening = balance
     const want = asked.get(month) ?? ZERO
     const charged = erc !== null && month <= erc.endMonth
-    if (charged && (month - 1) % MONTHS_PER_YEAR === 0) {
+    if (charged && allowanceYearStarts(month, erc)) {
       const allowance = erc.allowance.kind === 'rate' ? mulRound(opening, erc.allowance.rate, 'down') : erc.allowance.amount
-      allowances.push({ year: yearOf(month), allowance, overpaid: ZERO, charged: ZERO })
+      const length = month === 1 ? firstYearLength(erc) : MONTHS_PER_YEAR
+      allowances.push({
+        year: allowances.length + 1,
+        fromMonth: month,
+        toMonth: Math.min(month + length - 1, erc.endMonth),
+        allowance,
+        usedBefore: month === 1 ? usedAtStart(erc) : ZERO,
+        overpaid: ZERO,
+        charged: ZERO,
+      })
     }
     if (compare(opening, ZERO) === 0) {
       rows.push({
@@ -308,7 +348,10 @@ function schedule(plan: Plan, asked: ReadonlyMap<number, Money>): Run {
     let charge = ZERO
     const year = allowances.at(-1)
     if (charged && year && compare(used, ZERO) > 0) {
-      const excess = (overpaid: Money) => (compare(overpaid, year.allowance) > 0 ? subtract(overpaid, year.allowance) : ZERO)
+      const excess = (overpaid: Money) => {
+        const total = add(year.usedBefore, overpaid)
+        return compare(total, year.allowance) > 0 ? subtract(total, year.allowance) : ZERO
+      }
       const before = excess(year.overpaid)
       year.overpaid = add(year.overpaid, used)
       charge = mulRound(subtract(excess(year.overpaid), before), erc.rate, 'nearest')
@@ -448,6 +491,12 @@ function assumptionsFor(inputs: MortgageInputs): string[] {
   out.push(
     'An overpayment never takes the balance below nothing: only what clears it is used, and the rest is shown as not used. In the last month an overpayment goes first and the payment is what remains.',
     'An early repayment charge, when entered, is a share of what is overpaid above the penalty-free allowance in each allowance year of twelve payments from the start date, up to the charge’s end month. A percentage allowance is a share of the balance at the start of each allowance year, rounded down to the penny; unused allowance does not carry over. The charge is rounded to the nearest penny and paid from your pocket on the day, not added to the balance.',
+  )
+  if (runningYear(inputs.erc))
+    out.push(
+      'The mortgage is already running: the allowance year in progress at the start has the allowance already used taken off its room, and ends after the payments left in it; a new allowance year starts after them. A percentage allowance for the year in progress is worked out on the balance now, which is lower than at that year’s start, so the room is never overstated.',
+    )
+  out.push(
     'Interest saved is shown over the whole term, with the reversion rate assumed to the end, and up to the fixed-rate end. The guaranteed return is what a pound overpaid saves in interest, as an effective annual rate for each rate period. With a charge, the net saving is the interest saved less the charge, and break-even is the first month from which the interest saved so far stays at least the charge paid so far.',
     'A balance up to the largest amount the app accepts, a term in whole months up to the longest it accepts, and rates up to the largest it accepts; anything outside is refused, never changed.',
     'Not modelled: product or exit fees, offset, payment holidays, more than one product after the fixed rate, and tax.',

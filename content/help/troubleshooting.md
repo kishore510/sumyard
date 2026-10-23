@@ -1,6 +1,6 @@
 ---
 title: Troubleshooting
-order: 9
+order: 10
 summary: Scenarios or settings not remembered, a file that won’t import, the wrong theme, or an out-of-date page.
 ---
 ## My scenarios, settings or theme aren’t remembered

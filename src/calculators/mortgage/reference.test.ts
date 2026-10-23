@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { fromPence, type Money, ratio, toPence } from '@/lib/money'
 import { overpay } from './calc'
-import { between, generator, inputs, randomDate, randomRate } from './fixtures/inputs'
+import { between, generator, inputs, randomDate, randomInputs, randomRate } from './fixtures/inputs'
 import {
   absFraction,
   closedFormBalance,
@@ -13,6 +13,7 @@ import {
   frac,
   minus,
   nearest,
+  referenceCharges,
   replayDaily,
   replayMonthly,
   roundingBound,
@@ -35,7 +36,10 @@ import type { MortgageInputs, MortgageResult } from './types'
  *   lump sum is the closed form's (one either side only where the balance is
  *   within that bound of nothing);
  * - the daily schedule equals a day-by-day replay with the reference's own
- *   day numbers, both day counts.
+ *   day numbers, both day counts;
+ * - the early repayment charge in every month, and so the allowance years,
+ *   equals the reference's own layout of allowance years with allowance
+ *   already used and a reset part-way (MO16), 200 seeded cases.
  */
 
 const CASES = 300
@@ -173,5 +177,38 @@ describe('daily interest against a day-by-day replay (100 seeded cases each day 
     expect(compareFraction(minus(exact365, exact366), times(Br, minus(frac(29n, 365n), frac(29n, 366n))))).toBe(0)
     expect(big(a.baseline.rows[0]!.interest)).toBe(nearest(exact365))
     expect(big(b.baseline.rows[0]!.interest)).toBe(nearest(exact366))
+  })
+})
+
+describe('the charge against the reference with allowance already used (MO16, 200 seeded cases)', () => {
+  it('every month’s charge is the reference’s', () => {
+    const random = generator(SEED + 3)
+    for (let n = 0; n < 200; n++) {
+      const c = randomInputs(random, true)
+      const erc = c.erc!
+      const toReset = between(random, 0, 12)
+      const used = fromPence(between(random, 0, 6_000_000))
+      const withUsed: MortgageInputs = { ...c, erc: { ...erc, usedThisYear: used, paymentsToReset: toReset } }
+      const outcome = overpay(withUsed)
+      if (!outcome.ok) throw new Error(`refused ${JSON.stringify(outcome.problems)}`)
+      const rows = outcome.result.overpaying.rows
+      const expected = referenceCharges(
+        rows.map((row) => ({ opening: big(row.opening), overpayment: big(row.overpayment) })),
+        {
+          rate: frac(BigInt(erc.rate.numerator), BigInt(erc.rate.denominator)),
+          endMonth: erc.endMonth,
+          allowance:
+            erc.allowance.kind === 'rate'
+              ? { share: frac(BigInt(erc.allowance.rate.numerator), BigInt(erc.allowance.rate.denominator)) }
+              : { pence: big(erc.allowance.amount) },
+          used: big(used),
+          toReset,
+        },
+      )
+      expect(
+        rows.map((row) => big(row.erc)),
+        JSON.stringify(withUsed),
+      ).toEqual(expected)
+    }
   })
 })

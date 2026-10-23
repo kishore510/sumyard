@@ -1,8 +1,8 @@
-# Mortgage overpayment (M1 engine)
+# Mortgage overpayment
 
-The mortgage overpayment engine (**M1, 0.26.0**, internal: no page, registry entry, config or storage key yet). The page at `#/c/mortgage` comes in M2. Uses no tax rules (MO11). Illustrative, not financial advice.
+The mortgage overpayment engine (**M1, 0.26.0**) and its page at `#/c/mortgage` (**M2, 0.27.0**). No config and no storage key of its own: scenarios store the page's inputs (inputs version 1). Uses no tax rules (MO11). Illustrative, not financial advice.
 
-Decisions: MO1 to MO15 in `docs/modelling-decisions.md` (confirmed by the owner on 23 October 2026). Sources and what could not be found: `docs/verification-log.md`, MR-1 to MR-10 (MR-1, MR-2 and MR-4 OPEN until the owner's statement is in `docs/mortgage-cross-checks.json`). Rounding per step: `docs/money.md`, "Mortgage overpayment".
+Decisions: MO1 to MO15 in `docs/modelling-decisions.md` (confirmed by the owner on 23 October 2026), and MO16 (M2, allowance alignment; for the owner to confirm). Sources and what could not be found: `docs/verification-log.md`, MR-1 to MR-10 (MR-1, MR-2 and MR-4 OPEN until the owner's statement is in `docs/mortgage-cross-checks.json`). Rounding per step: `docs/money.md`, "Mortgage overpayment".
 
 ## Files
 
@@ -13,6 +13,13 @@ Decisions: MO1 to MO15 in `docs/modelling-decisions.md` (confirmed by the owner 
   - `DEFAULT_MORTGAGE_POLICY`: `'monthly'` interest, `'actual/365'` for daily (MO3, MR-10).
 - Imports only `src/lib/` (MO15): `amortising.ts` (the shared payment, monthly rate, interest and annual rate, moved from car finance), `calendar.ts` (payment dates, days between dates, days by year, leap years; no clock), `inputLimits.ts` (`MAX_MORTGAGE_TERM_MONTHS` = 480, `MAX_INPUT_AMOUNT`, `MAX_FINANCE_RATE`, `MAX_LIST_ITEMS`), `money.ts`, `periods.ts`, `isoDate.ts`.
 
+## The page (M2)
+
+- `definition.ts`: `MortgagePageInputs` (inputs version 1; contract boxes start empty), `validateInputs` (fresh objects; hostile keys, bad shapes and bounds refused by field), `toEngineInputs` (dates to payment months: the fixed rate and the charge cover the payments on or before their end dates; a lump sum goes with the first payment on or after its date; what is still needed, by field), `calculate`, `summarise` (typed rows for compare), section summaries.
+- `results.ts`: the chart's yearly points and fixed-rate marker, the data behind each warning (over the allowance with the charge; lump sums not needed; the fixed rate against the term; daily drift past `MORTGAGE_DRIFT_SHARE`), one return line per rate period with what it is measured against.
+- `MortgagePage.tsx`: sections (U42), `StickyResult`, the answer card, a what-if slider (U40, U41), warnings never hidden, payments and balance, returns, the shared `Chart` with its table, a yearly table, `AssumptionsPanel` (the engine's assumptions and the page's: dates to payment dates, the regular overpayment's run, lender terms vary), `NoTaxRulesBadge`, the disclaimer. Help: `content/help/mortgage.md`.
+- Page readings for the owner: `docs/open-questions.md`, "Mortgage page readings (M2)".
+
 ## How it works
 
 - Months count payment dates: month one is a month after the start date, on the same day or a shorter month's last day (MO1).
@@ -21,7 +28,7 @@ Decisions: MO1 to MO15 in `docs/modelling-decisions.md` (confirmed by the owner 
 - Fixed-rate end (MO4): on the first payment date after it, a repayment payment is worked out again at the reversion rate on the balance then. With `'reduce-term'` and an overpayment already made, over the months the shortened schedule had left (the months the current payment takes to clear the balance at the fixed rate, no more overpayments), else over the contract's months left (MO5).
 - `'reduce-payment'`: after any month with an overpayment, the next payment is worked out again over the contract's months left (MO5).
 - Overpayments (MO6, MO8): the regular amount and any lump sums of a month are paid with that month's payment, after it, up to what is still owed; the rest is reported as not used. **In the schedule's last month the overpayment goes first and the payment is what remains** (MO8's "a lump sum in the final month clears what is left, and that month's payment shrinks to the remainder").
-- Charge (MO7, MO10): allowance years are twelve payment dates each from the start date (months one to twelve, and so on). A percentage allowance is the balance before the year's first payment × the percentage, rounded down; an amount is as entered. In each overpayment month up to the charge's end month, the charge is the rate × the part of the year's overpayments newly above the allowance, rounded to the nearest penny, paid in cash (not added to the balance). Unused allowance is lost at the year's end.
+- Charge (MO7, MO10): allowance years are twelve payment dates each from the start date (months one to twelve, and so on). A percentage allowance is the balance before the year's first payment × the percentage, rounded down; an amount is as entered. In each overpayment month up to the charge's end month, the charge is the rate × the part of the year's overpayments newly above the allowance, rounded to the nearest penny, paid in cash (not added to the balance). Unused allowance is lost at the year's end. A mortgage already running (MO16): `usedThisYear` counts towards the first year's allowance, which ends after `paymentsToReset` payments; the next years run twelve payments each from there. Absent (or a reset of nothing) is a fresh year from the start, as M1. A percentage allowance for the year in progress is on the balance now.
 - Interest saved, net saving and break-even (MO9): differences of whole-pence totals. Break-even is the first month from which the cumulative interest saved stays at least the cumulative charge to the end of the term (null if it is behind at the end). If it is never behind, that is month one.
 - Return per rate period (MO9): `'monthly'`, the shared `annualRate` of a twelfth; `'daily'`, twelve months from the period's start compounded in fixed point, each 1 + r × (days ÷ day basis).
 
@@ -48,10 +55,11 @@ Listed in the result's `assumptions`, in words with no digits: payment timing an
 | A term under a month (refused); the longest term with the largest balance and rate | `calc.test.ts` |
 | No fixed period; fixed rate to the term; a start on the 29th to 31st | `calc.test.ts`; `reference.test.ts` |
 | Balance never below nothing; rows add up; total paid = balance + interest + charges − owed at the end; nothing overpaid = the baseline; more overpayment never lengthens the term or raises interest; interest saved never below nothing without a charge | `properties.test.ts` (200 seeded cases each) |
+| Allowance already used, a reset part-way, used above the limit, a reset of nothing, a reset after the charge's end; M1 results unchanged by default (MO16) | `calc.test.ts`; `reference.test.ts` (200 seeded cases against `referenceCharges`) |
 | Refusals by field, untrusted shapes | `calc.test.ts` |
 | Literal guard (day-count names exempt as exact strings) | `literals.test.ts` |
 
-Mutation spot-checks (M1, by hand): daily and monthly swapped, the charge rounded down, the allowance rounded up, the allowance not reset each year, `'actual/actual'` ignored, reduce-term not shortened at the fixed-rate end. Each failed at least one test.
+Mutation spot-checks (M1, by hand): daily and monthly swapped, the charge rounded down, the allowance rounded up, the allowance not reset each year, `'actual/actual'` ignored, reduce-term not shortened at the fixed-rate end. M2 (MO16): the reset one month late, the reset ignored, the amount used ignored, the amount used kept with a reset of nothing, the amount used carried into later years, the first year not opened. Each failed at least one test.
 
 ## Known behaviour to confirm
 

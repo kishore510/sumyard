@@ -211,3 +211,50 @@ export function replayDaily(
   }
   return rows
 }
+
+export interface ReferenceCharge {
+  /** A share of the excess, numerator over denominator. */
+  readonly rate: Fraction
+  readonly endMonth: number
+  /** A share of the balance at each allowance year's start, rounded down; or an amount in pence. */
+  readonly allowance: { readonly share: Fraction } | { readonly pence: bigint }
+  /** Already overpaid in the allowance year running at the start. */
+  readonly used: bigint
+  /** Payments left in that year; nothing (or twelve with nothing used) is a fresh year from the first payment. */
+  readonly toReset: number
+}
+
+/**
+ * The early repayment charge month by month (MO7, MO16), from each month's
+ * opening balance and the overpayment used. Allowance years are laid out by
+ * listing their first months, not by the engine's arithmetic: the first
+ * year runs to the reset, then one every twelve payments. Each year's
+ * allowance is fixed at its first month; the charge is the rate × the
+ * year's excess over it, newly reached this month, to the nearest penny.
+ */
+export function referenceCharges(
+  rows: readonly { readonly opening: bigint; readonly overpayment: bigint }[],
+  charge: ReferenceCharge,
+): bigint[] {
+  const firstMonths = new Set<number>([1])
+  for (let start = (charge.toReset === 0 ? 12 : charge.toReset) + 1; start <= rows.length; start += 12) firstMonths.add(start)
+  const out: bigint[] = []
+  let allowance = 0n
+  let overpaid = 0n
+  rows.forEach((row, index) => {
+    const month = index + 1
+    if (firstMonths.has(month)) {
+      allowance = 'pence' in charge.allowance ? charge.allowance.pence : (row.opening * charge.allowance.share.n) / charge.allowance.share.d
+      overpaid = month === 1 && charge.toReset !== 0 ? charge.used : 0n
+    }
+    if (month > charge.endMonth || row.overpayment === 0n) {
+      out.push(0n)
+      return
+    }
+    const over = (amount: bigint) => (amount > allowance ? amount - allowance : 0n)
+    const before = over(overpaid)
+    overpaid += row.overpayment
+    out.push(nearest(times(frac(over(overpaid) - before), charge.rate)))
+  })
+  return out
+}

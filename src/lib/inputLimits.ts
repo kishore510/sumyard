@@ -101,3 +101,9 @@ export const MAX_BUDGET_LINES = 40
 
 /** Mortgage overpayment: the longest term left, in whole months: forty years (decision MO12 in docs/modelling-decisions.md). */
 export const MAX_MORTGAGE_TERM_MONTHS = 480
+
+/**
+ * Mortgage overpayment page: with daily interest, the last payment of the schedule without overpayments differing from
+ * the level payment before it by more than this share of it is warned about as drift (M2; the owner to confirm).
+ */
+export const MORTGAGE_DRIFT_SHARE = ratio(1, 10)

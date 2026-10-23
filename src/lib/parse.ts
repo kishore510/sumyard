@@ -1,4 +1,5 @@
 import { formatGBP, formatPercent } from './format'
+import { type IsoDate, isIsoDate } from './isoDate'
 import { compare, compareRatio, fromPounds, type Money, MoneyError, type Ratio, ratio } from './money'
 
 /*
@@ -199,4 +200,20 @@ export function isCanonicalDecimal(text: unknown, limits: DecimalLimits = {}): t
   if (typeof text !== 'string' || !CANONICAL_PERCENT.test(text) || text === '-0') return false
   const parsed = parseDecimalText(text, limits)
   return parsed.ok && parsed.value.text === text
+}
+
+const ISO_DATE_TEXT = /^\d{4}-\d{2}-\d{2}$/
+const UK_DATE_TEXT = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/
+
+/**
+ * A date, typed year-month-day (2026-01-15) or day/month/year as written in
+ * the UK (15/01/2026), as its ISO string. The day must exist (isIsoDate).
+ */
+export function parseDateText(text: string): Parsed<IsoDate> {
+  const s = text.trim()
+  const uk = UK_DATE_TEXT.exec(s)
+  const iso = uk ? `${uk[3]}-${uk[2]!.padStart(2, '0')}-${uk[1]!.padStart(2, '0')}` : ISO_DATE_TEXT.test(s) ? s : null
+  if (!s) return fail('Enter a date.')
+  if (iso === null) return fail('Enter a date as day/month/year or year-month-day.')
+  return isIsoDate(iso) ? { ok: true, value: iso } : fail('That date doesn’t exist.')
 }

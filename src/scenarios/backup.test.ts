@@ -67,7 +67,7 @@ describe('restore validation', () => {
   })
 
   it('skips unreadable scenarios with reasons, like import', () => {
-    const result = read(file({ scenarios: [sample(), sample({ id: 'q', calculatorId: 'mortgage' })] }))
+    const result = read(file({ scenarios: [sample(), sample({ id: 'q', calculatorId: 'pension-tracker' })] }))
     expect(result.ok && result.backup.scenarios).toHaveLength(1)
     expect(result.ok && result.backup.skipped).toHaveLength(1)
   })

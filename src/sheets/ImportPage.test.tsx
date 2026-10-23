@@ -51,11 +51,11 @@ describe('Import preview', () => {
   })
 
   it('shows counts, names as plain text, and what will be skipped, before writing anything', () => {
-    load([scenario('a1', '<img src=x onerror=alert(1)>'), scenario('m1', 'House', 'mortgage')])
+    load([scenario('a1', '<img src=x onerror=alert(1)>'), scenario('m1', 'House', 'pension-tracker')])
     expect(view.host.textContent).toMatch(/1 scenario ready to import/)
     expect(view.host.querySelector('img')).toBeNull()
     expect(view.host.textContent).toContain('<img src=x onerror=alert(1)>')
-    expect(view.host.textContent).toMatch(/“House” is for a calculator this version of Sumyard doesn’t have \("mortgage"\)/)
+    expect(view.host.textContent).toMatch(/“House” is for a calculator this version of Sumyard doesn’t have \("pension-tracker"\)/)
     expect(scenarioStore.get().scenarios).toHaveLength(0)
   })
 
