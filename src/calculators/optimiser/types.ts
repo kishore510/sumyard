@@ -570,6 +570,18 @@ export interface OptimiserPoint {
   readonly warnings: readonly EngineWarning[]
 }
 
+/** One point without the sweep's comparisons: an OptimiserPoint less its reasons, net cost per pound and marginal rate. */
+export type ContributionPoint = Omit<OptimiserPoint, 'reasons' | 'netCostPerPound' | 'marginalRate'>
+
+/** evaluateContribution(): the point at one contribution, worked out as optimise() works out each sweep point. */
+export interface ContributionEvaluation {
+  readonly ok: true
+  readonly taxYear: TaxYearId
+  /** The largest contribution the engine models, as OptimiseResult's. */
+  readonly maximumContribution: Money
+  readonly point: ContributionPoint
+}
+
 export type CliffKind = 'hicbcStep' | 'childcareLimit' | 'annualAllowanceTaper' | 'studentLoanWholePounds'
 
 /** A jump in the curve between two neighbouring points. */
