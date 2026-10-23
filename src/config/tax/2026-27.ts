@@ -1,7 +1,7 @@
 import type { IsoDate } from '@/lib/isoDate'
 import { fromPounds, percent, ratio, ZERO } from '@/lib/money'
 import type { TaxBand, TaxYearConfig } from './schema'
-import { type SourceUrl, TODO, type Verified } from './sourced'
+import type { SourceUrl, Verified } from './sourced'
 
 /*
  * 2026-27, verified in slice 1a session E (the PAYE tax code unit in a later
@@ -38,6 +38,7 @@ const PENSION_TAX_RELIEF: SourceUrl = 'https://www.gov.uk/tax-on-your-private-pe
 const TAX_ON_PENSION_TAX_FREE: SourceUrl = 'https://www.gov.uk/tax-on-pension/tax-free'
 const NMPA_IMPACT_NOTE: SourceUrl =
   'https://www.gov.uk/government/publications/increasing-normal-minimum-pension-age/increasing-normal-minimum-pension-age'
+const ISA_GUIDE: SourceUrl = 'https://www.gov.uk/individual-savings-accounts'
 const CHILD_BENEFIT_RATES: SourceUrl =
   'https://www.gov.uk/government/publications/rates-and-allowances-tax-credits-child-benefit-and-guardians-allowance/tax-credits-child-benefit-and-guardians-allowance'
 const CHILD_BENEFIT_TAX_CALCULATOR: SourceUrl = 'https://www.gov.uk/child-benefit-tax-calculator'
@@ -123,7 +124,7 @@ export const taxYear: TaxYearConfig = {
       allowance: read(fromPounds(268_275), PENSION_RATES, READ_FOR_NEXT_POUND),
     },
   },
-  isa: { annualLimit: TODO },
+  isa: { annualLimit: read(fromPounds(20_000), ISA_GUIDE, READ_FOR_NEXT_POUND) },
   childBenefit: {
     weeklyRates: {
       eldestOrOnly: read(fromPounds('27.05'), CHILD_BENEFIT_RATES),
