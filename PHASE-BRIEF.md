@@ -1,6 +1,6 @@
 # PHASE-BRIEF: Where does the next £X go?
 
-Status: **C0 (brief and decisions, docs only)** in review. Mortgage overpayment M0 to M2 are Done (0.26.0 to 0.27.2, PRs #36 to #41, deployed); the slice waits on the owner's checks (below) before `PLAN.md` marks it Done. Slices 1 to 3 and the budget are Done. Finished briefs, the mortgage slice's included, are in `docs/history/phase-brief-archive.md`.
+Status: **C0 (brief and decisions, docs only)** Done (PR #42); C1 next. Mortgage overpayment M0 to M2 are Done (0.26.0 to 0.27.2, PRs #36 to #41, deployed); the slice waits on the owner's checks (below) before `PLAN.md` marks it Done. Slices 1 to 3 and the budget are Done. Finished briefs, the mortgage slice's included, are in `docs/history/phase-brief-archive.md`.
 
 ## Docs rule
 
@@ -14,7 +14,7 @@ Close out every session with the tiered checklist in `CLAUDE.md` ("Session close
 
 ### Parts
 
-- **C0, brief and decisions (this PR):** docs only. No code, config or UI.
+- **C0, brief and decisions (PR #42):** docs only. No code, config or UI.
 - **C1, composer (internal, no UI), tests first: red then green.** Before the engine, and in its **own PR** (`CLAUDE.md`: each change to tax values is its own PR): config leaves for the tax-free share (NP-2), the lump sum allowance (NP-6), the access age now and its rise (NP-3, NP-5) and the ISA limit (NP-12), each a red then green pair with a Values row; NP-2 and NP-3 need the owner's call on their tax year first. Then `src/calculators/next-pound/` (`types.ts`, `calc.ts`, `README.md`, `fixtures/reference.ts`, `calc.test.ts`, `properties.test.ts`, `reference.test.ts`, `crossChecks.test.ts` on `docs/next-pound-cross-checks.json`, `literals.test.ts`), and `src/calculators/engineImports.test.ts` (CP9's spec). Starting rates for low, mid and high growth as named starting values in `src/lib/inputLimits.ts`, for the owner. Mutation spot-checks on the composer.
 - **C2, page:** `definition.ts` (inputs version 1, `validateInputs`, `migrateInputs`, `summarise`, `applySettings` for the region), `NextPoundPage.tsx` from shared components (`StickyResult`, `Section`, inputs, `ResultCard`/`StatRow`, `AssumptionsPanel`, `VerifiedBadge`, `RefusalNotice`), registry and route, scenarios and compare, Help topic `next-pound`, README. Browser matrix once. No new storage key.
 
@@ -85,7 +85,7 @@ Compare redesign (1b-iii): confirm U24's maximum (the engine's, pay-bounded) and
 ## Next
 
 - Owner: confirm the C0 readings and NP-2/NP-3's tax-year question (above); fill `docs/next-pound-cross-checks.json` when documents are to hand.
-- C1 pre-check: confirm C0 merged and mark C0 Done in `PLAN.md` with its PR number; then the config PR (leaves, verification rows), then the composer.
+- C1 pre-check: confirm PR #42 merged and deployed; then the config PR (leaves, verification rows), then the composer.
 - Mortgage slice: the owner's checks above, then Done in `PLAN.md`. CR-10 (car finance) stays open.
 
 Full history (progress logs, finished part scopes, slice archives): `docs/history/` (grep it, don't read it whole).
