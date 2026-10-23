@@ -1,3 +1,4 @@
+import { annualRate, EngineInputError, interestOn, type MonthlyRate, monthlyFactor, monthlyRate, regularPayment } from '@/lib/amortising'
 import { MAX_EXCESS_PER_MILE, MAX_FINANCE_RATE, MAX_FINANCE_TERM_MONTHS, MAX_INPUT_AMOUNT, MAX_MILEAGE } from '@/lib/inputLimits'
 import {
   APR_DISPLAY_DIGITS,
@@ -14,15 +15,11 @@ import {
   factorAdd,
   factorDivide,
   factorMul,
-  factorPow,
-  factorRoot,
   factorSubtract,
   factorToRatio,
   fine,
   fineAdd,
-  fineDivide,
   fineMul,
-  fineSubtract,
   type Money,
   MoneyError,
   mulRound,
@@ -30,12 +27,10 @@ import {
   RATE_SOLVE_TOLERANCE,
   type Ratio,
   ratio,
-  roundFine,
   roundRatio,
   subtract,
   ZERO,
 } from '@/lib/money'
-import { MONTHS_PER_YEAR } from '@/lib/periods'
 import type {
   AprFlows,
   AprOutcome,
@@ -57,6 +52,9 @@ import type {
   ScheduleRow,
   SolveFailure,
 } from './types'
+
+/** Shared schedule helpers, moved to src/lib in M1 (MO15); re-exported so car finance's callers and tests are unchanged. */
+export { annualRate, EngineInputError, type MonthlyRate, monthlyFactor, regularPayment }
 
 /*
  * The car finance engine (slice 3a). Pure: inputs in, results out; no UI,
@@ -82,11 +80,6 @@ import type {
  * input bounds from lib/inputLimits.ts and the solver's precision from
  * lib/money.ts (literals.test.ts).
  */
-
-/** A pure helper was given inputs outside what the engine models (F13). */
-export class EngineInputError extends RangeError {
-  override name = 'EngineInputError'
-}
 
 const NOTHING = ratio(0, 1)
 const FACTOR_ZERO = factor(NOTHING)
@@ -195,52 +188,8 @@ function checkPcp(inputs: PcpInputs): readonly FinanceProblem[] {
   ])
 }
 
-/** A monthly rate: always as a Factor; also as an exact Ratio when it is rational (the 'monthly' basis), so interest rounds exactly. */
-export interface MonthlyRate {
-  readonly factor: Factor
-  readonly exact: Ratio | null
-}
-
-/** The monthly rate an annual rate gives on its basis (F6), as a Factor. */
-export function monthlyFactor(rate: Ratio, basis: RateBasis): Factor {
-  refuseUnless(rateProblem(rate) === undefined, 'rate out of bounds')
-  refuseUnless(BASES.includes(basis), 'unknown rate basis')
-  if (basis === 'monthly') return factorDivide(factor(rate), factor(ratio(MONTHS_PER_YEAR, 1)))
-  return factorSubtract(factorRoot(factorAdd(FACTOR_ONE, factor(rate)), MONTHS_PER_YEAR), FACTOR_ONE)
-}
-
-function monthlyRate(rate: Ratio, basis: RateBasis): MonthlyRate {
-  const denominator = rate.denominator * MONTHS_PER_YEAR
-  const exact = basis === 'monthly' && Number.isSafeInteger(denominator) ? ratio(rate.numerator, denominator) : null
-  return { factor: monthlyFactor(rate, basis), exact }
-}
-
-/** The annual effective rate of a monthly one: twelve months compounded (F8), to fifteen decimal places. */
-export function annualRate(monthly: Factor): Ratio {
-  return factorToRatio(factorSubtract(factorPow(factorAdd(FACTOR_ONE, monthly), MONTHS_PER_YEAR), FACTOR_ONE))
-}
-
-/**
- * The amortising payment (F7): (A − B v^n) i / (1 − v^n), v = 1 / (1 + i), or
- * (A − B) / n with no interest; worked in fine fixed point and rounded once
- * to the nearest penny.
- */
-export function regularPayment(balance: Money, monthly: Factor, term: number, finalPayment: Money): Money {
-  refuseUnless(isWhole(term) && term >= 1, 'the term must be a whole number of months from one')
-  const owed = fine(balance)
-  if (compareFactor(monthly, FACTOR_ZERO) === 0) {
-    return roundFine(fineDivide(fineSubtract(owed, fine(finalPayment)), factor(ratio(term, 1))), 'nearest')
-  }
-  const discount = factorDivide(FACTOR_ONE, factorPow(factorAdd(FACTOR_ONE, monthly), term))
-  const numerator = fineMul(fineSubtract(owed, fineMul(fine(finalPayment), discount)), monthly)
-  return roundFine(fineDivide(numerator, factorSubtract(FACTOR_ONE, discount)), 'nearest')
-}
-
 /** Which figure takes the rounding in the last month (F7): the payment when the rate is given, the interest when the payment is. */
 export type LastMonth = 'last-payment' | 'last-interest'
-
-const interestOn = (opening: Money, rate: MonthlyRate): Money =>
-  rate.exact ? mulRound(opening, rate.exact, 'nearest') : roundFine(fineMul(fine(opening), rate.factor), 'nearest')
 
 /**
  * The schedule (F7): interest on each month's opening balance to the nearest

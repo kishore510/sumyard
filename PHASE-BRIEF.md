@@ -1,6 +1,6 @@
 # PHASE-BRIEF: Mortgage overpayment
 
-Status: **M0 (brief and decisions)**: merged in PR #36; the owner's confirmations (23 October 2026) are in its follow-up PR. Decisions MO1 to MO15 are confirmed. M1 (engine) and M2 (page) are Not started. The household budget (0.25.0, PR #34) and the 0.25.1 fix release are merged and deployed. Slices 1 to 3 and the budget are Done (`PLAN.md`). Finished scopes, the budget's included, are in `docs/history/phase-brief-archive.md`.
+Status: **M1 (engine)**: built, 0.26.0 (PR #38). M0 (PRs #36, #37) is Done; decisions MO1 to MO15 are confirmed. M2 (page) is Not started. The household budget (0.25.0, PR #34) and the 0.25.1 fix release are merged and deployed. Slices 1 to 3 and the budget are Done (`PLAN.md`). Finished scopes, the budget's included, are in `docs/history/phase-brief-archive.md`.
 
 ## Docs rule
 
@@ -76,12 +76,13 @@ Compare redesign (1b-iii): confirm U24's maximum (the engine's, pay-bounded) and
 
 ## Last session
 
-- 23 October 2026, M0: pre-check, reuse audit, GOV.UK research (MR-1 to MR-10), decisions and this brief (PR #36, merged). Follow-up: the owner's confirmations written in (MO1 to MO15, MO6 and MO9 changed, MO15 added), money.md, the verification log's engine cells, backlog, open questions, and the `docs/mortgage-cross-checks.json` placeholder.
-- Not verified: anything on MoneyHelper or a lender's terms (MR-1, MR-2, MR-4 OPEN).
+- 23 October 2026, M1 (0.26.0): MO15's helpers moved to `src/lib/amortising.ts` (car tests 5043 before and after); `src/lib/calendar.ts`; the engine in `src/calculators/mortgage/` with tests first, an exact-fraction reference, properties, the literal guard, a cross-check harness (six todos) and six mutation spot-checks.
+- Readings for the owner to confirm (`docs/open-questions.md`): MO8's last-month order, MO7's allowance years of twelve payments; daily interest drifts against the twelfth-based payment (README, "Known behaviour").
+- Not verified: anything against a real statement (MR-1, MR-2, MR-4 OPEN); no browser check (no UI).
 
 ## Next
 
-- M1, the engine, in a fresh session: the MO15 extraction commit pair first, then the engine tests first.
+- M2, the page, in a fresh session (on the M1 engine; read `src/calculators/mortgage/README.md`).
 - Owner: fill `docs/mortgage-cross-checks.json` from a statement or illustration.
 - CR-10 (car finance) stays open.
 

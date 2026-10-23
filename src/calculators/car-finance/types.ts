@@ -1,3 +1,4 @@
+import type { RateBasis } from '@/lib/amortising'
 import type { Money, Ratio } from '@/lib/money'
 
 /*
@@ -5,8 +6,8 @@ import type { Money, Ratio } from '@/lib/money'
  * shapes are in docs/modelling-decisions-car.md (F5 to F14).
  */
 
-/** How the annual rate a person enters becomes a monthly rate (F6). */
-export type RateBasis = 'monthly' | 'annual'
+/** How the annual rate a person enters becomes a monthly rate (F6); shared with the mortgage engine (MO15). */
+export type { RateBasis }
 
 /** An agreement is priced by its interest rate or by its regular payment (F6). */
 export type Pricing =

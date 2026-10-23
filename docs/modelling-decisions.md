@@ -314,7 +314,7 @@ Each amount is from nothing up to `MAX_INPUT_AMOUNT`; each list (extra income, o
 
 ## Mortgage overpayment (session M0)
 
-Proposed in session M0 and **confirmed by the owner on 23 October 2026**, with changes to MO6 and MO9 and the shared helpers (MO15); nothing here is built yet. The calculator uses no tax rules (`taxRules: 'none'`). Sources and what could not be found: `docs/verification-log.md`, "Mortgage overpayment (session M0)" (MR-1 to MR-10). MR-1, MR-2 and MR-4 stay **OPEN** until the owner's statement is added (`docs/mortgage-cross-checks.json`); the decisions below stand in for them and are named in the result's assumptions. Rounding: `docs/money.md`, "Mortgage overpayment (session M0)". Engine (to come): `src/calculators/mortgage/calc.ts`.
+Proposed in session M0 and **confirmed by the owner on 23 October 2026**, with changes to MO6 and MO9 and the shared helpers (MO15); built as the engine in M1 (0.26.0; no page yet). The calculator uses no tax rules (`taxRules: 'none'`). Sources and what could not be found: `docs/verification-log.md`, "Mortgage overpayment (session M0)" (MR-1 to MR-10). MR-1, MR-2 and MR-4 stay **OPEN** until the owner's statement is added (`docs/mortgage-cross-checks.json`); the decisions below stand in for them and are named in the result's assumptions. Rounding: `docs/money.md`, "Mortgage overpayment (session M0)". Engine: `src/calculators/mortgage/calc.ts` (M1); how each decision is carried out, and M1's readings of MO7 (allowance years of twelve payment dates) and MO8 (the last month's order), are in its `README.md`.
 
 ### MO1. What v1 models (owner)
 
