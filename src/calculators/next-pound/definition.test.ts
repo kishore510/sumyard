@@ -8,11 +8,13 @@ import {
   NEXT_POUND_GROWTH_LOW,
   NEXT_POUND_GROWTH_MID,
 } from '@/lib/inputLimits'
-import { fromPounds, percent, ratio, ZERO } from '@/lib/money'
+import { add, fromPounds, percent, ratio, subtract, ZERO } from '@/lib/money'
 import { readScenario } from '@/scenarios/scenario'
 import { CALCULATORS } from '../index'
 import { mortgageCalculator } from '../mortgage/definition'
 import { optimiserCalculator } from '../optimiser/definition'
+import { thresholdContributions } from '../optimiser/calc'
+import { toOptimiserInputs } from '../optimiser/optimiserInputs'
 import { DEFAULT_POLICY } from '../optimiser/types'
 import { isInputRefusal } from '../registry'
 import { scenarioTaxYear } from '../session'
@@ -34,7 +36,8 @@ import {
 import { unverifiedConfig } from './fixtures/pageInputs'
 
 /*
- * C2: the next pound page's registry entry (inputs version 1). Inputs from
+ * C2 and its rebuild: the next pound page's registry entry (inputs version
+ * 2: version 1 plus which take-home and mortgage scenarios were picked). Inputs from
  * storage or an imported file are untrusted, so validateInputs checks every
  * field and builds a fresh object; the pay is the take-home page's inputs and
  * the mortgage the mortgage page's, checked by their own definitions. Every
@@ -74,6 +77,8 @@ const example: NextPoundPageInputs = {
   ageNow: 40,
   pay: pension,
   mortgage,
+  paySource: { kind: 'kept' },
+  mortgageSource: { kind: 'kept' },
   feeRate: '0.5',
   inflationRate: '2',
 }
@@ -85,9 +90,9 @@ const ok = (inputs: NextPoundPageInputs = example) => {
 }
 
 describe('registration', () => {
-  it('is registered as next-pound, inputs version 1, a tax calculator, last on the home page', () => {
+  it('is registered as next-pound, inputs version 2, a tax calculator, last on the home page', () => {
     expect(CALCULATORS.get('next-pound')).toBe(nextPoundCalculator)
-    expect(nextPoundCalculator.inputsVersion).toBe(1)
+    expect(nextPoundCalculator.inputsVersion).toBe(2)
     expect(nextPoundCalculator.taxRules).toBeUndefined()
     expect(CALCULATORS.list().at(-1)).toBe(nextPoundCalculator)
   })
@@ -99,7 +104,7 @@ describe('registration', () => {
       calculatorId: 'next-pound',
       name: 'Mine',
       inputs: example,
-      inputsVersion: 1,
+      inputsVersion: 2,
       taxYear: '2026-27',
       createdAt: '2026-10-23T00:00:00Z',
       updatedAt: '2026-10-23T00:00:00Z',
@@ -109,10 +114,52 @@ describe('registration', () => {
     expect(read.ok && read.scenario.inputs).toEqual(example)
   })
 
-  it('a migration has nothing to migrate from; a newer version is refused', () => {
+  it('a newer version is refused; version 2 reads as it is', () => {
     expect(() => nextPoundCalculator.migrateInputs(0, {})).toThrow()
-    expect(CALCULATORS.readInputs('next-pound', 2, example)).toMatchObject({ ok: false, reason: 'newer-inputs' })
-    expect(CALCULATORS.readInputs('next-pound', 1, example)).toMatchObject({ ok: true, migrated: false })
+    expect(CALCULATORS.readInputs('next-pound', 3, example)).toMatchObject({ ok: false, reason: 'newer-inputs' })
+    expect(CALCULATORS.readInputs('next-pound', 2, example)).toMatchObject({ ok: true, migrated: false, inputs: example })
+  })
+})
+
+describe('migration from version 1 (sources added)', () => {
+  const v1 = (patch: Record<string, unknown> = {}) => {
+    const { paySource: _p, mortgageSource: _m, ...rest } = example
+    return { ...rest, ...patch }
+  }
+
+  it('pay and a mortgage typed in version 1 are kept as saved with the scenario', () => {
+    const read = CALCULATORS.readInputs('next-pound', 1, v1())
+    expect(read).toMatchObject({ ok: true, migrated: true })
+    expect(read.ok && read.inputs).toEqual(example)
+  })
+
+  it('no pay in version 1: the pay source is the most recent (auto); no mortgage: none', () => {
+    const read = CALCULATORS.readInputs('next-pound', 1, v1({ pay: optimiserCalculator.defaultInputs(), mortgage: mortgageCalculator.defaultInputs() }))
+    expect(read.ok && (read.inputs as NextPoundPageInputs).paySource).toEqual({ kind: 'auto' })
+    expect(read.ok && (read.inputs as NextPoundPageInputs).mortgageSource).toEqual({ kind: 'none' })
+  })
+
+  it('a version 1 record that is not valid stays refused, by field', () => {
+    const read = CALCULATORS.readInputs('next-pound', 1, v1({ lumpSum: -1 }))
+    expect(read.ok).toBe(false)
+    expect(CALCULATORS.readInputs('next-pound', 1, 'x').ok).toBe(false)
+  })
+
+  it('a version 1 scenario reads back through readScenario as version 2', () => {
+    const raw = {
+      id: 'n1',
+      calculatorId: 'next-pound',
+      name: 'Old',
+      inputs: v1(),
+      inputsVersion: 1,
+      taxYear: '2026-27',
+      createdAt: '2026-10-23T00:00:00Z',
+      updatedAt: '2026-10-23T00:00:00Z',
+    }
+    const read = readScenario(raw, CALCULATORS)
+    expect(read.ok && read.migrated).toBe(true)
+    expect(read.ok && read.scenario.inputsVersion).toBe(2)
+    expect(read.ok && read.scenario.inputs).toEqual(example)
   })
 
   it('applySettings sets the region of the pay', () => {
@@ -122,13 +169,14 @@ describe('registration', () => {
 })
 
 describe('defaults', () => {
-  it('are valid, with no made-up figures: the date and age start empty, the mortgage not set up', () => {
+  it('are valid, with no made-up figures: the date and age start empty, the mortgage not set up, the sources the most recent', () => {
     const d = defaults()
     expect(check(d)).toEqual({ ok: true, inputs: d })
     expect([d.asOf, d.ageNow, d.schemeAccessAge, d.retirementTaxRate]).toEqual([null, null, null, null])
     expect(d.lumpSum).toBe(ZERO)
     expect(d.pay).toEqual(optimiserCalculator.defaultInputs())
     expect(mortgageEntered(d)).toBe(false)
+    expect([d.paySource, d.mortgageSource]).toEqual([{ kind: 'auto' }, { kind: 'auto' }])
   })
 
   it('start the growth rates from the illustrative starting values in inputLimits', () => {
@@ -191,6 +239,11 @@ describe('validateInputs', () => {
       [{ inflationRate: '1000' }, /Inflation/],
       [{ isaPaidThisYear: null }, /Paid into ISAs/],
       [{ employerMatch: '5' }, /Employer match/],
+      [{ paySource: { kind: 'none' } }, /Pay from/],
+      [{ paySource: { kind: 'scenario', id: 'bad id!', name: 'x' } }, /Pay from/],
+      [{ paySource: { kind: 'scenario', id: 'a1', name: '' } }, /Pay from/],
+      [{ mortgageSource: { kind: 'session' } }, /Mortgage from/],
+      [{ mortgageSource: 'none' }, /Mortgage from/],
     ]
     for (const [patch, message] of cases) {
       const errors = errorsOf({ ...example, ...patch })
@@ -204,6 +257,14 @@ describe('validateInputs', () => {
     expect(errorsOf({ ...example, pay: { ...pension, pensionMethod: 'cash' } }).join(' ')).toMatch(/Your pay: The pension method/)
     expect(errorsOf({ ...example, mortgage: { ...mortgage, balance: 0 } }).join(' ')).toMatch(/^Mortgage: Balance owed/)
     expect(errorsOf({ ...example, pay: 'x' }).join(' ')).toMatch(/Your pay/)
+  })
+
+  it('a picked scenario is kept by id and its name, cleaned', () => {
+    const picked = { ...example, paySource: { kind: 'scenario', id: 'a1', name: '  My pay ' }, mortgageSource: { kind: 'scenario', id: 'm1', name: 'Home' } }
+    const result = check(picked)
+    expect(result.ok && result.inputs.paySource).toEqual({ kind: 'scenario', id: 'a1', name: 'My pay' })
+    expect(result.ok && result.inputs.mortgageSource).toEqual({ kind: 'scenario', id: 'm1', name: 'Home' })
+    expect(check({ ...example, paySource: { kind: 'session', extra: 1 } })).toMatchObject({ ok: true, inputs: { paySource: { kind: 'session' } } })
   })
 
   it('refuses hostile keys and things that are not inputs', () => {
@@ -232,14 +293,27 @@ describe('calculate', () => {
     expect(out.kind === 'needs' && out.refusal.problems.map((p) => p.label)).toEqual(['Date the money goes in'])
   })
 
-  it('without pay or an age, the pension leg needs them; the other legs still show', () => {
+  it('without pay, the pension leg needs it; the other legs still show', () => {
     const out = ok({ ...example, ageNow: null, pay: optimiserCalculator.defaultInputs() })
     expect(out.pension.kind).toBe('needs')
-    expect(out.pension.kind === 'needs' && out.pension.refusal.problems.map((p) => p.label)).toEqual(['Salary', 'Your age now'])
+    expect(out.pension.kind === 'needs' && out.pension.refusal.problems.map((p) => p.label)).toEqual(['Salary'])
     expect(out.mortgage.kind).toBe('shown')
     expect(out.isa.kind).toBe('shown')
     expect(out.breakEven.pension).toBeNull()
     expect(out.warnings.pension).toEqual([])
+  })
+
+  it('without an age, the pension is shown with its numbers, the access not checked, and its break-even', () => {
+    const out = ok({ ...example, ageNow: null, horizonYears: 5 })
+    expect(out.pension.kind === 'shown' && out.pension.leg.status).toBe('accessible')
+    expect(out.pension.kind === 'shown' && out.pension.leg.access).toBeNull()
+    expect(out.breakEven.pension).not.toBeNull()
+    const old = ok({ ...example, ageNow: 40, horizonYears: 5 })
+    expect(old.pension.kind === 'shown' && old.pension.leg.status).toBe('not-accessible')
+  })
+
+  it('with no mortgage entered, that leg is not set up, even with a lump sum of nothing', () => {
+    expect(ok({ ...example, lumpSum: ZERO, mortgage: mortgageCalculator.defaultInputs() }).mortgage).toEqual({ kind: 'none' })
   })
 
   it('with no mortgage entered, that leg is not set up, not a refusal', () => {
@@ -302,6 +376,32 @@ describe('calculate', () => {
     expect(refused.isa.kind).toBe('shown')
   })
 
+  it('says when the rate after a fixed period applies before the horizon (from the mortgage inputs and the leg’s month)', () => {
+    expect(ok().reversionInHorizon).toBe(true)
+    expect(ok({ ...example, horizonYears: 1 }).reversionInHorizon).toBe(false)
+    expect(ok({ ...example, mortgage: { ...mortgage, fixed: false, fixedRate: null, fixedEndDate: null } }).reversionInHorizon).toBe(false)
+    expect(ok({ ...example, mortgage: mortgageCalculator.defaultInputs() }).reversionInHorizon).toBe(false)
+  })
+
+  it('the personal allowance taper is in play only when the extra contribution lowers adjusted net income inside it', () => {
+    const limits = (salary: ReturnType<typeof fromPounds>) => {
+      const t = thresholdContributions(toOptimiserInputs({ ...pension, salary }), taxYear, DEFAULT_POLICY)
+      if (!t.ok) throw new Error('refused')
+      const limit = (id: string) => t.thresholds.find((x) => x.threshold === id)!.limit
+      return { start: limit('personalAllowanceTaperStart'), end: limit('personalAllowanceTaperEnd') }
+    }
+    const { start, end } = limits(pension.salary)
+    // Pay just above where the taper starts (net pay: adjusted net income is pay less the contribution).
+    const inside = add(add(start, pension.employeeContribution.amount), fromPounds(5_000))
+    expect(ok({ ...example, pay: { ...pension, salary: inside } }).taperInPlay).toBe(true)
+    const below = subtract(start, fromPounds(20_000))
+    expect(ok({ ...example, pay: { ...pension, salary: below } }).taperInPlay).toBe(false)
+    // Far above where it ends: the lump sum's contribution can't bring income back inside.
+    const above = add(add(end, pension.employeeContribution.amount), fromPounds(50_000))
+    expect(ok({ ...example, pay: { ...pension, salary: above } }).taperInPlay).toBe(false)
+    expect(ok({ ...example, lumpSum: ZERO }).taperInPlay).toBe(false)
+  })
+
   it('a lump sum of nothing is every leg nothing, not a refusal', () => {
     const out = ok({ ...example, lumpSum: ZERO })
     expect([out.pension.kind, out.mortgage.kind, out.isa.kind]).toEqual(['nothing', 'nothing', 'nothing'])
@@ -332,38 +432,37 @@ describe('break-even words', () => {
 })
 
 describe('sections', () => {
-  it('none is set on a fresh page; each opens when its inputs differ', () => {
-    const d = defaults()
-    for (const id of ['pension', 'atHorizon', 'allowance', 'otherPay', 'mortgage', 'growth', 'isa'] as const)
-      expect(sectionSet(id, d)).toBe(false)
-    expect(sectionSet('pension', example)).toBe(true)
-    expect(sectionSet('mortgage', example)).toBe(true)
-    expect(sectionSet('growth', example)).toBe(true)
-    expect(sectionSet('atHorizon', { ...d, employerMatch: fromPounds(1) })).toBe(true)
-    expect(sectionSet('allowance', { ...d, pay: { ...d.pay, moneyPurchaseAnnualAllowance: true } })).toBe(true)
-    expect(sectionSet('otherPay', { ...d, pay: { ...d.pay, children: 1 } })).toBe(true)
-    expect(sectionSet('isa', { ...d, isaPaidThisYear: fromPounds(1) })).toBe(true)
+  const today = '2026-10-23' as const
+
+  it('none is set on a fresh page (the date today); each opens when its inputs differ', () => {
+    const d = { ...defaults(), asOf: today }
+    for (const id of ['growth', 'pension', 'isa', 'date'] as const) expect(sectionSet(id, d, today)).toBe(false)
+    expect(sectionSet('growth', example, today)).toBe(true)
+    expect(sectionSet('pension', { ...d, employerMatch: fromPounds(1) }, today)).toBe(true)
+    expect(sectionSet('pension', { ...d, ageNow: 40 }, today)).toBe(false)
+    expect(sectionSet('isa', { ...d, isaPaidThisYear: fromPounds(1) }, today)).toBe(true)
+    expect(sectionSet('date', { ...d, asOf: '2026-11-01' }, today)).toBe(true)
   })
 
-  it('fields map to their sections', () => {
-    expect(sectionForField('mortgage.balance')).toBe('mortgage')
-    expect(sectionForField('pay.employeeContribution-pct')).toBe('pension')
-    expect(sectionForField('pay.carryForward-2')).toBe('allowance')
+  it('fields map to their sections; the three essentials to none', () => {
     expect(sectionForField('growthMid')).toBe('growth')
-    expect(sectionForField('lumpSum')).toBeNull()
+    expect(sectionForField('feeRate')).toBe('growth')
+    expect(sectionForField('schemeAccessAge')).toBe('pension')
+    expect(sectionForField('isaPaidThisYear')).toBe('isa')
+    expect(sectionForField('asOf')).toBe('date')
+    for (const field of ['lumpSum', 'horizonYears', 'ageNow']) expect(sectionForField(field)).toBeNull()
   })
 
-  it('summaries say what is set, what is needed and what needs fixing', () => {
-    expect(sectionSummary('mortgage', defaults(), [])).toBe('Not set up')
-    expect(sectionSummary('mortgage', { ...example, mortgage: { ...mortgage, reversionRate: null } }, [])).toBe(
-      'Needs interest rate after the fixed rate',
+  it('summaries say what is set and what needs fixing', () => {
+    expect(sectionSummary('growth', example, [], today)).toBe('2%, 5% and 8% a year, illustrative; fee 0.5%; inflation 2%')
+    expect(sectionSummary('growth', example, ['feeRate'], today)).toBe('Fix the highlighted input')
+    expect(sectionSummary('pension', example, [], today)).toBe('Retirement tax at the Basic rate band; no employer match')
+    expect(sectionSummary('pension', { ...example, employerMatch: fromPounds(500), schemeAccessAge: 60 }, [], today)).toBe(
+      'Retirement tax at the Basic rate band; employer match £500; scheme age 60',
     )
-    expect(sectionSummary('mortgage', example, [])).toBe('£200,000 from 1 November 2026')
-    expect(sectionSummary('growth', example, [])).toBe('2%, 5% and 8% a year; fee 0.5%; inflation 2%')
-    expect(sectionSummary('growth', example, ['feeRate'])).toBe('Fix the highlighted input')
-    expect(sectionSummary('pension', example, [])).toBe('You pay £3,000; employer £3,000')
-    expect(sectionSummary('atHorizon', example, [])).toBe('tax at the Basic rate band')
-    expect(sectionSummary('allowance', defaults(), [])).toBe('Not set')
+    expect(sectionSummary('isa', example, [], today)).toBe('Nothing paid in this tax year')
+    expect(sectionSummary('date', { ...example, asOf: today }, [], today)).toBe('Today, 23 October 2026')
+    expect(sectionSummary('date', example, [], '2026-10-24')).toBe('23 October 2026')
   })
 })
 
@@ -382,6 +481,9 @@ describe('summarise (compare)', () => {
     expect(rows['Break-even ISA return against the mortgage']).toMatchObject({ kind: expect.stringMatching(/ratio|text/) })
     const inputs = Object.fromEntries(summary.inputs.map((r) => [r.label, r.value]))
     expect(inputs['Lump sum']).toEqual({ kind: 'money', amount: example.lumpSum })
+    expect(inputs['Pay from']).toEqual({ kind: 'text', text: 'Saved with this scenario' })
+    const picked = nextPoundCalculator.summarise({ ...example, paySource: { kind: 'scenario', id: 'a1', name: 'My pay' } }, taxYear)
+    expect(Object.fromEntries(picked.inputs.map((r) => [r.label, r.value]))['Pay from']).toEqual({ kind: 'text', text: 'My pay' })
     expect(inputs['Mortgage balance']).toEqual({ kind: 'money', amount: mortgage.balance })
   })
 
