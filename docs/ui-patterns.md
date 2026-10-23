@@ -212,3 +212,19 @@ As the side-by-side table (U36): the sticky first column is opaque, 8rem wide, a
 ### U41. What-ifs over the inputs
 
 A "What if" section holds a `SliderInput` for each amount, its hint giving the input's own amount. What-ifs are page state, keyed to each line (so adding or removing other lines keeps them), dropped on a load or a fresh start, never in a scenario. While any differs from the inputs, the sticky figure and the results show the what-if (labelled "with your what-ifs") and a table puts your inputs, the what-if and the change side by side. **Reset what-ifs** drops them; **Apply to my inputs** writes them into the inputs with Undo. Both are disabled with nothing to reset or apply; Apply also while a what-if box is invalid.
+
+## Mortgage overpayment (0.27.0)
+
+Patterns from M2. Not owner decisions; change them with a note here.
+
+### U42. Sections that open when the results need them
+
+Every input is in a section (the brief's list: your mortgage, fixed rate, overpaying, what if, early repayment charge, advanced). A section opens on load when its inputs differ from the defaults (U3) **or** when it holds a box the results still need (`sectionNeeded`), so a fresh page opens on the boxes to fill. Its summary then says "Needs …" with those boxes' names. The results column lists the boxes still needed in place of results; the sticky bar says "Enter your mortgage to see results".
+
+### U43. Dates typed, not picked
+
+`src/components/inputs/DateInput.tsx`: a `TextValueInput` holding an ISO date, typed as day/month/year or year-month-day (`parseDateText`, through `isIsoDate`), shown as day/month/year once the box is left, with the date in words under it. A text box, not the native date picker, so it reads the same in every browser and matches the other inputs' validation and 44 px height. Where a date becomes a payment month, the page says which payment ("Paid with the payment on 15 June 2026").
+
+### U44. Answer first, one return per period
+
+The sticky figure is interest saved with the term cut ("£X, 10 years 2 months sooner"; interest-only: what is owed at the end). The answer card follows the warnings: interest saved, term cut, new payoff date, total paid, the charge paid, and with a charge the net saving and break-even (a date, with its payment number). The returns card has one row per rate period, each with its dates and what it is measured against; nothing blends them. The what-if (U40, U41) is a single slider for the monthly overpayment.

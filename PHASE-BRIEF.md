@@ -1,6 +1,6 @@
 # PHASE-BRIEF: Mortgage overpayment
 
-Status: **M1 (engine)**: built, 0.26.0 (PR #38). M0 (PRs #36, #37) is Done; decisions MO1 to MO15 are confirmed. M2 (page) is Not started. The household budget (0.25.0, PR #34) and the 0.25.1 fix release are merged and deployed. Slices 1 to 3 and the budget are Done (`PLAN.md`). Finished scopes, the budget's included, are in `docs/history/phase-brief-archive.md`.
+Status: **M2 (page)**: built, 0.27.0 (PR #39), with MO16 (allowance alignment, for the owner to confirm). M1 (engine, 0.26.0, PR #38) and M0 (PRs #36, #37) are Done; decisions MO1 to MO15 are confirmed. The household budget (0.25.0, PR #34) and the 0.25.1 fix release are merged and deployed. Slices 1 to 3 and the budget are Done (`PLAN.md`). Finished scopes, the budget's included, are in `docs/history/phase-brief-archive.md`.
 
 ## Docs rule
 
@@ -76,14 +76,15 @@ Compare redesign (1b-iii): confirm U24's maximum (the engine's, pay-bounded) and
 
 ## Last session
 
-- 23 October 2026, M1 (0.26.0): MO15's helpers moved to `src/lib/amortising.ts` (car tests 5043 before and after); `src/lib/calendar.ts`; the engine in `src/calculators/mortgage/` with tests first, an exact-fraction reference, properties, the literal guard, a cross-check harness (six todos) and six mutation spot-checks.
-- Readings for the owner to confirm (`docs/open-questions.md`): MO8's last-month order, MO7's allowance years of twelve payments; daily interest drifts against the twelfth-based payment (README, "Known behaviour").
-- Not verified: anything against a real statement (MR-1, MR-2, MR-4 OPEN); no browser check (no UI).
+- 23 October 2026, M2 (0.27.0): MO16 in the engine (allowance used this year, payments to the reset; red then green, six mutants killed, the reference lays out allowance years its own way); the page at `#/c/mortgage` (definition, results, page, `DateInput` and `parseDateText`, Help), tests first.
+- Browser: 30 runs at 360, 768 and 1280 px, light and dark, axe clean; Lighthouse CLS 0 (`docs/performance.md`). Two fixes from it (warning noise, a repeated figure).
+- Readings for the owner: `docs/open-questions.md`, "Mortgage page readings (M2)" (MO16's number and allowance on the balance now, dates to months, the drift threshold).
+- Not verified: a real phone, Safari, a screen reader, any real statement (MR-1, MR-2, MR-4 OPEN).
 
 ## Next
 
-- M2, the page, in a fresh session (on the M1 engine; read `src/calculators/mortgage/README.md`).
-- Owner: fill `docs/mortgage-cross-checks.json` from a statement or illustration.
+- Owner: confirm MO16 and the M2 page readings; fill `docs/mortgage-cross-checks.json` from a statement or illustration (settles MR-1, MR-2 and MR-4); check the page on a real phone, in Safari and with a screen reader.
+- Then mark the mortgage slice Done in `PLAN.md`.
 - CR-10 (car finance) stays open.
 
 Full history (progress logs, finished part scopes, slice archives): `docs/history/` (grep it, don't read it whole).

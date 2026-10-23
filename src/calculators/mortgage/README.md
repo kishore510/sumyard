@@ -1,6 +1,6 @@
-# Mortgage overpayment (M1 engine)
+# Mortgage overpayment
 
-The mortgage overpayment engine (**M1, 0.26.0**, internal: no page, registry entry, config or storage key yet). The page at `#/c/mortgage` comes in M2. Uses no tax rules (MO11). Illustrative, not financial advice.
+The mortgage overpayment engine (**M1, 0.26.0**) and its page at `#/c/mortgage` (**M2, 0.27.0**). No config and no storage key of its own: scenarios store the page's inputs (inputs version 1). Uses no tax rules (MO11). Illustrative, not financial advice.
 
 Decisions: MO1 to MO15 in `docs/modelling-decisions.md` (confirmed by the owner on 23 October 2026), and MO16 (M2, allowance alignment; for the owner to confirm). Sources and what could not be found: `docs/verification-log.md`, MR-1 to MR-10 (MR-1, MR-2 and MR-4 OPEN until the owner's statement is in `docs/mortgage-cross-checks.json`). Rounding per step: `docs/money.md`, "Mortgage overpayment".
 
@@ -12,6 +12,13 @@ Decisions: MO1 to MO15 in `docs/modelling-decisions.md` (confirmed by the owner 
   - `checkInputs(inputs)`: every problem, by field (MO12); never throws on untrusted shapes.
   - `DEFAULT_MORTGAGE_POLICY`: `'monthly'` interest, `'actual/365'` for daily (MO3, MR-10).
 - Imports only `src/lib/` (MO15): `amortising.ts` (the shared payment, monthly rate, interest and annual rate, moved from car finance), `calendar.ts` (payment dates, days between dates, days by year, leap years; no clock), `inputLimits.ts` (`MAX_MORTGAGE_TERM_MONTHS` = 480, `MAX_INPUT_AMOUNT`, `MAX_FINANCE_RATE`, `MAX_LIST_ITEMS`), `money.ts`, `periods.ts`, `isoDate.ts`.
+
+## The page (M2)
+
+- `definition.ts`: `MortgagePageInputs` (inputs version 1; contract boxes start empty), `validateInputs` (fresh objects; hostile keys, bad shapes and bounds refused by field), `toEngineInputs` (dates to payment months: the fixed rate and the charge cover the payments on or before their end dates; a lump sum goes with the first payment on or after its date; what is still needed, by field), `calculate`, `summarise` (typed rows for compare), section summaries.
+- `results.ts`: the chart's yearly points and fixed-rate marker, the data behind each warning (over the allowance with the charge; lump sums not needed; the fixed rate against the term; daily drift past `MORTGAGE_DRIFT_SHARE`), one return line per rate period with what it is measured against.
+- `MortgagePage.tsx`: sections (U42), `StickyResult`, the answer card, a what-if slider (U40, U41), warnings never hidden, payments and balance, returns, the shared `Chart` with its table, a yearly table, `AssumptionsPanel` (the engine's assumptions and the page's: dates to payment dates, the regular overpayment's run, lender terms vary), `NoTaxRulesBadge`, the disclaimer. Help: `content/help/mortgage.md`.
+- Page readings for the owner: `docs/open-questions.md`, "Mortgage page readings (M2)".
 
 ## How it works
 
