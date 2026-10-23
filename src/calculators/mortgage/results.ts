@@ -62,11 +62,25 @@ export function drifts(result: MortgageResult, inputs: MortgageInputs): boolean 
   return compare(gap, mulRound(level, MORTGAGE_DRIFT_SHARE, 'down')) > 0
 }
 
-/** Overpayments asked for but not needed, because they would take the balance below nothing (MO8); null if none. */
-export function unusedOverpayments(result: MortgageResult): { readonly firstMonth: number; readonly total: Money } | null {
-  const rows = result.overpaying.rows.filter((row) => compare(row.unused, ZERO) > 0)
-  if (rows.length === 0) return null
-  return { firstMonth: rows[0]!.month, total: rows.reduce((total, row) => add(total, row.unused), ZERO) }
+/**
+ * Lump sums asked for but not needed, because they would take the balance below nothing (MO8); null if none. A month's
+ * unused amount is put down to the regular overpayment first: one that simply stops once the mortgage is cleared is
+ * what overpaying is for, not a warning.
+ */
+export function unusedOverpayments(
+  result: MortgageResult,
+  inputs: MortgageInputs,
+): { readonly firstMonth: number; readonly total: Money } | null {
+  const { regular } = inputs
+  let firstMonth: number | null = null
+  let total = ZERO
+  for (const row of result.overpaying.rows) {
+    const regularAsk = regular && row.month >= regular.fromMonth && row.month <= regular.toMonth ? regular.amount : ZERO
+    if (compare(row.unused, regularAsk) <= 0) continue
+    firstMonth ??= row.month
+    total = add(total, subtract(row.unused, regularAsk))
+  }
+  return firstMonth === null ? null : { firstMonth, total }
 }
 
 /** The allowance years with a charge (MO7, MO16). */

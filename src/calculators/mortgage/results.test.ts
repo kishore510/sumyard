@@ -57,7 +57,10 @@ describe('drift under daily interest', () => {
 describe('warnings’ data', () => {
   it('overpayments past the balance: the first month and the total not needed', () => {
     const { r } = run({ termMonths: 12, fixedEndMonth: 12, lumpSums: [{ month: 3, amount: fromPounds(300_000) }] })
-    const unused = unusedOverpayments(r, inputs({ termMonths: 12, fixedEndMonth: 12, lumpSums: [{ month: 3, amount: fromPounds(300_000) }] }))
+    const unused = unusedOverpayments(
+      r,
+      inputs({ termMonths: 12, fixedEndMonth: 12, lumpSums: [{ month: 3, amount: fromPounds(300_000) }] }),
+    )
     expect(unused?.firstMonth).toBe(3)
     expect(toPence(unused!.total)).toBe(r.overpaying.rows.reduce((t, row) => t + toPence(row.unused), 0))
     expect(unusedOverpayments(run().r, inputs())).toBeNull()

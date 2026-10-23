@@ -774,7 +774,7 @@ function Results({
 /** Warnings at these inputs, shown in full, never collapsed or capped. */
 function Warnings({ shown, fixed, gbp }: { shown: Ok; fixed: boolean; gbp: Gbp }) {
   const { result, inputs: engine } = shown
-  const unused = unusedOverpayments(result)
+  const unused = unusedOverpayments(result, engine)
   const charged = overAllowance(result)
   const note = fixedRateNote(engine, fixed)
   const drift = drifts(result, engine)
@@ -931,7 +931,7 @@ function Returns({ lines }: { lines: readonly ReturnLine[] }) {
             key={line.period}
             label={line.period === 'fixed' ? 'While fixed' : 'After the fixed rate'}
             value={formatPercent(line.effective)}
-            detail={`A year, effective; ${formatIsoDate(line.from)} to ${formatIsoDate(line.to)}. Measured against: ${line.against}`}
+            detail={`A year, effective; ${formatIsoDate(line.from)} to ${formatIsoDate(line.to)}. Measured against ${line.against.charAt(0).toLowerCase()}${line.against.slice(1)}`}
           />
         ))}
       </ResultCard>
