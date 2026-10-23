@@ -121,7 +121,8 @@ const home = {
 }
 
 function save(calculatorId: 'optimiser' | 'mortgage', name: string, inputs: unknown) {
-  const made = scenarioStore.create({ calculatorId, taxYear: '2026-27', name, inputs })
+  // The mortgage page uses no tax rules, so its scenarios carry no tax year.
+  const made = scenarioStore.create({ calculatorId, ...(calculatorId === 'optimiser' ? { taxYear: '2026-27' } : {}), name, inputs })
   if (!made.ok) throw new Error(made.error)
   return made.scenario
 }
@@ -183,7 +184,7 @@ describe('where pay comes from', () => {
     vi.setSystemTime(new Date(2026, 9, 23, 13))
     const second = save('optimiser', 'New pay', pay(80_000))
     remount()
-    set({ lumpSum: fromPounds(10_000), ageNow: 40 })
+    set({ lumpSum: fromPounds(10_000), horizonYears: 20, ageNow: 40 })
     expect(session.get().inputs.paySource).toMatchObject({ kind: 'scenario', id: second.id })
     click(byText(view.host, 'button', 'Change'))
     expect([...select('np-pay-source').options].map((o) => o.textContent)).toEqual(['New pay', 'Old pay'])
