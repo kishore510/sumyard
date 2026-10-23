@@ -1,6 +1,6 @@
 # Phase plan: Sumyard
 
-Last updated: 22 October 2026 (3d-2 thresholds past a tie, fuel price threshold and cost bridge Done, 0.24.0; 3e finance on a kept car Done, 0.23.0; 3d-1.1 car page fixes Done, 0.22.1; 3d-1 car results redesign Done, 0.22.0; 1b-iii Done, 0.21.0; slices 1b, 2 and 3 built, owner checks open)
+Last updated: 23 October 2026 (slices 1 take-home pay and optimiser, 2 compound interest and 3 car decision marked Done by the owner; owner confirmations still open are listed in `PHASE-BRIEF.md`; 3d-2 Done, 0.24.0)
 
 Sumyard is a set of personal UK finance calculators in one clean, ad-free web app, for the owner's own use. Constraints: client-side only, a static site on GitHub Pages, UK rules from versioned per-tax-year config, illustrative not advice.
 
@@ -13,7 +13,7 @@ Rules for this file: add a row when scope is added; update the Status cell when 
 | 0 Foundation | Recon of Chalkline and Stickyard; repo, TypeScript strict, lint, tests, CI, Pages deploy, app chrome | Done (0.2.0, PR #2, 17 October 2026) |
 | 0.5 Core plumbing | Money, `Sourced<T>` config pipeline, Tax data screen, versioned scenario storage, shared inputs | Done (0.4.0, PR #4, 17 October 2026) |
 | 1a Optimiser: config and engine | Verified `2026-27` config, verification log, worked examples, the pure tax engine and `optimise()` | Done (0.8.0, PR #8, 17 October 2026) |
-| 1b Optimiser: UI | The £100k+ page on the 1a engine, built in the parts below | In progress |
+| 1b Optimiser: UI | The £100k+ page on the 1a engine, built in the parts below | Done (0.21.0, PR #27, 22 October 2026) |
 | 1b-i Take-home page | First usable calculator at `#/c/optimiser`: benefits in kind, post-tax deductions | Done (0.9.0, PR #10, 18 October 2026) |
 | 1b-i.1 Percentages and lists | Pension as a percentage, itemised benefits and deductions, monthly entry | Done (0.10.0, PR #11, 18 October 2026) |
 | 0.11.0 Salary sacrifice and PAYE | Benefits through salary sacrifice, tax code and PAYE estimate, monthly breakdown | Done (0.11.0, PR #12, 18 October 2026) |
@@ -22,10 +22,10 @@ Rules for this file: add a row when scope is added; update the Status cell when 
 | 1b-ii-a Optimiser sweep and chart | `optimise()` from page inputs, take-home against contribution chart with markers and cliffs, table fallback, load layout-shift fix | Done (0.13.0, PR #16, 21 October 2026) |
 | 1b-ii-b Reading the result | Cost of £1 more pension, thresholds in words, warnings, childcare eligibility, compare, Help and assumptions | Done (0.14.0, PR #17, 21 October 2026) |
 | 1b-iii Pension compare redesign | Contribution picker (typed amount, slider, pills), now against a target a month and a year with % change and pts, cost-of-£1 chart over the whole range, milestones, warnings at the target, detail in sections (UI and one pure function; no tax or config change) | Done (0.21.0, PR #27, 22 October 2026) |
-| 2 Compound interest | Regular contributions, compounding, inflation-adjusted view, fee drag, yearly table and chart | In progress |
+| 2 Compound interest | Regular contributions, compounding, inflation-adjusted view, fee drag, yearly table and chart | Done (0.16.0, PR #20, 21 October 2026) |
 | 2a Compound interest engine | Pure engine: effective and equivalent rates, yearly projection with and without the fee, real view, fee drag, refusals (internal, no UI) | Done (0.15.0, PR #19, 21 October 2026) |
 | 2b Compound interest page | The page on the 2a engine: inputs, yearly table and chart, nominal and real, fee drag, scenarios, compare, Help | Done (0.16.0, PR #20, 21 October 2026) |
-| 3 Car decision | Keep vs buy outright vs PCP vs HP vs loan over a fixed horizon: finance, depreciation, running costs, VED as an input, residual value | In progress |
+| 3 Car decision | Keep vs buy outright vs PCP vs HP vs loan over a fixed horizon: finance, depreciation, running costs, VED as an input, residual value | Done (0.24.0, PR #31, 22 October 2026) |
 | 3a Car finance engine | Amortising payment and schedule, rate solver, loan, HP and PCP, outstanding balance; APR conventions verified first (internal, no UI) | Done (0.17.0, PR #21, 21 October 2026) |
 | 3a.1 APR verification | Statutory APR read from CONC App 1.2 and SI 2010/1011 (CR-1 to CR-3 verified, CR-10 partly); `apr` from dated cash flows (internal, no UI) | Done (0.17.1, PR #22, 22 October 2026) |
 | 3b Cost-of-ownership engine | Up to four options (keep, cash, loan, HP, PCP buy or hand back) on one horizon: value curve and low/expected/high cases, running costs and fuel incl. electric, equity, opportunity cost, coverage, net cost per month of coverage, comparison and flip points (internal, no UI) | Done (0.18.0, PR #23, 22 October 2026) |
