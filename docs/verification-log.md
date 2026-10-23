@@ -10,11 +10,11 @@ Rules for every row:
 - Status is `verified`, `todo` or `OPEN` (a question about how the value is applied, which the engine needs answered; the value itself may still be verified).
 - Amounts are shown as the sources print them. In the config, money is integer pence and rates are exact ratios (`docs/money.md`).
 
-Other sections log facts that are not tax config values: "Car finance (slice 3a)" holds the consumer credit conventions behind the car finance engine, "Mortgage overpayment (session M0)" the mortgage conventions, and "Next pound decision (session C0)" the pension and ISA lookups for C1 (not yet config: C1 adds them as leaves, with rows in the Values table). They have no Values table and no config leaf.
+Other sections log facts that are not tax config values: "Car finance (slice 3a)" holds the consumer credit conventions behind the car finance engine, "Mortgage overpayment (session M0)" the mortgage conventions, and "Next pound decision (session C0)" the pension and ISA lookups for the next pound decision (the values among them became config leaves in session C0.5, with rows in the Values table; the section keeps the rules and the OPEN items). They have no Values table and no config leaf.
 
 ## 2026-27
 
-Checked by Claude in slice 1a session E, from pages fetched on 17 October 2026. Owner spot-check of the riskiest values (listed in PR #5) confirmed on 17 October 2026, at the start of session F.
+Checked by Claude in slice 1a session E, from pages fetched on 17 October 2026. Owner spot-check of the riskiest values (listed in PR #5) confirmed on 17 October 2026, at the start of session F. Session C0.5 (23 October 2026) added the pension access age, its announced rise, the tax-free lump sum share, the lump sum allowance and the ISA limit, each read again on its page that day; the rows marked **SPOT-CHECK (owner)** rest on current guides naming no tax year (`docs/modelling-decisions.md`, CP11).
 
 ### Summary
 
@@ -315,9 +315,25 @@ Read on 23 October 2026, in session M0 (brief and decisions only), before any en
 
 ## Next pound decision (session C0)
 
-Read on 23 October 2026 in session C0 (brief and decisions only), from `www.gov.uk` pages fetched through GOV.UK's content API (`/api/content/<path>`, the same text as the page) in this session. **No config change in C0.** These rows are what C1 needs before it adds config leaves; each leaf then gets a row in the 2026-27 Values table above, in its own PR (`CLAUDE.md`, Workflow). Decisions that use them: `docs/modelling-decisions.md`, "Next pound decision (session C0)" (CP1 to CP10). Figures are quoted as the pages print them; nothing is taken from memory.
+Read on 23 October 2026 in session C0 (brief and decisions only), from `www.gov.uk` pages fetched through GOV.UK's content API (`/api/content/<path>`, the same text as the page) in this session. **No config change in C0.** These rows are what C1 needs before it adds config leaves; each leaf then gets a row in the 2026-27 Values table above, in its own PR (`CLAUDE.md`, Workflow). Decisions that use them: `docs/modelling-decisions.md`, "Next pound decision (session C0)" (CP1 to CP11). Figures are quoted as the pages print them; nothing is taken from memory.
 
 Two checks per row: **Value** (what the pages say, and whether two pages agree) and **Tax year** (whether a page names 2026 to 2027, as the config rule above asks). A row can be verified on its value and still OPEN on its tax year.
+
+### Session C0.5 (config leaves, 23 October 2026)
+
+The owner decided NP-1 to NP-4 on 23 October 2026 (`docs/modelling-decisions.md`, CP11). Every page behind a new leaf was fetched and read again in C0.5, not copied from the C0 rows below; the exact lines are in the 2026-27 Values table. OPEN first:
+
+| # | Topic | Source type | Status | Config |
+|---|---|---|---|---|
+| NP-1 | Transitional rules for people aged 55 or 56 when the age rises | HMRC consultation (draft regulations, updated 6 August 2026), read again 23 October 2026: "members who were aged 55 or 56 on 5 April 2028 are treated as having reached age 57 immediately before certain pension payments are made" | **OPEN**, not modelled (owner): C1 shows a warning | None. The age now, the announced age and its date are leaves (`pension.minimumAge.*`) |
+| NP-4 | Cash in an ISA from 6 April 2027 | Newsletter (Tax-free savings newsletter 23, September 2026) | Informational, **not modelled** (owner) | None |
+| NP-2 | The tax-free share of a lump sum | Three current guides, no tax year named | Decided (owner): a current guide is enough when two pages agree; verified, **SPOT-CHECK** | `pension.lumpSum.taxFreeShare` |
+| NP-3 | Normal minimum pension age now | Three current guides, no tax year named; the 2021 impact note states the law since 6 April 2010 | Decided (owner), as NP-2; verified, **SPOT-CHECK** | `pension.minimumAge.current` |
+| NP-5 | The announced age and its start date | HMRC policy papers (4 November 2021, 20 July 2021) and the 2026 consultation | Verified | `pension.minimumAge.announced`, `pension.minimumAge.announcedFrom` |
+| NP-6 | Lump sum allowance, 2026 to 2027 | HMRC rates page and Budget 2025 Annex A, the year named | Verified | `pension.lumpSum.allowance` |
+| NP-12 | ISA annual subscription limit, 2026 to 2027 | GOV.UK ISA guide and Budget 2025 Annex A, the year named | Verified | `isa.annualLimit` |
+
+Not stored: NP-7 to NP-11 (rules, not figures; not read again in C0.5 beyond the pages above). The basic rate a retirement tax default needs is already in `incomeTax.bands`; no duplicate leaf.
 
 ### OPEN first
 

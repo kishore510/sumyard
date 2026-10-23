@@ -458,3 +458,11 @@ This one composer, `src/calculators/next-pound/`, may import the public entry po
 ### CP10. Out of scope (owner)
 
 The Lifetime ISA, the State Pension, a partner, offset mortgages, cash savings, inheritance tax, monthly contributions.
+
+### CP11. Config leaves for the next pound (owner, 23 October 2026; session C0.5)
+
+The owner's answers to the questions C0 left OPEN (NP-1 to NP-4, `docs/verification-log.md`), applied in C0.5 (config and docs only).
+
+- **NP-2, NP-3 (source tax year).** A current GOV.UK guide that names no tax year is accepted for a config value when two pages agree, and the leaf is logged for the owner's spot-check, as `pension.reliefAtSourceRate` was. With only one page the leaf stays `todo`. Applied: `pension.lumpSum.taxFreeShare` (three guides agree) and `pension.minimumAge.current` (three guides agree, with the 2021 impact note stating the law since 6 April 2010) are verified and marked SPOT-CHECK in the Values table.
+- **NP-1 (people aged 55 or 56 when the age rises).** The transitional rules are not modelled; C1 shows a warning when the horizon or the person's age makes them relevant. Config holds the age now, the announced age and the date it applies from (`pension.minimumAge.current`, `.announced`, `.announcedFrom`): the schema already had a date leaf kind (`period.start`), so the date is a plain `Sourced<IsoDate>` and needed no schema change beyond the new leaves.
+- **NP-4 (cash in an ISA from 6 April 2027).** Informational only: no config leaf, no engine logic. Logged as a row with its source type (a newsletter) and "not modelled".

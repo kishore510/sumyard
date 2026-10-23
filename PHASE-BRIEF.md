@@ -1,6 +1,6 @@
 # PHASE-BRIEF: Where does the next £X go?
 
-Status: **C0 (brief and decisions, docs only)** Done (PR #42); C1 next. Mortgage overpayment M0 to M2 are Done (0.26.0 to 0.27.2, PRs #36 to #41, deployed); the slice waits on the owner's checks (below) before `PLAN.md` marks it Done. Slices 1 to 3 and the budget are Done. Finished briefs, the mortgage slice's included, are in `docs/history/phase-brief-archive.md`.
+Status: **C0 (brief and decisions, docs only)** Done (PR #42); **C0.5 (config values)** Done (0.28.0, PR #43); C1 next. Mortgage overpayment M0 to M2 are Done (0.26.0 to 0.27.2, PRs #36 to #41, deployed); the slice waits on the owner's checks (below) before `PLAN.md` marks it Done. Slices 1 to 3 and the budget are Done. Finished briefs, the mortgage slice's included, are in `docs/history/phase-brief-archive.md`.
 
 ## Docs rule
 
@@ -15,7 +15,8 @@ Close out every session with the tiered checklist in `CLAUDE.md` ("Session close
 ### Parts
 
 - **C0, brief and decisions (PR #42):** docs only. No code, config or UI.
-- **C1, composer (internal, no UI), tests first: red then green.** Before the engine, and in its **own PR** (`CLAUDE.md`: each change to tax values is its own PR): config leaves for the tax-free share (NP-2), the lump sum allowance (NP-6), the access age now and its rise (NP-3, NP-5) and the ISA limit (NP-12), each a red then green pair with a Values row; NP-2 and NP-3 need the owner's call on their tax year first. Then `src/calculators/next-pound/` (`types.ts`, `calc.ts`, `README.md`, `fixtures/reference.ts`, `calc.test.ts`, `properties.test.ts`, `reference.test.ts`, `crossChecks.test.ts` on `docs/next-pound-cross-checks.json`, `literals.test.ts`), and `src/calculators/engineImports.test.ts` (CP9's spec). Starting rates for low, mid and high growth as named starting values in `src/lib/inputLimits.ts`, for the owner. Mutation spot-checks on the composer.
+- **C0.5, config values (PR #43):** the owner's NP-1 to NP-4 decisions (CP11); 2026-27 leaves `pension.minimumAge.current`, `.announced`, `.announcedFrom`, `pension.lumpSum.taxFreeShare`, `.allowance` and `isa.annualLimit`, each with a Values row. Read them through `requireVerified`; the basic rate for the retirement tax default is the "Basic rate" band in `incomeTax.bands`.
+- **C1, composer (internal, no UI), tests first: red then green.** `src/calculators/next-pound/` (`types.ts`, `calc.ts`, `README.md`, `fixtures/reference.ts`, `calc.test.ts`, `properties.test.ts`, `reference.test.ts`, `crossChecks.test.ts` on `docs/next-pound-cross-checks.json`, `literals.test.ts`), and `src/calculators/engineImports.test.ts` (CP9's spec). Starting rates for low, mid and high growth as named starting values in `src/lib/inputLimits.ts`, for the owner. Mutation spot-checks on the composer.
 - **C2, page:** `definition.ts` (inputs version 1, `validateInputs`, `migrateInputs`, `summarise`, `applySettings` for the region), `NextPoundPage.tsx` from shared components (`StickyResult`, `Section`, inputs, `ResultCard`/`StatRow`, `AssumptionsPanel`, `VerifiedBadge`, `RefusalNotice`), registry and route, scenarios and compare, Help topic `next-pound`, README. Browser matrix once. No new storage key.
 
 ### Reuse (audited in C0)
@@ -56,7 +57,7 @@ CP10: the Lifetime ISA, the State Pension, a partner, offset mortgages, cash sav
 
 ## Still with the owner (follow-ups; slices 1 to 3 and the budget are Done)
 
-Next pound decision (C0): confirm the readings proposed under CP1 to CP9 (`docs/open-questions.md`, "Next pound decision"), in particular CP3's correction (net cost per £1 is measured from no contribution), CP5's ERC and freed payments, CP4's pension growth, lump sum allowance and default rate, CP7's break-even against the pension, and CP9's second exception (car ownership on car finance); decide whether a current GOV.UK guide is enough for the tax-free share and the access age as config leaves (NP-2, NP-3, no tax year named); confirm that the new leaves go in their own PR before C1's engine.
+Next pound decision (C0): confirm the readings proposed under CP1 to CP9 (`docs/open-questions.md`, "Next pound decision"), in particular CP3's correction (net cost per £1 is measured from no contribution), CP5's ERC and freed payments, CP4's pension growth, lump sum allowance and default rate, CP7's break-even against the pension, and CP9's second exception (car ownership on car finance); spot-check the two leaves that rest on current guides naming no tax year (`pension.lumpSum.taxFreeShare`, `pension.minimumAge.current`; NP-2, NP-3, decided 23 October 2026, CP11) against the guides cited in `docs/verification-log.md`.
 
 Mortgage overpayment (M2): confirm MO16 and the M2 page readings (`docs/open-questions.md`); fill `docs/mortgage-cross-checks.json` from a statement or illustration (settles MR-1, MR-2 and MR-4); check the page on a real phone, in Safari and with a screen reader; then the slice is marked Done in `PLAN.md`.
 
@@ -77,15 +78,15 @@ Compare redesign (1b-iii): confirm U24's maximum (the engine's, pay-bounded) and
 
 ## Last session
 
-- 23 October 2026, C0 (docs only): pre-check (PR #41 merged, Pages deploy green; mortgage M0 to M2 Done, slice row In progress). Reuse audit of `optimise()`, `overpay()`, `project()`, `money.ts`, `inputLimits.ts`, the registry.
-- GOV.UK: NP-1 to NP-12 (access age and its rise, tax-free share and lump sum allowance, tax on the rest, ISA limit and tax-free growth, the 2027 ISA reform); OPEN: NP-1 to NP-4.
-- CP1 to CP10 recorded with proposed readings; rounding per step; `CLAUDE.md` import rule (CP9); cross-check placeholder; `PLAN.md` rows, the rest Parked (`docs/backlog.md`).
-- Not verified: any figure against a real statement or illustration; the NMPA legislation itself (legislation.gov.uk not read); whether GOV.UK search missed a page naming the tax-free share's tax year.
+- 23 October 2026, C0.5 (config and docs only): pre-check (PR #42 merged, Pages deploy green). Owner's NP-1 to NP-4 decisions recorded as CP11.
+- Six 2026-27 leaves, each read again on GOV.UK that day: access age now (55), announced age (57) from 6 April 2028, tax-free share (25%), lump sum allowance, ISA limit (new `isa` group). Two red/green pairs, one per group. 0.28.0.
+- SPOT-CHECK (owner): the tax-free share and the access age now rest on current guides naming no tax year (three pages each agree).
+- Not verified: the NMPA legislation (legislation.gov.uk not read); any Budget or Statement after 17 October 2026 changing a value; NP-7 to NP-11 not read again.
 
 ## Next
 
-- Owner: confirm the C0 readings and NP-2/NP-3's tax-year question (above); fill `docs/next-pound-cross-checks.json` when documents are to hand.
-- C1 pre-check: confirm PR #42 merged and deployed; then the config PR (leaves, verification rows), then the composer.
+- Owner: confirm the C0 readings and spot-check the two guide-based leaves (above); fill `docs/next-pound-cross-checks.json` when documents are to hand.
+- C1 pre-check: confirm PR #43 merged and deployed; then the composer.
 - Mortgage slice: the owner's checks above, then Done in `PLAN.md`. CR-10 (car finance) stays open.
 
 Full history (progress logs, finished part scopes, slice archives): `docs/history/` (grep it, don't read it whole).

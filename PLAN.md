@@ -1,6 +1,6 @@
 # Phase plan: Sumyard
 
-Last updated: 23 October 2026 (next pound decision started: C0 brief and decisions Done; remaining not-started rows parked, `docs/backlog.md`; mortgage overpayment: M0 to M2 Done, owner checks open; household budget Done, 0.25.0; slices 1 to 3 Done, owner confirmations still open are listed in `PHASE-BRIEF.md`)
+Last updated: 23 October 2026 (next pound decision: C0 brief and decisions Done, C0.5 config values Done, 0.28.0; remaining not-started rows parked, `docs/backlog.md`; mortgage overpayment: M0 to M2 Done, owner checks open; household budget Done, 0.25.0; slices 1 to 3 Done, owner confirmations still open are listed in `PHASE-BRIEF.md`)
 
 Sumyard is a set of personal UK finance calculators in one clean, ad-free web app, for the owner's own use. Constraints: client-side only, a static site on GitHub Pages, UK rules from versioned per-tax-year config, illustrative not advice.
 
@@ -44,7 +44,8 @@ Rules for this file: add a row when scope is added; update the Status cell when 
 | M2 Mortgage page | Allowance alignment for a mortgage already running (MO16, engine); the page on M1: inputs in sections, sticky result, balance chart with a table fallback, what-if slider, warnings, assumptions, "Uses no tax rules", scenarios, compare, Help | Done (0.27.0, PR #39, 23 October 2026) |
 | Next pound decision | `#/c/next-pound`, "Where does the next £X go?": one lump sum of take-home into a pension (through the optimiser at the person's own pay), a mortgage overpayment (the mortgage engine, the only guaranteed leg) or an ISA (compound interest, low/mid/high), as the change in net worth at a horizon in today's money, after tax on withdrawal, with the break-even ISA return; nothing called best. Composes verified engines. Built in the parts below | In progress |
 | C0 Next pound brief and decisions | Reuse audit, GOV.UK lookups (NP-1 to NP-12), decisions CP1 to CP10, rounding per step, the engine import rule (CP9), the brief, a cross-check placeholder (docs only) | Done (0.27.2, PR #42, 23 October 2026) |
-| C1 Next pound composer | Config leaves first in their own PR; the pure composer, tests first, with an independent reference: pension, mortgage and ISA legs, horizon and access age, today's money, break-even, warnings, refusals; the engine import guard test (internal, no UI) | Not started |
+| C0.5 Next pound config values | Owner's NP-1 to NP-4 decisions (CP11); 2026-27 config leaves, each read again on GOV.UK: the pension access age now, the announced age and its start date, the tax-free lump sum share, the lump sum allowance (pension group) and the ISA annual limit (new ISA group); tests first, verification rows, Tax data screen (config and docs only) | Done (0.28.0, PR #43, 23 October 2026) |
+| C1 Next pound composer | The pure composer on the C0.5 config leaves, tests first, with an independent reference: pension, mortgage and ISA legs, horizon and access age, today's money, break-even, warnings, refusals; the engine import guard test (internal, no UI) | Not started |
 | C2 Next pound page | The page on C1: inputs in sections, sticky result, three columns with the break-even, warnings, assumptions, verified badge, scenarios, compare, Help | Not started |
 | Loan / APR | Verify the APR definition against official guidance | Parked |
 | ISA vs pension vs mortgage | Builds on 1b and the overpayment calculator | Parked |
