@@ -31,18 +31,28 @@ const CHARGED = sample(SEED)
 const UNCHARGED = sample(SEED + 1, false)
 const payoff = (s: Schedule, term: number) => s.payoffMonth ?? term + 1
 
-describe('mortgage engine properties (seeded)', () => {
+/** Each case and month that breaks a rule, so one assertion reports them all (thousands of expect calls are slow on CI). */
+const broken: { case: string; month: number }[] = []
+const note = (inputs: MortgageInputs, month: number) => broken.push({ case: JSON.stringify(inputs), month })
+const noneBroken = () => {
+  const found = broken.splice(0)
+  expect(found.slice(0, 3)).toEqual([])
+}
+
+// Each test reruns or walks every case; CI runners are slower than the default timeout allows.
+describe('mortgage engine properties (seeded)', { timeout: 60_000 }, () => {
   it('the balance is never below nothing, and every row adds up', () => {
     for (const { inputs, result } of CHARGED) {
       for (const s of [result.baseline, result.overpaying]) {
         expect(s.rows).toHaveLength(inputs.termMonths)
         for (const row of s.rows) {
-          expect(p(row.closing), JSON.stringify(inputs)).toBeGreaterThanOrEqual(0)
-          expect(p(row.closing)).toBe(p(row.opening) + p(row.interest) - p(row.payment) - p(row.overpayment))
-          expect(Math.min(p(row.interest), p(row.payment), p(row.overpayment), p(row.unused), p(row.erc))).toBeGreaterThanOrEqual(0)
+          const adds = p(row.closing) === p(row.opening) + p(row.interest) - p(row.payment) - p(row.overpayment)
+          const least = Math.min(p(row.closing), p(row.interest), p(row.payment), p(row.overpayment), p(row.unused), p(row.erc))
+          if (!adds || least < 0) note(inputs, row.month)
         }
       }
     }
+    noneBroken()
   })
 
   it('a repayment mortgage is cleared by the end of the term', () => {
@@ -76,8 +86,9 @@ describe('mortgage engine properties (seeded)', () => {
     // the last months of a long term can sit above the baseline. Logged for the owner (PR, MR-1).
     for (const { inputs, result } of CHARGED) {
       if (inputs.policy.interestMethod === 'daily') continue
-      for (const point of result.balances) expect(p(point.overpaying), JSON.stringify(inputs)).toBeLessThanOrEqual(p(point.baseline))
+      for (const point of result.balances) if (p(point.overpaying) > p(point.baseline)) note(inputs, point.month)
     }
+    noneBroken()
   })
 
   it('with no overpayment, the overpaying schedule is the baseline', () => {
@@ -123,20 +134,22 @@ describe('mortgage engine properties (seeded)', () => {
       if (inputs.regular) for (let m = inputs.regular.fromMonth; m <= inputs.regular.toMonth; m++) asked.set(m, p(inputs.regular.amount))
       for (const l of inputs.lumpSums) asked.set(l.month, (asked.get(l.month) ?? 0) + p(l.amount))
       for (const row of result.overpaying.rows)
-        expect(p(row.overpayment) + p(row.unused), JSON.stringify(inputs)).toBe(asked.get(row.month) ?? 0)
+        if (p(row.overpayment) + p(row.unused) !== (asked.get(row.month) ?? 0)) note(inputs, row.month)
     }
+    noneBroken()
   })
 
   it('a charge falls only in charged months, and the yearly charges add up', () => {
     for (const { inputs, result } of CHARGED) {
       const end = inputs.erc?.endMonth ?? 0
-      for (const row of result.overpaying.rows) if (row.month > end) expect(p(row.erc)).toBe(0)
+      for (const row of result.overpaying.rows) if (row.month > end && p(row.erc) !== 0) note(inputs, row.month)
       expect(result.allowances.reduce((t, y) => t + p(y.charged), 0)).toBe(p(result.overpaying.totalErc))
       if (p(result.overpaying.totalErc) > 0)
         expect(p(result.charge!.netSaving)).toBe(p(result.interestSaved) - p(result.overpaying.totalErc))
       else expect(result.charge).toBeNull()
       expect(p(result.baseline.totalErc)).toBe(0)
     }
+    noneBroken()
   })
 
   it('assumptions never carry a digit', () => {
