@@ -237,6 +237,13 @@ describe('the fuel or energy price threshold (F54)', () => {
     expect(compareExact(gap, exact(fromPence(-1)))).toBeGreaterThan(0)
   })
 
+  it('OWN-10: 12.5p a mile at 40 mpg is 50,000,000 ÷ 454,609 pence a litre', () => {
+    expect(pencePerLitreFor(exactMul(exact(fromPence(1)), ratio(25, 2)), ratio(40, 1))).toEqual({
+      numerator: 50_000_000n,
+      denominator: 454_609n,
+    })
+  })
+
   it('a first option driven no miles: no crossing', () => {
     const still = withMileage(thirsty, 0)
     expect(flip(still, other, s).kind).toBe('no-crossing-in-range')

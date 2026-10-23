@@ -67,7 +67,7 @@ describe('the cost bridge (F55)', () => {
     expect(bridge.total.shown).toBe(roundExact(exactMul(exact(fromPence(gap)), ratio(1, 36)), 'nearest'))
   })
 
-  it('a worked example: the depreciation part is £9,000 less £4,000 over 36 months, no interest either side', () => {
+  it('OWN-9, a worked example: the depreciation part is £9,000 less £4,000 over 36 months, no interest either side', () => {
     const bridge = costBridge(cost(buy, s), cost(kept, s), 'expected')!
     const depreciation = bridge.parts.find((p) => p.id === 'depreciation')!
     // (2,000,000 − 1,100,000) − (800,000 − 400,000) = 500,000 pence over 36 months.
