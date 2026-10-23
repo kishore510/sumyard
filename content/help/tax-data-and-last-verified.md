@@ -1,6 +1,6 @@
 ---
 title: How tax data and “last verified” work
-order: 8
+order: 9
 summary: Where calculators get their tax figures, the Tax data page, and what “last verified” means.
 ---
 **Every 2026 to 2027 figure Sumyard holds has been checked against GOV.UK**, and the Tax data page shows each one with its source and the date it was checked. There are no real calculators yet; they will use these figures when they arrive.

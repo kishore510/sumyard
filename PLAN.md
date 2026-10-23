@@ -1,6 +1,6 @@
 # Phase plan: Sumyard
 
-Last updated: 23 October 2026 (mortgage overpayment: M1 engine Done, 0.26.0; M0 brief and decisions Done, confirmed by the owner; household budget Done, 0.25.0; slices 1 to 3 Done, owner confirmations still open are listed in `PHASE-BRIEF.md`)
+Last updated: 23 October 2026 (mortgage overpayment: M2 page Done, 0.27.0; M1 engine Done, 0.26.0; M0 brief and decisions Done, confirmed by the owner; household budget Done, 0.25.0; slices 1 to 3 Done, owner confirmations still open are listed in `PHASE-BRIEF.md`)
 
 Sumyard is a set of personal UK finance calculators in one clean, ad-free web app, for the owner's own use. Constraints: client-side only, a static site on GitHub Pages, UK rules from versioned per-tax-year config, illustrative not advice.
 
@@ -41,7 +41,7 @@ Rules for this file: add a row when scope is added; update the Status cell when 
 | Mortgage overpayment | `#/c/mortgage`: regular and lump-sum overpayments on a repayment or interest-only mortgage with a fixed rate, its end and a reversion rate; daily or monthly interest (a policy, monthly by default); early repayment charge and penalty-free allowance as contract inputs; reduce the term or the payment; interest saved before and after the charge, with its effective guaranteed return; no tax rules. Built in the parts below | In progress |
 | M0 Mortgage brief and decisions | Reuse audit, GOV.UK research (MR-1 to MR-10), decisions MO1 to MO15 confirmed by the owner, rounding per step, the brief, a cross-check placeholder (docs only) | Done (0.25.1, PR #36, 23 October 2026) |
 | M1 Mortgage engine | Car finance's rate and payment helpers moved to `src/lib/` first (no behaviour change); then the pure engine, tests first: schedule with and without overpayments, both interest methods, fixed-rate end, both effects, ERC and allowance, interest saved, net saving and break-even, return per rate period, refusals; calendar helper; independent reference (internal, no UI) | Done (0.26.0, PR #38, 23 October 2026) |
-| M2 Mortgage page | The page on M1: inputs in sections, sticky result, balance chart with a table fallback, assumptions, "Uses no tax rules", scenarios, compare, Help | Not started |
+| M2 Mortgage page | Allowance alignment for a mortgage already running (MO16, engine); the page on M1: inputs in sections, sticky result, balance chart with a table fallback, what-if slider, warnings, assumptions, "Uses no tax rules", scenarios, compare, Help | Done (0.27.0, PR #39, 23 October 2026) |
 | Loan / APR | Verify the APR definition against official guidance | Not started |
 | ISA vs pension vs mortgage | Builds on 1b and the overpayment calculator | Not started |
 | Bonus and salary sacrifice | Largely an input mode of 1b; may fold into it | Not started |

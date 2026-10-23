@@ -58,7 +58,7 @@ describe('readScenario', () => {
     ['not an object', 'scenario', /isn’t a scenario/],
     ['an array', [], /isn’t a scenario/],
     ['a bad id', sample({ id: 'no spaces allowed' }), /id/],
-    ['an unknown calculator', sample({ calculatorId: 'mortgage' }), /calculator this version of Sumyard doesn’t have/],
+    ['an unknown calculator', sample({ calculatorId: 'pension-tracker' }), /calculator this version of Sumyard doesn’t have/],
     ['a missing calculator', { ...sample(), calculatorId: undefined }, /calculator/],
     ['a bad tax year', sample({ taxYear: '2026' }), /tax year/],
     ['an empty name', sample({ name: ' ' }), /name/],
@@ -74,7 +74,7 @@ describe('readScenario', () => {
   })
 
   it('reports the cleaned name of a rejected scenario, if it has one', () => {
-    const result = readScenario(sample({ name: 'Old\u0000 plan', calculatorId: 'mortgage' }), registry)
+    const result = readScenario(sample({ name: 'Old\u0000 plan', calculatorId: 'pension-tracker' }), registry)
     expect(!result.ok && result.name).toBe('Old plan')
   })
 })

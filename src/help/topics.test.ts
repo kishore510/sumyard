@@ -39,7 +39,7 @@ describe('buildTopics', () => {
 })
 
 describe('content/help', () => {
-  it('has Quick start first, then the take-home topic (1b-i), the optimiser topic (1b-ii-b), compound interest (2b), the car decision (3c-1) and the household budget, then the slice 0 topics', () => {
+  it('has Quick start first, then the take-home topic (1b-i), the optimiser topic (1b-ii-b), compound interest (2b), the car decision (3c-1), the household budget and the mortgage (M2), then the slice 0 topics', () => {
     expect(HELP_TOPICS.map((t) => t.id)).toEqual([
       'quick-start',
       'take-home-pay',
@@ -47,6 +47,7 @@ describe('content/help', () => {
       'compound-interest',
       'car-decision',
       'budget',
+      'mortgage',
       'scenarios-and-saving',
       'tax-data-and-last-verified',
       'troubleshooting',
@@ -89,6 +90,31 @@ describe('content/help', () => {
       /penny/i,
       /uses no tax rules/i,
       /not modelled/i,
+    ])
+      expect(text).toMatch(word)
+  })
+
+  it('the mortgage topic covers the inputs, the fixed rate, both effects, the charge and allowance, the answers, the returns, what if, warnings and what is not modelled', () => {
+    const text = JSON.stringify(topicById('mortgage')!.blocks)
+    for (const word of [
+      /start date/i,
+      /fixed rate/i,
+      /lump sum/i,
+      /shorten the term/i,
+      /lower the payment/i,
+      /interest-only/i,
+      /penalty-free limit/i,
+      /allowance used/i,
+      /payments until it resets/i,
+      /net saving/i,
+      /break-even/i,
+      /measured against/i,
+      /what if/i,
+      /never saved/i,
+      /drifts under daily interest/i,
+      /uses no tax rules/i,
+      /not modelled/i,
+      /offer documents/i,
     ])
       expect(text).toMatch(word)
   })

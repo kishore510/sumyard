@@ -4,6 +4,16 @@ All notable changes to Sumyard are listed here, newest first. The format follows
 
 ## [Unreleased]
 
+## [0.27.0] - 2026-10-23
+
+### Added
+- **Mortgage overpayment**, a new calculator. Enter your mortgage (start date, balance, term left, repayment or interest-only), a fixed rate with its end date and the rate you expect after it (or switch the fixed rate off), then a **monthly overpayment** and up to ten **lump sums** by date, each shortening the term or lowering the payment. The contract boxes start empty: no made-up figures.
+- Results first: **interest saved**, the **term cut**, the **new payoff date**, **total paid** and any **early repayment charge**. With a charge, the **net saving** in pounds and the **break-even** date. One **guaranteed return** of a pound overpaid for each rate period, each saying what it is measured against. A balance chart without and with overpaying, with a table, and a year-by-year table.
+- An **early repayment charge** as a percentage above a penalty-free limit (a percentage of the balance or an amount), with the **allowance already used** this year and the **payments until it resets**, for a mortgage already part-way through its allowance year.
+- Warnings, never hidden: over the penalty-free limit with the charge, an overpayment capped at the balance, a fixed rate past the term or already ended, and daily-interest drift.
+- **What if**: a slider for the monthly overpayment, beside your inputs; **Reset what-if** and **Apply to my inputs** (with Undo). Never saved.
+- Interest worked out monthly (the default) or daily, under Advanced. Scenarios, compare and a Help topic. It uses no tax rules.
+
 ## [0.26.0] - 2026-10-23
 
 ### Added

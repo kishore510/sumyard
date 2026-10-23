@@ -57,10 +57,20 @@ describe('drift under daily interest', () => {
 describe('warnings’ data', () => {
   it('overpayments past the balance: the first month and the total not needed', () => {
     const { r } = run({ termMonths: 12, fixedEndMonth: 12, lumpSums: [{ month: 3, amount: fromPounds(300_000) }] })
-    const unused = unusedOverpayments(r)
+    const unused = unusedOverpayments(r, inputs({ termMonths: 12, fixedEndMonth: 12, lumpSums: [{ month: 3, amount: fromPounds(300_000) }] }))
     expect(unused?.firstMonth).toBe(3)
     expect(toPence(unused!.total)).toBe(r.overpaying.rows.reduce((t, row) => t + toPence(row.unused), 0))
-    expect(unusedOverpayments(run().r)).toBeNull()
+    expect(unusedOverpayments(run().r, inputs())).toBeNull()
+  })
+
+  it('a regular overpayment that stops once the mortgage is cleared is not a warning; a lump sum dated after it is', () => {
+    const regular = { regular: { amount: fromPounds(2_000), fromMonth: 1, toMonth: 300 } }
+    const cleared = run(regular)
+    expect(cleared.r.overpaying.payoffMonth).toBeLessThan(300)
+    expect(unusedOverpayments(cleared.r, cleared.i)).toBeNull()
+    const late = { ...regular, lumpSums: [{ month: 299, amount: fromPounds(1_000) }] }
+    const after = run(late)
+    expect(unusedOverpayments(after.r, after.i)).toEqual({ firstMonth: 299, total: fromPounds(1_000) })
   })
 
   it('each allowance year charged, with its charge', () => {

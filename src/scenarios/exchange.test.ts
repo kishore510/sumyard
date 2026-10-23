@@ -89,10 +89,10 @@ describe('import: the file', () => {
 
 describe('import: each scenario', () => {
   it('skips scenarios for unknown calculators, saying which and why', () => {
-    const result = read(envelope([sample(), sample({ id: 'm1', calculatorId: 'mortgage', name: 'House' })]))
+    const result = read(envelope([sample(), sample({ id: 'm1', calculatorId: 'pension-tracker', name: 'House' })]))
     expect(result.ok && result.file.scenarios).toHaveLength(1)
     expect(result.ok && result.file.skipped).toEqual([
-      { name: 'House', message: expect.stringMatching(/calculator this version of Sumyard doesn’t have \("mortgage"\)/) },
+      { name: 'House', message: expect.stringMatching(/calculator this version of Sumyard doesn’t have \("pension-tracker"\)/) },
     ])
   })
 
