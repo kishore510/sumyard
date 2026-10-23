@@ -3,7 +3,7 @@ import { act } from 'react'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { addMonths } from '@/lib/calendar'
 import { formatGBP, formatIsoDate, formatPercent } from '@/lib/format'
-import { fromPounds, type Money } from '@/lib/money'
+import { fromPence, fromPounds, type Money, toPence } from '@/lib/money'
 import { STORAGE_KEYS } from '@/lib/storageKeys'
 import { scenarioStore } from '@/scenarios/index'
 import { settingsStore } from '@/settings/settings'
@@ -125,7 +125,7 @@ describe('a fresh page', () => {
       reversionRate: '7',
     })
     expect($('[data-missing]')).toBeNull()
-    expect(row('Payment now')).toBe(money(engine().baseline.paymentNow))
+    expect(row('Contractual payment now')).toBe(money(engine().baseline.paymentNow))
   })
 })
 
@@ -134,15 +134,20 @@ describe('results, answer first', () => {
 
   it('the sticky figure is interest saved, with the term cut', () => {
     const r = engine()
-    expect(headline()).toBe(`${money(r.interestSaved)}, ${yearsAndMonths(r.monthsSaved)} sooner`)
+    expect(headline()).toBe(
+      `${money(r.interestSaved)} saved; cleared in ${yearsAndMonths(r.overpaying.payoffMonth!)} instead of ${yearsAndMonths(r.baseline.payoffMonth!)}`,
+    )
+    expect($('[data-answer] h2')?.parentElement?.textContent?.match(new RegExp(money(r.interestSaved).replace(/[.$]/g, '\\$&'), 'g'))).toHaveLength(1)
   })
 
   it('the answer card: interest saved, term cut, new payoff date, total paid, charge paid', () => {
     const r = engine()
     const card = $('[data-answer]')!
     expect(row('Interest saved', card)).toBe(money(r.interestSaved))
-    expect(row('Term cut', card)).toBe(yearsAndMonths(r.monthsSaved))
-    expect(row('New payoff date', card)).toBe(formatIsoDate(r.overpaying.payoffDate!))
+    expect(row('Mortgage cleared in', card)).toBe(yearsAndMonths(r.overpaying.payoffMonth!))
+    const cleared = [...card.querySelectorAll('dt')].find((dt) => dt.textContent === 'Mortgage cleared in')!.nextElementSibling!.textContent
+    expect(cleared).toContain(`Instead of ${yearsAndMonths(r.baseline.payoffMonth!)}: ${yearsAndMonths(r.monthsSaved)} sooner`)
+    expect(cleared).toContain(`${formatIsoDate(r.overpaying.payoffDate!)} instead of ${formatIsoDate(r.baseline.payoffDate!)}`)
     expect(row('Total paid', card)).toBe(money(r.overpaying.totalPaid))
     expect(row('Early repayment charge paid', card)).toBe(money(r.overpaying.totalErc))
     expect(row('Net saving', card)).toBeUndefined()
@@ -155,6 +160,14 @@ describe('results, answer first', () => {
     expect(r.charge).not.toBeNull()
     expect(row('Net saving', card)).toBe(money(r.charge!.netSaving))
     expect(row('Break-even', card)).toBe(formatIsoDate(addMonths('2026-01-15', r.charge!.breakEvenMonth!)))
+  })
+
+  it('what you pay each month now: the contractual payment and the overpayment together', () => {
+    const r = engine()
+    const first = r.overpaying.rows[0]!
+    expect(row('You pay each month now')).toBe(money(fromPence(toPence(first.payment) + toPence(first.overpayment))))
+    expect(text()).toContain(`${money(first.payment)} payment and ${money(first.overpayment)} overpayment`)
+    expect(text()).toMatch(/check it against your statement/)
   })
 
   it('one return per rate period, each with what it is measured against', () => {
@@ -272,7 +285,9 @@ describe('what if (U40, U41)', () => {
     expect(reset.disabled).toBe(true)
     type(box('mo-wi-amount'), '500')
     const tried = engine({ ...example, monthly: fromPounds(500) })
-    expect(headline()).toBe(`${money(tried.interestSaved)}, ${yearsAndMonths(tried.monthsSaved)} sooner`)
+    expect(headline()).toBe(
+      `${money(tried.interestSaved)} saved; cleared in ${yearsAndMonths(tried.overpaying.payoffMonth!)} instead of ${yearsAndMonths(tried.baseline.payoffMonth!)}`,
+    )
     expect($('[data-what-if-results]')).not.toBeNull()
     expect(session.get().inputs.monthly).toBe(fromPounds(200))
     click($('#mo-wi-reset'))
