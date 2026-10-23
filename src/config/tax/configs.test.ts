@@ -139,7 +139,7 @@ describe('auditTaxYear (on fake years)', () => {
 })
 
 describe('schema coverage', () => {
-  it('has a group for every area the slice 0.5 brief lists and the PAYE tax code unit (0.11.0), plus the reserved savings and dividends slot', () => {
+  it('has a group for every area the slice 0.5 brief lists, the PAYE tax code unit (0.11.0) and ISAs (C0.5), plus the reserved savings and dividends slot', () => {
     expect(TAX_GROUPS.map((g) => g.id)).toEqual([
       'period',
       'personal-allowance',
@@ -149,6 +149,7 @@ describe('schema coverage', () => {
       'ni-employer',
       'student-loans',
       'pension',
+      'isa',
       'child-benefit',
       'childcare',
       'paye',
@@ -187,6 +188,7 @@ describe('schema coverage', () => {
       'pension.minimumAge.announcedFrom',
       'pension.lumpSum.taxFreeShare',
       'pension.lumpSum.allowance',
+      'isa.annualLimit',
       'childBenefit.weeklyRates.eldestOrOnly',
       'childBenefit.weeklyRates.additionalChild',
       'childBenefit.hicbc.threshold',

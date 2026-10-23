@@ -75,6 +75,7 @@ describe('Tax data screen, real registry', () => {
         'pension.lumpSum.taxFreeShare',
         'pension.lumpSum.allowance',
       ],
+      isa: ['isa.annualLimit'],
     }
     for (const [groupId, paths] of Object.entries(NEXT_POUND)) {
       const groupEl = group('2026-27', groupId)

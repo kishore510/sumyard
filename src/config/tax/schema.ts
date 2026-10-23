@@ -119,6 +119,11 @@ export interface TaxYearConfig {
       readonly allowance: Sourced<Money>
     }
   }
+  /** Individual Savings Accounts (C0.5). */
+  readonly isa: {
+    /** The most a person can pay into ISAs in the tax year, across all of them. */
+    readonly annualLimit: Sourced<Money>
+  }
   readonly childBenefit: {
     readonly weeklyRates: {
       readonly eldestOrOnly: Sourced<Money>
@@ -278,6 +283,11 @@ export const TAX_GROUPS: readonly TaxGroup[] = [
       { path: 'pension.lumpSum.taxFreeShare', label: 'Lump sum: share usually tax-free', kind: 'ratio' },
       { path: 'pension.lumpSum.allowance', label: 'Lump sum allowance (most taken tax-free)', kind: 'money' },
     ],
+  },
+  {
+    id: 'isa',
+    title: 'Individual Savings Accounts (ISAs)',
+    fields: [{ path: 'isa.annualLimit', label: 'Annual subscription limit (all ISAs)', kind: 'money' }],
   },
   {
     id: 'child-benefit',

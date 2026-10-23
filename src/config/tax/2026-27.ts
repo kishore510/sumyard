@@ -1,7 +1,7 @@
 import type { IsoDate } from '@/lib/isoDate'
 import { fromPounds, percent, ratio, ZERO } from '@/lib/money'
 import type { TaxBand, TaxYearConfig } from './schema'
-import type { SourceUrl, Verified } from './sourced'
+import { type SourceUrl, TODO, type Verified } from './sourced'
 
 /*
  * 2026-27, verified in slice 1a session E (the PAYE tax code unit in a later
@@ -123,6 +123,7 @@ export const taxYear: TaxYearConfig = {
       allowance: read(fromPounds(268_275), PENSION_RATES, READ_FOR_NEXT_POUND),
     },
   },
+  isa: { annualLimit: TODO },
   childBenefit: {
     weeklyRates: {
       eldestOrOnly: read(fromPounds('27.05'), CHILD_BENEFIT_RATES),

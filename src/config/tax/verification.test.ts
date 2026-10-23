@@ -122,7 +122,13 @@ describe('the next pound leaves (C0.5), 2026-27', () => {
     for (const path of PENSION) expect(rows.find((r) => r.path === path)?.group, path).toBe('pension')
   })
 
-  it('leaves the pension group complete on the Tax data screen', () => {
-    expect(groupStatus(year, TAX_GROUPS.find((g) => g.id === 'pension')!).complete).toBe(true)
+  it('verifies the ISA annual limit, with a log row in the isa group', () => {
+    const granted = requireVerified(year, ['isa.annualLimit'])
+    expect(granted.ok).toBe(true)
+    expect((logRows('2026-27') ?? []).find((r) => r.path === 'isa.annualLimit')?.group).toBe('isa')
+  })
+
+  it('leaves the pension and ISA groups complete on the Tax data screen', () => {
+    for (const id of ['pension', 'isa']) expect(groupStatus(year, TAX_GROUPS.find((g) => g.id === id)!).complete, id).toBe(true)
   })
 })
