@@ -595,12 +595,17 @@ function WhatIfSection({
           variant="ghost"
           disabled={!active}
           onClick={() => setOverlay(emptyOverlay(overlay.revision))}
-          className="h-auto min-h-touch border border-border py-2"
+          className="h-auto min-h-touch max-w-full border border-border py-2 text-left whitespace-normal"
         >
           <RotateCcw />
           Reset what-ifs
         </Button>
-        <Button id="bd-wi-apply" disabled={!active || bad.size > 0} onClick={apply} className="h-auto min-h-touch py-2">
+        <Button
+          id="bd-wi-apply"
+          disabled={!active || bad.size > 0}
+          onClick={apply}
+          className="h-auto min-h-touch max-w-full py-2 text-left whitespace-normal"
+        >
           Apply to my inputs
         </Button>
       </div>
