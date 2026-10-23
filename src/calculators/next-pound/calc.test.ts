@@ -128,6 +128,44 @@ function expectPensionFromOptimiser(i: NextPoundInputs) {
   return { leg, base, after }
 }
 
+describe('nextPound(): no age given (C2.1, a no-behaviour-change optional input)', () => {
+  const at = (ageNow: number | null) => run(inputs({ horizonYears: 10, pension: pensionInputs({ ageNow }) }))
+
+  it('the access test is not run: access is null, the leg has its numbers and the break-even against it', () => {
+    const r = at(null)
+    const leg = accessible(r.legs.pension)
+    expect(leg.access).toBeNull()
+    expect(r.breakEven.pension).not.toBeNull()
+  })
+
+  it('the figures are those at any age that can take the pension at the horizon; the other legs are unchanged', () => {
+    const none = at(null)
+    const old = at(own.announced)
+    const { access: _a, ...withoutAge } = accessible(none.legs.pension)
+    const { access: _b, ...withAge } = accessible(old.legs.pension)
+    expect(withoutAge).toEqual(withAge)
+    expect(none.breakEven).toEqual(old.breakEven)
+    expect(none.legs.mortgage).toEqual(old.legs.mortgage)
+    expect(none.legs.isa).toEqual(old.legs.isa)
+  })
+
+  it('with an age, nothing changes: not accessible stays not accessible, with its access', () => {
+    const r = at(40)
+    expect(r.legs.pension.status).toBe('not-accessible')
+    expect(shared(r.legs.pension).access?.accessible).toBe(false)
+  })
+
+  it('gives no transitional age warning without an age', () => {
+    expect(at(null).warnings.some((w) => w.source === 'next-pound' && w.code === 'transitionalAgeRules')).toBe(false)
+  })
+
+  it('an age that is not a whole number in range is still refused by field', () => {
+    const r = nextPound(inputs({ pension: pensionInputs({ ageNow: -1 }) }), config, DEFAULT_POLICY)
+    if (!r.ok) throw new Error('refused')
+    expect(r.legs.pension).toMatchObject({ status: 'refused', engine: 'next-pound', problems: [{ field: 'pension.ageNow' }] })
+  })
+})
+
 describe('nextPound(): horizon and the access age (CP4, NP-3, NP-5)', () => {
   it('horizon before the access age: not accessible, no number, no break-even against it; the other legs shown', () => {
     const r = run(inputs({ horizonYears: 10, pension: pensionInputs({ ageNow: 40 }) }))
