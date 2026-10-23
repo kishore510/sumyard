@@ -174,3 +174,11 @@ Scratch Playwright (1.56) and axe-core 4.10 against `vite preview`, on the take-
 
 Compute: a new target runs `optimise()` once more at the page's step (`pointAt`), about 9 ms in Node for £150,000 of pay; the sweep itself is unchanged and no longer reruns on the Year / Month switch.
 
+
+## Browser checks and compute time, part 3d-2 (0.24.0), 22 October 2026
+
+Scratch Playwright (1.56) and axe-core 4.10 against `vite preview`, on the car decision page at 360, 768, 1024 and 1280 px in light and dark (system colour scheme). Empty, then a saved scenario of four options loaded (keep with finance still owed, a loan with an 80-character unbroken name, HP on an electric car with an option fee, a PCP bought at the end; long names; a 240-month horizon), with the fuel threshold shown, a new pair chosen in the bridge's Selects, the sensitivity worked out and every disclosure open. Checked at each width and theme: axe (WCAG 2.0/2.1 A and AA, best practice), no horizontal page scroll, every visible control at least 44 px tall (visually hidden inputs aside), the bridge drawn with no element past its section, Tab from the top reaching the bridge's First option then Second option then its "Show as a table" (focus visible), Enter opening it and Tab reaching the table's region, a pair chosen in the bridge moving "What changes the answer" too, every sensitivity figure able to scroll fully into view beside the sticky column, no external requests, no console errors. 120 checks passed and none failed.
+
+Found and fixed: with Settings showing whole pounds, the bridge's parts were each rounded to the pound and need not add up; they are now shown in pence always (U38).
+
+Compute, the same scenario at 1280 px, three runs from the Load click: the default pair's flip search one long task of 863 to 1,036 ms after `SETTLE_MS` (this scenario is heavier than 3c-2's: the kept car's finance and 240 months), then the fuel or energy price threshold a separate task of 237 to 282 ms. In Node, over 40 seeded pairs at 240 months, the search past a tie costs the same as before (683 ms against 669 ms a pair on average) and the fuel threshold about 370 ms. Both are in the worker item of `docs/backlog.md`.

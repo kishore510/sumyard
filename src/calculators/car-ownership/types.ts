@@ -244,6 +244,11 @@ export type Flip<T> =
       readonly above: T
       readonly lowerBelow: Lower
       readonly lowerAbove: Lower
+      /**
+       * A search only (F53): the values searched between `below` and `above` where the two are level, both ends level;
+       * absent when they are neighbours. Between the ends the penny-rounded totals are level or a penny apart either way.
+       */
+      readonly level?: { readonly from: T; readonly to: T }
     }
   | { readonly kind: 'no-crossing-in-range'; readonly lowerThroughout: Lower }
 
@@ -254,6 +259,28 @@ export interface FlipPoints {
   readonly savingsReturn: Flip<Ratio>
   /** The annual mileage of both options together. */
   readonly annualMileage: Flip<number>
+}
+
+/** The fuel or energy price threshold (F54): option 0's cost per mile, in pence. */
+export type FuelFlipOutcome =
+  | { readonly ok: true; readonly result: Flip<ExactPence> }
+  | { readonly ok: false; readonly problems: readonly OwnershipProblem[] }
+
+/** One part of the cost bridge (F55): first less second, per month owned. */
+export interface BridgePart {
+  readonly id: keyof Breakdown
+  readonly exact: ExactPence
+  /** To the penny; the shown parts add up to the shown total exactly. */
+  readonly shown: Money
+}
+
+/** The difference in average cost per month owned between two full-coverage options, split by part (F55). */
+export interface Bridge {
+  readonly valueCase: ValueCase
+  readonly months: number
+  readonly total: { readonly exact: ExactPence; readonly shown: Money }
+  /** Every breakdown part, in the breakdown's order. */
+  readonly parts: readonly BridgePart[]
 }
 
 export type FlipOutcome =

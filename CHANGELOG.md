@@ -4,6 +4,16 @@ All notable changes to Sumyard are listed here, newest first. The format follows
 
 ## [Unreleased]
 
+## [0.24.0] - 2026-10-22
+
+### Added
+- **Car decision: where the difference comes from.** Under the verdict, for two options that cover the whole horizon, the difference in average cost per month owned is split into the parts each card shows (interest and fees, depreciation, fuel or energy, insurance, maintenance, VED, other costs, the opportunity cost), with a sentence naming the largest part, bars either side of a centre line, and a table. The parts add up to the difference to the penny. It uses the same two options as **What changes the answer**; choosing in either place changes both.
+- **What changes the answer** now also gives the first option's **fuel or energy price** at which the order would swap, in pence per mile, and for petrol or diesel as a price per litre too.
+
+### Fixed
+- **What changes the answer** no longer stops at a point where the two options are level: past it, it names the option that is lower. Where the two are level, or pennies apart, over a narrow band, it says so.
+- The **sensitivity** table can be read on a phone: figures are no longer hidden under its first column.
+
 ## [0.23.0] - 2026-10-22
 
 ### Added

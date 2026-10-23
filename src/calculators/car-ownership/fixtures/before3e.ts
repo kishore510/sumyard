@@ -2,7 +2,7 @@
  * A frozen copy of the car ownership engine as it stood before session 3e
  * (test-only). The 3e change adds finance still owed on a kept car; with
  * none, every result must be bit-identical to this copy (unchanged.test.ts).
- * Do not edit, except to follow a rename in the modules it imports.
+ * Do not edit, except to follow a rename or a type change in the modules it imports.
  */
 import {
   MAX_ANNUAL_MILEAGE,
@@ -715,7 +715,16 @@ export function flipPoints(options: readonly [CarOption, CarOption], shared: Sha
     const rateAt = (k: number) => ratio(k, denominator)
     const rates = search(top, (k) => order(a, b, rateAt(k), valueCase))
     const savingsReturn: Flip<Ratio> =
-      rates.kind === 'crossing' ? { ...rates, below: rateAt(rates.below), above: rateAt(rates.above) } : rates
+      // 3d-2: written out field by field to follow `Flip`'s new optional `level` (F53); the same object as before.
+      rates.kind === 'crossing'
+        ? {
+            kind: 'crossing',
+            below: rateAt(rates.below),
+            above: rateAt(rates.above),
+            lowerBelow: rates.lowerBelow,
+            lowerAbove: rates.lowerAbove,
+          }
+        : rates
 
     const withMileage = (prepared: Prepared, miles: number, index: number): Prepared => {
       const again = prepare({ ...prepared.option, car: { ...prepared.option.car, annualMileage: miles } }, shared.horizonMonths, index)

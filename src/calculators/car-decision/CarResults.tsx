@@ -5,9 +5,9 @@ import { SplitBar } from '@/components/SplitBar'
 import { InlineNotice } from '@/components/states'
 import { Button } from '@/components/ui/button'
 import { formatPercent, formatPercentFixed } from '@/lib/format'
-import { APR_DISPLAY_DIGITS, compare, fromPence, type Money, toPence, ZERO } from '@/lib/money'
+import { APR_DISPLAY_DIGITS, compare, type ExactPence, fromPence, type Money, toPence, ZERO } from '@/lib/money'
 import { cn } from '@/lib/utils'
-import type { AcquisitionKind, Comparison, FlipPoints, ValueCase } from '../car-ownership/types'
+import type { AcquisitionKind, Comparison, Flip, FlipPoints, FuelCost, ValueCase } from '../car-ownership/types'
 import {
   ACQUISITION_LABELS,
   CASE_LABELS,
@@ -24,6 +24,7 @@ import {
   equityAtHorizon,
   type FlipSentence,
   flipSentences,
+  fuelSentence,
   isNegative,
   orderingRule,
   pageIndexes,
@@ -564,11 +565,19 @@ export type FlipState =
   | { readonly kind: 'same' }
   | { readonly kind: 'pending' }
   | { readonly kind: 'refused' }
-  | { readonly kind: 'ready'; readonly pair: readonly [number, number]; readonly flips: FlipPoints; readonly lowest: boolean }
+  | {
+      readonly kind: 'ready'
+      readonly pair: readonly [number, number]
+      readonly flips: FlipPoints
+      readonly lowest: boolean
+      /** The first option's fuel or energy price threshold (F54) and its fuel; null while it is worked out, a step after the rest. */
+      readonly fuel: { readonly flip: Flip<ExactPence>; readonly fuel: FuelCost } | null
+    }
 
 /**
  * "What changes the answer" (F22): the flip points for a pair of options (by default the two lowest; `picker` chooses
- * another), once worked out, and that they are measured over the whole horizon.
+ * another), once worked out, then the first option's fuel or energy price threshold (F54), and that they are measured
+ * over the whole horizon.
  */
 export function WhatChanges({ state, inputs, gbp, picker }: { state: FlipState; inputs: CarDecisionInputs; gbp: Gbp; picker?: ReactNode }) {
   let body: ReactNode
@@ -593,6 +602,11 @@ export function WhatChanges({ state, inputs, gbp, picker }: { state: FlipState; 
               {s.text}
             </li>
           ))}
+          {state.fuel ? (
+            <li data-flip="fuel">{fuelSentence(state.fuel.flip, state.fuel.fuel, names).text}</li>
+          ) : (
+            <li data-flip-pending>Working out the fuel or energy price threshold…</li>
+          )}
         </ul>
       </>
     )
