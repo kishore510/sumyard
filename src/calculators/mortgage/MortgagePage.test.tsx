@@ -172,6 +172,15 @@ describe('results, answer first', () => {
     expect(text()).toMatch(/check it against your statement/)
   })
 
+  it('after the fixed rate: the contractual payment, and what you pay with the overpayment, said as such', () => {
+    const r = engine()
+    const first = r.overpaying.rows[r.overpaying.rows.findIndex((row) => row.period === 'reversion')]!
+    expect(row('You pay each month after the fixed rate')).toBe(money(fromPence(toPence(first.payment) + toPence(first.overpayment))))
+    expect(text()).toContain(`${money(first.payment)} payment and ${money(first.overpayment)} overpayment, if you keep overpaying`)
+    expect(row('Contractual payment after the fixed rate')).toBe(money(r.overpaying.paymentAfterFixedEnd!))
+    expect(text()).toContain(`Not counting overpayments. Had you never overpaid: ${money(r.baseline.paymentAfterFixedEnd!)}`)
+  })
+
   it('one return per rate period, each with what it is measured against', () => {
     const r = engine()
     const card = $('[data-returns]')!

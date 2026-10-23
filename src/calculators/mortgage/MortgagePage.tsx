@@ -698,6 +698,8 @@ function Results({
   const { overpaying, baseline } = result
   const repayment = engine.repaymentType === 'repayment'
   const suffix = whatIf ? ', with your what-if' : ''
+  // The first payment at the rate after the fixed rate, with what is overpaid that month.
+  const afterFixed = engine.fixedEndMonth > 0 ? overpaying.rows[engine.fixedEndMonth] : undefined
   return (
     <>
       <Warnings shown={shown} fixed={pageInputs.fixed} gbp={gbp} />
@@ -756,11 +758,18 @@ function Results({
           value={gbp(baseline.paymentNow)}
           detail="Worked out from the balance, the rate and the term left: check it against your statement. Far off? The term left may be an estimate that already counts your overpayments."
         />
+        {repayment && overpaying.paymentAfterFixedEnd !== null && afterFixed && (
+          <StatRow
+            label="You pay each month after the fixed rate"
+            value={gbp(add(afterFixed.payment, afterFixed.overpayment))}
+            detail={`${gbp(afterFixed.payment)} payment and ${gbp(afterFixed.overpayment)} overpayment, if you keep overpaying.`}
+          />
+        )}
         {baseline.paymentAfterFixedEnd !== null && (
           <StatRow
-            label="Payment after the fixed rate"
+            label="Contractual payment after the fixed rate"
             value={gbp(overpaying.paymentAfterFixedEnd ?? ZERO)}
-            detail={`Without overpaying: ${gbp(baseline.paymentAfterFixedEnd)}${overpaying.paymentAfterFixedEnd === null ? '. Overpaying clears the mortgage before then.' : ''}`}
+            detail={`Not counting overpayments. Had you never overpaid: ${gbp(baseline.paymentAfterFixedEnd)}.${overpaying.paymentAfterFixedEnd === null ? ' Overpaying clears the mortgage before then.' : ''}`}
           />
         )}
         {overpaying.balanceAtFixedEnd !== null && baseline.balanceAtFixedEnd !== null && (
