@@ -807,3 +807,57 @@ Tax or ISA rules, interest or projections, importing from the take-home calculat
 - Pre-check: PR #33 merged and its Pages deploy succeeded. The no-tax-year path already existed (`taxRules: 'none'`, from compound interest); no registry change was needed, only a budget test of it. The brief's version 0.13.0 was taken (1b-ii-a), so this is 0.25.0.
 - Engine red then green; mutation spot-checks all caught. Definition, `SliderInput` and page red then green. Browser matrix: 226 checks, two layout fixes (`docs/performance.md`).
 - Owner to confirm: BD8 (savings rate excludes what is left over), BD9 (`MAX_BUDGET_LINES` = 40 per list), the template lines' periods (Fixed saver monthly), the shared `Field` label now wrapping anywhere.
+
+## Mortgage overpayment (M0 to M2, 0.26.0 to 0.27.2)
+
+Moved verbatim from `PHASE-BRIEF.md` at the start of C0 (23 October 2026). The slice's owner checks are carried in `PHASE-BRIEF.md`, "Still with the owner".
+
+### Goal
+
+`#/c/mortgage`: what overpaying a mortgage does, regular or as lump sums, with a fixed rate that ends and a reversion rate after it: interest saved, the time saved or the lower payment, the balance at the fixed-rate end, the effective guaranteed return of a pound overpaid for each rate period, and with an early repayment charge the net saving in pounds and its break-even point. No tax rules (`taxRules: 'none'`, "Uses no tax rules"). Decisions MO1 to MO15 (confirmed) (`docs/modelling-decisions.md`); sources MR-1 to MR-10 (`docs/verification-log.md`); rounding in `docs/money.md`.
+
+### Parts
+
+- **M0, brief and decisions:** PR #36 and the owner's follow-up. No code, config or UI.
+- **M1, engine (internal, no UI), tests first: a red commit, then a green one.** First, its own red then green commit pair (MO15): move `monthlyRate`, `interestOn` and the schedule helpers (`monthlyFactor`, `regularPayment`, `annualRate`, `MonthlyRate`) from car finance into a shared `src/lib/` module, car finance calling it, no behaviour change (every car test passes unchanged). Then `src/calculators/mortgage/`, importing only `src/lib/`, never another calculator: (`types.ts`, `calc.ts`, `README.md`, `fixtures/reference.ts`, `calc.test.ts`, `properties.test.ts`, `reference.test.ts`, `literals.test.ts`): the schedule with and without overpayments, both interest methods, the fixed-rate end, both effects, the ERC and allowance, interest saved, the net saving and break-even with an ERC, the return per rate period, refusals by field, and assumptions naming MO3's method and day count, MO5, MO6, MO7, MO10 and MO12. A pure calendar helper in `src/lib/` (days in a month, leap years, the payment date each month, days between two dates; no `Date.now`). `MAX_MORTGAGE_TERM_MONTHS` in `src/lib/inputLimits.ts`. Mutation spot-checks on the engine.
+- **M2, page:** `definition.ts` (inputs version 1, `validateInputs`, `migrateInputs`, `summarise`, `taxRules: 'none'`), `MortgagePage.tsx` from shared components (`StickyResult`, `Section`, inputs, `SliderInput` for the regular overpayment, `ResultCard`/`StatRow`, `Chart/` with a table fallback, `AssumptionsPanel`, `NoTaxRulesBadge`), registry and route, scenarios and compare, Help topic `mortgage`, README. Browser matrix once (360 and 1280 px, light and dark, axe). No new storage key.
+
+### Reuse (audited in M0; MO15)
+
+The mortgage engine imports only `src/lib/`.
+
+- Shared module (moved from `src/calculators/car-finance/calc.ts` in M1's first commit pair): `monthlyFactor`, `monthlyRate`, `interestOn`, `regularPayment` (nearest penny, F7; no upper bound on the term, a rate of nothing handled), `annualRate` (also MO9's `'monthly'` return), `MonthlyRate`. Its rate check against `MAX_FINANCE_RATE` must not need car finance's problem types. Not moved: `buildSchedule` (one payment for the whole term; the mortgage needs its own loop), `solveRate` and `apr`, `outstandingBalance`.
+- `src/lib/money.ts`: `mulRound`, `ExactPence` for daily interest, `FinePence`/`Factor` for the daily return, `roundRatio`. `src/lib/periods.ts`: `MONTHS_PER_YEAR` (`DAYS_PER_YEAR` is compound interest's divisor, not MO3's day basis). `src/lib/isoDate.ts`: `isIsoDate`.
+- Not imported: compound interest (its `effectiveAnnualRate(rate, 'monthly')` equals the shared `annualRate` of a twelfth of the rate); `src/lib/sweep.ts` (the optimiser's sweep, not needed in v1).
+- No-tax-rules path: `registry.ts`, `session.ts`, `scenarios/`, `ComparePage.tsx`, `NoTaxRulesBadge`, as compound interest, the car decision and the budget. No change.
+- To add in M1: a pure calendar helper in `src/lib/` (days in a month, leap years, the payment date each month, days between dates; no `Date.now`); `MAX_MORTGAGE_TERM_MONTHS` = 480 in `src/lib/inputLimits.ts`.
+
+### Out of scope
+
+Everything in MO14 (offset, savings or ISA comparison, tax, part-and-part, payment holidays, more than one product after the fixed rate, trackers, fees, porting, the APRC, mid-month overpayments, borrow-back); changes to other calculators beyond moving car finance's helpers into `src/lib/` (MO15).
+
+### Edge cases to test (M1)
+
+| Case | Expect |
+|---|---|
+| Overpayment above the balance | Only what clears it is used; the rest reported; ERC on the used part only (MO8) |
+| Overpayments across the fixed-rate end | Payment recalculated at the end (MO4); `'reduce-term'` keeps the shortened months (MO5); no ERC after the ERC end |
+| ERC above the penalty-free allowance | Charged on the excess per allowance year, allowance rounded down, ERC to the nearest penny; nothing within it; no carry-over; the net saving and break-even month, or none within the term (MO7, MO9) |
+| Lump sum in the final month | Clears the balance; that month's payment shrinks to the remainder; nothing after (MO8) |
+| Interest-only | Payment equals the month's interest; overpayments lower capital, interest and the amount owed at the end; `effect` ignored (MO2, MO5) |
+| Zero rate (fixed, reversion, both) | Payment is balance ÷ months; no interest; nothing saved; return of nothing |
+| Leap year, daily method | 29 February accrues a day; `'actual/365'` against `'actual/actual'` differ by exactly the leap-year days' share (MO3) |
+| Term under a month | Refused (whole months from one) |
+| Shared helpers (MO15) | Car finance, car ownership and car decision tests pass unchanged after the move |
+| Also | No fixed period (end at nothing); fixed-rate end at the term; a start on the 29th to 31st (short months); daily against monthly on the same inputs; the largest balance, rate and term (no overflow); rows add up; interest saved is never below nothing without an ERC; more overpayment never raises total interest |
+
+### Cross-check plan
+
+- **Independent reference (M1):** `src/calculators/mortgage/fixtures/reference.ts` in exact rational arithmetic (BigInt fractions, no `money.ts` fine fixed point): the closed-form payment A i / (1 − (1 + i)^−n) rounded to the penny; the closed-form balance after k months, A (1 + i)^k − P ((1 + i)^k − 1) / i, within the rounding bound of the engine's replay; the payoff month as the first k where it reaches nothing; and a day-by-day daily-interest replay that counts days with its own day-number formula, not the engine's calendar helper. 300 seeded cases, as car finance's `reference.test.ts`.
+- **A real statement or illustration (owner to supply):** `docs/mortgage-cross-checks.json` holds six todo cases (a statement year, a lump sum each way, an ERC above the allowance, the fixed-rate end, interest-only). The repository is public: figures only, no personal identifiers. M1 adds `crossChecks.test.ts` (todo until filled). Filling it settles MR-1, MR-2 and MR-4 (OPEN until then) and checks MO5, MO10 and MR-10 for that lender.
+
+### Owner confirmations (given 23 October 2026)
+
+All MO1 to MO14 confirmed, with: MO9 one return per rate period, and with an ERC the net saving in pounds and a break-even point, no blended percentage; MO6 kept, with an assumption that daily and monthly interest then differ only slightly, and an `'annual'` method and off-payment-date lump sums in `docs/backlog.md`; MO15, no import of car finance (helpers moved to `src/lib/` first); MO5, MO7, MO10, MO12 and MR-10 as proposed, each named in the assumptions; no network change; MR-1, MR-2 and MR-4 OPEN until the statement is added.
+
+Still to come from the owner: the figures in `docs/mortgage-cross-checks.json`.

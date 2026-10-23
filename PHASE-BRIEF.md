@@ -1,64 +1,65 @@
-# PHASE-BRIEF: Mortgage overpayment
+# PHASE-BRIEF: Where does the next £X go?
 
-Status: **M2 (page)**: built, 0.27.0 (PR #39), with MO16 (allowance alignment, for the owner to confirm). M1 (engine, 0.26.0, PR #38) and M0 (PRs #36, #37) are Done; decisions MO1 to MO15 are confirmed. The household budget (0.25.0, PR #34) and the 0.25.1 fix release are merged and deployed. Slices 1 to 3 and the budget are Done (`PLAN.md`). Finished scopes, the budget's included, are in `docs/history/phase-brief-archive.md`.
+Status: **C0 (brief and decisions, docs only)** in review. Mortgage overpayment M0 to M2 are Done (0.26.0 to 0.27.2, PRs #36 to #41, deployed); the slice waits on the owner's checks (below) before `PLAN.md` marks it Done. Slices 1 to 3 and the budget are Done. Finished briefs, the mortgage slice's included, are in `docs/history/phase-brief-archive.md`.
 
 ## Docs rule
 
 Close out every session with the tiered checklist in `CLAUDE.md` ("Session close-out checklist").
 
-## Mortgage overpayment
+## Next pound decision
 
 ### Goal
 
-`#/c/mortgage`: what overpaying a mortgage does, regular or as lump sums, with a fixed rate that ends and a reversion rate after it: interest saved, the time saved or the lower payment, the balance at the fixed-rate end, the effective guaranteed return of a pound overpaid for each rate period, and with an early repayment charge the net saving in pounds and its break-even point. No tax rules (`taxRules: 'none'`, "Uses no tax rules"). Decisions MO1 to MO15 (confirmed) (`docs/modelling-decisions.md`); sources MR-1 to MR-10 (`docs/verification-log.md`); rounding in `docs/money.md`.
+`#/c/next-pound`, "Where does the next £X go?": one lump sum X of take-home, now, into a pension, a mortgage overpayment or an ISA, each shown as what it adds to net worth at a horizon, in today's money first and nominal beside it, after tax on withdrawal; with the ISA return that would break even against each alternative. Nothing is called best (G13). It composes verified engines and adds no tax rule of its own, but it reads tax config, so it shows `VerifiedBadge` and refuses with the unverified values named (not "Uses no tax rules"). Decisions CP1 to CP10 (owner-confirmed 23 October 2026) and this session's readings (proposed): `docs/modelling-decisions.md`, "Next pound decision (session C0)". Sources NP-1 to NP-12: `docs/verification-log.md`. Rounding: `docs/money.md`.
 
 ### Parts
 
-- **M0, brief and decisions:** PR #36 and the owner's follow-up. No code, config or UI.
-- **M1, engine (internal, no UI), tests first: a red commit, then a green one.** First, its own red then green commit pair (MO15): move `monthlyRate`, `interestOn` and the schedule helpers (`monthlyFactor`, `regularPayment`, `annualRate`, `MonthlyRate`) from car finance into a shared `src/lib/` module, car finance calling it, no behaviour change (every car test passes unchanged). Then `src/calculators/mortgage/`, importing only `src/lib/`, never another calculator: (`types.ts`, `calc.ts`, `README.md`, `fixtures/reference.ts`, `calc.test.ts`, `properties.test.ts`, `reference.test.ts`, `literals.test.ts`): the schedule with and without overpayments, both interest methods, the fixed-rate end, both effects, the ERC and allowance, interest saved, the net saving and break-even with an ERC, the return per rate period, refusals by field, and assumptions naming MO3's method and day count, MO5, MO6, MO7, MO10 and MO12. A pure calendar helper in `src/lib/` (days in a month, leap years, the payment date each month, days between two dates; no `Date.now`). `MAX_MORTGAGE_TERM_MONTHS` in `src/lib/inputLimits.ts`. Mutation spot-checks on the engine.
-- **M2, page:** `definition.ts` (inputs version 1, `validateInputs`, `migrateInputs`, `summarise`, `taxRules: 'none'`), `MortgagePage.tsx` from shared components (`StickyResult`, `Section`, inputs, `SliderInput` for the regular overpayment, `ResultCard`/`StatRow`, `Chart/` with a table fallback, `AssumptionsPanel`, `NoTaxRulesBadge`), registry and route, scenarios and compare, Help topic `mortgage`, README. Browser matrix once (360 and 1280 px, light and dark, axe). No new storage key.
+- **C0, brief and decisions (this PR):** docs only. No code, config or UI.
+- **C1, composer (internal, no UI), tests first: red then green.** Before the engine, and in its **own PR** (`CLAUDE.md`: each change to tax values is its own PR): config leaves for the tax-free share (NP-2), the lump sum allowance (NP-6), the access age now and its rise (NP-3, NP-5) and the ISA limit (NP-12), each a red then green pair with a Values row; NP-2 and NP-3 need the owner's call on their tax year first. Then `src/calculators/next-pound/` (`types.ts`, `calc.ts`, `README.md`, `fixtures/reference.ts`, `calc.test.ts`, `properties.test.ts`, `reference.test.ts`, `crossChecks.test.ts` on `docs/next-pound-cross-checks.json`, `literals.test.ts`), and `src/calculators/engineImports.test.ts` (CP9's spec). Starting rates for low, mid and high growth as named starting values in `src/lib/inputLimits.ts`, for the owner. Mutation spot-checks on the composer.
+- **C2, page:** `definition.ts` (inputs version 1, `validateInputs`, `migrateInputs`, `summarise`, `applySettings` for the region), `NextPoundPage.tsx` from shared components (`StickyResult`, `Section`, inputs, `ResultCard`/`StatRow`, `AssumptionsPanel`, `VerifiedBadge`, `RefusalNotice`), registry and route, scenarios and compare, Help topic `next-pound`, README. Browser matrix once. No new storage key.
 
-### Reuse (audited in M0; MO15)
+### Reuse (audited in C0)
 
-The mortgage engine imports only `src/lib/`.
-
-- Shared module (moved from `src/calculators/car-finance/calc.ts` in M1's first commit pair): `monthlyFactor`, `monthlyRate`, `interestOn`, `regularPayment` (nearest penny, F7; no upper bound on the term, a rate of nothing handled), `annualRate` (also MO9's `'monthly'` return), `MonthlyRate`. Its rate check against `MAX_FINANCE_RATE` must not need car finance's problem types. Not moved: `buildSchedule` (one payment for the whole term; the mortgage needs its own loop), `solveRate` and `apr`, `outstandingBalance`.
-- `src/lib/money.ts`: `mulRound`, `ExactPence` for daily interest, `FinePence`/`Factor` for the daily return, `roundRatio`. `src/lib/periods.ts`: `MONTHS_PER_YEAR` (`DAYS_PER_YEAR` is compound interest's divisor, not MO3's day basis). `src/lib/isoDate.ts`: `isIsoDate`.
-- Not imported: compound interest (its `effectiveAnnualRate(rate, 'monthly')` equals the shared `annualRate` of a twelfth of the rate); `src/lib/sweep.ts` (the optimiser's sweep, not needed in v1).
-- No-tax-rules path: `registry.ts`, `session.ts`, `scenarios/`, `ComparePage.tsx`, `NoTaxRulesBadge`, as compound interest, the car decision and the budget. No change.
-- To add in M1: a pure calendar helper in `src/lib/` (days in a month, leap years, the payment date each month, days between dates; no `Date.now`); `MAX_MORTGAGE_TERM_MONTHS` = 480 in `src/lib/inputLimits.ts`.
+- **Optimiser** (`optimiser/calc.ts`): `optimise(inputs: OptimiserInputs, config: TaxYearConfig, policy: ModellingPolicy, options?: OptimiseOptions): OptimiseResult | Refusal`. `OptimiserInputs` extends `TaxInputs` with `pension: PensionInput` (method and current contribution), `savings: PensionSavingsInput` (`employerContribution`, `carryForward`, `moneyPurchaseAnnualAllowance`) and `checkChildcare`. `OptimiseResult.points: OptimiserPoint[]`, each with `contribution`, `extra`, `spendable`, `pension.total`, `netCostPerPound: Ratio | null` (**against no contribution**, CP3), `marginalRate: Ratio | null` (since the previous point), `annualAllowance`, `warnings: EngineWarning[]`; also `maximumContribution`, `thresholds`, `cliffs`. `pointAt` in `compare.ts` runs a full sweep per contribution.
+- **Mortgage** (`mortgage/calc.ts`): one entry point, `overpay(inputs: MortgageInputs): MortgageOutcome`. Its `MortgageResult` holds both schedules (`baseline`, `overpaying`: `Schedule` with `rows: MonthRow[]`, each month's `payment`, `overpayment`, `unused`, `erc`, `closing`), `balances: BalancePoint[]` (the balance at each month, both schedules), `charge: ChargeOutcome | null` (ERC paid, `netSaving`, `breakEvenMonth`), `allowances`, `returns: PeriodReturn[]` (one per rate period), `interestSaved`, `warnings`. The effect is `MortgageInputs.effect` (`'reduce-term'`); the ERC is `erc: EarlyRepaymentCharge | null` with its `allowance`.
+- **Compound interest** (`compound-interest/calc.ts`): `project(inputs: CompoundInputs): CompoundOutcome`, with `lumpSum`, `years`, `growthRate`, `compounding`, `feeRate`, `inflationRate` (contributions nothing); `withFee.nominal.closing` and `withFee.real.closing`. `futureValue` throws where `project` refuses.
+- **`src/lib/money.ts`**: `ExactPence` (`exact`, `exactMul`, `roundExact`), `mulRound`, `FinePence`/`Factor` (`factorPow` for the deflator), `roundRatio`, `compareRatio`. **`src/lib/inputLimits.ts`**: `MAX_INPUT_AMOUNT`, `MAX_PROJECTION_YEARS`, `GROWTH_RATE_BOUND`, `INFLATION_RATE_BOUND`, `MAX_FEE_RATE`, `MAX_MORTGAGE_TERM_MONTHS`, `MAX_CARRY_FORWARD_YEARS`.
+- **Registry**: `taxRules?: 'none'` (`registry.ts`) and `NoTaxRulesBadge` are the no-tax-rules path; **not used here** (the composer reads config). The optimiser's tax-year path is the model.
+- **Import rule** (CP9): `CLAUDE.md` had no "engines import only `src/lib/`" line (that was MO15, for the mortgage engine), and `car-ownership` already imports `car-finance`. `CLAUDE.md` now states the rule with both exceptions.
 
 ### Out of scope
 
-Everything in MO14 (offset, savings or ISA comparison, tax, part-and-part, payment holidays, more than one product after the fixed rate, trackers, fees, porting, the APRC, mid-month overpayments, borrow-back); changes to other calculators beyond moving car finance's helpers into `src/lib/` (MO15).
+CP10: the Lifetime ISA, the State Pension, a partner, offset mortgages, cash savings, inheritance tax, monthly contributions (`docs/backlog.md`). Also: employer NI savings (CP3), a protected pension age or benefits already taken (NP-1), the 2027 ISA reform (NP-4, an assumption only), changes to other calculators beyond a no-behaviour-change export if CP3's engine note needs one.
 
-### Edge cases to test (M1)
+### Edge cases to test (C1)
 
 | Case | Expect |
 |---|---|
-| Overpayment above the balance | Only what clears it is used; the rest reported; ERC on the used part only (MO8) |
-| Overpayments across the fixed-rate end | Payment recalculated at the end (MO4); `'reduce-term'` keeps the shortened months (MO5); no ERC after the ERC end |
-| ERC above the penalty-free allowance | Charged on the excess per allowance year, allowance rounded down, ERC to the nearest penny; nothing within it; no carry-over; the net saving and break-even month, or none within the term (MO7, MO9) |
-| Lump sum in the final month | Clears the balance; that month's payment shrinks to the remainder; nothing after (MO8) |
-| Interest-only | Payment equals the month's interest; overpayments lower capital, interest and the amount owed at the end; `effect` ignored (MO2, MO5) |
-| Zero rate (fixed, reversion, both) | Payment is balance ÷ months; no interest; nothing saved; return of nothing |
-| Leap year, daily method | 29 February accrues a day; `'actual/365'` against `'actual/actual'` differ by exactly the leap-year days' share (MO3) |
-| Term under a month | Refused (whole months from one) |
-| Shared helpers (MO15) | Car finance, car ownership and car decision tests pass unchanged after the move |
-| Also | No fixed period (end at nothing); fixed-rate end at the term; a start on the 29th to 31st (short months); daily against monthly on the same inputs; the largest balance, rate and term (no overflow); rows add up; interest saved is never below nothing without an ERC; more overpayment never raises total interest |
+| Horizon before the access age | Pension column "not accessible at horizon", no number, no break-even against it; the other two shown. Exactly at the age: accessible. A horizon across 6 April 2028 uses the later age (NP-5) |
+| X above the pay headroom | The pension leg stops at `maximumContribution`; the rest of X is cash in that column (CP2); a warning (CP8) |
+| X above the annual allowance | The optimiser's charge lowers spendable income, so X buys less pension; its `overAllowance` (and `tapered`, carry forward) warnings pass through |
+| X above the mortgage balance | Only what clears the balance is overpaid (MO8); the rest is cash; payments freed after the payoff count (CP5) |
+| ERC above the allowance | Overpayment plus ERC equal X at most (CP5); the mortgage engine's `over-allowance` warning passes through; the leg less X equals `charge.netSaving` at a horizon at or past the term |
+| Zero growth | ISA = X less fees; pension = its ratio to the ISA times that; break-even against the mortgage at its own rate |
+| Zero-rate mortgage | Leg = the overpayment plus any cash; break-even ISA return is the one whose growth after the fee is nothing |
+| Interest-only mortgage | Effect ignored (MO5); the lower interest payments up to the horizon count as freed payments |
+| X of nothing | Every column nothing, no break-even, no warnings; not a refusal |
+| Break-even with no solution within `GROWTH_RATE_BOUND` | "Above the highest rate modelled" or "below the lowest", no number (CP7) |
+| Taper zone start and end | Pay a penny either side of where the personal allowance taper starts and ends: the cost of the pension leg moves as the optimiser's points say |
+| HICBC step | X whose contribution lands either side of a HICBC step: the composer takes the most pension within X (CP3); the cost is not monotone and the test says so |
+| Also | Reproduce each leg from its own engine (the pension's cost from two optimiser points, the mortgage leg from `overpay()` rows, the ISA from `project()`); with no ERC, monthly interest, the horizon inside the fixed period and no payoff, the break-even against the mortgage equals its fixed-period `PeriodReturn.effective` within rounding; today's money never above nominal with positive inflation; a refusal from any engine refuses that leg by field |
 
 ### Cross-check plan
 
-- **Independent reference (M1):** `src/calculators/mortgage/fixtures/reference.ts` in exact rational arithmetic (BigInt fractions, no `money.ts` fine fixed point): the closed-form payment A i / (1 − (1 + i)^−n) rounded to the penny; the closed-form balance after k months, A (1 + i)^k − P ((1 + i)^k − 1) / i, within the rounding bound of the engine's replay; the payoff month as the first k where it reaches nothing; and a day-by-day daily-interest replay that counts days with its own day-number formula, not the engine's calendar helper. 300 seeded cases, as car finance's `reference.test.ts`.
-- **A real statement or illustration (owner to supply):** `docs/mortgage-cross-checks.json` holds six todo cases (a statement year, a lump sum each way, an ERC above the allowance, the fixed-rate end, interest-only). The repository is public: figures only, no personal identifiers. M1 adds `crossChecks.test.ts` (todo until filled). Filling it settles MR-1, MR-2 and MR-4 (OPEN until then) and checks MO5, MO10 and MR-10 for that lender.
-
-### Owner confirmations (given 23 October 2026)
-
-All MO1 to MO14 confirmed, with: MO9 one return per rate period, and with an ERC the net saving in pounds and a break-even point, no blended percentage; MO6 kept, with an assumption that daily and monthly interest then differ only slightly, and an `'annual'` method and off-payment-date lump sums in `docs/backlog.md`; MO15, no import of car finance (helpers moved to `src/lib/` first); MO5, MO7, MO10, MO12 and MR-10 as proposed, each named in the assumptions; no network change; MR-1, MR-2 and MR-4 OPEN until the statement is added.
-
-Still to come from the owner: the figures in `docs/mortgage-cross-checks.json`.
+- **Independent reference (C1):** `next-pound/fixtures/reference.ts` in exact rational arithmetic (BigInt fractions): a lump sum grown at a rate less a fee by its own closed form, the tax split, the deflator, and the break-even by its own bisection; the pension cost from two calls of the optimiser's own reference (`optimiser/fixtures/reference.ts`), the mortgage leg from a closed-form balance after k months (as `mortgage/fixtures/reference.ts`). Seeded cases, as the other engines.
+- **Documents (owner to supply):** `docs/next-pound-cross-checks.json` holds eight todo cases, each naming the engine cross-check it reproduces (`docs/hmrc-cross-checks.json`, `docs/mortgage-cross-checks.json`, `docs/compound-cross-checks.json`). The repository is public: figures only, no identifiers.
 
 ## Still with the owner (follow-ups; slices 1 to 3 and the budget are Done)
+
+Next pound decision (C0): confirm the readings proposed under CP1 to CP9 (`docs/open-questions.md`, "Next pound decision"), in particular CP3's correction (net cost per £1 is measured from no contribution), CP5's ERC and freed payments, CP4's pension growth, lump sum allowance and default rate, CP7's break-even against the pension, and CP9's second exception (car ownership on car finance); decide whether a current GOV.UK guide is enough for the tax-free share and the access age as config leaves (NP-2, NP-3, no tax year named); confirm that the new leaves go in their own PR before C1's engine.
+
+Mortgage overpayment (M2): confirm MO16 and the M2 page readings (`docs/open-questions.md`); fill `docs/mortgage-cross-checks.json` from a statement or illustration (settles MR-1, MR-2 and MR-4); check the page on a real phone, in Safari and with a screen reader; then the slice is marked Done in `PLAN.md`.
+
 
 Household budget (0.25.0): confirm BD8 (savings rate excludes what is left over), BD9 (`MAX_BUDGET_LINES` = 40 per list), the template lines' periods (Fixed saver monthly), the shared `Field` label now wrapping anywhere.
 
@@ -76,15 +77,15 @@ Compare redesign (1b-iii): confirm U24's maximum (the engine's, pay-bounded) and
 
 ## Last session
 
-- 23 October 2026, M2 (0.27.0, then 0.27.1 from the owner's phone: time to clear, what you pay each month, interest saved shown once): MO16 in the engine (allowance used this year, payments to the reset; red then green, six mutants killed, the reference lays out allowance years its own way); the page at `#/c/mortgage` (definition, results, page, `DateInput` and `parseDateText`, Help), tests first.
-- Browser: 30 runs at 360, 768 and 1280 px, light and dark, axe clean; Lighthouse CLS 0 (`docs/performance.md`). Two fixes from it (warning noise, a repeated figure).
-- Readings for the owner: `docs/open-questions.md`, "Mortgage page readings (M2)" (MO16's number and allowance on the balance now, dates to months, the drift threshold).
-- Not verified: a real phone, Safari, a screen reader, any real statement (MR-1, MR-2, MR-4 OPEN).
+- 23 October 2026, C0 (docs only): pre-check (PR #41 merged, Pages deploy green; mortgage M0 to M2 Done, slice row In progress). Reuse audit of `optimise()`, `overpay()`, `project()`, `money.ts`, `inputLimits.ts`, the registry.
+- GOV.UK: NP-1 to NP-12 (access age and its rise, tax-free share and lump sum allowance, tax on the rest, ISA limit and tax-free growth, the 2027 ISA reform); OPEN: NP-1 to NP-4.
+- CP1 to CP10 recorded with proposed readings; rounding per step; `CLAUDE.md` import rule (CP9); cross-check placeholder; `PLAN.md` rows, the rest Parked (`docs/backlog.md`).
+- Not verified: any figure against a real statement or illustration; the NMPA legislation itself (legislation.gov.uk not read); whether GOV.UK search missed a page naming the tax-free share's tax year.
 
 ## Next
 
-- Owner: confirm MO16 and the M2 page readings; fill `docs/mortgage-cross-checks.json` from a statement or illustration (settles MR-1, MR-2 and MR-4); check the page on a real phone, in Safari and with a screen reader.
-- Then mark the mortgage slice Done in `PLAN.md`.
-- CR-10 (car finance) stays open.
+- Owner: confirm the C0 readings and NP-2/NP-3's tax-year question (above); fill `docs/next-pound-cross-checks.json` when documents are to hand.
+- C1 pre-check: confirm C0 merged and mark C0 Done in `PLAN.md` with its PR number; then the config PR (leaves, verification rows), then the composer.
+- Mortgage slice: the owner's checks above, then Done in `PLAN.md`. CR-10 (car finance) stays open.
 
 Full history (progress logs, finished part scopes, slice archives): `docs/history/` (grep it, don't read it whole).
