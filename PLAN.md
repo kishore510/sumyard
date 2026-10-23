@@ -1,6 +1,6 @@
 # Phase plan: Sumyard
 
-Last updated: 23 October 2026 (slices 1 take-home pay and optimiser, 2 compound interest and 3 car decision marked Done by the owner; owner confirmations still open are listed in `PHASE-BRIEF.md`; 3d-2 Done, 0.24.0)
+Last updated: 23 October 2026 (household budget added and Done, 0.25.0, prioritised by the owner; slices 1 to 3 Done, owner confirmations still open are listed in `PHASE-BRIEF.md`)
 
 Sumyard is a set of personal UK finance calculators in one clean, ad-free web app, for the owner's own use. Constraints: client-side only, a static site on GitHub Pages, UK rules from versioned per-tax-year config, illustrative not advice.
 
@@ -37,6 +37,7 @@ Rules for this file: add a row when scope is added; update the Status cell when 
 | 3e Keep a car with finance still owed | Keep option: "still owe finance on it?" switch, settlement figure, monthly payment, payments left, final payment; sale given up = value − settlement; only interest a finance cost; rate implied by 3a's solver, labelled not the lender's APR; negative equity now flagged; inputs version 3 with identical migrated results; early settlement charges, hand-back of an existing PCP and a second agreement stay out | Done (0.23.0, PR #30, 22 October 2026) |
 | 3d-2 Car thresholds and cost bridge | Flip search carries on past a tie and names the option lower on each side, a level band in words (closes OQ-flip-tie); the first option's fuel or energy price threshold (pence per mile, a price per litre for petrol or diesel); "Where the difference comes from" under the verdict, the pair's difference in average cost per month owned split by part (shared `BridgeBar`, table fallback); sensitivity table readable at 360 px (engine and page; no config, storage or inputs-version change) | Done (0.24.0, PR #31, 22 October 2026) |
 | Take-home pay | Shipped inside 1b (1b-i to 0.12.0) at `#/c/optimiser`; 1b-ii added the optimiser to the same page | Done (0.14.0, PR #17, 21 October 2026) |
+| Household budget | `#/c/budget`: income after tax, outgoings by kind (spending, joint account, debt, savings), what is left and each part's share of income, a month or a year, split bar and table by kind, what-if sliders (page state only) with Reset and Apply; shared `SliderInput`; no tax rules | Done (0.25.0, PR #34, 23 October 2026) |
 | Mortgage overpayment | Check daily vs monthly interest handling per lender | Not started |
 | Loan / APR | Verify the APR definition against official guidance | Not started |
 | ISA vs pension vs mortgage | Builds on 1b and the overpayment calculator | Not started |

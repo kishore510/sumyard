@@ -4,6 +4,17 @@ All notable changes to Sumyard are listed here, newest first. The format follows
 
 ## [Unreleased]
 
+## [0.25.0] - 2026-10-23
+
+### Added
+- **Household budget**, a new calculator. Enter **your pay** after tax (a month or a year) and any extra income, then what goes out in four kinds: **spending**, transfers to a **joint account**, **debt** payments and **savings and investing**. Each line is weekly, monthly, quarterly or yearly. The page starts with named blank lines (Groceries, Car insurance, Mobile and the rest) you can rename, add to and remove, with Undo. A blank amount counts as nothing.
+- It shows what is **left over** and its share **of your income**, your outgoings, the **savings rate**, a bar of where your income goes and a table by kind, a **month** or a **year**. When more goes out than comes in, it says so and shows the shortfall as it is.
+- **What if**: a slider for your pay and each line. The results show your inputs and the what-ifs side by side with the change. What-ifs are never saved: **Reset what-ifs** drops them, **Apply to my inputs** puts them into your inputs, with Undo.
+- Scenarios, compare and a Help topic for it. It uses no tax rules.
+
+### Fixed
+- A long unbroken name no longer widens the page through an input's label.
+
 ## [0.24.0] - 2026-10-22
 
 ### Added
