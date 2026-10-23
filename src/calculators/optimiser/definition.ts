@@ -527,7 +527,7 @@ export const optimiserCalculator: CalculatorDefinition<OptimiserPageInputs> = de
   id: 'optimiser',
   name: 'Take-home pay',
   summary:
-    'Your take-home pay for the year, with pension, student loans, benefits in kind, Child Benefit and a PAYE estimate from your tax code, and a chart of what you keep at each candidate pension contribution.',
+    'Your take-home pay for the year, with pension, student loans, benefits in kind, Child Benefit and a PAYE estimate from your tax code, a comparison of your pension contribution now with one you choose, and a chart of what each pound into your pension costs in take-home.',
   inputsVersion: MIGRATIONS.length + 1,
   defaultInputs: () => ({
     region: 'rUK',

@@ -1,25 +1,10 @@
 # PHASE-BRIEF: Household budget
 
-Status: the household budget (0.25.0) is built in this session (section below). slices 1 (take-home pay and the pension optimiser), 2 (compound interest) and 3 (car decision) are **Done**: marked so by the owner on 23 October 2026 (`PLAN.md`). The last parts were 1b-iii (0.21.0, PR #27), 2b (0.16.0, PR #20) and 3d-2 (0.24.0, PR #31). The confirmations below stay open as follow-ups; they no longer hold a slice's status. Status per part lives only in `PLAN.md`. Finished part scopes are in `docs/history/phase-brief-archive.md`.
+Status: the household budget (0.25.0, PR #34) is merged and deployed; 0.25.1 is a fix release (VerifiedBadge's accessible name, the take-home page's summary). Slices 1 (take-home pay and the pension optimiser), 2 (compound interest) and 3 (car decision) are **Done**: marked so by the owner on 23 October 2026 (`PLAN.md`). **Slice 1b (the optimiser UI) is Done** (0.21.0, PR #27): an audit on 23 October 2026 found every 1b-ii item in the code (the take-home chart replaced by the cost-of-£1 chart in 1b-iii, U25). The last parts were 1b-iii (0.21.0, PR #27), 2b (0.16.0, PR #20) and 3d-2 (0.24.0, PR #31). The confirmations below stay open as follow-ups; they no longer hold a slice's status. Status per part lives only in `PLAN.md`. Finished part scopes, 3d-2's included, are in `docs/history/phase-brief-archive.md`.
 
 ## Docs rule
 
 Close out every session with the tiered checklist in `CLAUDE.md` ("Session close-out checklist").
-
-## Part 3d-2: thresholds past a tie, the fuel price threshold and the cost bridge (0.24.0)
-
-### Goal
-
-On the car decision page, "What changes the answer" names the option lower on each side of every threshold (the search carries on past a tie) and adds the first option's fuel or energy price threshold; "Where the difference comes from", under the verdict, splits the pair's difference in average cost per month owned by part. Decisions F53 to F56 (`docs/modelling-decisions-car.md`), U38 and U39 (`docs/ui-patterns.md`).
-
-### Scope
-
-- Engine: `flipPoints`' search past a tie (closes OQ-flip-tie), `fuelPriceFlip`, `pencePerLitreFor`, `costBridge`; pure, no config.
-- Page: the band and fuel sentences, the bridge section with its own pair Selects sharing the pair, `BridgeBar`, the sensitivity table on a phone; Help, assumptions, READMEs. No new inputs, no inputs-version, storage, scenario or compare change.
-
-### Out of scope
-
-A bridge for partial coverage or across the three cases; a joint price threshold for an electric and a petrol pair (`docs/open-questions.md`); any config change.
 
 ## Household budget (0.25.0)
 
@@ -49,7 +34,7 @@ Confirm the benefit value from an annual statement (B1) and run the payslip chec
 
 Slice 3a: confirm decisions F5 to F14 and the bounds (`src/calculators/car-finance/README.md`); confirm F15 (one decimal place, the drawdown, an added fee as a charge) and settle CR-10 (a PCP's optional final payment, purchase and option fees in the APR) from a source before any page shows an APR for PCP or HP with an option fee; decide whether the hand-back path should also take condition charges. Slice 3b: confirm F24 to F31 (`src/calculators/car-ownership/README.md`); F18's two readings and the bounds were confirmed at the start of 3c-1; confirm litres per gallon from legislation.gov.uk (CO-1). Slice 3c-1: fill `docs/car-cross-checks.json` (six cases: a spreadsheet, or a real dealer quote for the payment; source and date) and `docs/compound-cross-checks.json`; spot-check the litres per gallon line in a fuel cost per mile; confirm the page decisions F32 to F37 (`DEFAULT_HORIZON_MONTHS` = 48 accepted at the start of 3c-2); check the page on a real phone. Slice 3c-2: confirm the page decisions F38 to F42 (optional boxes read as nothing, the chart, the selected month, the sensitivity's shifts, any pair); whether to move the flip search and the sensitivity to a worker (one flip search is a 250 to 430 ms task after the inputs settle, `docs/performance.md`); check the chart and its selection on a real phone and with a screen reader.
 
-Car results redesign (3d-1): confirm U29 to U33, the verdict's wording and the per-month gap (the total difference over the horizon, rounded once); decide OQ-flip-tie (the monthly penny drift was accepted as it is in 3e, F52) (`docs/open-questions.md`); confirm U34 to U36; check the page on a real phone and with a screen reader.
+Car results redesign (3d-1): confirm U29 to U33, the verdict's wording and the per-month gap (the total difference over the horizon, rounded once); confirm U34 to U36 (OQ-flip-tie was closed in 3d-2, F53; the monthly penny drift was accepted as it is in 3e, F52); check the page on a real phone and with a screen reader.
 
 Finance on a kept car (3e): confirm F43 to F52 as built (the refusal of a final payment above the settlement and of no payments left even with no monthly payment, F50; the implied rate through `hirePurchase`, F45); check the page against a real lender statement and settlement quote; on a real phone and with a screen reader.
 
@@ -59,8 +44,8 @@ Compare redesign (1b-iii): confirm U24's maximum (the engine's, pay-bounded) and
 
 ## Last session
 
-- 23 October 2026: household budget (0.25.0, PR #34): engine, page, `SliderInput`, Help, scenarios and compare; browser matrix passed after two wrap fixes.
-- Not verified: a real phone, Safari, Firefox, a screen reader, the deployed site by hand.
+- 23 October 2026: slice 1b audit, then 0.25.1: VerifiedBadge's link is named by its visible text, then "(see tax data)" (label in name; test red then green); the take-home page's summary describes the compare and the cost-of-£1 chart; this file, `CLAUDE.md` and the archive brought up to date.
+- Not verified: Lighthouse (skipped by the owner), a screen reader on the badge, the deployed site by hand.
 
 ## Next
 
