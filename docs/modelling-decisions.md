@@ -396,6 +396,7 @@ The charge (MO7) takes two more contract inputs: the allowance already used in t
 One-off X of take-home pay, now, held to a horizon in whole years. No monthly amounts (`docs/backlog.md`).
 
 - *Proposed, for the owner:* the horizon is whole years (the compound engine's unit), and the mortgage leg reads month 12 × years from the mortgage's own start. The page supplies an "as of" date for the access-age test (CP4); the engine never reads the clock.
+- *C1 as built, for the owner (differs from the line above):* the overpayment goes in with the first payment, a month after the start date, so reading month 12 × years holds it one month less than the ISA, and the brief's check (break-even equal to the fixed period's `PeriodReturn.effective`) failed by about 0.2 points. C1 reads month 12 × years + 1 (capped at the term), so the overpayment is held whole years. The leg less X still equals `charge.netSaving` at or past the term.
 
 ### CP2. One measure: what X adds to net worth at the horizon (owner)
 

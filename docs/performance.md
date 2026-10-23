@@ -204,3 +204,16 @@ SEO's one failure is the `vite preview` robots.txt answer, as before. Bundle (gz
 ## Browser checks, C0.5 config values (0.28.0), 23 October 2026
 
 A scratch Playwright and axe-core 4.10 script against `vite preview`, on the Tax data sheet with every group open, at 360 and 1280 px in light and dark (system colour scheme). 4 runs. In each: 45 of 45 values verified, the badge reads "Last verified 23 October 2026", twelve groups "All n verified" (Pensions 13, ISAs 1), the six new values shown with their date and GOV.UK link; axe (WCAG 2.0/2.1 A and AA, best practice) found no violations; no horizontal page scroll; no external requests; no console errors; no visible link, button or summary under 44 px. No fixes were needed. Lighthouse not re-run (no page or bundle change beyond the config).
+
+## Next pound composer (C1, 0.29.0)
+
+`nextPound()` timed in Node 22 under Vitest on this machine (warm, 20 runs each, median and slowest), not in a browser:
+
+| Case | Median | Slowest |
+|---|---|---|
+| Default test case: pay £60,000, X £10,000, 20 years, a 25-year mortgage, no charge | 22 ms | 31 ms |
+| The same with an early repayment charge (the overpayment is found by bisection, about 30 `overpay()` runs) | 42 ms | 71 ms |
+| Pay £300,000 (a longer optimiser sweep) | 27 ms | 31 ms |
+| A 40-year mortgage with a charge, a 40-year horizon | 65 ms | 94 ms |
+
+Most of the time is the optimiser's sweep (at the default £500 step) and the mortgage bisection. The pension search adds about 50 single points (the £10 scan) and about 10 for the whole-pence bisection. A phone may be several times slower. That is acceptable for an internal engine; C2 should measure it on the page after the inputs settle, and consider a worker if one run passes a frame budget there, as with the car flip search (3c-2).

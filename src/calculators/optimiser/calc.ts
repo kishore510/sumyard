@@ -43,6 +43,8 @@ import {
   type ChildcareScheme,
   type Cliff,
   type CliffKind,
+  type ContributionEvaluation,
+  type ContributionPoint,
   type EmployeeNIResult,
   type EngineWarning,
   type HicbcResult,
@@ -1336,7 +1338,7 @@ const OPTIMISER_ASSUMPTIONS = [
 ]
 
 interface Evaluated {
-  readonly point: Omit<OptimiserPoint, 'reasons' | 'netCostPerPound' | 'marginalRate'>
+  readonly point: ContributionPoint
   readonly percentCharged: number | null
   readonly studentLoan: Money
 }
@@ -1478,4 +1480,30 @@ export function optimise(
     cliffs,
     assumptions: [...OPTIMISER_ASSUMPTIONS, ...ALLOWANCE_ASSUMPTIONS, ...(inputs.checkChildcare ? CHILDCARE_ASSUMPTIONS : [])],
   }
+}
+
+/**
+ * The point at one contribution by the method given, without a sweep (C1,
+ * CP3's engine note): the same evaluate() step optimise() runs at each of its
+ * points, so the result equals the sweep's point there, less the reasons,
+ * net cost per pound and marginal rate (which compare points). For a search
+ * between sweep points. Throws on a contribution below nothing or above the
+ * most the engine models; refuses as optimise() does.
+ */
+export function evaluateContribution(
+  inputs: OptimiserInputs,
+  config: TaxYearConfig,
+  policy: ModellingPolicy,
+  contribution: Money,
+): ContributionEvaluation | Refusal {
+  const checked = checkOptimiserInputs(inputs)
+  checkPolicy(policy)
+  checkAmount(contribution, 'contribution')
+  const granted = requireVerified(config, optimiserPaths(checked, inputs))
+  if (!granted.ok) return granted
+  const { values } = granted
+  const maximum = maximumContribution(checked.cashPay, inputs.pension.method, values[RAS_PATH])
+  if (compare(contribution, maximum) > 0) throw new EngineInputError('the contribution is above the most the engine models')
+  const { point } = evaluate(contribution, checked, inputs, values, policy, config.id)
+  return { ok: true, taxYear: config.id, maximumContribution: maximum, point }
 }

@@ -32,3 +32,11 @@ export function pageSweepStep(range: Money, period: 'year' | 'month' = 'year'): 
   const times = Math.floor(Math.max(0, toPence(range)) / (base * PAGE_SWEEP_POINTS)) + 1
   return fromPence(base * times)
 }
+
+/**
+ * Next pound (C1, CP3): the step of the finer scan between two neighbouring
+ * sweep points, before the search in whole pence. A dip in the cost of a
+ * contribution narrower than this (a HICBC step, a penny effect) between two
+ * sweep points can be passed over; the search is exact within the last step.
+ */
+export const NEXT_POUND_REFINE_STEP: Money = fromPounds(10)

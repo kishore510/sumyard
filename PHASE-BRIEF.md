@@ -1,6 +1,6 @@
 # PHASE-BRIEF: Where does the next £X go?
 
-Status: **C0 (brief and decisions, docs only)** Done (PR #42); **C0.5 (config values)** Done (0.28.0, PR #43); C1 next. Mortgage overpayment M0 to M2 are Done (0.26.0 to 0.27.2, PRs #36 to #41, deployed); the slice waits on the owner's checks (below) before `PLAN.md` marks it Done. Slices 1 to 3 and the budget are Done. Finished briefs, the mortgage slice's included, are in `docs/history/phase-brief-archive.md`.
+Status: **C0 (brief and decisions, docs only)** Done (PR #42); **C0.5 (config values)** Done (0.28.0, PR #43); **C1 (composer, internal)** Done (0.29.0, PR #44); C2 next. Mortgage overpayment M0 to M2 are Done (0.26.0 to 0.27.2, PRs #36 to #41, deployed); the slice waits on the owner's checks (below) before `PLAN.md` marks it Done. Slices 1 to 3 and the budget are Done. Finished briefs, the mortgage slice's included, are in `docs/history/phase-brief-archive.md`.
 
 ## Docs rule
 
@@ -16,7 +16,7 @@ Close out every session with the tiered checklist in `CLAUDE.md` ("Session close
 
 - **C0, brief and decisions (PR #42):** docs only. No code, config or UI.
 - **C0.5, config values (PR #43):** the owner's NP-1 to NP-4 decisions (CP11); 2026-27 leaves `pension.minimumAge.current`, `.announced`, `.announcedFrom`, `pension.lumpSum.taxFreeShare`, `.allowance` and `isa.annualLimit`, each with a Values row. Read them through `requireVerified`; the basic rate for the retirement tax default is the "Basic rate" band in `incomeTax.bands`.
-- **C1, composer (internal, no UI), tests first: red then green.** `src/calculators/next-pound/` (`types.ts`, `calc.ts`, `README.md`, `fixtures/reference.ts`, `calc.test.ts`, `properties.test.ts`, `reference.test.ts`, `crossChecks.test.ts` on `docs/next-pound-cross-checks.json`, `literals.test.ts`), and `src/calculators/engineImports.test.ts` (CP9's spec). Starting rates for low, mid and high growth as named starting values in `src/lib/inputLimits.ts`, for the owner. Mutation spot-checks on the composer.
+- **C1, composer (internal, no UI), tests first: red then green (Done, 0.29.0, PR #44; `src/calculators/next-pound/README.md`).** `src/calculators/next-pound/` (`types.ts`, `calc.ts`, `README.md`, `fixtures/reference.ts`, `calc.test.ts`, `properties.test.ts`, `reference.test.ts`, `crossChecks.test.ts` on `docs/next-pound-cross-checks.json`, `literals.test.ts`), and `src/calculators/engineImports.test.ts` (CP9's spec). Starting rates for low, mid and high growth as named starting values in `src/lib/inputLimits.ts`, for the owner. Mutation spot-checks on the composer.
 - **C2, page:** `definition.ts` (inputs version 1, `validateInputs`, `migrateInputs`, `summarise`, `applySettings` for the region), `NextPoundPage.tsx` from shared components (`StickyResult`, `Section`, inputs, `ResultCard`/`StatRow`, `AssumptionsPanel`, `VerifiedBadge`, `RefusalNotice`), registry and route, scenarios and compare, Help topic `next-pound`, README. Browser matrix once. No new storage key.
 
 ### Reuse (audited in C0)
@@ -59,6 +59,8 @@ CP10: the Lifetime ISA, the State Pension, a partner, offset mortgages, cash sav
 
 Next pound decision (C0): confirm the readings proposed under CP1 to CP9 (`docs/open-questions.md`, "Next pound decision"), in particular CP3's correction (net cost per £1 is measured from no contribution), CP5's ERC and freed payments, CP4's pension growth, lump sum allowance and default rate, CP7's break-even against the pension, and CP9's second exception (car ownership on car finance); spot-check the two leaves that rest on current guides naming no tax year (`pension.lumpSum.taxFreeShare`, `pension.minimumAge.current`; NP-2, NP-3, decided 23 October 2026, CP11) against the guides cited in `docs/verification-log.md`.
 
+Next pound composer (C1): confirm the mortgage leg read at month 12 × years + 1 (CP1 as built), the starting growth rates in `src/lib/inputLimits.ts`, the £10 finer scan, the NP-1 warning's condition, and the refusal split (composer leaves refuse the whole result, an engine refuses its leg) (`docs/open-questions.md`, "Next pound composer (C1)"); fill `docs/next-pound-cross-checks.json`.
+
 Mortgage overpayment (M2): confirm MO16 and the M2 page readings (`docs/open-questions.md`); fill `docs/mortgage-cross-checks.json` from a statement or illustration (settles MR-1, MR-2 and MR-4); check the page on a real phone, in Safari and with a screen reader; then the slice is marked Done in `PLAN.md`.
 
 
@@ -78,15 +80,15 @@ Compare redesign (1b-iii): confirm U24's maximum (the engine's, pay-bounded) and
 
 ## Last session
 
-- 23 October 2026, C0.5 (config and docs only): pre-check (PR #42 merged, Pages deploy green). Owner's NP-1 to NP-4 decisions recorded as CP11.
-- Six 2026-27 leaves, each read again on GOV.UK that day: access age now (55), announced age (57) from 6 April 2028, tax-free share (25%), lump sum allowance, ISA limit (new `isa` group). Two red/green pairs, one per group. 0.28.0.
-- SPOT-CHECK (owner): the tax-free share and the access age now rest on current guides naming no tax year (three pages each agree).
-- Not verified: the NMPA legislation (legislation.gov.uk not read); any Budget or Statement after 17 October 2026 changing a value; NP-7 to NP-11 not read again.
+- 23 October 2026, C1 (internal, 0.29.0): pre-check (PR #43 merged, Pages deploy green). Part 1: `evaluateContribution()` exported from the optimiser (no behaviour change: fingerprint and 300 seeded cases). Part 2: `nextPound()` in `src/calculators/next-pound/`, with the CP9 import guard. Each was a red/green pair.
+- Every proposed reading built as written, except the mortgage leg, read at month 12 × years + 1 so the overpayment is held whole years (`docs/open-questions.md`, "Next pound composer (C1)").
+- Tests: the edge-case table, an independent BigInt reference (300 cases), properties, cross-checks as todos. All eight mutation spot-checks fail the suite.
+- Not verified: a browser or phone timing (Node: up to about 65 ms a run); the cross-check documents (owner).
 
 ## Next
 
-- Owner: confirm the C0 readings and spot-check the two guide-based leaves (above); fill `docs/next-pound-cross-checks.json` when documents are to hand.
-- C1 pre-check: confirm PR #43 merged and deployed; then the composer.
+- Owner: confirm the C0 readings and the C1 mortgage-month change; set the starting growth rates; spot-check the two guide-based leaves; fill `docs/next-pound-cross-checks.json` when documents are to hand.
+- C2 pre-check: confirm PR #44 merged and deployed; then the page on `nextPound()`.
 - Mortgage slice: the owner's checks above, then Done in `PLAN.md`. CR-10 (car finance) stays open.
 
 Full history (progress logs, finished part scopes, slice archives): `docs/history/` (grep it, don't read it whole).

@@ -1,4 +1,4 @@
-import { fromPounds, ratio } from './money'
+import { fromPounds, percent, ratio } from './money'
 
 /*
  * Bounds on what a person can type into a calculator, so every sum stays a
@@ -107,3 +107,24 @@ export const MAX_MORTGAGE_TERM_MONTHS = 480
  * the level payment before it by more than this share of it is warned about as drift (M2; the owner to confirm).
  */
 export const MORTGAGE_DRIFT_SHARE = ratio(1, 10)
+
+/*
+ * Next pound (C1): starting values and bounds for the composer. The three
+ * growth rates are illustrative starting values for the owner to set (CP6),
+ * not market figures, forecasts or advice; they sit inside GROWTH_RATE_BOUND.
+ */
+
+/** Next pound: the low growth case a fresh page starts with, a nominal annual rate before the fee. Illustrative, for the owner. */
+export const NEXT_POUND_GROWTH_LOW = percent('2')
+
+/** Next pound: the mid growth case a fresh page starts with. Illustrative, for the owner. */
+export const NEXT_POUND_GROWTH_MID = percent('5')
+
+/** Next pound: the high growth case a fresh page starts with. Illustrative, for the owner. */
+export const NEXT_POUND_GROWTH_HIGH = percent('8')
+
+/** Next pound: the break-even ISA return is searched on rates in steps of one over this (hundredths of a percent, the display precision; CP7). */
+export const BREAK_EVEN_RATE_DENOMINATOR = 10_000
+
+/** The oldest age an age input accepts, in whole years. An input bound, not a pension rule. */
+export const MAX_AGE_YEARS = 120
