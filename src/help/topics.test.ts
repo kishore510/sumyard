@@ -39,7 +39,7 @@ describe('buildTopics', () => {
 })
 
 describe('content/help', () => {
-  it('has Quick start first, then the take-home topic (1b-i), the optimiser topic (1b-ii-b), compound interest (2b), the car decision (3c-1), the household budget and the mortgage (M2), then the slice 0 topics', () => {
+  it('has Quick start first, then the take-home topic (1b-i), the optimiser topic (1b-ii-b), compound interest (2b), the car decision (3c-1), the household budget, the mortgage (M2) and the next pound (C2), then the slice 0 topics', () => {
     expect(HELP_TOPICS.map((t) => t.id)).toEqual([
       'quick-start',
       'take-home-pay',
@@ -48,6 +48,7 @@ describe('content/help', () => {
       'car-decision',
       'budget',
       'mortgage',
+      'next-pound',
       'scenarios-and-saving',
       'tax-data-and-last-verified',
       'troubleshooting',
@@ -115,6 +116,29 @@ describe('content/help', () => {
       /uses no tax rules/i,
       /not modelled/i,
       /offer documents/i,
+    ])
+      expect(text).toMatch(word)
+  })
+
+  it('the next pound topic covers each leg, not accessible, not set up, guaranteed, break-even, warnings and what is not modelled', () => {
+    const text = JSON.stringify(topicById('next-pound')!.blocks)
+    for (const word of [
+      /pension/i,
+      /mortgage overpayment/i,
+      /ISA/,
+      /today's money/i,
+      /not accessible at horizon/i,
+      /not set up/i,
+      /guaranteed/i,
+      /above the highest rate modelled/i,
+      /below the lowest rate modelled/i,
+      /copy from the take-home page/i,
+      /employer National Insurance/i,
+      /transitional age/i,
+      /stocks and shares ISA/i,
+      /scan step/i,
+      /not advice/i,
+      /not modelled/i,
     ])
       expect(text).toMatch(word)
   })

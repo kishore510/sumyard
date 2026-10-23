@@ -217,3 +217,25 @@ A scratch Playwright and axe-core 4.10 script against `vite preview`, on the Tax
 | A 40-year mortgage with a charge, a 40-year horizon | 65 ms | 94 ms |
 
 Most of the time is the optimiser's sweep (at the default £500 step) and the mortgage bisection. The pension search adds about 50 single points (the £10 scan) and about 10 for the whole-pence bisection. A phone may be several times slower. That is acceptable for an internal engine; C2 should measure it on the page after the inputs settle, and consider a worker if one run passes a frame budget there, as with the car flip search (3c-2).
+
+## Next pound page (C2, 0.30.0), 23 October 2026
+
+Scratch Playwright (1.56) and axe-core 4.10 against `vite preview`, Chromium 1243, on `#/c/next-pound` at 360, 768 and 1280 px in light and dark (system colour scheme), in three states each: empty (the date the results need named); filled (a lump sum, pay with a net pay contribution, a 25-year mortgage with a fixed rate and an early repayment charge over its penalty-free limit, a fee, inflation, ISA payments past the annual limit; every section and the chart's table open); the pension not accessible (a scheme age past the horizon) with the mortgage cleared (not set up). 118 checks, none failing: axe (WCAG 2.0/2.1 A and AA, best practice) found no violations; no horizontal page scroll; every visible button, link, box, select and summary at least 44 px tall; the chart takes the theme; no "best", "better", "recommend" or "should" on the page (assumptions open); no external requests; no console errors. Plus at 360 px on a touch, mobile viewport: 20 seconds of Tab (about 3,200 presses, with scrolling back up every 25) found no focused element under the sticky bar. Fixes that came out of it: paragraphs inside the cards' definition lists (the break-even card, a leg with no number) moved to the card's footer; the chart's categories use short names, as "Mortgage overpayment" was dropped under its bar at 360 px.
+
+Lighthouse 12.8.2, mobile form factor, headless Chromium 1243, `#/c/next-pound` as it loads (empty: Lighthouse can't fill the boxes):
+
+| Page | Performance | Accessibility | Best practices | SEO | FCP | LCP | TBT | CLS |
+|---|---|---|---|---|---|---|---|---|
+| `#/c/next-pound` | 93 | 100 | 100 | 91 | 2.3 s | 2.7 s | 70 ms | 0 |
+
+SEO's one failure is the `vite preview` robots.txt answer, as before. CLS of a filled page (results appearing after the inputs settle) not measured by Lighthouse; the results column keeps the last results while a change is worked out, so it does not empty and refill. Bundle (gzip): the page about 9 KB; the composer and its definition are in the main bundle with the registry, as every calculator's.
+
+Compute: `nextPound()` runs once the inputs have stopped changing for `SETTLE_MS` (the first run at once), as the car page's flip search. At 4x CPU slowdown (CDP `Emulation.setCPUThrottlingRate`), six runs each (two sessions of three), the longest task after one change to the lump sum:
+
+| Case | Longest task |
+|---|---|
+| Default: pay £60,000, X £10,000, 20 years, a 25-year mortgage, no charge | 106 to 189 ms |
+| The same with an early repayment charge (the overpayment found by bisection) | 230 to 339 ms |
+| A 40-year mortgage with a charge, a 40-year horizon | 322 to 505 ms |
+
+**Past the brief's 200 ms limit with a charge.** Reported, not changed: the proposal is a worker for the composer (`docs/backlog.md`), for the owner to decide. A real phone not measured.

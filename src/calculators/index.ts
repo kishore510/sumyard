@@ -2,6 +2,7 @@ import { budgetCalculator } from './budget/definition'
 import { carDecisionCalculator } from './car-decision/definition'
 import { compoundCalculator } from './compound-interest/definition'
 import { mortgageCalculator } from './mortgage/definition'
+import { nextPoundCalculator } from './next-pound/definition'
 import { optimiserCalculator } from './optimiser/definition'
 import { createCalculatorRegistry } from './registry'
 
@@ -17,4 +18,5 @@ export const CALCULATORS = createCalculatorRegistry([
   carDecisionCalculator,
   budgetCalculator,
   mortgageCalculator,
+  nextPoundCalculator,
 ])
