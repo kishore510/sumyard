@@ -12,6 +12,9 @@ import { ALLOWED, engineFiles, FIGURE, numbersIn, split } from '../fixtures/lite
  * number. Its assumptions carry no digit at all (calc.test.ts).
  */
 
+/** The day-count names MO3 fixes ('actual/365' is a convention's name, not a figure); exempt as exact strings only. */
+const NAMES = new Set(['actual/365', 'actual/actual'])
+
 const HERE = import.meta.dirname
 const FILES = engineFiles(HERE)
 
@@ -27,6 +30,6 @@ describe('literal guard: the mortgage overpayment engine', () => {
 
   it.each(FILES)('%s has no figure in its comments or strings', (name) => {
     const { prose } = split(readFileSync(join(HERE, name), 'utf8'))
-    expect(prose.filter((text) => FIGURE.test(text))).toEqual([])
+    expect(prose.filter((text) => !NAMES.has(text) && FIGURE.test(text))).toEqual([])
   })
 })

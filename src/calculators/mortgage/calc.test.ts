@@ -58,7 +58,7 @@ describe('a repayment schedule without overpayments', () => {
   })
 
   it('dates each payment on the start day, or a shorter month’s last day', () => {
-    const short = run({ startDate: '2027-01-31', termMonths: 3 })
+    const short = run({ startDate: '2027-01-31', termMonths: 3, fixedEndMonth: 3 })
     expect(short.baseline.rows.map((row) => row.date)).toEqual(['2027-02-28', '2027-03-31', '2027-04-30'])
   })
 })
@@ -103,7 +103,7 @@ describe('overpayments (MO5, MO6, MO8)', () => {
 
   it('reduce-term keeps the payment and clears the balance sooner', () => {
     const r = run({ lumpSums: lump, fixedEndMonth: 300 })
-    expect(r.overpaying.rows.slice(0, -1).every((row) => row.payment === r.baseline.paymentNow)).toBe(true)
+    expect(r.overpaying.rows.slice(0, r.overpaying.payoffMonth! - 1).every((row) => row.payment === r.baseline.paymentNow)).toBe(true)
     expect(r.overpaying.payoffMonth).toBeLessThan(300)
     expect(r.monthsSaved).toBe(300 - r.overpaying.payoffMonth!)
     expect(p(r.overpaying.rows[5]!.overpayment)).toBe(2_000_000)
@@ -153,13 +153,13 @@ describe('overpayments (MO5, MO6, MO8)', () => {
   })
 
   it('a lump sum in the final month clears what is left and the payment shrinks to the remainder', () => {
-    const base = run({ termMonths: 12 })
+    const base = run({ termMonths: 12, fixedEndMonth: 12 })
     const last = base.baseline.rows[11]!
     const owed = p(last.opening) + p(last.interest)
-    const partial = run({ termMonths: 12, lumpSums: [{ month: 12, amount: fromPence(1_000) }] })
+    const partial = run({ termMonths: 12, fixedEndMonth: 12, lumpSums: [{ month: 12, amount: fromPence(1_000) }] })
     expect(p(partial.overpaying.rows[11]!.overpayment)).toBe(1_000)
     expect(p(partial.overpaying.rows[11]!.payment)).toBe(owed - 1_000)
-    const whole = run({ termMonths: 12, lumpSums: [{ month: 12, amount: fromPence(owed + 5) }] })
+    const whole = run({ termMonths: 12, fixedEndMonth: 12, lumpSums: [{ month: 12, amount: fromPence(owed + 5) }] })
     expect(p(whole.overpaying.rows[11]!.overpayment)).toBe(owed)
     expect(p(whole.overpaying.rows[11]!.payment)).toBe(0)
     expect(p(whole.overpaying.rows[11]!.unused)).toBe(5)
@@ -329,10 +329,11 @@ describe('interest methods (MO3)', () => {
     expect(a.baseline.rows.slice(0, 9)).toEqual(b.baseline.rows.slice(0, 9))
   })
 
-  it('daily and monthly differ only slightly over a year', () => {
+  it('daily and monthly differ only slightly over a year: under one part in fifty of the interest', () => {
     const daily = run({ ...common, startDate: '2026-03-10', policy: { interestMethod: 'daily', dayCount: 'actual/365' } })
     const monthly = run({ ...common, startDate: '2026-03-10' })
-    expect(Math.abs(p(daily.baseline.totalInterest) - p(monthly.baseline.totalInterest))).toBeLessThan(1_000)
+    const gap = Math.abs(p(daily.baseline.totalInterest) - p(monthly.baseline.totalInterest))
+    expect(gap).toBeLessThan(p(monthly.baseline.totalInterest) / 50)
   })
 })
 

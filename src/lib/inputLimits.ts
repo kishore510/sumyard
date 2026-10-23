@@ -98,3 +98,6 @@ export const MAX_PENCE_PER_UNIT = ratio(1_000, 1)
 
 /** Household budget: the most lines one list (extra income, outgoings) holds (decision BD9 in docs/modelling-decisions.md). */
 export const MAX_BUDGET_LINES = 40
+
+/** Mortgage overpayment: the longest term left, in whole months: forty years (decision MO12 in docs/modelling-decisions.md). */
+export const MAX_MORTGAGE_TERM_MONTHS = 480

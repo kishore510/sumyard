@@ -28,12 +28,15 @@ const gcd = (a: bigint, b: bigint): bigint => {
   return x
 }
 
-/** A fraction in lowest terms, the denominator above nothing. */
-export function frac(n: bigint, d = 1n): Fraction {
-  const sign = d < 0n ? -1n : 1n
-  const divisor = gcd(n, d) || 1n
-  return { n: (sign * n) / divisor, d: (sign * d) / divisor }
+/** A fraction, the denominator above nothing (not reduced: the closed forms grow too large for that to pay). */
+export const frac = (n: bigint, d = 1n): Fraction => (d < 0n ? { n: -n, d: -d } : { n, d })
+
+/** A fraction in lowest terms, for sums whose denominators repeat (the daily replay). */
+export function reduce(a: Fraction): Fraction {
+  const divisor = gcd(a.n, a.d) || 1n
+  return { n: a.n / divisor, d: a.d / divisor }
 }
+
 export const plus = (a: Fraction, b: Fraction) => frac(a.n * b.d + b.n * a.d, a.d * b.d)
 export const minus = (a: Fraction, b: Fraction) => frac(a.n * b.d - b.n * a.d, a.d * b.d)
 export const times = (a: Fraction, b: Fraction) => frac(a.n * b.n, a.d * b.d)
@@ -83,15 +86,24 @@ export function closedFormBalance(balance: bigint, i: Fraction, payment: bigint,
 
 /** The first month whose closed-form balance is nothing or less; null if none up to the limit. */
 export function closedFormPayoff(balance: bigint, i: Fraction, payment: bigint, limit: number): number | null {
-  for (let k = 1; k <= limit; k++) if (closedFormBalance(balance, i, payment, k).n <= 0n) return k
+  if (i.n === 0n) {
+    const k = (balance + payment - 1n) / payment
+    return k <= BigInt(limit) ? Number(k) : null
+  }
+  // A g − P (g − 1) / i ≤ 0, g = (1 + i)^k, is A g i ≤ P (g − 1); g is grown one month at a time.
+  let growth = ONE
+  const step = plus(ONE, i)
+  for (let k = 1; k <= limit; k++) {
+    growth = times(growth, step)
+    if (compareFraction(times(times(frac(balance), growth), i), times(frac(payment), minus(growth, ONE))) <= 0) return k
+  }
   return null
 }
 
-/** Half a penny of rounding a month, grown at the rate: the most the replay can drift from the closed form after k months. */
+/** Half a penny of rounding a month, grown at the rate: ½ ((1 + i)^k − 1) / i (½ k with no interest), the most the replay can drift after k months. */
 export function roundingBound(i: Fraction, k: number): Fraction {
-  let total = frac(0n)
-  for (let j = 0; j < k; j++) total = plus(total, power(plus(ONE, i), j))
-  return times(total, frac(1n, 2n))
+  if (i.n === 0n) return frac(BigInt(k), 2n)
+  return times(over(minus(power(plus(ONE, i), k), ONE), i), frac(1n, 2n))
 }
 
 export interface ReplayRow {
@@ -188,7 +200,7 @@ export function replayDaily(
     let accrued = frac(0n)
     for (let day = from; day < to; day++) {
       const basis = dayCount === 'actual/actual' && leap(civilDate(day).year) ? 366n : 365n
-      accrued = plus(accrued, over(times(frac(owed), rate), frac(basis)))
+      accrued = reduce(plus(accrued, over(times(frac(owed), rate), frac(basis))))
     }
     const interest = nearest(accrued)
     const due = owed + interest

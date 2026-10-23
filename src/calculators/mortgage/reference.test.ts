@@ -170,7 +170,7 @@ describe('daily interest against a day-by-day replay (100 seeded cases each day 
     const Br = times(frac(123_456_789n), frac(537n, 10_000n))
     const exact365 = times(Br, frac(29n, 365n))
     const exact366 = times(Br, frac(29n, 366n))
-    expect(minus(exact365, exact366)).toEqual(times(Br, minus(frac(29n, 365n), frac(29n, 366n))))
+    expect(compareFraction(minus(exact365, exact366), times(Br, minus(frac(29n, 365n), frac(29n, 366n))))).toBe(0)
     expect(big(a.baseline.rows[0]!.interest)).toBe(nearest(exact365))
     expect(big(b.baseline.rows[0]!.interest)).toBe(nearest(exact366))
   })
