@@ -56,7 +56,7 @@ describe('registration', () => {
     expect(CALCULATORS.get('compound-interest')).toBe(compoundCalculator)
     expect(compoundCalculator.inputsVersion).toBe(1)
     expect(compoundCalculator.taxRules).toBe('none')
-    expect(CALCULATORS.list().map((c) => c.id)).toEqual(['optimiser', 'compound-interest', 'car-decision', 'budget', 'mortgage'])
+    expect(CALCULATORS.list().map((c) => c.id)).toEqual(['optimiser', 'compound-interest', 'car-decision', 'budget', 'mortgage', 'next-pound'])
   })
 })
 

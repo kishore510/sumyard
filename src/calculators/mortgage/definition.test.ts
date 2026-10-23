@@ -60,12 +60,12 @@ const example: MortgagePageInputs = {
 }
 
 describe('registration', () => {
-  it('is registered as mortgage, inputs version 1, with no tax rules, last on the home page', () => {
+  it('is registered as mortgage, inputs version 1, with no tax rules, before the next pound on the home page', () => {
     expect(CALCULATORS.get('mortgage')).toBe(mortgageCalculator)
     expect(mortgageCalculator.inputsVersion).toBe(1)
     expect(mortgageCalculator.taxRules).toBe('none')
     expect(mortgageCalculator.name).toBe('Mortgage overpayment')
-    expect(CALCULATORS.list().at(-1)).toBe(mortgageCalculator)
+    expect(CALCULATORS.list().at(-2)).toBe(mortgageCalculator)
   })
 
   it('a scenario carries no tax year and round-trips its inputs', () => {
