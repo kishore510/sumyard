@@ -92,7 +92,7 @@ const ALLOWANCE_OPTIONS = options(ALLOWANCE_KINDS, { rate: 'Percentage of the ba
 const HINTS = {
   startDate: 'The day the balance below is owed, such as your last statement date. Payments fall on this day each month.',
   balance: 'What you owe on that day.',
-  term: 'The time left on the mortgage, in whole years and months.',
+  term: 'Your contractual term left, from your statement or offer: not an estimated end date that already counts your overpayments.',
   repaymentType: 'Repayment clears the balance by the end; interest-only pays the interest and owes the amount borrowed at the end.',
   fixed: 'Off if you are on a variable rate now: the rate below then applies from the start.',
   fixedEndDate: 'Payments on or before this date are at the fixed rate.',
@@ -138,10 +138,21 @@ const okResult = (outcome: PageOutcome | null) => (outcome?.kind === 'ok' ? outc
 
 /** The sticky figure: interest saved, and the term cut (repayment) or what is owed at the end (interest-only). */
 function stickyValue(engine: MortgageInputs, result: MortgageResult, gbp: Gbp): string {
-  const saved = gbp(result.interestSaved)
-  return engine.repaymentType === 'repayment'
-    ? `${saved}, ${yearsAndMonths(result.monthsSaved)} sooner`
-    : `${saved}, ${gbp(result.overpaying.owedAtEnd)} owed at the end`
+  const saved = `${gbp(result.interestSaved)} saved`
+  const { baseline, overpaying } = result
+  if (engine.repaymentType !== 'repayment') return `${saved}; ${gbp(overpaying.owedAtEnd)} owed at the end`
+  if (overpaying.payoffMonth === null || baseline.payoffMonth === null) return saved
+  return `${saved}; cleared in ${yearsAndMonths(overpaying.payoffMonth)} instead of ${yearsAndMonths(baseline.payoffMonth)}`
+}
+
+/** How long overpaying takes to clear the mortgage against not overpaying, in time from the start, then as dates. */
+function clearedDetail({ baseline, overpaying, monthsSaved }: MortgageResult): string | undefined {
+  if (baseline.payoffMonth === null || baseline.payoffDate === null) return undefined
+  const sooner = monthsSaved > 0 ? `: ${yearsAndMonths(monthsSaved)} sooner` : ''
+  const dates = overpaying.payoffDate
+    ? ` Last payment ${formatIsoDate(overpaying.payoffDate)} instead of ${formatIsoDate(baseline.payoffDate)}.`
+    : ''
+  return `Instead of ${yearsAndMonths(baseline.payoffMonth)}${sooner}.${dates}`
 }
 
 export default function MortgagePage() {
@@ -161,7 +172,7 @@ export default function MortgagePage() {
   const base = okResult(outcome)
   const whatIf = base ? okResult(alternative) : null
   const shown = whatIf ?? base
-  const label = `Interest saved${whatIf ? ' with your what-if' : ''}`
+  const label = `Overpaying${whatIf ? ', with your what-if' : ''}`
   const value = shown ? stickyValue(shown.inputs, shown.result, gbp) : null
 
   const apply = () => {
@@ -692,25 +703,18 @@ function Results({
       <Warnings shown={shown} fixed={pageInputs.fixed} gbp={gbp} />
 
       <div data-answer>
-        <ResultCard
-          title={`What overpaying does${suffix}`}
-          headline={gbp(result.interestSaved)}
-          headlineLabel="Interest saved over the term"
-        >
+        <ResultCard title={`What overpaying does${suffix}`}>
           <StatRow
             label="Interest saved"
             value={gbp(result.interestSaved)}
             detail="Interest without overpaying, less interest with it, the rate after the fixed rate assumed to the end."
           />
           {repayment ? (
-            <>
-              <StatRow label="Term cut" value={yearsAndMonths(result.monthsSaved)} />
-              <StatRow
-                label="New payoff date"
-                value={overpaying.payoffDate ? formatIsoDate(overpaying.payoffDate) : 'Not paid off in the term'}
-                detail={baseline.payoffDate ? `Without overpaying: ${formatIsoDate(baseline.payoffDate)}` : undefined}
-              />
-            </>
+            <StatRow
+              label="Mortgage cleared in"
+              value={overpaying.payoffMonth === null ? 'Not within the term' : yearsAndMonths(overpaying.payoffMonth)}
+              detail={clearedDetail(result)}
+            />
           ) : (
             <StatRow label="Owed at the end" value={gbp(overpaying.owedAtEnd)} detail={`Without overpaying: ${gbp(baseline.owedAtEnd)}`} />
           )}
@@ -740,7 +744,18 @@ function Results({
       {whatIf && <WhatIfResults base={base.result} whatIf={whatIf.result} repayment={repayment} gbp={gbp} />}
 
       <ResultCard title={`Payments and balance${suffix}`}>
-        <StatRow label="Payment now" value={gbp(baseline.paymentNow)} />
+        {repayment && (
+          <StatRow
+            label="You pay each month now"
+            value={gbp(add(overpaying.rows[0]!.payment, overpaying.rows[0]!.overpayment))}
+            detail={`${gbp(overpaying.rows[0]!.payment)} payment and ${gbp(overpaying.rows[0]!.overpayment)} overpayment.`}
+          />
+        )}
+        <StatRow
+          label="Contractual payment now"
+          value={gbp(baseline.paymentNow)}
+          detail="Worked out from the balance, the rate and the term left: check it against your statement. Far off? The term left may be an estimate that already counts your overpayments."
+        />
         {baseline.paymentAfterFixedEnd !== null && (
           <StatRow
             label="Payment after the fixed rate"

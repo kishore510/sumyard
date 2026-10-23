@@ -4,6 +4,15 @@ All notable changes to Sumyard are listed here, newest first. The format follows
 
 ## [Unreleased]
 
+## [0.27.1] - 2026-10-23
+
+### Changed
+- **Mortgage overpayment:** the answer now says how long the mortgage takes to clear, "cleared in 16 years 8 months instead of 19 years 4 months", in the bar at the top and in the answer card, with the time saved and the last payment dates under it.
+- **What you pay each month now**: your payment and your overpayment together, beside the contractual payment, which says to check it against your statement. The term left asks for your contractual term, not an estimated end date that already counts your overpayments.
+
+### Fixed
+- Interest saved was shown twice in the answer card.
+
 ## [0.27.0] - 2026-10-23
 
 ### Added

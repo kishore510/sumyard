@@ -137,7 +137,9 @@ describe('results, answer first', () => {
     expect(headline()).toBe(
       `${money(r.interestSaved)} saved; cleared in ${yearsAndMonths(r.overpaying.payoffMonth!)} instead of ${yearsAndMonths(r.baseline.payoffMonth!)}`,
     )
-    expect($('[data-answer] h2')?.parentElement?.textContent?.match(new RegExp(money(r.interestSaved).replace(/[.$]/g, '\\$&'), 'g'))).toHaveLength(1)
+    expect(
+      $('[data-answer] h2')?.parentElement?.textContent?.match(new RegExp(money(r.interestSaved).replace(/[.$]/g, '\\$&'), 'g')),
+    ).toHaveLength(1)
   })
 
   it('the answer card: interest saved, term cut, new payoff date, total paid, charge paid', () => {
