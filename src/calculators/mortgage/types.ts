@@ -48,6 +48,17 @@ export interface EarlyRepaymentCharge {
   /** The last month whose overpayments can be charged; nothing means no charge. */
   readonly endMonth: number
   readonly allowance: Allowance
+  /**
+   * A mortgage already running (MO16): already overpaid in the allowance year
+   * running at the start. Absent means nothing.
+   */
+  readonly usedThisYear?: Money
+  /**
+   * Payments left in that allowance year, from nothing to twelve (MO16); the
+   * next year starts after them. Absent, nothing or twelve with nothing used
+   * is a fresh year from the first payment, as M1.
+   */
+  readonly paymentsToReset?: number
 }
 
 export interface MortgageInputs {
@@ -90,6 +101,8 @@ export type MortgageField =
   | 'allowance'
   | 'allowanceRate'
   | 'allowanceAmount'
+  | 'allowanceUsed'
+  | 'paymentsToReset'
   | 'interestMethod'
   | 'dayCount'
   | 'result'
@@ -193,10 +206,19 @@ export interface ChargeOutcome {
   readonly breakEvenMonth: number | null
 }
 
-/** One allowance year of twelve payment dates (MO7): the penalty-free amount, what was overpaid in charged months, and the charge. */
+/**
+ * One allowance year (MO7, MO16): twelve payment dates, or the payments left
+ * in a year already running; the penalty-free amount, what was already used
+ * before the start, what was overpaid in charged months, and the charge.
+ */
 export interface AllowanceYear {
   readonly year: number
+  readonly fromMonth: number
+  /** The year's last month, no later than the charge's end month. */
+  readonly toMonth: number
   readonly allowance: Money
+  /** Overpaid before the start in the year already running (MO16); nothing for later years. */
+  readonly usedBefore: Money
   readonly overpaid: Money
   readonly charged: Money
 }
