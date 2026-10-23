@@ -314,67 +314,71 @@ Each amount is from nothing up to `MAX_INPUT_AMOUNT`; each list (extra income, o
 
 ## Mortgage overpayment (session M0)
 
-Proposed in session M0 on 23 October 2026, before any code, for the owner to confirm; nothing here is built yet. The calculator uses no tax rules (`taxRules: 'none'`). Sources and what could not be found: `docs/verification-log.md`, "Mortgage overpayment (session M0)" (MR-1 to MR-10). Rounding: `docs/money.md`, "Mortgage overpayment (proposed, session M0)". Engine (to come): `src/calculators/mortgage/calc.ts`. Every item marked "(session)" is a proposal; "(owner brief)" is a default the owner's M0 brief proposed, still to be confirmed.
+Proposed in session M0 and **confirmed by the owner on 23 October 2026**, with changes to MO6 and MO9 and the shared helpers (MO15); nothing here is built yet. The calculator uses no tax rules (`taxRules: 'none'`). Sources and what could not be found: `docs/verification-log.md`, "Mortgage overpayment (session M0)" (MR-1 to MR-10). MR-1, MR-2 and MR-4 stay **OPEN** until the owner's statement is added (`docs/mortgage-cross-checks.json`); the decisions below stand in for them and are named in the result's assumptions. Rounding: `docs/money.md`, "Mortgage overpayment (session M0)". Engine (to come): `src/calculators/mortgage/calc.ts`.
 
-### MO1. What v1 models (owner brief)
+### MO1. What v1 models (owner)
 
-One repayment or interest-only mortgage from a start date: the balance owed now, the term left in whole months, a fixed rate to a fixed-rate end, then a reversion rate to the end of the term. A fixed-rate end of nothing means the reversion rate from the start. The reversion rate is the person's guess and is said to be one. Monthly payments in arrears, one a month on the same day as the start date (a shorter month's last day where that day does not exist). The payment changing when a fixed rate ends is described on GOV.UK (MR-7); how the new payment is worked out is not, so MO4 proposes it.
+One repayment or interest-only mortgage from a start date: the balance owed now, the term left in whole months, a fixed rate to a fixed-rate end, then a reversion rate to the end of the term. A fixed-rate end of nothing means the reversion rate from the start. The reversion rate is the person's guess and is said to be one. Monthly payments in arrears, one a month on the same day as the start date (a shorter month's last day where that day does not exist). The payment changing when a fixed rate ends is described on GOV.UK (MR-7); how the new payment is worked out is MO4.
 
-### MO2. Repayment and interest-only (session, from MR-5)
+### MO2. Repayment and interest-only (owner, from MR-5)
 
-Repayment: a level payment that clears the balance by the end of the term, from car finance's `regularPayment` (F7) with no final payment. Interest-only: the payment is the month's interest and the capital is owed at the end, as MoneyHelper's calculator describes it (MR-5). Part-and-part is out of v1.
+Repayment: a level payment that clears the balance by the end of the term, from the shared amortising payment (MO15) with no final payment. Interest-only: the payment is the month's interest and the capital is owed at the end, as MoneyHelper's calculator describes it (MR-5). Part-and-part is out of v1.
 
-### MO3. Interest method and day count (owner brief; MR-1 and MR-10 OPEN)
+### MO3. Interest method and day count (owner; MR-1 OPEN, MR-10 as proposed)
 
 A policy field `interestMethod: 'daily' | 'monthly'`, default `'monthly'`, named in the assumptions. No reachable source states how lenders work out interest (MR-1).
 
-- `'monthly'`: each month's interest is the opening balance times a twelfth of the annual rate (MR-5's "converted into a monthly rate"; the twelfth is the session's reading, as car finance's `'monthly'` basis, F6).
-- `'daily'`: interest accrues each day on that day's balance at the annual rate over the day basis, and is added to the balance on each payment date. A second policy field `dayCount: 'actual/365' | 'actual/actual'` (OPEN, MR-10): every day a 365th of the rate, or a 366th in a leap year. Proposed default `'actual/365'`, for the owner to confirm. Needs real calendar months, so the start date (MO1) matters only here.
+- `'monthly'`: each month's interest is the opening balance times a twelfth of the annual rate (MR-5's "converted into a monthly rate"; a twelfth, as car finance's `'monthly'` basis, F6).
+- `'daily'`: interest accrues each day on that day's balance at the annual rate over the day basis, and is added to the balance on each payment date. A second policy field `dayCount: 'actual/365' | 'actual/actual'`, default `'actual/365'` (every day a 365th of the rate; `'actual/actual'`: a 366th in a leap year), named in the assumptions (MR-10). Needs real calendar months, so the start date (MO1) matters only here.
 
-### MO4. When the fixed rate ends (session; MR-7 describes, no rule found)
+### MO4. When the fixed rate ends (owner; MR-7 describes, no rule found)
 
-On the first payment date after the fixed-rate end, a repayment mortgage's payment is recalculated with `regularPayment` on the balance then and the months left, at the reversion rate; an interest-only payment becomes the interest at the reversion rate. Which "months left" after a shortened term is MO5's question.
+On the first payment date after the fixed-rate end, a repayment mortgage's payment is recalculated with the shared amortising payment on the balance then and the months left (MO5), at the reversion rate; an interest-only payment becomes the interest at the reversion rate.
 
-### MO5. What an overpayment does (session; MR-9 OPEN)
+### MO5. What an overpayment does (owner, as proposed; MR-9 not found)
 
-The person chooses `effect: 'reduce-term' | 'reduce-payment'`, proposed default `'reduce-term'`.
+The person chooses `effect: 'reduce-term' | 'reduce-payment'`, default `'reduce-term'`, named in the assumptions.
 
-- `'reduce-term'`: the payment stays as it is and the balance is cleared sooner. At the fixed-rate end (MO4) the new payment is worked out over the months the shortened schedule had left, not the contract's (so the time saved is kept). The alternative, the contract's months left (the saving turns into a lower payment from then on), is for the owner to choose; which one lenders do is OPEN.
+- `'reduce-term'`: the payment stays as it is and the balance is cleared sooner. At the fixed-rate end (MO4) the new payment is worked out over the months the shortened schedule had left, not the contract's, so the time saved is kept.
 - `'reduce-payment'`: from the next payment date the payment is recalculated on the lower balance over the contract's months left.
 - Interest-only: an overpayment lowers the capital, so the interest and the amount owed at the end fall; `effect` does not apply and the page says so.
 
-### MO6. Timing of an overpayment (session; MR-2 OPEN)
+### MO6. Timing of an overpayment (owner; MR-2 OPEN)
 
-A regular overpayment (an amount a month, from and to a month) and up to `MAX_LIST_ITEMS` lump sums (an amount at a month) are paid on payment dates only, with that month's payment. With either interest method the next month's interest is on the lower balance, so the two methods differ only in day counts, not in when an overpayment counts. A mid-month lump sum (where the daily method would credit it sooner) is out of v1.
+A regular overpayment (an amount a month, from and to a month) and up to `MAX_LIST_ITEMS` lump sums (an amount at a month) are paid on payment dates only, with that month's payment. With either interest method the next month's interest is on the lower balance. An assumption says so: overpayments are taken on payment dates only, so daily and monthly interest differ only slightly, by their day counts, not by when an overpayment counts. An `'annual'` interest method and lump sums off payment dates are in `docs/backlog.md`.
 
-### MO7. Early repayment charge and penalty-free allowance (owner brief; MR-3 described, MR-4 OPEN)
+### MO7. Early repayment charge and penalty-free allowance (owner, as proposed; MR-3 described, MR-4 OPEN)
 
-Contract inputs, never config, with no default figure: an ERC as a percentage of the amount overpaid above the allowance, an ERC end month (proposed default the fixed-rate end; it can differ), and a penalty-free allowance a year as a percentage of the balance at the start of each allowance year, or as an amount. Allowance years run from the start date (proposed; whether a lender uses calendar years or the product's anniversaries is OPEN). The engine never caps an overpayment to the allowance: it charges the ERC on the excess in each allowance year and shows it. The ERC is paid from the person's pocket on the day, not added to the balance. Interest saved is shown before and after the ERC. Unused allowance does not carry over (proposed).
+Contract inputs, never config, with no default figure: an ERC as a percentage of the amount overpaid above the allowance, an ERC end month (default the fixed-rate end; it can differ), and a penalty-free allowance a year as a percentage of the balance at the start of each allowance year, or as an amount. Allowance years run from the start date. The engine never caps an overpayment to the allowance: it charges the ERC on the excess in each allowance year and shows it. The ERC is paid from the person's pocket on the day, not added to the balance. Unused allowance does not carry over. Each of these is named in the assumptions.
 
-### MO8. Overpayments past the balance (session)
+### MO8. Overpayments past the balance (owner)
 
 An overpayment never takes the balance below nothing: the engine uses only what clears it after that month's interest and payment, reports the part not used, and charges any ERC on the part used. A lump sum in the final month clears what is left, and that month's payment shrinks to the remainder. Once the balance is nothing, later payments and overpayments are nothing.
 
-### MO9. Interest saved and its guaranteed return (owner brief; session for the measure)
+### MO9. Interest saved and its guaranteed return (owner)
 
-Interest saved is the interest without overpayments less the interest with them, over the whole term (the reversion rate assumed to the end) and up to the fixed-rate end (which does not rest on that guess). Beside it, the **effective guaranteed return**: what a pound overpaid earns by not being charged interest, as an effective annual rate for each rate period. With `'monthly'` interest it is (1 + r/12)^12 − 1, compound interest's `effectiveAnnualRate(rate, 'monthly')` (C2); with `'daily'` it is the twelve months from the start date compounded month by month, each month (1 + r × days ÷ day basis), in fixed point (C9). When an ERC is paid the page says it lowers the return and shows interest saved after it; a single rate net of the ERC (an internal rate of return on the overpayments against the payments saved) is an owner question. No savings comparison in v1: that is the ISA vs pension vs mortgage slice. No tax is modelled.
+Interest saved is the interest without overpayments less the interest with them, over the whole term (the reversion rate assumed to the end) and up to the fixed-rate end (which does not rest on that guess). Beside it, the **effective guaranteed return**, one for each rate period (fixed, then reversion): what a pound overpaid earns by not being charged interest, as an effective annual rate. With `'monthly'` interest it is (1 + r/12)^12 − 1, the shared annual rate of a twelfth of r (MO15); with `'daily'` it is the twelve months from the start of the period compounded month by month, each month (1 + r × days ÷ day basis), in fixed point (C9). No blended percentage: when an ERC is paid, the page shows the **net saving in pounds** (interest saved less the ERC) and a **break-even point**, the first month from which the interest saved so far is at least the ERC paid so far (or that it never breaks even within the term). No savings comparison in v1: that is the ISA vs pension vs mortgage slice. No tax is modelled.
 
-### MO10. Rounding per step (session; lenders' rounding OPEN)
+### MO10. Rounding per step (owner, as proposed; lenders' rounding not found)
 
-Each step has one mode, recorded in `docs/money.md`, so a real statement can correct one line: payments to the nearest penny (F7); monthly interest to the nearest penny; daily interest kept exact through the month and rounded once to the nearest penny when charged; the last payment takes the rounding; the ERC to the nearest penny; the allowance rounded down.
+Each step has one mode, recorded in `docs/money.md` and named in the assumptions, so a real statement can correct one line: payments to the nearest penny (F7); monthly interest to the nearest penny; daily interest kept exact through the month and rounded once to the nearest penny when charged; the last payment takes the rounding; the ERC to the nearest penny; the allowance rounded down.
 
-### MO11. No tax rules (owner brief)
+### MO11. No tax rules (owner)
 
 `taxRules: 'none'`: the page shows `NoTaxRulesBadge` in place of the verified badge, scenarios carry no tax year and `summarise` ignores the config, wired as for compound interest, the car decision and the budget (`registry.ts`, `session.ts`, `scenarios/`). No registry change is needed.
 
-### MO12. Bounds and refusals (session)
+### MO12. Bounds and refusals (owner, as proposed)
 
-The engine refuses, by field, rather than throw: a balance from a penny to `MAX_INPUT_AMOUNT`; a term in whole months from one to a new `MAX_MORTGAGE_TERM_MONTHS` (proposed 480, forty years) in `src/lib/inputLimits.ts`; rates from nothing to `MAX_FINANCE_RATE` (so `monthlyFactor` can be reused); a fixed-rate end and an ERC end from nothing to the term; overpayments and lump sums from nothing to `MAX_INPUT_AMOUNT`, lump sums at months within the term; a start date that is a real date (`isIsoDate`). A term under a month is refused. A result past the safe range is refused as too large.
+The engine refuses, by field, rather than throw: a balance from a penny to `MAX_INPUT_AMOUNT`; a term in whole months from one to a new `MAX_MORTGAGE_TERM_MONTHS` = 480 (forty years) in `src/lib/inputLimits.ts`; rates from nothing to `MAX_FINANCE_RATE`; a fixed-rate end and an ERC end from nothing to the term; overpayments and lump sums from nothing to `MAX_INPUT_AMOUNT`, lump sums at months within the term; a start date that is a real date (`isIsoDate`). A term under a month is refused. A result past the safe range is refused as too large. The bounds are named in the assumptions.
 
-### MO13. Results (session)
+### MO13. Results (owner)
 
-The payment now and after the fixed-rate end; the balance at the fixed-rate end; total interest; the payoff month and the time saved; ERC paid; interest saved before and after the ERC, over the whole term and to the fixed-rate end; the effective guaranteed return (MO9); a yearly table and a balance chart with and without overpayments, with a table fallback. Results are always recomputed; scenarios store inputs only (inputs version 1, no new storage key).
+The payment now and after the fixed-rate end; the balance at the fixed-rate end; total interest; the payoff month and the time saved; ERC paid; interest saved, over the whole term and to the fixed-rate end; with an ERC, the net saving and the break-even point (MO9); the effective guaranteed return per rate period; a yearly table and a balance chart with and without overpayments, with a table fallback. Results are always recomputed; scenarios store inputs only (inputs version 1, no new storage key).
 
-### MO14. Out of v1 (session)
+### MO14. Out of v1 (owner)
 
-Offset and savings comparisons, tax, part-and-part, payment holidays and underpayments, more than one product after the fixed rate, tracker and base-rate paths, product and exit fees, porting, the APRC, mid-month overpayments, and borrowing an overpayment back.
+Offset and savings comparisons, tax, part-and-part, payment holidays and underpayments, more than one product after the fixed rate, tracker and base-rate paths, product and exit fees, porting, the APRC, an `'annual'` interest method and lump sums off payment dates (both in `docs/backlog.md`), and borrowing an overpayment back.
+
+### MO15. Shared schedule helpers, no import of car finance (owner)
+
+The mortgage engine never imports `src/calculators/car-finance` (or another calculator). M1 starts with its own red then green commit pair that moves `monthlyRate`, `interestOn` and the schedule helpers (`monthlyFactor`, `regularPayment`, `annualRate`, the `MonthlyRate` type) into a shared module in `src/lib/`, with car finance calling it and no change in behaviour: every car finance, car ownership and car decision test passes unchanged. The mortgage engine then calls only `src/lib/`. Its `'monthly'` return (MO9) is the shared `annualRate` of a twelfth of the rate, not compound interest's `effectiveAnnualRate`.

@@ -166,23 +166,24 @@ The chart's points and the readout are the engine's `MonthPoint`s, unchanged.
 
 Total paid into the pension is the engine's `pension.total` at each point (own contribution, provider relief, other employer contributions); it is never the contribution change added on.
 
-## Mortgage overpayment (proposed, session M0)
+## Mortgage overpayment (session M0)
 
-Decisions MO3, MO9 and MO10 in `docs/modelling-decisions.md`. Proposed, not built, and for the owner to confirm. No tax rule is involved, and no lender's rounding was found (`docs/verification-log.md`, MR-1, MR-2, MR-10): every mode below is a modelling choice, one per step, so a real statement can correct one line.
+Decisions MO3, MO9, MO10 and MO15 in `docs/modelling-decisions.md`, confirmed by the owner on 23 October 2026; not built yet. No tax rule is involved, and no lender's rounding was found (`docs/verification-log.md`, MR-1, MR-2, MR-10): every mode below is a modelling choice, one per step, named in the result's assumptions, so a real statement can correct one line. "Shared" is the `src/lib/` module M1 extracts from car finance (MO15).
 
-| Step | Mode (proposed) | Where (to come) | Basis |
+| Step | Mode | Where (to come) | Basis |
 |---|---|---|---|
-| Monthly rate, `'monthly'` method | Exact `Ratio`, a twelfth of the annual rate | as car finance's `monthlyRate` | MO3; MR-5 (described) |
-| Regular payment, and each recalculation (fixed-rate end, `'reduce-payment'`) | Closed form in fine fixed point, rounded once to the nearest penny | car finance's `regularPayment` | F7, MO4, MO5 |
+| Monthly rate, `'monthly'` method | Exact `Ratio`, a twelfth of the annual rate | shared `monthlyRate` | MO3; MR-5 (described) |
+| Regular payment, and each recalculation (fixed-rate end, `'reduce-payment'`) | Closed form in fine fixed point, rounded once to the nearest penny | shared `regularPayment` | F7, MO4, MO5 |
 | Interest-only payment | The month's interest, as charged | engine | MO2 |
-| Each month's interest, `'monthly'` | Opening balance × monthly rate, `mulRound` to the nearest penny | engine | MO10 |
+| Each month's interest, `'monthly'` | Opening balance × monthly rate, `mulRound` to the nearest penny | shared `interestOn` | MO10 |
 | Each month's interest, `'daily'` | Each day's balance × annual rate ÷ day basis, summed exactly (`ExactPence`), rounded once to the nearest penny when charged on the payment date | engine | MO3, MO10 |
 | Last payment | Brings the balance to exactly nothing, so it takes the rounding | engine | F7 |
 | Overpayment past the balance | Limited to what clears it: whole pence, exact | engine | MO8 |
 | Penalty-free allowance (percentage) | Balance at the allowance year's start × percentage, `mulRound` down | engine | MO7, MO10 |
 | ERC | Overpaid above the allowance × ERC rate, `mulRound` to the nearest penny | engine | MO7 |
-| Interest saved, before and after the ERC | Differences of whole-pence totals: exact | engine | MO9 |
-| Effective guaranteed return | `'monthly'`: compound interest's `effectiveAnnualRate(rate, 'monthly')`. `'daily'`: twelve monthly factors multiplied in `Factor` fixed point (C9). Shown with `roundRatio`, nearest | engine | MO9 |
+| Interest saved, net saving after the ERC | Differences of whole-pence totals: exact | engine | MO9 |
+| Break-even point | The first month whose cumulative interest saved is at least the cumulative ERC paid: whole pence, exact | engine | MO9 |
+| Effective guaranteed return, per rate period | `'monthly'`: shared `annualRate` of a twelfth of the rate. `'daily'`: twelve monthly factors multiplied in `Factor` fixed point (C9). Shown with `roundRatio`, nearest; no blended rate | engine | MO9 |
 
 ## Display (`format.ts`)
 
