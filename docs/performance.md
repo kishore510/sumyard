@@ -200,3 +200,7 @@ Lighthouse 12.8.2, mobile form factor, headless Chromium 1194, against `vite pre
 | `#/c/mortgage` | 94 | 100 | 100 | 91 | 2.2 s | 2.6 s | 50 ms | 0 |
 
 SEO's one failure is the `vite preview` robots.txt answer, as before. Bundle (gzip): the mortgage page about 8 KB. The engine runs two schedules of up to 480 months per change (a third with a what-if); no noticeable cost while typing. CLS of a filled page (results appearing as the last box is typed) not measured.
+
+## Browser checks, C0.5 config values (0.28.0), 23 October 2026
+
+A scratch Playwright and axe-core 4.10 script against `vite preview`, on the Tax data sheet with every group open, at 360 and 1280 px in light and dark (system colour scheme). 4 runs. In each: 45 of 45 values verified, the badge reads "Last verified 23 October 2026", twelve groups "All n verified" (Pensions 13, ISAs 1), the six new values shown with their date and GOV.UK link; axe (WCAG 2.0/2.1 A and AA, best practice) found no violations; no horizontal page scroll; no external requests; no console errors; no visible link, button or summary under 44 px. No fixes were needed. Lighthouse not re-run (no page or bundle change beyond the config).

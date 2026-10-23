@@ -24,6 +24,8 @@ const read = <T>(value: T, sourceUrl: SourceUrl, verifiedOn: IsoDate = READ_ON):
 })
 /** Read in the session that added PAYE tax codes. */
 const READ_FOR_PAYE: IsoDate = '2026-10-18'
+/** Read in the session that added the next pound decision's leaves. */
+const READ_FOR_NEXT_POUND: IsoDate = '2026-10-23'
 
 const INCOME_TAX_RATES: SourceUrl = 'https://www.gov.uk/income-tax-rates'
 const HMRC_INCOME_TAX_RATES: SourceUrl =
@@ -33,6 +35,10 @@ const PENSION_RATES: SourceUrl = 'https://www.gov.uk/government/publications/rat
 const TAPERED_ALLOWANCE_MANUAL: SourceUrl = 'https://www.gov.uk/hmrc-internal-manuals/pensions-tax-manual/ptm057100'
 const CARRY_FORWARD: SourceUrl = 'https://www.gov.uk/guidance/pension-administrators-check-your-members-annual-allowance'
 const PENSION_TAX_RELIEF: SourceUrl = 'https://www.gov.uk/tax-on-your-private-pension/pension-tax-relief'
+const TAX_ON_PENSION_TAX_FREE: SourceUrl = 'https://www.gov.uk/tax-on-pension/tax-free'
+const NMPA_IMPACT_NOTE: SourceUrl =
+  'https://www.gov.uk/government/publications/increasing-normal-minimum-pension-age/increasing-normal-minimum-pension-age'
+const ISA_GUIDE: SourceUrl = 'https://www.gov.uk/individual-savings-accounts'
 const CHILD_BENEFIT_RATES: SourceUrl =
   'https://www.gov.uk/government/publications/rates-and-allowances-tax-credits-child-benefit-and-guardians-allowance/tax-credits-child-benefit-and-guardians-allowance'
 const CHILD_BENEFIT_TAX_CALCULATOR: SourceUrl = 'https://www.gov.uk/child-benefit-tax-calculator'
@@ -106,7 +112,19 @@ export const taxYear: TaxYearConfig = {
     carryForward: { yearsBack: read(3, CARRY_FORWARD) },
     moneyPurchaseAnnualAllowance: read(fromPounds(10_000), PENSION_RATES),
     reliefAtSourceRate: read(percent('20'), PENSION_TAX_RELIEF),
+    minimumAge: {
+      // A current guide naming no tax year, accepted by the owner when two pages agree (docs/verification-log.md).
+      current: read(55, TAX_ON_PENSION_TAX_FREE, READ_FOR_NEXT_POUND),
+      announced: read(57, NMPA_IMPACT_NOTE, READ_FOR_NEXT_POUND),
+      announcedFrom: read<IsoDate>('2028-04-06', NMPA_IMPACT_NOTE, READ_FOR_NEXT_POUND),
+    },
+    lumpSum: {
+      // As minimumAge.current: a current guide, two pages agreeing.
+      taxFreeShare: read(percent('25'), TAX_ON_PENSION_TAX_FREE, READ_FOR_NEXT_POUND),
+      allowance: read(fromPounds(268_275), PENSION_RATES, READ_FOR_NEXT_POUND),
+    },
   },
+  isa: { annualLimit: read(fromPounds(20_000), ISA_GUIDE, READ_FOR_NEXT_POUND) },
   childBenefit: {
     weeklyRates: {
       eldestOrOnly: read(fromPounds('27.05'), CHILD_BENEFIT_RATES),

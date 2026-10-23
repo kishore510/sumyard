@@ -4,6 +4,14 @@ All notable changes to Sumyard are listed here, newest first. The format follows
 
 ## [Unreleased]
 
+## [0.28.0] - 2026-10-23
+
+### Added
+- **Tax data:** five new verified pension figures for 2026 to 2027, each with its GOV.UK source: the earliest age most people can take a pension now, the age announced to replace it and the date it applies from, the share of a pension usually taken tax-free, and the lump sum allowance. A new **ISAs** group holds the annual ISA limit. They are there for the coming "Where does the next £X go?" calculator; no calculator uses them yet.
+
+### Changed
+- The "Last verified" date on calculator pages that use tax rules now shows 23 October 2026, the day the new figures were read.
+
 ## [0.27.2] - 2026-10-23
 
 ### Added

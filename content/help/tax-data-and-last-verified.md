@@ -14,7 +14,7 @@ summary: Where calculators get their tax figures, the Tax data page, and what �
 
 ## The Tax data page
 
-[Tax data](sheet:tax-data) lists each tax year Sumyard has, grouped by topic: income tax, National Insurance, student loans, pensions, Child Benefit and childcare. Each group says how many of its figures are verified. A verified figure shows its value, a link to its GOV.UK source (opens in a new tab) and the date it was checked. Income tax bands are shown on income after allowances: each rate applies above the amount shown, up to the next band. You can also open it from About Sumyard.
+[Tax data](sheet:tax-data) lists each tax year Sumyard has, grouped by topic: income tax, National Insurance, student loans, pensions (including the pension access age and lump sums), ISAs, Child Benefit and childcare. Each group says how many of its figures are verified. A verified figure shows its value, a link to its GOV.UK source (opens in a new tab) and the date it was checked. Income tax bands are shown on income after allowances: each rate applies above the amount shown, up to the next band. You can also open it from About Sumyard.
 
 ## The “last verified” label
 
