@@ -65,6 +65,26 @@ describe('Tax data screen, real registry', () => {
     }
   })
 
+  it('shows the next pound leaves (C0.5) verified, each in its group, and those groups complete', () => {
+    render()
+    const NEXT_POUND: Record<string, readonly string[]> = {
+      pension: [
+        'pension.minimumAge.current',
+        'pension.minimumAge.announced',
+        'pension.minimumAge.announcedFrom',
+        'pension.lumpSum.taxFreeShare',
+        'pension.lumpSum.allowance',
+      ],
+    }
+    for (const [groupId, paths] of Object.entries(NEXT_POUND)) {
+      const groupEl = group('2026-27', groupId)
+      expect(groupEl.dataset.status, groupId).toBe('all')
+      for (const path of paths) {
+        expect(groupEl.querySelector(`[data-tax-field="${path}"]`)?.getAttribute('data-verified'), path).toBe('true')
+      }
+    }
+  })
+
   it('says why: calculators show no results while a value they need is unverified', () => {
     render()
     expect(host.textContent).toMatch(/no results/i)

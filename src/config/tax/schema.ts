@@ -102,6 +102,22 @@ export interface TaxYearConfig {
     readonly moneyPurchaseAnnualAllowance: Sourced<Money>
     /** Relief at source: the rate at which the provider claims relief on a contribution and adds it to the pot. */
     readonly reliefAtSourceRate: Sourced<Ratio>
+    /** The normal minimum pension age (C0.5): the earliest age most people can take their pension without an unauthorised payment charge. */
+    readonly minimumAge: {
+      /** The age now, in years. */
+      readonly current: Sourced<number>
+      /** The age announced to replace it, in years. */
+      readonly announced: Sourced<number>
+      /** The first day the announced age applies. */
+      readonly announcedFrom: Sourced<IsoDate>
+    }
+    /** Lump sums from a pension (C0.5). */
+    readonly lumpSum: {
+      /** The share of a pension that can usually be taken as a tax-free lump sum. */
+      readonly taxFreeShare: Sourced<Ratio>
+      /** The lump sum allowance: the most that can be taken tax-free across all pensions. */
+      readonly allowance: Sourced<Money>
+    }
   }
   readonly childBenefit: {
     readonly weeklyRates: {
@@ -256,6 +272,11 @@ export const TAX_GROUPS: readonly TaxGroup[] = [
       { path: 'pension.carryForward.yearsBack', label: 'Carry forward: earlier tax years', kind: 'count' },
       { path: 'pension.moneyPurchaseAnnualAllowance', label: 'Money purchase annual allowance (MPAA)', kind: 'money' },
       { path: 'pension.reliefAtSourceRate', label: 'Relief at source: rate the provider claims and adds', kind: 'ratio' },
+      { path: 'pension.minimumAge.current', label: 'Normal minimum pension age now (years)', kind: 'count' },
+      { path: 'pension.minimumAge.announced', label: 'Normal minimum pension age announced (years)', kind: 'count' },
+      { path: 'pension.minimumAge.announcedFrom', label: 'Announced age applies from', kind: 'date' },
+      { path: 'pension.lumpSum.taxFreeShare', label: 'Lump sum: share usually tax-free', kind: 'ratio' },
+      { path: 'pension.lumpSum.allowance', label: 'Lump sum allowance (most taken tax-free)', kind: 'money' },
     ],
   },
   {

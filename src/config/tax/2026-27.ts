@@ -1,7 +1,7 @@
 import type { IsoDate } from '@/lib/isoDate'
 import { fromPounds, percent, ratio, ZERO } from '@/lib/money'
 import type { TaxBand, TaxYearConfig } from './schema'
-import type { SourceUrl, Verified } from './sourced'
+import { type SourceUrl, TODO, type Verified } from './sourced'
 
 /*
  * 2026-27, verified in slice 1a session E (the PAYE tax code unit in a later
@@ -106,6 +106,8 @@ export const taxYear: TaxYearConfig = {
     carryForward: { yearsBack: read(3, CARRY_FORWARD) },
     moneyPurchaseAnnualAllowance: read(fromPounds(10_000), PENSION_RATES),
     reliefAtSourceRate: read(percent('20'), PENSION_TAX_RELIEF),
+    minimumAge: { current: TODO, announced: TODO, announcedFrom: TODO },
+    lumpSum: { taxFreeShare: TODO, allowance: TODO },
   },
   childBenefit: {
     weeklyRates: {

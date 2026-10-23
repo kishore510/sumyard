@@ -2,9 +2,9 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { isIsoDate } from '@/lib/isoDate'
-import { listTaxYears } from './index'
+import { getTaxYear, listTaxYears } from './index'
 import { TAX_FIELDS, TAX_GROUPS, type TaxYearConfig } from './schema'
-import { groupStatus, isVerified, leafAt, type Sourced } from './sourced'
+import { groupStatus, isVerified, leafAt, requireVerified, type Sourced } from './sourced'
 
 /*
  * Every real tax year against docs/verification-log.md, and every verified
@@ -102,5 +102,27 @@ describe.each(listTaxYears().map((y) => [y.id, y] as const))('tax year %s', (id,
       const logged = rows.filter((r) => r.group === group.id && r.status === 'verified').length
       expect(logged, group.id).toBe(groupStatus(year, group).verified)
     }
+  })
+})
+
+describe('the next pound leaves (C0.5), 2026-27', () => {
+  const year = getTaxYear('2026-27')!
+  const PENSION = [
+    'pension.minimumAge.current',
+    'pension.minimumAge.announced',
+    'pension.minimumAge.announcedFrom',
+    'pension.lumpSum.taxFreeShare',
+    'pension.lumpSum.allowance',
+  ] as const
+
+  it('verifies the pension access age, its announced rise and the lump sum leaves, each with a log row', () => {
+    const granted = requireVerified(year, PENSION)
+    expect(granted.ok, granted.ok ? '' : granted.unverified.join(', ')).toBe(true)
+    const rows = logRows('2026-27') ?? []
+    for (const path of PENSION) expect(rows.find((r) => r.path === path)?.group, path).toBe('pension')
+  })
+
+  it('leaves the pension group complete on the Tax data screen', () => {
+    expect(groupStatus(year, TAX_GROUPS.find((g) => g.id === 'pension')!).complete).toBe(true)
   })
 })
