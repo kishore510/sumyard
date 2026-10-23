@@ -180,6 +180,8 @@ No published worked example of a car's ownership cost was used. These are hand-c
 | OWN-6 | Cost per mile at 50 mpg and 150p a litre | 150 × 4.54609 ÷ 50 = 13.63827p a mile | F21, CO-1 | **Yes** |
 | OWN-7 | Keep, finance owed (3e, fixture a): car worth £12,000, settlement £10,800, 24 payments of £450, no final payment, ends at £6,000 over 48 months, no running costs or return | Implied rate nothing; sale given up £1,200; cash out £10,800; interest nothing; net cost £6,000 (depreciation only); net cost at month 0 nothing | F44, F45 | **Yes** (`existing.test.ts`) |
 | OWN-8 | Keep, finance owed (3e, fixture d): worth £15,000, settlement £9,000, 12 payments of £600 and £2,000 at the end, ends at £9,000 over 48 months | Interest 12 × £600 + £2,000 − £9,000 = £200; net cost less running costs £6,000 + £200 = £6,200; nothing owed after month 12 | F44, F46, F49 | **Yes** (`existing.test.ts`) |
+| OWN-9 | Cost bridge (3d-2): cash for a £20,000 car worth £11,000 at 36 months against keeping a car worth £8,000, £4,000 at 36 months; no running costs; 4% savings return | Depreciation part (£9,000 − £4,000) ÷ 36 = £138.888… a month; interest and fees nothing either side; the parts add up to the difference of the two averages | F55 | **Yes** (`bridge.test.ts`) |
+| OWN-10 | Price per litre at a fuel threshold (3d-2): 12.5p a mile at 40 mpg | 12.5 × 40 ÷ 4.54609 = 50,000,000 ÷ 454,609 = 109.98462…p a litre, shown 110p | F54, CO-1 | **Yes** (`threshold.test.ts`) |
 
 ## HMRC cross-check harness
 

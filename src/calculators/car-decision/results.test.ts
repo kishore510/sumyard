@@ -6,11 +6,10 @@ import { cash, inputs, keep } from './fixtures/inputs'
 import { flipSentences, flipsFor } from './results'
 
 /*
- * Session 3d-1.1: "What changes the answer" in words when the engine's
- * search stops on a tie. The engine reports the first change of order
- * (F29); with the opportunity cost rounded to the penny, the two options can
- * be level over a narrow band of savings returns around a crossing, and the
- * first change found is into that band. Amounts are made up.
+ * "What changes the answer" in words near a tie. Session 3d-1.1 said when
+ * the engine's search stopped on one; since 3d-2 (F53) the search carries on
+ * past a band where the two are level, and the sentence names the option
+ * lower on each side and the band. Amounts are made up.
  */
 
 const gbp = (amount: Money) => `£${(toPence(amount) / 100).toFixed(2)}`

@@ -117,7 +117,7 @@ Decisions F7 (rounding), F8 and F9 (the rate) in `docs/modelling-decisions-car.m
 
 ## Car ownership (slice 3b)
 
-Decisions F17, F18, F21, F25 and F29 in `docs/modelling-decisions-car.md`. No tax rule is involved.
+Decisions F17, F18, F21, F25, F29 and F53 to F55 in `docs/modelling-decisions-car.md`. No tax rule is involved.
 
 | Step | Mode | Where | Basis |
 |---|---|---|---|
@@ -129,7 +129,9 @@ Decisions F17, F18, F21, F25 and F29 in `docs/modelling-decisions-car.md`. No ta
 | Net cost, equity, breakdown | Sums and differences of whole pennies: exact, so the breakdown adds up to the net cost | `costCase` | F26 |
 | Net cost per month of coverage | Net cost ÷ coverage, nearest penny, for display; ranking compares net × the other's coverage exactly | `costCase`, `rank` | F27 |
 | Flip: horizon value | Exact crossing (a rational), to the nearest penny | `valueFlip` | F29 |
-| Flip: savings return, mileage | Grid of `FLIP_SCAN_STEPS`, then bisection to neighbours 10^-`FLIP_RATE_DIGITS` apart or one mile apart | `search` | F29 |
+| Flip: savings return, mileage | Grid of `FLIP_SCAN_STEPS`, then bisection to neighbours 10^-`FLIP_RATE_DIGITS` apart or one mile apart. From a strict order a tie is carried past to the other option lower; a band of ties between is `level`, its ends one step from `below` and `above` (3d-2) | `search` | F29, F53 |
+| Flip: fuel or energy price | The first option's cost per mile on the same grid, in steps of 1 / `FLIP_RATE_DENOMINATOR` of a penny from nothing to `MAX_PENCE_PER_UNIT`; exact (`ExactPence`). A price per litre from it: pence per mile × miles per gallon ÷ litres per gallon, exact, shown to a tenth of a penny | `fuelPriceFlip`, `pencePerLitreFor` | F54 |
+| Cost bridge | Each part: the difference of the two whole-penny parts ÷ months owned, exact. Shown: the total rounded once to the nearest penny (halves away from nothing: the verdict's gap); each part cut towards nothing, the pennies still needed given one each to the largest remainders that way (by size, then part order), so the shown parts add up to the shown total and each is within a penny of exact. Shown in pence whatever Settings says | `costBridge` | F55 |
 
 **Reference tolerance.** `fixtures/reference.ts` works in exact fractions with the two roots (the curve's q and the monthly growth) as 256-bit binary fractions; each power is truncated to 256 bits. The engine's roots are within a unit of 10^-40, so a value or opportunity cost could differ only within about 10^-25 of a penny of a half; the test compares every one not within 10^-12 of a half penny, and fails if ten or more figures across the 300 seeded cases are skipped that way.
 
