@@ -200,7 +200,7 @@ Decisions CP2 to CP7 in `docs/modelling-decisions.md`; to be built in C1 (`src/c
 | Pension after tax | Pot − tax: whole pence, exact | composer | CP4 |
 | Mortgage leg | Balances and payments from `overpay()` (its own modes, "Mortgage overpayment" above); differences and the sum of freed payments are whole pence, exact | composer | CP5, MO10 |
 | Overpayment O within X with its ERC | Whole pence, searched (the ERC is the mortgage engine's, nearest penny) | composer, on `overpay()` | CP5, MO7 |
-| Today's money for the mortgage leg and leftover cash | Nominal × one over (one plus inflation) to the power of the years, in `Factor` fixed point (`factorPow`), rounded once to the nearest penny. The ISA and pension use compound interest's real view, the same deflator | composer | CP2, C5, C9 |
+| Today's money for the mortgage leg, the pension after tax and leftover cash | Nominal × one over (one plus inflation) to the power of the years, in `Factor` fixed point (`factorPow`), rounded once to the nearest penny: each column's nominal value is deflated once. The ISA and the pension pot use compound interest's real view, the same deflator (C1 as built) | composer | CP2, C5, C9 |
 | Break-even ISA return | Bisection on the growth rate within `GROWTH_RATE_BOUND`, comparing whole-pence closings; stopped when the bracket is narrower than the display precision, shown with `roundRatio`, nearest. A penny tie gives a bracket, not one rate: the lower end is shown. **Not stated** (no source involved) | composer, on `project()` | CP7 |
 
 ## Display (`format.ts`)

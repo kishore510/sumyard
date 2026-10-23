@@ -4,6 +4,11 @@ All notable changes to Sumyard are listed here, newest first. The format follows
 
 ## [Unreleased]
 
+## [0.29.0] - 2026-10-23
+
+### Added
+- **Internal only: the "Where does the next £X go?" calculations.** Nothing you can see in the app has changed. The behind-the-scenes calculations for the coming calculator now take one lump sum of take-home pay and work out what it adds to your net worth at a horizon in each of three places: your pension, an overpayment on your mortgage, or an ISA. The pension part works out how much more you can pay in for that much take-home at your own pay, then what the pot is worth after the tax-free part and tax when you take it, and whether you can take it by the horizon at all. The mortgage part takes off any early repayment charge and counts payments you no longer need. Each shows today's money and the amount then, with the ISA return that would match each of the other two. Nothing is called the best choice. They reuse the take-home, mortgage and compound interest calculations and are tested against exact calculations; checks against real documents are still to come. The page comes in a later release.
+
 ## [0.28.0] - 2026-10-23
 
 ### Added
