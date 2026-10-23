@@ -10,8 +10,8 @@ import { settingsStore } from '@/settings/settings'
 import { byText, click, mount, type } from '@/test/dom'
 import { toasts } from '@/toast/toasts'
 import { sessionFor } from '../session'
-import MortgagePage from './MortgagePage'
 import { calculate, type MortgagePageInputs, mortgageCalculator, yearsAndMonths } from './definition'
+import MortgagePage from './MortgagePage'
 import type { MortgageResult } from './types'
 
 /*
@@ -202,8 +202,18 @@ describe('warnings, never hidden', () => {
   })
 
   it('daily interest drift, worded as approximate', () => {
-    set({ ...example, termYears: 39, fixed: false, reversionRate: '9', balance: fromPounds(500_000), interestMethod: 'daily', dayCount: 'actual/actual' })
-    expect($('[data-warning="drift"]')?.textContent).toMatch(/this schedule drifts under daily interest, so treat the figures as approximate/)
+    set({
+      ...example,
+      termYears: 39,
+      fixed: false,
+      reversionRate: '9',
+      balance: fromPounds(500_000),
+      interestMethod: 'daily',
+      dayCount: 'actual/actual',
+    })
+    expect($('[data-warning="drift"]')?.textContent).toMatch(
+      /this schedule drifts under daily interest, so treat the figures as approximate/,
+    )
   })
 
   it('a fixed rate past the term, and one already ended', () => {
@@ -297,6 +307,6 @@ describe('assumptions and privacy', () => {
 
   it('adds no storage key', () => {
     set(withCharge)
-    for (let i = 0; i < localStorage.length; i++) expect(Object.values(STORAGE_KEYS)).toContain(localStorage.key(i))
+    for (let i = 0; i < localStorage.length; i++) expect(Object.values(STORAGE_KEYS).map((k) => k.key)).toContain(localStorage.key(i))
   })
 })
