@@ -171,7 +171,9 @@ describe('results, answer first', () => {
   })
 
   it('the break-even ISA return in words against each', () => {
-    expect($('[data-break-even-mortgage]')?.textContent).toMatch(/^The ISA matches the mortgage overpayment at the horizon at a growth rate/)
+    expect($('[data-break-even-mortgage]')?.textContent).toMatch(
+      /^The ISA matches the mortgage overpayment at the horizon at a growth rate/,
+    )
     expect($('[data-break-even-pension]')?.textContent).toMatch(/^The ISA matches the pension at the mid rate/)
   })
 

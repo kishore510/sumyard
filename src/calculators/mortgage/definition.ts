@@ -394,7 +394,7 @@ const ENGINE_LABELS: Record<Exclude<MortgageField, 'lumpSumAmount' | 'lumpSumMon
   result: 'Result',
 }
 
-const engineLabel = ({ field, index }: MortgageProblem) =>
+export const engineLabel = ({ field, index }: MortgageProblem) =>
   field === 'lumpSumAmount'
     ? `Lump sum ${(index ?? 0) + 1} amount`
     : field === 'lumpSumMonth'

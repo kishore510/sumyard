@@ -7,4 +7,5 @@ export const CALCULATOR_PAGES: Readonly<Record<string, ComponentType>> = {
   'car-decision': lazy(() => import('./car-decision/CarDecisionPage')),
   budget: lazy(() => import('./budget/BudgetPage')),
   mortgage: lazy(() => import('./mortgage/MortgagePage')),
+  'next-pound': lazy(() => import('./next-pound/NextPoundPage')),
 }

@@ -4,6 +4,11 @@ All notable changes to Sumyard are listed here, newest first. The format follows
 
 ## [Unreleased]
 
+## [0.30.0] - 2026-10-23
+
+### Added
+- **Where does the next £X go?** A new calculator. Put in a lump sum of take-home pay and see what it would add to your net worth in a number of years in three places: your **pension**, an **overpayment on your mortgage**, or an **ISA**. Each is shown after tax on withdrawal, in today's money first with the amount then beside it. The pension card says how much more you can pay in for that much take-home and anything held as cash, and shows "Not accessible at horizon" if you can't take it by then. The mortgage card is marked **Guaranteed** and shows the overpayment and any early repayment charge. The ISA shows low, mid and high growth. The page also gives the ISA return that would match each of the other two, groups its warnings by column, and has a chart with a table. Nothing is called the best choice: it is a comparison under the assumptions listed. You can copy your pay from the take-home page, leave the mortgage out, and save and compare scenarios as on the other pages. Help has a new topic. The figures are worked out a moment after you stop typing.
+
 ## [0.29.0] - 2026-10-23
 
 ### Added
