@@ -28,8 +28,8 @@ export interface PensionLegInputs {
   readonly optimiser: OptimiserInputs
   /** What the employer adds because of the extra contribution (default nothing): into the pot and the annual allowance, not spendable. */
   readonly employerMatch: Money
-  /** The person's age now, in whole years. */
-  readonly ageNow: number
+  /** The person's age now, in whole years; null when not given (the C2 page rebuild): the access test is not run and the leg is shown with its numbers. */
+  readonly ageNow: number | null
   /** A scheme's own later access age, in whole years; null for none (the normal minimum pension age applies). */
   readonly schemeAccessAge: number | null
   /** The one tax rate on the taxed part of the pot at the horizon; null for the default, the "Basic rate" band's rate (CP4). */
@@ -183,7 +183,8 @@ export interface PensionLegShared {
   /** Never guaranteed: it rests on growth. */
   readonly guaranteed: false
   readonly contribution: PensionContribution
-  readonly access: PensionAccess
+  /** Null when no age was given: access is not checked (the C2 page rebuild). */
+  readonly access: PensionAccess | null
   readonly warnings: readonly NextPoundWarning[]
 }
 

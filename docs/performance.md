@@ -239,3 +239,18 @@ Compute: `nextPound()` runs once the inputs have stopped changing for `SETTLE_MS
 | A 40-year mortgage with a charge, a 40-year horizon | 322 to 505 ms |
 
 **Past the brief's 200 ms limit with a charge.** Reported, not changed: the proposal is a worker for the composer (`docs/backlog.md`), for the owner to decide. A real phone not measured.
+
+## Next pound page rebuilt (C2.1, 0.31.0), 23 October 2026
+
+Scratch Playwright (1.56) and axe-core 4.10 against `vite preview`, Chromium 1243, on `#/c/next-pound` at 360, 768 and 1280 px in light and dark, in seven states each: empty (no saved scenarios); the owner's manual reference (a saved take-home scenario and mortgage scenario, the three tiles typed, a fee and inflation, the table open); the same with no fee; age 40 (not accessible); no age; no mortgage picked; a lump sum of nothing. Checked: axe (WCAG 2.0/2.1 A and AA, best practice), no horizontal scroll, every visible button, link, box and select at least 44 px tall, no ranking or advising words, no console errors, no external requests. The first run found two links under 44 px (the "enter your pay" prompt, the "set one up on the mortgage page" link) and the callout's multiple rounded to whole pounds; both fixed. Keyboard at 360 px on a touch, mobile viewport: 400 Tab presses, no focused element under the sticky bar; a focused tile field stays in view.
+
+Lighthouse 12.8.2, mobile, `#/c/next-pound` as it loads (empty):
+
+| Page | Performance | Accessibility | Best practices | SEO | FCP | LCP | TBT | CLS |
+|---|---|---|---|---|---|---|---|---|
+| `#/c/next-pound` | 94 | 100 | 100 | 91 | 2.3 s | 2.6 s | 40 ms | 0 |
+
+The first Lighthouse run gave CLS 0.32: the date was filled and the result worked out after the first paint, so the headline and bars pushed the sections down. Fixed: the first render uses today's date and works out the first result with it.
+
+Compute at 4x CPU slowdown, the longest task after each picker change (two sessions, three changes each; repeat inputs come from the memo at no cost): pay switched between two take-home scenarios up to 149 to 155 ms; the mortgage switched to one with an early repayment charge up to 137 to 173 ms. Within the 200 ms limit in these cases; the C2 cases past it (a 40-year mortgage with a charge) are unchanged, and the worker stays proposed, not built.
+

@@ -3,7 +3,7 @@ import { act } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { SETTLE_MS } from '@/components/StickyResult'
 import { taxYear } from '@/config/tax/2026-27'
-import { requireVerified } from '@/config/tax/sourced'
+import type { TaxYearConfig } from '@/config/tax/schema'
 import { formatGBP } from '@/lib/format'
 import { MAX_AGE_YEARS } from '@/lib/inputLimits'
 import { fromPounds, type Money } from '@/lib/money'
@@ -13,24 +13,55 @@ import { settingsStore } from '@/settings/settings'
 import { byText, click, mount, type } from '@/test/dom'
 import { toasts } from '@/toast/toasts'
 import { mortgageCalculator } from '../mortgage/definition'
-import { optimiserCalculator } from '../optimiser/definition'
+import { type OptimiserPageInputs, optimiserCalculator } from '../optimiser/definition'
 import { sessionFor } from '../session'
-import { amountsText, calculate, midValue, type NextPoundPageInputs, nextPoundCalculator } from './definition'
+import { calculate, type NextPoundPageInputs, nextPoundCalculator, type PageOutcome } from './definition'
+import { unverifiedConfig } from './fixtures/pageInputs'
 import NextPoundPage from './NextPoundPage'
+import {
+  barRows,
+  breakEvenBox,
+  CAUSE_CLAUSE,
+  calloutFacts,
+  calloutText,
+  headlineParts,
+  headlineText,
+  legLine,
+  stickyLines,
+  wordingProblems,
+} from './screen'
 
 /*
- * C2: the next pound page at #/c/next-pound. Every expected figure comes from
- * the composer (through calculate), formatted as the page formats it;
- * nothing is worked out here. Pay, balances and rates are made up for tests.
- * The composer runs once the inputs settle, so the clock is faked.
+ * The next pound page (C2, rebuilt as a decision panel). Pay comes from a
+ * saved take-home scenario or the take-home page's inputs this visit, the
+ * mortgage from a saved mortgage scenario, both read only. Every expected
+ * figure comes from the composer through calculate and screen.ts, formatted
+ * as the page formats it; nothing is worked out or typed here. Pay, balances
+ * and rates are made up for tests. The composer runs once the inputs settle,
+ * so the clock is faked.
  */
+
+const mocked = vi.hoisted(() => ({ config: null as TaxYearConfig | null }))
+vi.mock('../session', async (original) => {
+  const actual = await original<typeof import('../session')>()
+  return { ...actual, configFor: (year: string | undefined) => mocked.config ?? actual.configFor(year) }
+})
 
 let view: ReturnType<typeof mount>
 const session = sessionFor(nextPoundCalculator)
 const takeHome = sessionFor(optimiserCalculator)
+const TODAY = '2026-10-23'
+
+function remount() {
+  view?.unmount()
+  view = mount(<NextPoundPage />)
+  settle()
+}
 
 beforeEach(() => {
   vi.useFakeTimers()
+  vi.setSystemTime(new Date(2026, 9, 23, 12))
+  mocked.config = null
   localStorage.clear()
   scenarioStore.clear()
   settingsStore.update({ amounts: 'pence' })
@@ -47,32 +78,39 @@ afterEach(() => {
 
 function settle() {
   act(() => vi.advanceTimersByTime(SETTLE_MS))
+  act(() => vi.advanceTimersByTime(SETTLE_MS))
 }
 
 const $ = (selector: string) => view.host.querySelector(selector)
+const $$ = (selector: string) => [...view.host.querySelectorAll(selector)]
 const box = (id: string) => $(`#${id}`) as HTMLInputElement
+const select = (id: string) => $(`#${id}`) as HTMLSelectElement
 const money = (amount: Money) => formatGBP(amount, 'pence')
+const text = () => view.host.textContent ?? ''
 const set = (patch: Partial<NextPoundPageInputs>) => {
   act(() => session.setInputs(patch))
   settle()
 }
-const text = () => view.host.textContent ?? ''
-const card = (leg: string) => $(`[data-leg="${leg}"]`) as HTMLElement
-const headline = () => $('[data-sticky-value]')?.textContent?.trim()
-
-function row(label: string, within: ParentNode = view.host): string | undefined {
-  const dt = [...within.querySelectorAll('dt')].find((el) => el.textContent?.trim() === label)
-  return dt?.nextElementSibling?.firstChild?.textContent?.trim()
+const choose = (id: string, value: string) => {
+  const el = select(id)
+  act(() => {
+    el.value = value
+    el.dispatchEvent(new Event('change', { bubbles: true }))
+  })
+  settle()
 }
+const openTile = (name: string) => click($(`#np-tile-${name}`))
+const headline = () => $('[data-headline]')?.textContent?.trim()
 
-const pension = {
+const pay = (salary: number, extra: Partial<OptimiserPageInputs> = {}): OptimiserPageInputs => ({
   ...optimiserCalculator.defaultInputs(),
-  salary: fromPounds(60_000),
-  pensionMethod: 'netPay' as const,
-  employeeContribution: { mode: 'amount' as const, amount: fromPounds(3_000), percentOfPay: '0' },
-  employerContribution: { mode: 'amount' as const, amount: fromPounds(3_000), percentOfPay: '0' },
-}
-const mortgage = {
+  salary: fromPounds(salary),
+  pensionMethod: 'netPay',
+  employeeContribution: { mode: 'amount', amount: fromPounds(3_000), percentOfPay: '0' },
+  employerContribution: { mode: 'amount', amount: fromPounds(3_000), percentOfPay: '0' },
+  ...extra,
+})
+const home = {
   ...mortgageCalculator.defaultInputs(),
   startDate: '2026-11-01' as const,
   balance: fromPounds(200_000),
@@ -81,288 +119,367 @@ const mortgage = {
   fixedEndDate: '2028-11-30' as const,
   reversionRate: '7',
 }
-const example: NextPoundPageInputs = {
-  ...nextPoundCalculator.defaultInputs(),
-  lumpSum: fromPounds(10_000),
-  horizonYears: 20,
-  asOf: '2026-10-23',
-  ageNow: 40,
-  pay: pension,
-  mortgage,
-  feeRate: '0.5',
-  inflationRate: '2',
+
+function save(calculatorId: 'optimiser' | 'mortgage', name: string, inputs: unknown) {
+  // The mortgage page uses no tax rules, so its scenarios carry no tax year.
+  const made = scenarioStore.create({ calculatorId, ...(calculatorId === 'optimiser' ? { taxYear: '2026-27' } : {}), name, inputs })
+  if (!made.ok) throw new Error(made.error)
+  return made.scenario
 }
 
-function engine(inputs: NextPoundPageInputs = session.get().inputs) {
-  const out = calculate(inputs, taxYear)
+/** A take-home scenario and a mortgage scenario saved, the essentials typed: the usual starting point. */
+function setUp(essentials: Partial<NextPoundPageInputs> = {}) {
+  const p = save('optimiser', 'My pay', pay(60_000))
+  const m = save('mortgage', 'Home', home)
+  remount()
+  set({ lumpSum: fromPounds(10_000), horizonYears: 20, ageNow: 40, feeRate: '0.5', inflationRate: '2', ...essentials })
+  return { p, m }
+}
+
+type Ok = Extract<PageOutcome, { kind: 'ok' }>
+function engine(): Ok {
+  const out = calculate(session.get().inputs, mocked.config ?? taxYear)
   if (out.kind !== 'ok') throw new Error(out.kind)
   return out
 }
 
 describe('a fresh page', () => {
-  it('shows the title, the verified badge for the tax year, the disclaimer and no made-up figures', () => {
+  it('the title, the date filled with today, the age empty, and the illustrative growth rates', () => {
     expect($('h1')?.textContent).toBe('Where does the next £X go?')
+    expect(session.get().inputs.asOf).toBe(TODAY)
     expect(text()).toMatch(/2026 to 2027 tax year/)
-    expect(text()).not.toMatch(/Uses no tax rules/)
-    expect(text()).toMatch(/Illustrative only, not financial advice/)
-    expect(box('np-as-of').value).toBe('')
+    openTile('ageNow')
     expect(box('np-age').value).toBe('')
+    expect(text()).toMatch(/illustrative/)
   })
 
-  it('names the date it needs, with no figure in the bar', () => {
-    expect(headline()).toBeUndefined()
-    expect($('[data-refusal-field="asOf"]')?.textContent).toMatch(/Date the money goes in/)
+  it('no pay anywhere: a prompt to enter it on the take-home page first; the pension leg needs your pay, not an error', () => {
+    const prompt = $('[data-pay-prompt]')!
+    expect(prompt.textContent).toMatch(/Enter your pay on the take-home page first/)
+    expect(prompt.querySelector('a')?.getAttribute('href')).toBe('#/c/optimiser')
+    set({ lumpSum: fromPounds(10_000) })
+    expect($('[data-bar="pension"]')?.textContent).toMatch(/Needs your pay/)
+    expect($('[data-bar="pension"] [data-refusal]')).toBeNull()
   })
 
-  it('the growth rates start at the illustrative values, and say they are illustrative', () => {
-    expect([box('np-growth-low').value, box('np-growth-mid').value, box('np-growth-high').value]).toEqual(['2', '5', '8'])
-    expect(text()).toMatch(/illustrative, not forecasts or market figures/)
-  })
-
-  it('“Use today’s date” fills the date from the device clock', () => {
-    vi.setSystemTime(new Date(2026, 9, 23, 12))
-    click(byText(view.host, 'button', 'Use today’s date'))
-    expect(session.get().inputs.asOf).toBe('2026-10-23')
+  it('no mortgage saved: no mortgage, the leg “not set up” with a link to the mortgage page', () => {
+    set({ lumpSum: fromPounds(10_000) })
+    expect($('[data-tile="mortgage"]')?.textContent).toMatch(/No mortgage/)
+    const bar = $('[data-bar="mortgage"]')!
+    expect(bar.textContent).toMatch(/No mortgage is set up/)
+    expect(bar.querySelector('a')?.getAttribute('href')).toBe('#/c/mortgage')
   })
 })
 
-describe('results, answer first', () => {
-  beforeEach(() => set(example))
-
-  it('the sticky result is each leg at the mid rate, today’s money first, nominal beside it, as the composer says', () => {
-    const out = engine()
-    const p = midValue(out.pension)!
-    const m = midValue(out.mortgage)!
-    const i = midValue(out.isa)!
-    expect(headline()).toBe(
-      `Pension ${amountsText(p, money)} · Mortgage overpayment ${amountsText(m, money)} · ISA ${amountsText(i, money)}`,
-    )
+describe('where pay comes from', () => {
+  it('the take-home page’s inputs this visit, by default, with the pay and method in the line', () => {
+    act(() => takeHome.setInputs(pay(45_000, { pensionMethod: 'salarySacrifice' })))
+    remount()
+    expect(session.get().inputs.paySource).toEqual({ kind: 'session' })
+    expect($('[data-pay-source]')?.textContent).toMatch(/^Using your pay from take-home: £45,000\.00, salary sacrifice/)
   })
 
-  it('three cards: pension, mortgage (marked guaranteed) and ISA, each with what it assumes', () => {
-    const out = engine()
-    for (const leg of ['pension', 'mortgage', 'isa']) {
-      expect(card(leg)).not.toBeNull()
-      expect(card(leg).textContent).toMatch(/Assumes:/)
-    }
-    expect(card('mortgage').textContent).toMatch(/Guaranteed/)
-    expect(card('pension').textContent).not.toMatch(/Guaranteed:/)
-    expect(card('isa').textContent).not.toMatch(/Guaranteed:/)
-    const isa = out.isa.kind === 'shown' ? out.isa.leg : null
-    expect(row('Low (2% a year)', card('isa'))).toBe(money(isa!.rates.low.value.todaysMoney))
-    expect(row('High (8% a year)', card('isa'))).toBe(money(isa!.rates.high.value.todaysMoney))
-  })
-
-  it('the pension card states the extra contribution bought and any cash remainder', () => {
-    const out = engine()
-    const leg = out.pension.kind === 'shown' ? out.pension.leg : null
-    expect(row('Extra contribution bought', card('pension'))).toBe(money(leg!.contribution.extra))
-    expect(row('Held as cash in this column', card('pension'))).toBe(money(leg!.contribution.leftoverCash))
-  })
-
-  it('the mortgage card states the overpayment, the charge paid and any cash remainder', () => {
-    set({ mortgage: { ...mortgage, erc: true, ercRate: '3', allowanceRate: '1' } })
-    const out = engine()
-    const leg = out.mortgage.kind === 'shown' ? out.mortgage.leg : null
-    expect(leg!.erc).toBeGreaterThan(0)
-    expect(row('Overpayment', card('mortgage'))).toBe(money(leg!.overpaymentUsed))
-    expect(row('Early repayment charge paid', card('mortgage'))).toBe(money(leg!.erc))
-    expect(row('Held as cash in this column', card('mortgage'))).toBe(money(leg!.leftoverCash))
-  })
-
-  it('the break-even ISA return in words against each', () => {
-    expect($('[data-break-even-mortgage]')?.textContent).toMatch(
-      /^The ISA matches the mortgage overpayment at the horizon at a growth rate/,
-    )
-    expect($('[data-break-even-pension]')?.textContent).toMatch(/^The ISA matches the pension at the mid rate/)
-  })
-
-  it('the comparison chart in today’s money, with a table', () => {
-    expect(text()).toMatch(/The three columns compared/)
-    expect(view.host.querySelector('svg[role="img"], figure, [role="img"]')).not.toBeNull()
-    expect(byText(view.host, 'summary, button', /as a table/i)).toBeTruthy()
-  })
-
-  it('the assumptions list every reading by name and the page’s own', () => {
-    const panel = $('#assumptions')?.textContent ?? ''
-    for (const reading of ['CP1', 'CP2', 'CP3', 'CP4', 'CP5', 'CP6', 'CP7', 'Page reading (C2)']) expect(panel).toContain(reading)
-  })
-
-  it('a change waits for the inputs to settle, keeping the last results marked as updating', () => {
+  it('several saved: the latest by default; the picker lists them and the result follows the one picked', () => {
+    const first = save('optimiser', 'Old pay', pay(40_000))
+    vi.setSystemTime(new Date(2026, 9, 23, 13))
+    const second = save('optimiser', 'New pay', pay(80_000))
+    remount()
+    set({ lumpSum: fromPounds(10_000), horizonYears: 20, ageNow: 40 })
+    expect(session.get().inputs.paySource).toMatchObject({ kind: 'scenario', id: second.id })
+    click(byText(view.host, 'button', 'Change'))
+    expect([...select('np-pay-source').options].map((o) => o.textContent)).toEqual(['New pay', 'Old pay'])
     const before = headline()
-    act(() => session.setInputs({ lumpSum: fromPounds(20_000) }))
-    expect(headline()).toBeUndefined()
-    expect($('[data-np-results]')?.getAttribute('aria-busy')).toBe('true')
-    expect(text()).toMatch(/Updating for your changes/)
-    settle()
+    choose('np-pay-source', `scenario:${first.id}`)
+    expect(session.get().inputs.paySource).toEqual({ kind: 'scenario', id: first.id, name: 'Old pay' })
+    expect(session.get().inputs.pay).toEqual(first.inputs)
+    expect(headline()).toBe(headlineText(headlineParts(engine()), money))
     expect(headline()).not.toBe(before)
-    expect($('[data-np-results]')?.getAttribute('aria-busy')).toBe('false')
+  })
+
+  it('a deleted source: a visible notice, the pay saved with this scenario, and results', () => {
+    const { p } = setUp()
+    const shown = headline()
+    act(() => {
+      scenarioStore.remove(p.id)
+    })
+    settle()
+    expect($('[data-source-notice]')?.textContent).toBe('“My pay” is no longer saved, so this uses the pay saved with this scenario.')
+    expect(headline()).toBe(shown)
+  })
+
+  it('a long scenario name is shown whole and wraps', () => {
+    const name = 'A very long name for a take-home scenario that keeps going on and on until it is eighty chars'.slice(0, 80)
+    save('optimiser', name, pay(60_000))
+    remount()
+    expect($('[data-pay-source]')?.textContent).toContain(name)
+    expect($('[data-pay-source]')?.className).toMatch(/overflow-wrap:anywhere/)
   })
 })
 
-describe('each card’s states', () => {
-  it('the pension not accessible at the horizon: no number and no break-even', () => {
-    set({ ...example, schemeAccessAge: MAX_AGE_YEARS })
-    expect(card('pension').getAttribute('data-leg-kind')).toBe('not-accessible')
-    expect(card('pension').querySelector('[data-headline]')?.textContent).toBe('Not accessible at horizon')
-    expect(card('pension').textContent).not.toMatch(/Mid rate/)
-    expect($('[data-break-even-pension]')?.textContent).toBe('No break-even: the pension is not accessible at horizon.')
-    expect(headline()).toMatch(/^Pension: not accessible at horizon · /)
+describe('where the mortgage comes from', () => {
+  it('the latest saved by default, “Saved: 1 of 2”, and a pick over the saved ones and no mortgage', () => {
+    save('mortgage', 'Flat', { ...home, balance: fromPounds(100_000) })
+    vi.setSystemTime(new Date(2026, 9, 23, 13))
+    const house = save('mortgage', 'House', home)
+    remount()
+    expect(session.get().inputs.mortgageSource).toMatchObject({ kind: 'scenario', id: house.id })
+    expect($('[data-tile="mortgage"]')?.textContent).toMatch(/Saved: 1 of 2/)
+    openTile('mortgage')
+    expect([...select('np-mortgage-source').options].map((o) => o.textContent)).toEqual(['No mortgage', 'House', 'Flat'])
+    choose('np-mortgage-source', 'none')
+    expect($('[data-bar="mortgage"]')?.textContent).toMatch(/No mortgage is set up/)
   })
 
-  it('no mortgage entered: that leg is not set up, not a refusal', () => {
-    set({ ...example, mortgage: mortgageCalculator.defaultInputs() })
-    expect(card('mortgage').getAttribute('data-leg-kind')).toBe('none')
-    expect(card('mortgage').textContent).toMatch(/Not set up/)
-    expect(card('mortgage').querySelector('[data-refusal]')).toBeNull()
-    expect($('[data-break-even-mortgage]')?.textContent).toMatch(/no mortgage is set up/)
+  it('reads only: the scenarios key and the take-home inputs are the same after using the page', () => {
+    act(() => takeHome.setInputs(pay(45_000)))
+    setUp()
+    const stored = localStorage.getItem(STORAGE_KEYS.scenarios.key)
+    const theirs = JSON.stringify(takeHome.get())
+    click(byText(view.host, 'button', 'Change'))
+    choose('np-pay-source', 'session')
+    openTile('mortgage')
+    choose('np-mortgage-source', 'none')
+    set({ lumpSum: fromPounds(20_000) })
+    expect(localStorage.getItem(STORAGE_KEYS.scenarios.key)).toBe(stored)
+    expect(JSON.stringify(takeHome.get())).toBe(theirs)
+  })
+})
+
+describe('the decision panel', () => {
+  beforeEach(() => setUp())
+
+  it('the title names the lump sum; the headline is the composer’s, in the fixed order', () => {
+    expect($('h1')?.textContent).toBe(`Where does the next ${money(fromPounds(10_000))} go?`)
+    expect(headline()).toBe(headlineText(headlineParts(engine()), money))
+    expect(headline()).toMatch(/Not ranked, and not advice\.$/)
   })
 
-  it('a mortgage part-entered names what it needs on that leg; the others still show', () => {
-    set({ ...example, mortgage: { ...mortgage, reversionRate: null } })
-    expect(card('mortgage').querySelector('[data-refusal-field="mortgage.reversionRate"]')).not.toBeNull()
-    expect(card('isa').getAttribute('data-leg-kind')).toBe('shown')
+  it('three bars in the fixed order, on one scale, with the lines under them', () => {
+    const out = engine()
+    expect($$('[data-bar]').map((el) => el.getAttribute('data-bar'))).toEqual(['pension', 'mortgage', 'isa'])
+    const { rows } = barRows(out)
+    for (const row of rows) {
+      const el = $(`[data-bar="${row.leg}"]`)!
+      expect(Number(el.getAttribute('data-mid-share'))).toBeCloseTo(row.midShare)
+      expect(el.querySelector('[data-leg-line]')?.textContent).toBe(legLine(out, row.leg, money))
+    }
+    expect(Math.max(...rows.map((r) => r.highShare ?? 0))).toBe(1)
   })
 
-  it('a leg refused by its engine names the field on that leg', () => {
-    set({ ...example, mortgage: { ...mortgage, termYears: 0 } })
-    expect(card('mortgage').querySelector('[data-refusal="inputs"]')?.textContent).toMatch(/Term left/)
-    expect(card('pension').getAttribute('data-leg-kind')).toBe('accessible')
+  it('bar order does not follow the values', () => {
+    set({ growthLow: '0', growthMid: '0', growthHigh: '0' })
+    expect($$('[data-bar]').map((el) => el.getAttribute('data-bar'))).toEqual(['pension', 'mortgage', 'isa'])
   })
 
-  it('without an age, the pension leg asks for it', () => {
-    set({ ...example, ageNow: null })
-    expect(card('pension').querySelector('[data-refusal-field="ageNow"]')).not.toBeNull()
+  it('the Guaranteed badge on the mortgage only', () => {
+    expect($$('[data-badge="guaranteed"]').map((el) => el.closest('[data-bar]')?.getAttribute('data-bar'))).toEqual(['mortgage'])
+    expect($('[data-badge="guaranteed"]')?.textContent).toBe('Guaranteed')
   })
 
-  it('a lump sum of nothing: every leg nothing, not a refusal', () => {
-    set({ ...example, lumpSum: fromPounds(0) })
-    for (const leg of ['pension', 'mortgage', 'isa']) expect(card(leg).getAttribute('data-leg-kind')).toBe('nothing')
+  it('every figure in a table, today’s money and nominal', () => {
+    click(byText(view.host, 'button, summary', /Show the data as a table/))
+    const table = $('[data-np-table]')!
+    const out = engine()
+    const isa = out.isa.kind === 'shown' ? out.isa.leg : null
+    expect(table.textContent).toContain(money(isa!.rates.high.value.nominal))
+    expect(table.textContent).toContain(money(isa!.rates.low.value.todaysMoney))
+    expect(table.textContent).toMatch(/Nominal/)
+  })
+
+  it('the callout: one sentence from the composer, under “What only this page tells you”', () => {
+    const facts = calloutFacts(engine())!
+    expect($('[data-callout]')?.textContent).toBe(`What only this page tells you${calloutText(facts, money)}`)
+    expect($('[data-callout]')?.textContent).not.toContain(CAUSE_CLAUSE)
+  })
+
+  it('the callout names the cause only when the personal allowance taper is in play', () => {
+    const tapered = save('optimiser', 'Tapered', pay(110_000))
+    click(byText(view.host, 'button', 'Change'))
+    choose('np-pay-source', `scenario:${tapered.id}`)
+    expect(engine().taperInPlay).toBe(true)
+    expect($('[data-callout]')?.textContent).toContain(CAUSE_CLAUSE)
+  })
+
+  it('the break-even box: “about” each rate, the reversion note when it applies', () => {
+    const box = breakEvenBox(engine())
+    expect($('[data-break-even] h2')?.textContent).toBe('The ISA would need to return about')
+    expect($$('[data-break-even-line]').map((el) => el.textContent)).toEqual(box.lines.map((l) => l.text))
+    expect($('[data-reversion-note]')?.textContent).toBe(box.reversionNote)
+  })
+
+  it('the sticky result: one line a leg', () => {
+    expect($('[data-sticky-value]')?.textContent).toBe(stickyLines(engine(), money).join('\n'))
+  })
+
+  it('the footer says what is illustrative and the tax year', () => {
+    expect($('[data-footnote]')?.textContent).toMatch(/Growth rates are illustrative/)
+    expect($('[data-footnote]')?.textContent).toMatch(/2026 to 2027/)
+  })
+})
+
+describe('states', () => {
+  it('age missing: the pension figure with “Access age not checked”, and its break-even', () => {
+    setUp({ ageNow: null })
+    expect($('[data-bar="pension"]')?.textContent).toMatch(/Access age not checked: add your age/)
+    expect($('[data-break-even-line="pension"]')).not.toBeNull()
+  })
+
+  it('age present, not accessible at the horizon: the bar replaced by the sentence, no break-even against it', () => {
+    setUp({ horizonYears: 5 })
+    expect($('[data-bar="pension"] [data-bar-track]')).toBeNull()
+    expect($('[data-bar="pension"]')?.textContent).toMatch(/Not accessible at that horizon/)
+    expect($('[data-break-even-omitted="pension"]')?.textContent).toMatch(/not accessible at that horizon/)
+    expect(headline()).toMatch(/a pension is not accessible at that horizon/)
+  })
+
+  it('age present and accessible: the pension bar and its range', () => {
+    setUp({ ageNow: MAX_AGE_YEARS - 30 })
+    expect($('[data-bar="pension"] [data-bar-track]')).not.toBeNull()
+  })
+
+  it('a mortgage with a charge and a cash remainder says both', () => {
+    save('mortgage', 'Charged', { ...home, balance: fromPounds(9_000), erc: true, ercRate: '3', allowanceRate: '1' })
+    remount()
+    set({ lumpSum: fromPounds(10_000), horizonYears: 20, ageNow: 40 })
+    const line = $('[data-bar="mortgage"] [data-leg-line]')?.textContent ?? ''
+    expect(line).toBe(legLine(engine(), 'mortgage', money))
+    expect(line).toMatch(/is held as cash/)
+  })
+
+  it('a mortgage paid off before the horizon', () => {
+    setUp({ lumpSum: fromPounds(500_000), horizonYears: 30 })
+    expect($('[data-bar="mortgage"] [data-leg-line]')?.textContent).toMatch(/^Balance £0\.00 instead of /)
+  })
+
+  it('X of nothing: the title keeps £X, nothing anywhere, not a refusal', () => {
+    setUp({ lumpSum: fromPounds(0) })
+    expect($('h1')?.textContent).toBe('Where does the next £X go?')
     expect($('[data-refusal]')).toBeNull()
+    expect($('[data-callout]')).toBeNull()
   })
 
-  it('growth rates out of order refuse by field', () => {
-    set({ ...example, growthLow: '6' })
+  it('the composer refusing a leg by field: that leg’s notice names it; the others show', () => {
+    setUp()
+    set({ mortgageSource: { kind: 'kept' }, mortgage: { ...home, termYears: 0, termExtraMonths: 0 } })
+    expect(engine().mortgage.kind).toBe('refused')
+    expect($('[data-bar="mortgage"] [data-refusal="inputs"]')?.textContent).toMatch(/Term left/)
+    expect($('[data-bar="isa"] [data-bar-track]')).not.toBeNull()
+  })
+
+  it('the composer refusing by unverified config: the refusal notice with the values', () => {
+    mocked.config = unverifiedConfig('isa.annualLimit')
+    setUp()
+    expect($('[data-refusal]')?.textContent).toMatch(/ISA/)
+    expect(headline()).toBeUndefined()
+  })
+
+  it('growth out of order refuses by field', () => {
+    setUp({ growthLow: '6' })
     expect($('[data-refusal-field="growth.mid"]')?.textContent).toMatch(/Mid growth rate/)
   })
-})
 
-describe('warnings', () => {
-  it('are grouped by leg and never hidden', () => {
-    set({ ...example, isaPaidThisYear: fromPounds(19_000), mortgage: { ...mortgage, erc: true, ercRate: '3', allowanceRate: '1' } })
-    const out = engine()
-    expect(out.warnings.isa.length).toBeGreaterThan(0)
-    expect(out.warnings.mortgage.length).toBeGreaterThan(0)
+  it('very large figures, negative real growth and inflation above growth still read', () => {
+    setUp({ lumpSum: fromPounds(5_000_000), growthLow: '-5', growthMid: '-2', growthHigh: '1', inflationRate: '10' })
+    expect(headline() ?? $('[data-refusal]')?.textContent).toBeTruthy()
+    for (const el of $$('[data-bar]')) expect(Number(el.getAttribute('data-mid-share'))).toBeGreaterThanOrEqual(0)
+  })
+
+  it('warnings are grouped by leg and never hidden', () => {
+    setUp({ isaPaidThisYear: fromPounds(19_000) })
     expect($('[data-warnings-leg="isa"]')?.textContent).toMatch(/ISA annual limit/)
-    expect($('[data-warnings-leg="mortgage"]')?.textContent).toMatch(/penalty-free limit/)
-  })
-
-  it('the transitional age warning shows on the pension', () => {
-    const granted = requireVerified(taxYear, ['pension.minimumAge.announced', 'pension.minimumAge.announcedFrom'])
-    if (!granted.ok) throw new Error('unverified')
-    const announced = granted.values['pension.minimumAge.announced']
-    const years = Number(granted.values['pension.minimumAge.announcedFrom'].slice(0, 4)) - Number(example.asOf!.slice(0, 4)) + 1
-    // Under the announced age at the horizon, past the date it applies from: transitional rules may matter.
-    set({ ...example, ageNow: announced - years - 1, horizonYears: years })
-    const out = engine()
-    expect(out.warnings.pension.some((w) => w.source === 'next-pound' && w.code === 'transitionalAgeRules')).toBe(true)
-    expect($('[data-warnings-leg="pension"]')?.textContent).toMatch(/Transitional rules/)
-  })
-})
-
-describe('wording', () => {
-  it('nothing on the page is called best or better, recommended, or what anyone should do', () => {
-    for (const inputs of [
-      example,
-      { ...example, schemeAccessAge: MAX_AGE_YEARS },
-      { ...example, mortgage: mortgageCalculator.defaultInputs() },
-      { ...example, growthLow: '-50', growthMid: '-50', growthHigh: '-50' },
-    ]) {
-      set(inputs)
-      const panel = $('#assumptions') as HTMLDetailsElement
-      panel.open = true
-      for (const button of view.host.querySelectorAll('[aria-expanded="false"]')) click(button)
-      expect(text()).not.toMatch(/\b(best|better|recommend\w*|should)\b/i)
-    }
   })
 })
 
 describe('inputs', () => {
-  it('typing the essentials in gives results', () => {
-    set({ ...example, asOf: null, ageNow: null, lumpSum: fromPounds(0) })
+  it('the tiles open to normal fields; typing the essentials gives results', () => {
+    save('optimiser', 'My pay', pay(60_000))
+    remount()
+    openTile('lumpSum')
     type(box('np-lump-sum'), '10000')
-    type(box('np-as-of'), '23/10/2026')
+    openTile('horizonYears')
+    type(box('np-horizon'), '20')
+    openTile('ageNow')
     type(box('np-age'), '40')
     settle()
-    expect(session.get().inputs).toMatchObject({ lumpSum: fromPounds(10_000), asOf: '2026-10-23', ageNow: 40 })
-    expect(headline()).toMatch(/^Pension £/)
+    expect(session.get().inputs).toMatchObject({ lumpSum: fromPounds(10_000), horizonYears: 20, ageNow: 40 })
+    expect(headline()).toMatch(/^In 20 years, /)
   })
 
-  it('an invalid box holds the results until it is fixed', () => {
+  it('a tile with text that isn’t valid stays open and holds the results', () => {
+    openTile('horizonYears')
     type(box('np-horizon'), 'abc')
     settle()
+    expect(box('np-horizon')).not.toBeNull()
     expect(text()).toMatch(/No results until the inputs are fixed/)
-    expect(headline()).toBeUndefined()
   })
 
-  it('copies the take-home page’s inputs from this visit, with no new storage', () => {
-    expect((byText(view.host, 'button', 'Copy from the take-home page') as HTMLButtonElement).disabled).toBe(true)
-    act(() => takeHome.setInputs({ salary: fromPounds(45_000), children: 2 }))
-    const copy = byText(view.host, 'button', 'Copy from the take-home page') as HTMLButtonElement
-    expect(copy.disabled).toBe(false)
-    click(copy)
-    expect(session.get().inputs.pay).toEqual(takeHome.get().inputs)
-    expect(box('np-salary').value).toBe('45,000')
+  it('the sections are closed on a fresh page, each with its summary', () => {
+    for (const id of ['growth', 'pension', 'isa', 'date']) {
+      expect($(`#np-section-${id}-button`)?.getAttribute('aria-expanded')).toBe('false')
+      expect($(`#np-section-${id}-summary`)?.textContent).toBeTruthy()
+    }
+    expect($('#np-section-date-summary')?.textContent).toBe('Today, 23 October 2026')
   })
+})
 
-  it('the mortgage section is closed on a fresh page and says not set up', () => {
-    expect(($('#np-section-mortgage-button') as HTMLButtonElement).getAttribute('aria-expanded')).toBe('false')
-    expect($('#np-section-mortgage-summary')?.textContent).toBe('Not set up')
-  })
-
-  it('“Clear the mortgage” puts the leg back to not set up', () => {
-    set(example)
-    click(byText(view.host, 'button', 'Clear the mortgage'))
-    settle()
-    expect(card('mortgage').getAttribute('data-leg-kind')).toBe('none')
+describe('wording', () => {
+  it('nothing on the page ranks or advises, in every state; “wins back” only in the cause clause', () => {
+    const cases: Partial<NextPoundPageInputs>[] = [
+      {},
+      { horizonYears: 5 },
+      { ageNow: null },
+      { lumpSum: fromPounds(0) },
+      { growthLow: '-5', growthMid: '-5', growthHigh: '-5', inflationRate: '10' },
+    ]
+    setUp()
+    for (const patch of cases) {
+      set(patch)
+      const panel = $('#assumptions') as HTMLDetailsElement
+      panel.open = true
+      for (const button of $$('[aria-expanded="false"]')) click(button)
+      expect(wordingProblems(text())).toEqual([])
+    }
   })
 })
 
 describe('accessibility', () => {
-  it('each card is a labelled region; inputs have labels; the status is polite', () => {
-    set(example)
-    for (const leg of ['pension', 'mortgage', 'isa']) {
-      const region = card(leg)
-      const labelId = region.getAttribute('aria-labelledby')!
-      expect(view.host.querySelector(`#${CSS.escape(labelId)}`)?.textContent).toBeTruthy()
+  it('each bar has a text alternative; inputs have labels; nothing relies on colour', () => {
+    setUp()
+    for (const el of $$('[data-bar]')) {
+      const track = el.querySelector('[data-bar-track]')
+      if (track) expect(track.getAttribute('aria-hidden')).toBe('true')
+      expect(el.querySelector('[data-bar-value]')?.textContent || el.textContent).toBeTruthy()
     }
-    for (const input of view.host.querySelectorAll('input')) {
-      if (input.type === 'file' || input.type === 'hidden' || input.type === 'radio') continue
-      expect(input.id && view.host.querySelector(`label[for="${input.id}"]`), input.id).toBeTruthy()
+    for (const button of $$('[aria-expanded="false"]')) click(button)
+    for (const input of $$('input, select')) {
+      const el = input as HTMLInputElement
+      if (el.type === 'file' || el.type === 'hidden' || el.type === 'radio' || el.type === 'checkbox') continue
+      expect(el.id && $(`label[for="${el.id}"]`), el.id).toBeTruthy()
     }
-    expect(view.host.querySelector('[data-np-results] [role="status"]')).not.toBeNull()
+    expect($('[data-badge="guaranteed"]')?.textContent).toBe('Guaranteed')
   })
 })
 
 describe('scenarios', () => {
-  it('saves with the tax year, and loads back with the same results', () => {
-    set(example)
+  it('save with the picked sources, and load back with the same results', () => {
+    const { p, m } = setUp()
     const shown = headline()
     click(byText(view.host, 'button', 'Save'))
     click(byText(view.host, 'form button', 'Save'))
     const stored = JSON.parse(localStorage.getItem(STORAGE_KEYS.scenarios.key)!)
-    expect(stored.scenarios[0]).toMatchObject({ calculatorId: 'next-pound', inputsVersion: 1, taxYear: '2026-27', inputs: example })
+    const mine = stored.scenarios.find((s: { calculatorId: string }) => s.calculatorId === 'next-pound')
+    expect(mine).toMatchObject({ inputsVersion: 2, taxYear: '2026-27' })
+    expect(mine.inputs.paySource).toEqual({ kind: 'scenario', id: p.id, name: 'My pay' })
+    expect(mine.inputs.mortgageSource).toEqual({ kind: 'scenario', id: m.id, name: 'Home' })
     act(() => session.startNew())
     settle()
-    expect(session.get().inputs).toEqual(nextPoundCalculator.defaultInputs())
-    act(() => session.load(scenarioStore.get().scenarios[0]!))
+    act(() => session.load(scenarioStore.get().scenarios.find((s) => s.calculatorId === 'next-pound')!))
     settle()
-    expect(session.get().inputs).toEqual(example)
     expect(headline()).toBe(shown)
   })
 
   it('adds no storage key', () => {
-    set(example)
+    setUp()
     for (let i = 0; i < localStorage.length; i++) expect(Object.values(STORAGE_KEYS).map((k) => k.key)).toContain(localStorage.key(i))
   })
 })

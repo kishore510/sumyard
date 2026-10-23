@@ -1,6 +1,6 @@
 # Next pound composer
 
-"Where does the next £X go?" The composer engine (**C1, 0.29.0**) and its page at `#/c/next-pound` (**C2, 0.30.0**). Pure and client-side. Illustrative, not financial advice.
+"Where does the next £X go?" The composer engine (**C1, 0.29.0**) and its page at `#/c/next-pound` (**C2, 0.30.0**; rebuilt as a decision panel in **C2.1, 0.31.0**). Pure and client-side. Illustrative, not financial advice.
 
 It puts one lump sum X of take-home pay, now, into a pension, a mortgage overpayment or an ISA, and shows each as what it adds to net worth at a horizon. Values are in today's money first, nominal beside it, after tax on withdrawal. It also gives the ISA return that would break even against each of the other two. Nothing is called best or recommended (G13).
 
@@ -105,16 +105,18 @@ Each is named in the result's `assumptions`.
 - `crossChecks.test.ts`: `docs/next-pound-cross-checks.json`, eight cases, all `it.todo` until the owner fills them. Each names the engine cross-check it reproduces. A filled case is compared within the file's tolerance.
 - `literals.test.ts`: only 0, 1, 2 and 100 in the code, and no figures in comments or strings.
 
-## The page (C2)
+## The page (C2, rebuilt in C2.1)
 
-- `definition.ts`: the registry entry, inputs version 1. `NextPoundPageInputs` holds the lump sum, horizon, date and age, the take-home page's `OptimiserPageInputs` as `pay`, the mortgage page's `MortgagePageInputs` as `mortgage` (its own overpayments dropped), the pension options, the growth rates, fee and inflation as percentage text, and ISA payments this year. `validateInputs` checks every field and the pay and mortgage through their own definitions; `calculate` maps to `nextPound()` and gives each leg a page state (needs, refused, not set up, nothing, shown); `breakEvenWords`, `sectionSummary` and `summarise` for compare. `applySettings` sets the region.
-- `NextPoundPage.tsx`: built from the shared components (`StickyResult`, `Section`, inputs, `ResultCard`/`StatRow`, `AssumptionsPanel`, `VerifiedBadge`, `RefusalNotice`, `Chart`). Three cards, the break-even in words, warnings grouped by leg, one bar chart with a table. Runs the composer once the inputs settle.
-- Tests: `definition.test.ts`, `NextPoundPage.test.tsx` (each card's states, the wording guard against "best", "better", "recommend" and "should", scenarios, a11y). Help: `content/help/next-pound.md`.
-- The page's own readings: `docs/open-questions.md`, "Next pound page readings (C2)".
+- `definition.ts`: the registry entry, inputs version 2 (version 1 migrated). `NextPoundPageInputs` holds the lump sum, horizon, date and age, `pay` (the take-home page's `OptimiserPageInputs`) and `mortgage` (the mortgage page's `MortgagePageInputs`, its own overpayments dropped) as copies of their sources, `paySource` and `mortgageSource`, the pension options, the growth rates, fee and inflation as percentage text, and ISA payments this year. `calculate` maps to `nextPound()`, gives each leg a page state, and adds `taperInPlay` and `reversionInHorizon`. Sections: growth, pension details, ISA, date.
+- `sources.ts`: where pay and the mortgage come from, read only: saved take-home (`optimiser`) and mortgage scenarios, and the take-home session of this visit. The most recent by default; pickers; a deleted source falls back to the copy with a notice. No storage key; nothing written to another page.
+- `screen.ts`: pure functions for the headline, sticky lines, bars on one scale, the lines under them, the callout, the break-even box and the wording guard. Every sentence is a template on the composer's numbers.
+- `NextPoundPage.tsx`: the top card (title, pay source line, four tiles, headline, bars from `RangeBar` with a table), beside it the callout, break-even box, warnings and footer; sections closed unless set. The first result is worked out with the first render (no layout shift), later ones once the inputs settle.
+- Tests: `definition.test.ts`, `sources.test.ts`, `screen.test.ts`, `NextPoundPage.test.tsx`; `literals.test.ts` covers the new modules and the page's strings. Help: `content/help/next-pound.md`.
+- The page's own readings: `docs/open-questions.md`, "Next pound page readings (C2)" and "(C2.1)".
 
 ## Performance
 
-One `nextPound()` takes a median of about 22 ms in Node on the default test case (pay £60,000, X £10,000, 20 years, a 25-year mortgage), and about 65 ms with a 40-year mortgage, a charge and a 40-year horizon (`docs/performance.md`). Most of it is the optimiser's sweep and the mortgage bisection (about 30 `overpay()` runs when a charge applies). In the browser at 4x CPU slowdown (C2): 106 to 189 ms by default, up to about 500 ms with a 40-year mortgage and a charge, past the brief's 200 ms; a worker is proposed in `docs/backlog.md`. Not measured on a phone.
+One `nextPound()` takes a median of about 22 ms in Node on the default test case (pay £60,000, X £10,000, 20 years, a 25-year mortgage), and about 65 ms with a 40-year mortgage, a charge and a 40-year horizon (`docs/performance.md`). Most of it is the optimiser's sweep and the mortgage bisection (about 30 `overpay()` runs when a charge applies). In the browser at 4x CPU slowdown (C2): 106 to 189 ms by default, up to about 500 ms with a 40-year mortgage and a charge, past the brief's 200 ms; a worker is proposed in `docs/backlog.md`. Not measured on a phone. C2.1, switching scenarios in the pickers: 149 to 173 ms at most at 4x slowdown (`docs/performance.md`).
 
 ## Not modelled
 

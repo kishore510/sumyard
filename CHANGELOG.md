@@ -4,6 +4,15 @@ All notable changes to Sumyard are listed here, newest first. The format follows
 
 ## [Unreleased]
 
+## [0.31.0] - 2026-10-23
+
+### Changed
+- **Where does the next £X go?** is now one short panel instead of a long form. You type three things: the lump sum, the years and your age (optional). Your pay and pension come from the take-home page: what you've entered there this visit, or a take-home scenario you saved, with **Change** to pick another. The mortgage comes from a mortgage scenario you saved on the mortgage page, with **Pick** to choose another or **No mortgage**. This page only reads them; it never changes them.
+- The answer is one sentence ("In 10 years, in today's money, £20,000 of take-home is worth …"), three bars in a fixed order (pension, mortgage, ISA) on one scale, each with its low to high range, and a table of every figure. A new box, **What only this page tells you**, says how much pension your take-home buys per pound at your pay. The break-even box says roughly what the ISA would need to return a year to match each of the others.
+- Without your age, the pension now shows its figures with "Access age not checked: add your age", instead of waiting for it.
+- Growth, fee and inflation, pension details, ISA payments and the date (today unless you change it) are in closed sections.
+- Scenarios saved on this page remember which take-home and mortgage scenarios they used; if one has since been deleted, the page says so and uses the copy it saved. Older next pound scenarios open as before.
+
 ## [0.30.0] - 2026-10-23
 
 ### Added
