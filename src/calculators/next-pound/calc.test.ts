@@ -181,7 +181,7 @@ describe('nextPound(): horizon and the access age (CP4, NP-3, NP-5)', () => {
     const years = 20
     const exact = run(inputs({ horizonYears: years, pension: pensionInputs({ ageNow: own.announced - years }) }))
     expect(exact.legs.pension.status).toBe('accessible')
-    expect(shared(exact.legs.pension).access.ageAtHorizon).toBe(own.announced)
+    expect(shared(exact.legs.pension).access!.ageAtHorizon).toBe(own.announced)
     const short = run(inputs({ horizonYears: years, pension: pensionInputs({ ageNow: own.announced - years - 1 }) }))
     expect(short.legs.pension.status).toBe('not-accessible')
   })

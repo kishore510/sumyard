@@ -164,7 +164,7 @@ function pensionProblems(p: PensionLegInputs): NextPoundProblem[] {
   return problemsOf([
     ['pension.optimiser', typeof p?.optimiser === 'object' && p.optimiser !== null ? undefined : 'not-accepted'],
     ['pension.employerMatch', moneyProblem(p?.employerMatch)],
-    ['pension.ageNow', wholeProblem(p?.ageNow, 0, MAX_AGE_YEARS)],
+    ['pension.ageNow', p?.ageNow === null ? undefined : wholeProblem(p?.ageNow, 0, MAX_AGE_YEARS)],
     ['pension.schemeAccessAge', p?.schemeAccessAge === null ? undefined : wholeProblem(p?.schemeAccessAge, 0, MAX_AGE_YEARS)],
     ['pension.retirementTaxRate', p?.retirementTaxRate === null ? undefined : rateProblem(p?.retirementTaxRate, NOTHING_RATE, WHOLE_RATE)],
     ['pension.otherPensionsUseAllowance', typeof p?.otherPensionsUseAllowance === 'boolean' ? undefined : 'not-a-choice'],
@@ -381,12 +381,14 @@ function pensionLeg(inputs: NextPoundInputs, values: PensionValues, config: TaxY
     const bought = buyPension(inputs.lumpSum, p, config, policy)
     if ('unverified' in bought) return { status: 'refused', engine: 'optimiser', unverified: bought.unverified }
     const { contribution, point } = bought
-    const access = accessAt(inputs.asOf, inputs.horizonYears, p.ageNow, p.schemeAccessAge, values.ages)
+    // No age given (the C2 page rebuild): the access test is not run, and the leg is shown with its numbers.
+    const access = p.ageNow === null ? null : accessAt(inputs.asOf, inputs.horizonYears, p.ageNow, p.schemeAccessAge, values.ages)
     const warnings: NextPoundWarning[] = point.warnings.map((warning) => ({ source: 'optimiser', leg: 'pension', warning }))
     if (contribution.atMaximum && compare(contribution.leftoverCash, ZERO) > 0) warnings.push(ownWarning('pension', 'pensionAtMaximum'))
-    if (transitionalMayMatter(inputs.asOf, p.ageNow, access, values.ages)) warnings.push(ownWarning('pension', 'transitionalAgeRules'))
+    if (access !== null && p.ageNow !== null && transitionalMayMatter(inputs.asOf, p.ageNow, access, values.ages))
+      warnings.push(ownWarning('pension', 'transitionalAgeRules'))
     const shared = { guaranteed: false, contribution, access, warnings } as const
-    if (!access.accessible) return { ...shared, status: 'not-accessible' }
+    if (access !== null && !access.accessible) return { ...shared, status: 'not-accessible' }
 
     const allowanceAvailable = p.otherPensionsUseAllowance ? ZERO : values.allowance
     const at = {} as Record<GrowthCase, PensionAtRate>

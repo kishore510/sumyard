@@ -138,13 +138,13 @@ describe('the composer against the independent reference, 300 random cases', { t
           X,
         )
 
-      const access = referenceAccess(i.asOf, i.horizonYears, i.pension.ageNow, i.pension.schemeAccessAge, ages)
+      const access = referenceAccess(i.asOf, i.horizonYears, i.pension.ageNow!, i.pension.schemeAccessAge, ages)
       expect(
         {
-          horizonDate: leg.access.horizonDate,
-          minimumAge: leg.access.minimumAge,
-          accessAge: leg.access.accessAge,
-          accessible: leg.access.accessible,
+          horizonDate: leg.access!.horizonDate,
+          minimumAge: leg.access!.minimumAge,
+          accessAge: leg.access!.accessAge,
+          accessible: leg.access!.accessible,
         },
         `${n}`,
       ).toEqual(access)

@@ -1096,11 +1096,13 @@ function PensionCard({ leg, gbp }: { leg: LegView<PensionShown>; gbp: Gbp }) {
       <StatRow label="Into the pension" value={gbp(c.pensionAdded)} />
       <StatRow label="Cost in take-home" value={gbp(c.cost)} />
       <StatRow label="Held as cash in this column" value={gbp(c.leftoverCash)} marker="np-pension-cash" />
-      <StatRow
-        label="Access"
-        value={`From age ${access.accessAge}`}
-        detail={`You would be ${access.ageAtHorizon} on ${formatIsoDate(access.horizonDate)}`}
-      />
+      {access && (
+        <StatRow
+          label="Access"
+          value={`From age ${access.accessAge}`}
+          detail={`You would be ${access.ageAtHorizon} on ${formatIsoDate(access.horizonDate)}`}
+        />
+      )}
     </>
   )
   if (l.status === 'not-accessible')
