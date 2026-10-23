@@ -8,6 +8,7 @@ All notable changes to Sumyard are listed here, newest first. The format follows
 
 ### Added
 - A way back to every calculator from any page: the **Sumyard** name at the top is now a link to the home page, and the menu starts with **All calculators**.
+- **Mortgage overpayment:** **what you pay each month after the fixed rate**, your payment and your overpayment together, said as such, beside the contractual payment, which now says it doesn't count overpayments.
 
 ## [0.27.1] - 2026-10-23
 
