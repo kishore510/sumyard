@@ -1,6 +1,6 @@
 # PHASE-BRIEF: Where does the next £X go?
 
-Status: **C0 (brief and decisions, docs only)** Done (PR #42); **C0.5 (config values)** Done (0.28.0, PR #43); **C1 (composer, internal)** Done (0.29.0, PR #44); **C2 (page)** Done (0.30.0, PR #45); the slice waits on the owner's checks (below) before `PLAN.md` marks it Done. Mortgage overpayment M0 to M2 are Done (0.26.0 to 0.27.2, PRs #36 to #41, deployed); the slice waits on the owner's checks (below) before `PLAN.md` marks it Done. Slices 1 to 3 and the budget are Done. Finished briefs, the mortgage slice's included, are in `docs/history/phase-brief-archive.md`.
+Status: **C0 (brief and decisions, docs only)** Done (PR #42); **C0.5 (config values)** Done (0.28.0, PR #43); **C1 (composer, internal)** Done (0.29.0, PR #44); **C2 (page)** Done (0.30.0, PR #45); **C2.1 (page rebuild)** Done (0.31.0, PR #46); the slice waits on the owner's checks (below) before `PLAN.md` marks it Done. Mortgage overpayment M0 to M2 are Done (0.26.0 to 0.27.2, PRs #36 to #41, deployed); the slice waits on the owner's checks (below) before `PLAN.md` marks it Done. Slices 1 to 3 and the budget are Done. Finished briefs, the mortgage slice's included, are in `docs/history/phase-brief-archive.md`.
 
 ## Docs rule
 
@@ -18,6 +18,7 @@ Close out every session with the tiered checklist in `CLAUDE.md` ("Session close
 - **C0.5, config values (PR #43):** the owner's NP-1 to NP-4 decisions (CP11); 2026-27 leaves `pension.minimumAge.current`, `.announced`, `.announcedFrom`, `pension.lumpSum.taxFreeShare`, `.allowance` and `isa.annualLimit`, each with a Values row. Read them through `requireVerified`; the basic rate for the retirement tax default is the "Basic rate" band in `incomeTax.bands`.
 - **C1, composer (internal, no UI), tests first: red then green (Done, 0.29.0, PR #44; `src/calculators/next-pound/README.md`).** `src/calculators/next-pound/` (`types.ts`, `calc.ts`, `README.md`, `fixtures/reference.ts`, `calc.test.ts`, `properties.test.ts`, `reference.test.ts`, `crossChecks.test.ts` on `docs/next-pound-cross-checks.json`, `literals.test.ts`), and `src/calculators/engineImports.test.ts` (CP9's spec). Starting rates for low, mid and high growth as named starting values in `src/lib/inputLimits.ts`, for the owner. Mutation spot-checks on the composer.
 - **C2, page (Done, 0.30.0, PR #45):** `definition.ts` (inputs version 1, `validateInputs`, `migrateInputs`, `summarise`, `applySettings` for the region), `NextPoundPage.tsx` from shared components (`StickyResult`, `Section`, inputs, `ResultCard`/`StatRow`, `AssumptionsPanel`, `VerifiedBadge`, `RefusalNotice`), registry and route, scenarios and compare, Help topic `next-pound`, README. Browser matrix once. No new storage key.
+- **C2.1, page rebuild (Done, 0.31.0, PR #46):** the page as a decision panel: three typed inputs, pay and mortgage read only from saved take-home and mortgage scenarios (`sources.ts`, inputs version 2), the headline, three range bars on one scale (`RangeBar`), the callout, the break-even box (`screen.ts`); an optional `ageNow` in the composer (red/green, no change at an age). No storage key.
 
 ### Reuse (audited in C0)
 
@@ -61,7 +62,7 @@ Next pound decision (C0): confirm the readings proposed under CP1 to CP9 (`docs/
 
 Next pound composer (C1): confirm the mortgage leg read at month 12 × years + 1 (CP1 as built), the starting growth rates in `src/lib/inputLimits.ts`, the £10 finer scan, the NP-1 warning's condition, and the refusal split (composer leaves refuse the whole result, an engine refuses its leg) (`docs/open-questions.md`, "Next pound composer (C1)"); fill `docs/next-pound-cross-checks.json`.
 
-Next pound page (C2): confirm the page readings (`docs/open-questions.md`, "Next pound page readings (C2)"); decide on a worker for the composer (past 200 ms at 4x slowdown with a charge, `docs/performance.md`); check the page on a real phone, in Safari and with a screen reader.
+Next pound page (C2, C2.1): confirm the page readings (`docs/open-questions.md`, "Next pound page readings (C2)" and "(C2.1)"), in particular the headline wording for a leg with no number, the badge colour (no success token exists) and the manual reference's fee (its figures match a 0.5% fee, not none); decide on a worker for the composer (past 200 ms at 4x slowdown with a charge, `docs/performance.md`); check the page on a real phone, in Safari and with a screen reader.
 
 Mortgage overpayment (M2): confirm MO16 and the M2 page readings (`docs/open-questions.md`); fill `docs/mortgage-cross-checks.json` from a statement or illustration (settles MR-1, MR-2 and MR-4); check the page on a real phone, in Safari and with a screen reader; then the slice is marked Done in `PLAN.md`.
 
@@ -82,9 +83,9 @@ Compare redesign (1b-iii): confirm U24's maximum (the engine's, pay-bounded) and
 
 ## Last session
 
-- 23 October 2026, C2 (0.30.0): pre-check (PR #44 merged). The page at `#/c/next-pound` on `nextPound()`: definition (inputs version 1), page, registry and route, scenarios and compare, Help topic `next-pound`. Red/green pair.
-- Pay and mortgage reuse their pages' definitions, not their input components (inline in those pages; out of scope to move). Copy from the take-home page uses that page's session, no new storage key (`docs/open-questions.md`, "Next pound page readings (C2)").
-- Browser matrix: 118 checks clean at 360, 768, 1280 px, light and dark; Lighthouse CLS 0. With a charge, one run is past 200 ms at 4x slowdown (up to about 500 ms): a worker proposed, not built.
+- 23 October 2026, C2.1 (0.31.0): pre-check (PR #45 merged and deployed). Composer: optional `ageNow` (red/green). Inputs version 2 with the picked sources and a v1 migration; `sources.ts`, `screen.ts`; the page rebuilt to the mock; `RangeBar`. Red/green pairs throughout.
+- Differs from the brief: no success token exists, so the Guaranteed badge uses the teal swatch; the callout's "£X of take-home" is the composer's cost; the headline's state clauses are as worded but read awkwardly.
+- Browser: 42 checks at 360, 768, 1280 px, light and dark; Lighthouse CLS 0 (after a fix); picker changes at most 173 ms at 4x slowdown. The owner's reference reproduces to the penny with a 0.5% fee (the brief says no fee).
 - Not verified: a real phone, Safari, a screen reader, any real statement or illustration.
 
 ## Next

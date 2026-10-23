@@ -120,19 +120,22 @@ describe('content/help', () => {
       expect(text).toMatch(word)
   })
 
-  it('the next pound topic covers each leg, not accessible, not set up, guaranteed, break-even, warnings and what is not modelled', () => {
+  it('the next pound topic covers the three inputs, where pay and the mortgage come from, each leg, not accessible, the age note, guaranteed, break-even, warnings and what is not modelled', () => {
     const text = JSON.stringify(topicById('next-pound')!.blocks)
     for (const word of [
       /pension/i,
       /mortgage overpayment/i,
       /ISA/,
       /today's money/i,
-      /not accessible at horizon/i,
-      /not set up/i,
+      /not accessible at that horizon/i,
+      /access age not checked: add your age/i,
+      /no mortgage/i,
+      /only reads/i,
       /guaranteed/i,
       /above the highest rate modelled/i,
       /below the lowest rate modelled/i,
-      /copy from the take-home page/i,
+      /enter your pay on the take-home page first/i,
+      /saved last/i,
       /employer National Insurance/i,
       /transitional age/i,
       /stocks and shares ISA/i,

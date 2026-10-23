@@ -1,4 +1,4 @@
-import { formatIsoDate, formatPercent, formatPercentFixed } from '@/lib/format'
+import { formatGBP, formatIsoDate, formatPercent, formatPercentFixed } from '@/lib/format'
 import { compare, fromPounds, type Money, mulRound, type Ratio, ratio, roundRatio, toPence, ZERO } from '@/lib/money'
 import type { LegId, PageOutcome } from './definition'
 import type { Amounts, BreakEven } from './types'
@@ -234,7 +234,8 @@ export function calloutFacts(out: Ok): CalloutFacts | null {
 export function calloutText(facts: CalloutFacts, gbp: Gbp): string {
   if (facts.kind === 'cost') return `Putting ${gbp(facts.pensionAdded)} into a pension costs ${gbp(facts.cost)} of spendable income now`
   const cause = facts.cause ? `, ${CAUSE_CLAUSE}` : ''
-  return `At your pay, ${gbp(facts.cost)} of take-home buys ${gbp(facts.pensionAdded)} of pension: ${gbp(facts.perPound)} in for every ${gbp(ONE_POUND)} out${cause}`
+  // The multiple is always to the penny, whatever Settings shows, so rounding to whole pounds can't hide it.
+  return `At your pay, ${gbp(facts.cost)} of take-home buys ${gbp(facts.pensionAdded)} of pension: ${formatGBP(facts.perPound, 'pence')} in for every ${formatGBP(ONE_POUND, 'pounds')} out${cause}`
 }
 
 /* The break-even box. */

@@ -207,8 +207,11 @@ describe('the callout', () => {
     expect(facts).toMatchObject({ kind: 'multiple', cost, pensionAdded })
     const perPound = mulRound(fromPounds(1), ratio(pensionAdded, cost), 'nearest')
     expect(calloutText(facts!, gbp)).toBe(
-      `At your pay, ${gbp(cost)} of take-home buys ${gbp(pensionAdded)} of pension: ${gbp(perPound)} in for every ${gbp(fromPounds(1))} out`,
+      `At your pay, ${gbp(cost)} of take-home buys ${gbp(pensionAdded)} of pension: ${formatGBP(perPound, 'pence')} in for every ${formatGBP(fromPounds(1), 'pounds')} out`,
     )
+    // Whole pounds in Settings: the multiple still shows its pence.
+    const whole = (amount: Money) => formatGBP(amount, 'pounds')
+    expect(calloutText(facts!, whole)).toContain(`: ${formatGBP(perPound, 'pence')} in for every `)
   })
 
   it('states the cause only when the personal allowance taper is in play', () => {

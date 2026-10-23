@@ -147,32 +147,35 @@ const warningText = (w: NextPoundWarning, gbp: Gbp) =>
 const outcomeMemo = new Map<string, PageOutcome>()
 const MEMO_SIZE = 16
 
+/** The composer's outcome for inputs, from the memo when already seen. */
+function outcomeFor(key: string, inputs: NextPoundPageInputs, config: TaxYearConfig): PageOutcome {
+  const known = outcomeMemo.get(key)
+  if (known) return known
+  const outcome = calculate(inputs, config)
+  if (outcomeMemo.size >= MEMO_SIZE) outcomeMemo.clear()
+  outcomeMemo.set(key, outcome)
+  return outcome
+}
+
 /**
- * calculate() once the inputs have stopped changing for SETTLE_MS (the first run at once): one run is tens of
- * milliseconds, too slow for every keystroke on a phone (docs/performance.md). Inputs already seen are shown at once.
- * While a change waits, the last results stay with `stale` set.
+ * calculate() once the inputs have stopped changing for SETTLE_MS: one run is tens of milliseconds, too slow for
+ * every keystroke on a phone (docs/performance.md). The first result is worked out with the first render, so the
+ * top card paints once at its height (no layout shift). Inputs already seen are shown at once. While a change
+ * waits, the last results stay with `stale` set.
  */
 function useOutcome(inputs: NextPoundPageInputs | null, config: TaxYearConfig) {
   const key = inputs === null ? null : `${config.id}|${canonicalJson(inputs)}`
-  const [ready, setReady] = useState<{ readonly key: string; readonly outcome: PageOutcome } | null>(null)
-  const first = useRef(true)
+  const [ready, setReady] = useState<{ readonly key: string; readonly outcome: PageOutcome } | null>(() =>
+    key === null || inputs === null ? null : { key, outcome: outcomeFor(key, inputs, config) },
+  )
+  const first = useRef(ready === null)
   // biome-ignore lint/correctness/useExhaustiveDependencies: key stands for the inputs and the config.
   useEffect(() => {
-    if (key === null || inputs === null) return
+    if (key === null || inputs === null || ready?.key === key) return
     const known = outcomeMemo.get(key)
     const wait = first.current ? 0 : SETTLE_MS
     first.current = false
-    const timer = setTimeout(
-      () => {
-        const outcome = known ?? calculate(inputs, config)
-        if (!known) {
-          if (outcomeMemo.size >= MEMO_SIZE) outcomeMemo.clear()
-          outcomeMemo.set(key, outcome)
-        }
-        setReady({ key, outcome })
-      },
-      known ? 0 : wait,
-    )
+    const timer = setTimeout(() => setReady({ key, outcome: outcomeFor(key, inputs, config) }), known ? 0 : wait)
     return () => clearTimeout(timer)
   }, [key])
   return { outcome: ready?.outcome ?? null, stale: ready !== null && ready.key !== key }
@@ -220,7 +223,8 @@ export default function NextPoundPage() {
   const context = useSourceContext()
   useSync(context, state.revision)
   const resolved = withSources(state.inputs, context)
-  const inputs = resolved.inputs
+  // A fresh page's date is today from the first render (useSync then stores it), so the first result needs no wait.
+  const inputs = resolved.inputs.asOf === null ? { ...resolved.inputs, asOf: today() } : resolved.inputs
   const config = configFor(resolved.taxYear ?? state.taxYear)
   const invalid = state.invalid.length > 0
   const { outcome, stale } = useOutcome(invalid ? null : inputs, config)
@@ -325,9 +329,9 @@ function PaySourceLine({ inputs, pay, context, gbp }: { inputs: NextPoundPageInp
   const options = payOptions(inputs, context)
   if (pay.state === 'empty')
     return (
-      <p data-pay-prompt className="flex items-start gap-2 text-sm text-text-muted">
-        <Link2 aria-hidden="true" className="mt-1 size-4 shrink-0" />
-        <a href={TAKE_HOME_HREF} className="font-medium text-accent underline underline-offset-2">
+      <p data-pay-prompt className="flex items-center gap-2 text-sm text-text-muted">
+        <Link2 aria-hidden="true" className="size-4 shrink-0" />
+        <a href={TAKE_HOME_HREF} className="inline-flex min-h-touch items-center font-medium text-accent underline underline-offset-2">
           Enter your pay on the take-home page first
         </a>
       </p>
@@ -635,23 +639,15 @@ function BarItem({ row, outcome, gbp }: { row: BarRow; outcome: Ok; gbp: Gbp }) 
       {row.state && (
         <p data-bar-state className="text-sm text-text-muted [overflow-wrap:anywhere]">
           {row.state}
-          {view.kind === 'none' && (
-            <>
-              {': '}
-              <a href={MORTGAGE_HREF} className="font-medium text-accent underline underline-offset-2">
-                set one up on the mortgage page
-              </a>
-            </>
-          )}
-          {view.kind === 'needs' && row.leg === 'pension' && (
-            <>
-              {' '}
-              <a href={TAKE_HOME_HREF} className="font-medium text-accent underline underline-offset-2">
-                Go to the take-home page
-              </a>
-            </>
-          )}
         </p>
+      )}
+      {(view.kind === 'none' || (view.kind === 'needs' && row.leg === 'pension')) && (
+        <a
+          href={view.kind === 'none' ? MORTGAGE_HREF : TAKE_HOME_HREF}
+          className="inline-flex min-h-touch items-center self-start text-sm font-medium text-accent underline underline-offset-2"
+        >
+          {view.kind === 'none' ? 'Set one up on the mortgage page' : 'Go to the take-home page'}
+        </a>
       )}
       {refusal && <RefusalNotice refusal={refusal} heading="h3" />}
     </li>
