@@ -38,3 +38,17 @@ Moved verbatim from `PLAN.md` on 21 October 2026. New ideas go here.
 - Car decision: the fuel or energy price threshold is a second task of about 370 ms in Node at 240 months after the other flip points; a worker would take it off the main thread with them.
 - Mortgage page: a regular overpayment from and to a date (the engine takes from and to months; the page uses the whole term); recalculating the payment under daily interest so the schedule does not drift (needs MR-1).
 - Mortgage overpayment (MO6, MO14): an `'annual'` interest method, and lump sums off payment dates. Both need a source for how a lender applies them before they are defined or built (`docs/verification-log.md`, MR-1, MR-2).
+- Next pound decision (CP1, CP10): monthly amounts instead of one lump sum; the Lifetime ISA, the State Pension, a partner, an offset mortgage, cash savings and inheritance tax.
+
+## Parked from `PLAN.md` (C0, 23 October 2026): only if a real decision needs it
+
+The owner's C0 brief parked every row not started. Their `PLAN.md` status is **Parked** (the docs guard allows Not started, In progress, Parked or Done; it has no "dropped"), and each is built only if a real decision needs it.
+
+- **Loan / APR:** dropped as a standalone page. Its value sits inside the car decision (finance options, the APR from 3a.1); CR-10 stays open there.
+- **Fee impact:** dropped as its own calculator. Compound interest already shows fee drag (slice 2, C4), nominal and real; anything more goes in compound interest's notes.
+- **ISA vs pension vs mortgage:** superseded by the next pound decision (`#/c/next-pound`, C0 to C2).
+- **Bonus and salary sacrifice:** largely an input mode of the optimiser (1b); fold it in there if needed.
+- **Retirement / FIRE:** would build on compound interest (slice 2).
+- **EV vs petrol running cost:** would build on the car decision (slice 3).
+- **Stamp duty:** needs per-nation rules (England, Scotland and Wales are separate taxes), each verified first.
+- **Child-related costs:** would share the HICBC and childcare thresholds with the 2026-27 config.

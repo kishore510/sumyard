@@ -386,3 +386,75 @@ The mortgage engine never imports `src/calculators/car-finance` (or another calc
 ### MO16. A mortgage already running: allowance used and the reset (owner, M2; numbered MO16 as MO15 is the shared helpers)
 
 The charge (MO7) takes two more contract inputs: the allowance already used in the allowance year running at the start, and the payments until that year resets (nothing to twelve). The first allowance year covers those payments, with the amount used counted towards its allowance; the next starts after them, then every twelve payments, each fresh. Absent, nothing to the reset, or twelve with nothing used is a fresh year from the first payment, so M1's results are unchanged. Used above the allowance is accepted: no room is left, every overpayment until the reset is charged in full, and nothing already used is charged (it was paid before the start). A percentage allowance for the year in progress is worked out on the balance now, which is below that year's opening balance, so the room is never overstated (M2's reading; a statement can show the lender's figure). Named in the assumptions when the year is already running. Engine: `allowanceYearStarts` in `src/calculators/mortgage/calc.ts`; the reference lays the years out by listing their first months (`referenceCharges`).
+
+## Next pound decision (session C0)
+
+"Where does the next £X go?" at `#/c/next-pound`: a pension, a mortgage overpayment or an ISA, for the same sum of take-home. CP1 to CP10 were set in the owner's C0 brief and are **owner-confirmed, 23 October 2026**. The composer adds no tax rule of its own: it runs the verified engines (`optimise()`, the mortgage engine's `overpay()`, compound interest's `project()`) and reads a few new config leaves that C1 adds from the C0 lookups (`docs/verification-log.md`, "Next pound decision (session C0)", NP-1 to NP-12). Because it reads tax config it is **not** a `taxRules: 'none'` calculator: the page shows `VerifiedBadge` and refuses, naming the values, when any is unverified. Rounding: `docs/money.md`, "Next pound decision (session C0)". Readings this session added under CP3 to CP9 are marked **proposed, for the owner**; they do not change a confirmed decision.
+
+### CP1. One lump sum, held to a horizon (owner)
+
+One-off X of take-home pay, now, held to a horizon in whole years. No monthly amounts (`docs/backlog.md`).
+
+- *Proposed, for the owner:* the horizon is whole years (the compound engine's unit), and the mortgage leg reads month 12 × years from the mortgage's own start. The page supplies an "as of" date for the access-age test (CP4); the engine never reads the clock.
+
+### CP2. One measure: what X adds to net worth at the horizon (owner)
+
+Each column is the change in net worth at the horizon from putting X there, after tax on withdrawal, in today's money first (an inflation input) and nominal beside it.
+
+- *Proposed, for the owner:* every column spends exactly X now. What a leg cannot use (an overpayment past the balance, the pension's last pennies, CP3 and CP5) stays in that column as cash at its face value, with no growth (cash savings are out, CP10), and is shown. Today's money is the nominal value divided by one plus inflation to the power of the years, the same deflator for every leg (compound interest's real view uses it for the ISA and pension pots, C5).
+
+### CP3. Pension leg: what X of take-home buys (owner)
+
+The pension X buys comes from `optimise()` at the person's own pay, so the personal allowance taper, the HICBC, student loans and the pension method all flow through. An optional employer match is an input. Employer NI savings are not modelled.
+
+- *Proposed, for the owner (a correction to the reading of "net cost per £1"):* `OptimiserPoint.netCostPerPound` is measured **against no contribution** (an average from nothing, G13), not from the current contribution. Multiplying X by it would be wrong for anyone already paying in. The composer instead finds the extra contribution E whose cost, spendable income at the current contribution less spendable income at the current contribution plus E, is the most that does not pass X; the pension added is the difference in `pension.total` between the two points. Spendable income is not monotone in the contribution (HICBC steps, the childcare cliff, penny effects, `docs/money.md`), so C1 searches the optimiser's sweep for the last point within X and refines between it and the next in whole pence. The leftover, X less that cost, is cash in this column (CP2).
+- *Proposed:* the employer match is an amount the employer adds because of the extra contribution, entered by the person (default nothing). It joins the pot and counts towards the annual allowance (it is passed as extra `savings.employerContribution`), never towards spendable income.
+- *Proposed:* under salary sacrifice or net pay, X is take-home given up this tax year rather than cash in hand; each column still leaves the person X poorer now.
+- *Engine note for C1:* `optimise()` sweeps the whole range on every call and `pointAt` (`compare.ts`) calls it once per contribution. A refinement in whole pence may need a single-point evaluation exported from `optimiser/calc.ts` (no behaviour change, its own red then green pair) rather than a sweep per step. C1 decides with timings.
+
+### CP4. Pension at the horizon (owner)
+
+The pot at the horizon less the tax-free lump sum; the remainder taxed at a retirement tax rate the person sets, whose default comes from verified config (the basic rate), never a literal. If the horizon is before the access age: "not accessible at horizon", and no number.
+
+- *Proposed, for the owner:* the pot grows at the same low, mid and high rates and the same fee as the ISA (CP6), through compound interest's `project()`: the same investments in a different wrapper. With the same growth and fee, the pension's value is the ISA's times one ratio at every rate, which the page can say once.
+- *Proposed:* the tax-free part is the tax-free share (NP-2) of the pot, capped at the lump sum allowance still available (NP-6, NP-7). The person says whether their other pensions will use the allowance; default "no". The remainder, and anything above the cap, is taxed at the one retirement rate (NP-8, a simplification named in the assumptions: no personal allowance, bands or other income in retirement).
+- *Proposed:* the default rate is the rate of the band named "Basic rate" in the person's region's `incomeTax.bands` (`requireVerified`); if no band has that name the default refuses and the person must enter a rate. The rate is for 2026 to 2027, applied to a withdrawal years away (an assumption says so).
+- *Proposed:* the access age is the normal minimum pension age on the horizon date (NP-3 now, NP-5 from its date), from config, with an input for a scheme's later age. Accessible when the age now plus the horizon reaches it. No protected pension age, no benefits already taken (NP-1).
+
+### CP5. Mortgage leg (owner)
+
+The balance with and without the overpayment at the horizon, from the mortgage engine (`overpay()`), with the effect `'reduce-term'`, the ERC applied and the reversion rate after the fixed end. Labelled as the only guaranteed leg.
+
+- *Proposed, for the owner:* the ERC is paid in cash and not added to the balance (MO7), so the overpayment O is the most whose O plus its ERC does not pass X; the rest is cash (CP2). The part of O past the balance is cash too (MO8, `MonthRow.unused`).
+- *Proposed:* the leg is the baseline balance less the overpaying balance at the horizon, **plus** the payments the overpaying schedule no longer needs up to the horizon (each month's baseline payment less its overpaying payment, summed, at face value). This counts the payments freed after an early payoff, an interest-only mortgage's lower interest payments, and a different payment after the fixed-rate end. Overpayments and ERCs are not payments here. With the horizon at or past the term's end, the leg less X equals the mortgage engine's `charge.netSaving` (or `interestSaved` with no charge), a check C1 tests.
+- *Proposed:* the mortgage starts at its own start date; the horizon is counted from there (CP1).
+
+### CP6. ISA leg (owner)
+
+Growth at low, mid and high rates, with the fee input reused from compound interest (`project()`). The default rates are labelled illustrative assumptions, not facts. An ISA allowance warning.
+
+- *Proposed, for the owner:* the ISA is invested, not cash: no tax on growth or withdrawals (NP-10, NP-11). An assumption says that cash held in a stocks and shares ISA may be charged from 6 April 2027 (NP-4, OPEN). C1 proposes the three starting rates as named starting values in `src/lib/inputLimits.ts` (as `DEFAULT_PROJECTION_YEARS` is), not market figures, for the owner to set; they sit within compound interest's `GROWTH_RATE_BOUND`.
+- *Proposed:* the allowance warning needs what is already paid into ISAs this tax year (an input, default nothing); it warns when that plus X passes the limit (NP-12). It warns; it does not cap.
+
+### CP7. Output (owner)
+
+Three columns (pension, mortgage, ISA), and the break-even ISA return that equals each alternative. Nothing is labelled "best" (G13).
+
+- *Proposed, for the owner:* the break-even ISA return is the nominal growth rate, before the fee, at which the ISA leg equals the other leg, found by bisection on the compound engine (the ISA's value rises with its rate, so there is at most one). Against the pension, it is the rate matching the pension at the mid rate (the pension also moves with the rate, CP4). It is searched within compound interest's `GROWTH_RATE_BOUND`; outside it the page says "above the highest rate modelled" or "below the lowest", with no number. With the pension not accessible at the horizon, or with X of nothing, no break-even is shown.
+
+### CP8. Warnings (owner)
+
+The optimiser's warnings at the new contribution pass through (the annual allowance, the taper, carry forward, and the rest of `EngineWarning`), plus the ISA allowance (CP6) and the ERC (the mortgage engine's `over-allowance`).
+
+- *Proposed:* also, the pension leg reaching the most the optimiser models (gross equal to gross pay) with X not used up, and an overpayment past the balance.
+
+### CP9. One composer may import other calculators (owner)
+
+This one composer, `src/calculators/next-pound/`, may import the public entry points of other engines. Every other calculator engine stays as it is.
+
+- *Found in C0, for the owner:* the brief said every other engine imports only `src/lib/`. The code does not: `car-ownership/calc.ts` and `car-ownership/types.ts` already import `car-finance/calc.ts` and `car-finance/types.ts` (slice 3b), and `CLAUDE.md` had no such rule (it was MO15's, for the mortgage engine). `CLAUDE.md` now states the rule with both exceptions named. If the owner wants car ownership moved onto `src/lib/` too, that is a later part of its own.
+- *Guard test spec for C1:* `src/calculators/engineImports.test.ts`. For each folder under `src/calculators/` with a `calc.ts`, follow every relative and `@/` import from `calc.ts`, transitively, skipping `*.test.ts`, `*.tsx` and `fixtures/`. Each file reached must be in that folder, `src/lib/` or `src/config/tax/` (not `fixtures/`), or be one of the allowed entry points: for `car-ownership`, `car-finance/calc.ts` and `car-finance/types.ts`; for `next-pound`, `optimiser/calc.ts`, `optimiser/types.ts`, `mortgage/calc.ts`, `mortgage/types.ts`, `compound-interest/calc.ts`, `compound-interest/types.ts` (plus a single-point export if CP3's engine note adds one). An allowed entry point is checked by its own folder's rule, not followed further from the composer. The test fails on a new cross-calculator import, on an allow-list entry no import uses, and on a page module (`definition.ts`, `*.tsx`) reached from an engine. Page folders without a `calc.ts` (such as `car-decision/`) are outside it.
+
+### CP10. Out of scope (owner)
+
+The Lifetime ISA, the State Pension, a partner, offset mortgages, cash savings, inheritance tax, monthly contributions.

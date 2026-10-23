@@ -1,0 +1,234 @@
+{
+  "about": "Cross-check cases for the next pound composer (src/calculators/next-pound, part C1), one per leg and for the break-even. Every case is a todo until filled. Never fill a figure from Sumyard's own engine or from memory. Each leg must also be reproducible from its own engine's cross-check (reproducesFrom): the composer adds no arithmetic beyond what docs/money.md, 'Next pound decision (session C0)', lists. Once C1 exists, its crossChecks test shows an unfilled case as a todo and compares a filled one with the composer.",
+  "privacy": "This repository is public. Enter figures only: amounts, rates, dates, ages and counts. No name, address, employer, scheme, account or policy number, lender reference, or anything else that identifies a person, a pension or a loan. In source, name the kind of document and the provider (\"retirement illustration, <provider>, 2026\") at most; keep the document itself off the repository.",
+  "howToFill": "Amounts as pounds strings (\"12345.67\"), rates as percentage text (\"4.5\"), dates as YYYY-MM-DD, ages and years as whole numbers. Pension inputs as the optimiser page stores them (pensionMethod 'reliefAtSource', 'netPay' or 'salarySacrifice'; region 'rUK' or 'scotland'); mortgage inputs as docs/mortgage-cross-checks.json describes them, with the effect always 'reduce-term' (CP5). Fill in expected only what the document shows; leave the rest null. Add source and checkedOn (YYYY-MM-DD), both required once any expected value is filled. tolerancePence is the largest difference accepted; change it only with a note in docs/worked-examples.md.",
+  "tolerancePence": 1,
+  "cases": [
+    {
+      "id": "pension-leg-cost",
+      "status": "todo",
+      "description": "X of take-home into the pension at the person's own pay: the extra contribution, the pension it adds and its cost in spendable income (CP3). Source: two payslips or a payroll illustration either side of a one-off contribution, or two take-home figures from an HMRC calculator.",
+      "reproducesFrom": {
+        "file": "docs/hmrc-cross-checks.json",
+        "note": "each of the two take-home figures is an HMRC cross-check case at that contribution"
+      },
+      "inputs": {
+        "taxYear": null,
+        "region": null,
+        "grossPay": null,
+        "pensionMethod": null,
+        "currentContribution": null,
+        "employerContribution": null,
+        "employerMatch": null,
+        "studentLoanPlans": [],
+        "children": null,
+        "childBenefitPayments": null,
+        "carryForward": [],
+        "lumpSumX": null
+      },
+      "expected": {
+        "extraContribution": null,
+        "pensionAdded": null,
+        "costInSpendable": null,
+        "leftoverCash": null
+      },
+      "source": null,
+      "checkedOn": null
+    },
+    {
+      "id": "pension-leg-taper-zone",
+      "status": "todo",
+      "description": "As pension-leg-cost with pay inside the personal allowance taper, so the cost per pound of pension is lowest (CP3, edge cases). Same kind of source.",
+      "reproducesFrom": {
+        "file": "docs/hmrc-cross-checks.json",
+        "note": "the taper cases"
+      },
+      "inputs": {
+        "taxYear": null,
+        "region": null,
+        "grossPay": null,
+        "pensionMethod": null,
+        "currentContribution": null,
+        "employerContribution": null,
+        "employerMatch": null,
+        "studentLoanPlans": [],
+        "children": null,
+        "childBenefitPayments": null,
+        "carryForward": [],
+        "lumpSumX": null
+      },
+      "expected": {
+        "extraContribution": null,
+        "pensionAdded": null,
+        "costInSpendable": null,
+        "leftoverCash": null
+      },
+      "source": null,
+      "checkedOn": null
+    },
+    {
+      "id": "pension-at-horizon-tax",
+      "status": "todo",
+      "description": "A pot at the horizon split into the tax-free part and the taxed rest at a retirement rate (CP4). Source: a pension provider's retirement illustration, or the worked example on GOV.UK's 'Tax when you get a pension', 'What's tax-free', for the split only (NP-2).",
+      "reproducesFrom": {
+        "file": "docs/compound-cross-checks.json",
+        "note": "the pot itself is a compound interest projection; this case checks only the split and the tax"
+      },
+      "inputs": {
+        "potAtHorizon": null,
+        "otherPensionsUseAllowance": null,
+        "retirementRate": null
+      },
+      "expected": {
+        "taxFreePart": null,
+        "taxablePart": null,
+        "tax": null,
+        "afterTax": null
+      },
+      "source": null,
+      "checkedOn": null
+    },
+    {
+      "id": "pension-not-accessible",
+      "status": "todo",
+      "description": "A horizon that ends before the access age: the pension column shows no number (CP4). Source: the person's own age and scheme rules.",
+      "reproducesFrom": null,
+      "inputs": {
+        "asOf": null,
+        "horizonYears": null,
+        "ageNow": null,
+        "schemeAccessAge": null,
+        "inflationRate": null
+      },
+      "expected": {
+        "accessible": null
+      },
+      "source": null,
+      "checkedOn": null
+    },
+    {
+      "id": "mortgage-leg-reduce-term",
+      "status": "todo",
+      "description": "X overpaid as one lump sum with the payment kept and the term shortened, read at a horizon inside the term: the balance difference and the payments freed (CP5). Source: the same lender illustration as the mortgage case it reproduces.",
+      "reproducesFrom": {
+        "file": "docs/mortgage-cross-checks.json",
+        "case": "lump-sum-reduce-term"
+      },
+      "inputs": {
+        "startDate": null,
+        "balance": null,
+        "termMonths": null,
+        "repaymentType": null,
+        "fixedRate": null,
+        "fixedEndMonth": null,
+        "reversionRate": null,
+        "interestMethod": null,
+        "dayCount": null,
+        "ercRate": null,
+        "ercEndMonth": null,
+        "allowanceRate": null,
+        "allowanceAmount": null,
+        "allowanceUsed": null,
+        "paymentsToReset": null,
+        "lumpSumX": null,
+        "asOf": null,
+        "horizonYears": null,
+        "ageNow": null,
+        "schemeAccessAge": null,
+        "inflationRate": null
+      },
+      "expected": {
+        "overpayment": null,
+        "baselineBalanceAtHorizon": null,
+        "overpayingBalanceAtHorizon": null,
+        "paymentsFreed": null,
+        "leftoverCash": null
+      },
+      "source": null,
+      "checkedOn": null
+    },
+    {
+      "id": "mortgage-leg-erc",
+      "status": "todo",
+      "description": "X above the penalty-free allowance: the overpayment plus its ERC equal X, the rest is cash (CP5). Source: a lender's ERC quote for an overpayment.",
+      "reproducesFrom": {
+        "file": "docs/mortgage-cross-checks.json",
+        "case": "over-allowance-erc"
+      },
+      "inputs": {
+        "startDate": null,
+        "balance": null,
+        "termMonths": null,
+        "repaymentType": null,
+        "fixedRate": null,
+        "fixedEndMonth": null,
+        "reversionRate": null,
+        "interestMethod": null,
+        "dayCount": null,
+        "ercRate": null,
+        "ercEndMonth": null,
+        "allowanceRate": null,
+        "allowanceAmount": null,
+        "allowanceUsed": null,
+        "paymentsToReset": null,
+        "lumpSumX": null,
+        "asOf": null,
+        "horizonYears": null,
+        "ageNow": null,
+        "schemeAccessAge": null,
+        "inflationRate": null
+      },
+      "expected": {
+        "overpayment": null,
+        "ercCharged": null,
+        "baselineBalanceAtHorizon": null,
+        "overpayingBalanceAtHorizon": null,
+        "leftoverCash": null
+      },
+      "source": null,
+      "checkedOn": null
+    },
+    {
+      "id": "isa-leg",
+      "status": "todo",
+      "description": "X paid into an invested ISA now, grown at one rate with a fee to the horizon, nominal and in today's money (CP6). Source: a provider's projection or a spreadsheet, as compound interest's cases.",
+      "reproducesFrom": {
+        "file": "docs/compound-cross-checks.json",
+        "note": "a lump-sum case with a fee"
+      },
+      "inputs": {
+        "lumpSumX": null,
+        "growthRate": null,
+        "feeRate": null,
+        "horizonYears": null,
+        "inflationRate": null
+      },
+      "expected": {
+        "nominal": null,
+        "todaysMoney": null
+      },
+      "source": null,
+      "checkedOn": null
+    },
+    {
+      "id": "break-even-against-mortgage",
+      "status": "todo",
+      "description": "The ISA growth rate at which the ISA leg equals the mortgage leg for the same X and horizon (CP7). Source: a spreadsheet goal seek on the mortgage-leg-reduce-term figures.",
+      "reproducesFrom": {
+        "file": "docs/mortgage-cross-checks.json",
+        "case": "lump-sum-reduce-term"
+      },
+      "inputs": {
+        "mortgageLegAtHorizon": null,
+        "lumpSumX": null,
+        "feeRate": null,
+        "horizonYears": null
+      },
+      "expected": {
+        "breakEvenGrowthRate": null
+      },
+      "source": null,
+      "checkedOn": null
+    }
+  ]
+}
