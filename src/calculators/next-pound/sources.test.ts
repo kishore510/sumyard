@@ -65,7 +65,11 @@ describe('the pay source', () => {
 
   it('fresh: the take-home page’s inputs this visit when it has pay, else the latest saved take-home scenario', () => {
     const typed = pay(45_000)
-    expect(resolvePay(fresh(), ctx([older, newer], { inputs: typed }))).toMatchObject({ ref: { kind: 'session' }, pay: typed, state: 'live' })
+    expect(resolvePay(fresh(), ctx([older, newer], { inputs: typed }))).toMatchObject({
+      ref: { kind: 'session' },
+      pay: typed,
+      state: 'live',
+    })
     expect(resolvePay(fresh(), all)).toMatchObject({ ref: { kind: 'scenario', id: newer.id, name: 'Pay now' }, pay: newer.inputs })
   })
 
@@ -77,7 +81,12 @@ describe('the pay source', () => {
   it('a picked scenario gives its pay and its tax year; a renamed one its new name', () => {
     const picked = { ...fresh(), paySource: { kind: 'scenario', id: older.id, name: 'Old name' } } as const
     const r = resolvePay(picked, ctx([{ ...older, taxYear: '2026-27' }, newer]))
-    expect(r).toMatchObject({ ref: { kind: 'scenario', id: older.id, name: older.name }, pay: older.inputs, taxYear: '2026-27', state: 'live' })
+    expect(r).toMatchObject({
+      ref: { kind: 'scenario', id: older.id, name: older.name },
+      pay: older.inputs,
+      taxYear: '2026-27',
+      state: 'live',
+    })
   })
 
   it('a deleted source: the pay saved with this scenario, with a notice naming it, not a crash', () => {
@@ -97,7 +106,11 @@ describe('the pay source', () => {
 
   it('kept (from version 1): the pay saved with this scenario, no notice', () => {
     const saved = pay(61_000)
-    expect(resolvePay({ ...fresh(), pay: saved, paySource: { kind: 'kept' } }, all)).toMatchObject({ pay: saved, state: 'kept', notice: null })
+    expect(resolvePay({ ...fresh(), pay: saved, paySource: { kind: 'kept' } }, all)).toMatchObject({
+      pay: saved,
+      state: 'kept',
+      notice: null,
+    })
   })
 
   it('the picker lists take-home scenarios newest first, the inputs this visit when there are some, and what is kept', () => {

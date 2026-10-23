@@ -75,7 +75,11 @@ describe('the headline', () => {
     expect(parts.clauses.map((c) => c.leg)).toEqual(['pension', 'mortgage', 'isa'])
     expect(parts.clauses.every((c) => c.kind === 'value')).toBe(true)
     const [p, m, i] = parts.clauses.map((c) => (c.kind === 'value' ? c.value : null))
-    expect(p).toBe(shownPension(out)?.status === 'accessible' ? (shownPension(out) as { rates: { mid: { value: { todaysMoney: Money } } } }).rates.mid.value.todaysMoney : null)
+    expect(p).toBe(
+      shownPension(out)?.status === 'accessible'
+        ? (shownPension(out) as { rates: { mid: { value: { todaysMoney: Money } } } }).rates.mid.value.todaysMoney
+        : null,
+    )
     expect(m).toBe(out.mortgage.kind === 'shown' ? out.mortgage.leg.value.todaysMoney : null)
     expect(i).toBe(isaMid(out))
     expect(headlineText(parts, gbp)).toBe(
@@ -93,7 +97,9 @@ describe('the headline', () => {
     expect(text(ok({ schemeAccessAge: MAX_AGE_YEARS }))).toMatch(/ a pension is not accessible at that horizon, /)
     expect(text(ok({ mortgage: mortgageCalculator.defaultInputs() }))).toMatch(/, no mortgage is set up, or /)
     expect(text(ok({ pay: optimiserCalculator.defaultInputs() }))).toMatch(/ a pension needs your pay, /)
-    expect(text(ok({ mortgage: { ...mortgage, termYears: 0, termExtraMonths: 0 } }))).toMatch(/, the mortgage has no result for these inputs, or /)
+    expect(text(ok({ mortgage: { ...mortgage, termYears: 0, termExtraMonths: 0 } }))).toMatch(
+      /, the mortgage has no result for these inputs, or /,
+    )
   })
 
   it('one year is singular; the mid rate leaves the sentence when neither growth leg has a number', () => {
@@ -171,7 +177,13 @@ describe('the bars', () => {
     const c = charged.mortgage.kind === 'shown' ? charged.mortgage.leg : null
     expect(c!.erc).toBeGreaterThan(0)
     expect(legLine(charged, 'mortgage', gbp)).toContain(`; an early repayment charge of ${gbp(c!.erc)} is paid from the lump sum`)
-    expect(legLine(charged, 'mortgage', gbp)).toContain(`; ${gbp(c!.leftoverCash)} is held as cash`)
+    expect(compare(c!.leftoverCash, ZERO) > 0).toBe(legLine(charged, 'mortgage', gbp)!.includes('is held as cash'))
+    expect(legLine(out, 'mortgage', gbp)).not.toMatch(/charge|cash/)
+    // A balance below the lump sum: what isn't needed is held as cash.
+    const small = ok({ mortgage: { ...mortgage, balance: fromPounds(4_000) } })
+    const s = small.mortgage.kind === 'shown' ? small.mortgage.leg : null
+    expect(compare(s!.leftoverCash, ZERO)).toBe(1)
+    expect(legLine(small, 'mortgage', gbp)).toMatch(new RegExp(`; ${gbp(s!.leftoverCash).replace(/[$£.]/g, '\\$&')} is held as cash$`))
   })
 
   it('without an age, the pension line says the access age was not checked', () => {
@@ -190,9 +202,7 @@ describe('the callout', () => {
   it('more than £1 in for every £1 out: the multiple to two places, from the composer’s cost and pension added', () => {
     const out = ok()
     const facts = calloutFacts(out)
-    const c = shownPension(out)!
-    if (c.status === 'refused' || c.status === 'nothing') throw new Error('no pension')
-    const { cost, pensionAdded } = c.contribution
+    const { cost, pensionAdded } = shownPension(out)!.contribution
     expect(compare(pensionAdded, cost)).toBe(1)
     expect(facts).toMatchObject({ kind: 'multiple', cost, pensionAdded })
     const perPound = mulRound(fromPounds(1), ratio(pensionAdded, cost), 'nearest')
@@ -211,7 +221,6 @@ describe('the callout', () => {
   it('£1 or less in for every £1 out, or no cost: what the pension costs in spendable income, in neutral words', () => {
     const out = ok()
     const leg = shownPension(out)!
-    if (leg.status === 'refused' || leg.status === 'nothing') throw new Error('no pension')
     const even = { ...leg, contribution: { ...leg.contribution, pensionAdded: leg.contribution.cost } }
     const facts = calloutFacts({ ...out, pension: { kind: 'shown', leg: even } })
     expect(facts?.kind).toBe('cost')

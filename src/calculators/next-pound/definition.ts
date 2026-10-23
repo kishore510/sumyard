@@ -17,6 +17,7 @@ import { type IsoDate, isIsoDate } from '@/lib/isoDate'
 import { add, compare, compareRatio, fromPence, type Money, type Ratio, ratio, ZERO } from '@/lib/money'
 import { isCanonicalPercent, percentRatio } from '@/lib/parse'
 import { checkUntrustedJson, isRecord } from '@/lib/validate'
+import { cleanName, isScenarioId } from '@/scenarios/scenario'
 import { inputRefusal as compoundRefusal } from '../compound-interest/definition'
 import {
   FIELD_LABELS as MORTGAGE_LABELS,
@@ -27,9 +28,10 @@ import {
   engineLabel as mortgageEngineLabel,
   toEngineInputs as toMortgageEngineInputs,
 } from '../mortgage/definition'
+import { evaluateContribution, thresholdContributions } from '../optimiser/calc'
 import { type OptimiserPageInputs, optimiserCalculator } from '../optimiser/definition'
 import { toOptimiserInputs } from '../optimiser/optimiserInputs'
-import { DEFAULT_POLICY } from '../optimiser/types'
+import { DEFAULT_POLICY, type OptimiserInputs } from '../optimiser/types'
 import { type CalculatorDefinition, defineCalculator, type InputRefusal, type SummaryRow } from '../registry'
 import { nextPound } from './calc'
 import type {
@@ -49,7 +51,9 @@ import type {
 } from './types'
 
 /*
- * The next pound page's registry entry (C2, inputs version 1): the inputs a
+ * The next pound page's registry entry (C2; inputs version 2 since the page
+ * rebuild, which records the take-home and mortgage scenarios the pay and
+ * the mortgage were picked from: sources.ts): the inputs a
  * scenario stores, their defaults, validation, how they map to the C1
  * composer's NextPoundInputs, what the page shows for each leg, the
  * break-even words, the compare summary and the section summaries. A tax
@@ -61,6 +65,26 @@ import type {
  * No figure here: bounds come from src/lib/inputLimits.ts, every result
  * from the composer. Nothing is called best or recommended (G13).
  */
+
+/**
+ * Where the pay comes from: the most recent (a fresh page, resolved on the
+ * page: sources.ts), the take-home page's inputs this visit, a saved
+ * take-home scenario (by id, with its name for when it is deleted), or the
+ * copy saved with this scenario (`pay`). Read only: this page never writes
+ * to another page's scenarios or inputs.
+ */
+export type PaySource =
+  | { readonly kind: 'auto' }
+  | { readonly kind: 'session' }
+  | { readonly kind: 'scenario'; readonly id: string; readonly name: string }
+  | { readonly kind: 'kept' }
+
+/** Where the mortgage comes from: the most recent saved mortgage scenario, none, a saved one, or the copy saved with this scenario. */
+export type MortgageSource =
+  | { readonly kind: 'auto' }
+  | { readonly kind: 'none' }
+  | { readonly kind: 'scenario'; readonly id: string; readonly name: string }
+  | { readonly kind: 'kept' }
 
 /** What the page stores. Money is integer pence; each rate is its canonical percentage text; the date is ISO. */
 export interface NextPoundPageInputs {
@@ -81,6 +105,9 @@ export interface NextPoundPageInputs {
   readonly otherPensionsUseAllowance: boolean
   /** The mortgage page's inputs; left at its defaults, the leg is not set up. Its overpayments are the composer's. */
   readonly mortgage: MortgagePageInputs
+  /** Where `pay` and `mortgage` were taken from; they hold that source's inputs as last seen. */
+  readonly paySource: PaySource
+  readonly mortgageSource: MortgageSource
   readonly growthLow: string
   readonly growthMid: string
   readonly growthHigh: string
@@ -89,7 +116,7 @@ export interface NextPoundPageInputs {
   readonly isaPaidThisYear: Money
 }
 
-type OwnField = Exclude<keyof NextPoundPageInputs, 'pay' | 'mortgage'>
+type OwnField = Exclude<keyof NextPoundPageInputs, 'pay' | 'mortgage' | 'paySource' | 'mortgageSource'>
 
 /** Each field's name, in the order the page shows them; used in errors, refusals and compare. */
 export const FIELD_LABELS: Record<OwnField, string> = {
@@ -180,11 +207,29 @@ function fieldProblem(field: OwnField, value: unknown): string | undefined {
 
 const OWN_FIELDS = Object.keys(FIELD_LABELS) as OwnField[]
 
-/** The mortgage as this page holds it: the mortgage page's inputs with no overpayments of their own (the composer adds the one). */
-const asLeg = (m: MortgagePageInputs): MortgagePageInputs => ({ ...m, monthly: ZERO, lumpSums: [], effect: 'reduce-term' })
+export const SOURCE_LABELS = { pay: 'Pay from', mortgage: 'Mortgage from' } as const
 
-/** Checks untrusted inputs (storage, an imported file) field by field and builds a fresh object. */
-function validate(raw: unknown) {
+/** The mortgage as this page holds it: the mortgage page's inputs with no overpayments of their own (the composer adds the one). */
+export const mortgageAsLeg = (m: MortgagePageInputs): MortgagePageInputs => ({ ...m, monthly: ZERO, lumpSums: [], effect: 'reduce-term' })
+const asLeg = mortgageAsLeg
+
+/** A stored source, checked and built fresh; null when it isn't one of `kinds`. */
+function readSource<K extends string>(
+  raw: unknown,
+  kinds: readonly K[],
+): { readonly kind: K } | { readonly kind: 'scenario'; readonly id: string; readonly name: string } | null {
+  if (!isRecord(raw) || Array.isArray(raw) || typeof raw.kind !== 'string') return null
+  if (raw.kind === 'scenario') {
+    const name = cleanName(raw.name)
+    return isScenarioId(raw.id) && name.ok ? { kind: 'scenario', id: raw.id, name: name.value } : null
+  }
+  return (kinds as readonly string[]).includes(raw.kind) ? { kind: raw.kind as K } : null
+}
+
+const SOURCE_RULE = 'must be a saved scenario, or one of the page’s own choices.'
+
+/** The fields every version checks the same way, with the pay and the mortgage through their own pages' definitions. */
+function validateFields(raw: unknown) {
   if (!isRecord(raw) || Array.isArray(raw)) return { ok: false as const, errors: ['The inputs are not a set of next pound inputs.'] }
   const hostile = checkUntrustedJson(raw)
   if (hostile) return { ok: false as const, errors: [`The inputs are not safe to read: ${hostile}`] }
@@ -194,25 +239,60 @@ function validate(raw: unknown) {
   const mortgage = mortgageCalculator.validateInputs(raw.mortgage)
   if (!mortgage.ok) errors.push(...mortgage.errors.map((e) => `Mortgage: ${e}`))
   if (errors.length > 0 || !pay.ok || !mortgage.ok) return { ok: false as const, errors }
+  return { ok: true as const, raw, pay: pay.inputs, mortgage: asLeg(mortgage.inputs) }
+}
+
+/** Checks untrusted inputs (storage, an imported file) field by field and builds a fresh object. */
+function validate(raw: unknown) {
+  const fields = validateFields(raw)
+  const record = isRecord(raw) ? raw : {}
+  const paySource = readSource(record.paySource, ['auto', 'session', 'kept'] as const)
+  const mortgageSource = readSource(record.mortgageSource, ['auto', 'none', 'kept'] as const)
+  const errors = [
+    ...(fields.ok ? [] : fields.errors),
+    ...(fields.ok && paySource === null ? [`${SOURCE_LABELS.pay} ${SOURCE_RULE}`] : []),
+    ...(fields.ok && mortgageSource === null ? [`${SOURCE_LABELS.mortgage} ${SOURCE_RULE}`] : []),
+  ]
+  if (!fields.ok || paySource === null || mortgageSource === null) return { ok: false as const, errors }
+  const r = fields.raw
   const inputs: NextPoundPageInputs = {
-    lumpSum: fromPence(raw.lumpSum as number),
-    horizonYears: raw.horizonYears as number,
-    asOf: raw.asOf as IsoDate | null,
-    ageNow: raw.ageNow as number | null,
-    pay: pay.inputs,
-    employerMatch: fromPence(raw.employerMatch as number),
-    schemeAccessAge: raw.schemeAccessAge as number | null,
-    retirementTaxRate: raw.retirementTaxRate as string | null,
-    otherPensionsUseAllowance: raw.otherPensionsUseAllowance as boolean,
-    mortgage: asLeg(mortgage.inputs),
-    growthLow: raw.growthLow as string,
-    growthMid: raw.growthMid as string,
-    growthHigh: raw.growthHigh as string,
-    feeRate: raw.feeRate as string,
-    inflationRate: raw.inflationRate as string,
-    isaPaidThisYear: fromPence(raw.isaPaidThisYear as number),
+    lumpSum: fromPence(r.lumpSum as number),
+    horizonYears: r.horizonYears as number,
+    asOf: r.asOf as IsoDate | null,
+    ageNow: r.ageNow as number | null,
+    pay: fields.pay,
+    employerMatch: fromPence(r.employerMatch as number),
+    schemeAccessAge: r.schemeAccessAge as number | null,
+    retirementTaxRate: r.retirementTaxRate as string | null,
+    otherPensionsUseAllowance: r.otherPensionsUseAllowance as boolean,
+    mortgage: fields.mortgage,
+    paySource,
+    mortgageSource,
+    growthLow: r.growthLow as string,
+    growthMid: r.growthMid as string,
+    growthHigh: r.growthHigh as string,
+    feeRate: r.feeRate as string,
+    inflationRate: r.inflationRate as string,
+    isaPaidThisYear: fromPence(r.isaPaidThisYear as number),
   }
   return { ok: true as const, inputs }
+}
+
+/**
+ * Version 1 to 2: the sources added. Pay or a mortgage typed in version 1
+ * is kept as saved with the scenario; no pay is the most recent take-home
+ * inputs, and no mortgage is none. Inputs version 1 can't read stay as they
+ * are, and validation then refuses them by field.
+ */
+function fromVersion1(old: unknown): unknown {
+  const fields = validateFields(old)
+  if (!fields.ok) return old
+  const inputs = { ...fields.raw, pay: fields.pay, mortgage: fields.mortgage } as unknown as NextPoundPageInputs
+  return {
+    ...fields.raw,
+    paySource: payEntered(inputs) ? { kind: 'kept' } : { kind: 'auto' },
+    mortgageSource: mortgageEntered(inputs) ? { kind: 'kept' } : { kind: 'none' },
+  }
 }
 
 /** Something entered in the mortgage section: left at the mortgage page's defaults, the leg is not set up. */
@@ -224,7 +304,7 @@ export function mortgageEntered(inputs: NextPoundPageInputs): boolean {
 export const payEntered = (inputs: NextPoundPageInputs) => compare(add(inputs.pay.salary, inputs.pay.bonus), ZERO) > 0
 
 /** A field the results need and that is empty: shared, the pension leg's, or the mortgage's (`mortgage.<field>`). */
-export type NeededField = 'asOf' | 'ageNow' | 'pay.salary' | `mortgage.${MortgageNeededField}`
+export type NeededField = 'asOf' | 'pay.salary' | `mortgage.${MortgageNeededField}`
 
 const ENTER = 'Enter this to see results.'
 
@@ -286,10 +366,8 @@ export function toEngineInputs(
   | { readonly ok: true; readonly inputs: NextPoundInputs; readonly pensionNeeds: readonly NeededField[]; readonly mortgage: MortgageState }
   | { readonly ok: false; readonly needs: readonly NeededField[] } {
   if (inputs.asOf === null) return { ok: false, needs: ['asOf'] }
-  const pensionNeeds: NeededField[] = [
-    ...(payEntered(inputs) ? [] : ['pay.salary' as const]),
-    ...(inputs.ageNow === null ? ['ageNow' as const] : []),
-  ]
+  // No age: the pension is shown with its numbers, access not checked (the page notes it).
+  const pensionNeeds: NeededField[] = payEntered(inputs) ? [] : ['pay.salary']
   const mortgage = mortgageState(inputs)
   return {
     ok: true,
@@ -305,8 +383,7 @@ export function toEngineInputs(
       pension: {
         optimiser: toOptimiserInputs(inputs.pay),
         employerMatch: inputs.employerMatch,
-        // Not entered: the leg shows what it needs, so this stand-in is never shown.
-        ageNow: inputs.ageNow ?? 0,
+        ageNow: inputs.ageNow,
         schemeAccessAge: inputs.schemeAccessAge,
         retirementTaxRate: inputs.retirementTaxRate === null ? null : percentRatio(inputs.retirementTaxRate),
         otherPensionsUseAllowance: inputs.otherPensionsUseAllowance,
@@ -390,7 +467,40 @@ export type PageOutcome =
       readonly breakEven: { readonly mortgage: BreakEven | null; readonly pension: BreakEven | null }
       /** The legs' warnings, those of a leg not shown left out, grouped by leg. */
       readonly warnings: { readonly [K in LegId]: readonly NextPoundWarning[] }
+      /** The pension's extra contribution lowers adjusted net income inside the personal allowance taper (the optimiser's own limits). */
+      readonly taperInPlay: boolean
+      /** The mortgage leg is read after its fixed period ends: the rate after it (a guess) shapes the result. */
+      readonly reversionInHorizon: boolean
     }
+
+/**
+ * Whether the extra contribution wins back personal allowance, from the
+ * optimiser's own data: its adjusted net income at the contribution now and
+ * with the extra, and its taper start and end limits. In play when the
+ * extra lowers that income and the stretch it moves over overlaps the taper.
+ */
+export function taperInPlay(optimiser: OptimiserInputs, employerMatch: Money, before: Money, after: Money, config: TaxYearConfig): boolean {
+  if (compare(after, before) <= 0) return false
+  const matched =
+    compare(employerMatch, ZERO) > 0
+      ? {
+          ...optimiser,
+          savings: { ...optimiser.savings, employerContribution: add(optimiser.savings.employerContribution, employerMatch) },
+        }
+      : optimiser
+  const now = evaluateContribution(optimiser, config, DEFAULT_POLICY, before)
+  const next = evaluateContribution(matched, config, DEFAULT_POLICY, after)
+  const limits = thresholdContributions(optimiser, config, DEFAULT_POLICY)
+  if (!now.ok || !next.ok || !limits.ok) return false
+  const limit = (id: 'personalAllowanceTaperStart' | 'personalAllowanceTaperEnd') =>
+    limits.thresholds.find((t) => t.threshold === id)?.limit
+  const start = limit('personalAllowanceTaperStart')
+  const end = limit('personalAllowanceTaperEnd')
+  if (start === undefined || end === undefined) return false
+  const high = now.point.adjustedNetIncome
+  const low = next.point.adjustedNetIncome
+  return compare(low, high) < 0 && compare(high, start) > 0 && compare(low, end) < 0
+}
 
 /** nextPound() on the page's inputs. Never throws on valid inputs. */
 export function calculate(inputs: NextPoundPageInputs, config: TaxYearConfig): PageOutcome {
@@ -409,9 +519,14 @@ export function calculate(inputs: NextPoundPageInputs, config: TaxYearConfig): P
       ? m.kind === 'missing'
         ? { kind: 'needs', refusal: m.refusal }
         : { kind: 'refused', refusal: m.refusal }
-      : view(result.legs.mortgage, result.taxYear)
+      : m.kind === 'none'
+        ? { kind: 'none' }
+        : view(result.legs.mortgage, result.taxYear)
   const isa = view(result.legs.isa, result.taxYear)
   const warningsOf = (leg: LegId, shown: boolean) => (shown ? result.warnings.filter((w) => w.leg === leg) : [])
+  const p = pension.kind === 'shown' ? pension.leg : null
+  const legM = mortgage.kind === 'shown' ? mortgage.leg : null
+  const fixedEnd = engine.inputs.mortgage?.fixedEndMonth ?? 0
   return {
     kind: 'ok',
     result,
@@ -427,6 +542,17 @@ export function calculate(inputs: NextPoundPageInputs, config: TaxYearConfig): P
       mortgage: warningsOf('mortgage', mortgage.kind === 'shown'),
       isa: warningsOf('isa', isa.kind === 'shown'),
     },
+    taperInPlay:
+      p !== null
+        ? taperInPlay(
+            engine.inputs.pension.optimiser,
+            engine.inputs.pension.employerMatch,
+            p.contribution.before,
+            p.contribution.after,
+            config,
+          )
+        : false,
+    reversionInHorizon: legM !== null && legM.status === 'ok' && fixedEnd > 0 && fixedEnd < legM.horizonMonth,
   }
 }
 
@@ -475,134 +601,67 @@ export function noBreakEvenWords(against: 'mortgage' | 'pension', outcome: Extra
   return `No break-even: the ${LEG_NAMES[against].toLowerCase()} has no result for these inputs.`
 }
 
-/* Sections (docs/ui-patterns.md, U1 to U3). */
+/* Sections (docs/ui-patterns.md, U1 to U3): everything but the three essentials, none of it required. */
 
-export type SectionId = 'pension' | 'atHorizon' | 'allowance' | 'otherPay' | 'mortgage' | 'growth' | 'isa'
+export type SectionId = 'growth' | 'pension' | 'isa' | 'date'
 
 export const SECTION_TITLES: Record<SectionId, string> = {
-  pension: 'Your pension now',
-  atHorizon: 'Pension at the horizon',
-  allowance: 'Annual allowance',
-  otherPay: 'More about your pay',
-  mortgage: 'Mortgage (optional)',
   growth: 'Growth, fee and inflation',
+  pension: 'Pension details',
   isa: 'ISA',
+  date: 'Date the money goes in',
 }
 
-export const NOT_SET = 'Not set'
 export const NEEDS_FIXING = 'Fix the highlighted input'
 
-/** The page's own fields in each section; `pay.` and `mortgage.` fields are matched by prefix. */
+/** The page's own fields in each section. Lump sum, years and age are the essentials, in no section. */
 const SECTION_OWN: Record<SectionId, readonly OwnField[]> = {
-  pension: [],
-  atHorizon: ['employerMatch', 'schemeAccessAge', 'retirementTaxRate', 'otherPensionsUseAllowance'],
-  allowance: [],
-  otherPay: [],
-  mortgage: [],
   growth: ['growthLow', 'growthMid', 'growthHigh', 'feeRate', 'inflationRate'],
+  pension: ['employerMatch', 'schemeAccessAge', 'retirementTaxRate', 'otherPensionsUseAllowance'],
   isa: ['isaPaidThisYear'],
+  date: ['asOf'],
 }
 
-const PAY_SECTION: Record<string, SectionId> = {
-  pensionMethod: 'pension',
-  employeeContribution: 'pension',
-  'employeeContribution-pct': 'pension',
-  employerContribution: 'pension',
-  'employerContribution-pct': 'pension',
-  pensionablePay: 'pension',
-  moneyPurchaseAnnualAllowance: 'allowance',
-  children: 'otherPay',
-  studentLoans: 'otherPay',
-}
-
-/** The section a field (as the page tracks its validity) is in; null for the always-visible inputs. */
+/** The section a field (as the page tracks its validity) is in; null for the essentials. */
 export function sectionForField(field: string): SectionId | null {
-  if (field.startsWith('mortgage.')) return 'mortgage'
-  if (field.startsWith('pay.')) {
-    const name = field.slice('pay.'.length)
-    if (name.startsWith('carryForward')) return 'allowance'
-    return PAY_SECTION[name] ?? null
-  }
   return (Object.keys(SECTION_OWN) as SectionId[]).find((id) => SECTION_OWN[id].includes(field as OwnField)) ?? null
 }
 
-/** A section's inputs differ from the defaults (so it opens on load). */
-export function sectionSet(id: SectionId, inputs: NextPoundPageInputs): boolean {
+/** A section's inputs differ from the defaults (so it opens on load); the date counts as set when it isn't today. */
+export function sectionSet(id: SectionId, inputs: NextPoundPageInputs, today: IsoDate | null = null): boolean {
+  if (id === 'date') return inputs.asOf !== null && inputs.asOf !== today
   const defaults = nextPoundCalculator.defaultInputs()
-  const p = inputs.pay
-  const d = defaults.pay
-  const differ = (a: unknown, b: unknown) => JSON.stringify(a) !== JSON.stringify(b)
-  switch (id) {
-    case 'pension':
-      return (
-        differ(p.employeeContribution, d.employeeContribution) ||
-        differ(p.employerContribution, d.employerContribution) ||
-        differ(p.pensionablePay, d.pensionablePay)
-      )
-    case 'allowance':
-      return p.carryForward.length > 0 || p.moneyPurchaseAnnualAllowance
-    case 'otherPay':
-      return p.studentLoans.length > 0 || p.children > 0 || p.taxableBenefits.length > 0 || p.postTaxDeductions.length > 0
-    case 'mortgage':
-      return mortgageEntered(inputs)
-    default:
-      return SECTION_OWN[id].some((field) => differ(inputs[field], defaults[field]))
-  }
+  return SECTION_OWN[id].some((field) => JSON.stringify(inputs[field]) !== JSON.stringify(defaults[field]))
 }
 
 const pct = (text: string) => formatPercent(percentRatio(text))
 const pounds = (amount: Money) => `£${formatAmountInput(amount)}`
-const lower = (text: string) => text.charAt(0).toLowerCase() + text.slice(1)
 
 /** A section header's one-line summary of its inputs (U2). */
-export function sectionSummary(id: SectionId, inputs: NextPoundPageInputs, invalid: readonly string[]): string {
+export function sectionSummary(
+  id: SectionId,
+  inputs: NextPoundPageInputs,
+  invalid: readonly string[],
+  today: IsoDate | null = null,
+): string {
   if (invalid.some((field) => sectionForField(field) === id)) return NEEDS_FIXING
-  const p = inputs.pay
   switch (id) {
-    case 'pension': {
-      const contribution = (entry: OptimiserPageInputs['employeeContribution']) =>
-        entry.mode === 'percentOfPay' ? pct(entry.percentOfPay) : pounds(entry.amount)
-      const employee = compare(p.employeeContribution.amount, ZERO) > 0 || p.employeeContribution.mode === 'percentOfPay'
-      return `${employee ? `You pay ${contribution(p.employeeContribution)}` : 'No contribution now'}; employer ${contribution(p.employerContribution)}`
-    }
-    case 'atHorizon': {
-      const rate = inputs.retirementTaxRate === null ? 'tax at the Basic rate band' : `tax at ${pct(inputs.retirementTaxRate)}`
-      const match = compare(inputs.employerMatch, ZERO) > 0 ? `match ${pounds(inputs.employerMatch)}; ` : ''
-      const age = inputs.schemeAccessAge === null ? '' : `; scheme age ${inputs.schemeAccessAge}`
-      return `${match}${rate}${age}`
-    }
     case 'growth':
-      return `${pct(inputs.growthLow)}, ${pct(inputs.growthMid)} and ${pct(inputs.growthHigh)} a year; fee ${pct(inputs.feeRate)}; inflation ${pct(inputs.inflationRate)}`
+      return `${pct(inputs.growthLow)}, ${pct(inputs.growthMid)} and ${pct(inputs.growthHigh)} a year, illustrative; fee ${pct(inputs.feeRate)}; inflation ${pct(inputs.inflationRate)}`
+    case 'pension': {
+      const rate = inputs.retirementTaxRate === null ? 'the Basic rate band' : pct(inputs.retirementTaxRate)
+      const match = compare(inputs.employerMatch, ZERO) > 0 ? `employer match ${pounds(inputs.employerMatch)}` : 'no employer match'
+      const age = inputs.schemeAccessAge === null ? '' : `; scheme age ${inputs.schemeAccessAge}`
+      const others = inputs.otherPensionsUseAllowance ? '; no tax-free part' : ''
+      return `Retirement tax at ${rate}; ${match}${age}${others}`
+    }
     case 'isa':
       return compare(inputs.isaPaidThisYear, ZERO) > 0
         ? `${pounds(inputs.isaPaidThisYear)} paid in this tax year`
         : 'Nothing paid in this tax year'
-    case 'allowance':
-      if (!sectionSet(id, inputs)) return NOT_SET
-      return [
-        p.carryForward.length > 0 ? `Carry forward from ${p.carryForward.length} year${p.carryForward.length === 1 ? '' : 's'}` : '',
-        p.moneyPurchaseAnnualAllowance ? 'money purchase annual allowance' : '',
-      ]
-        .filter(Boolean)
-        .join('; ')
-    case 'otherPay': {
-      if (!sectionSet(id, inputs)) return NOT_SET
-      const items = p.taxableBenefits.length + p.postTaxDeductions.length
-      return [
-        p.studentLoans.length > 0 ? `${p.studentLoans.length} student loan plan${p.studentLoans.length === 1 ? '' : 's'}` : '',
-        p.children > 0 ? `${p.children} child${p.children === 1 ? '' : 'ren'}` : '',
-        items > 0 ? `${items} item${items === 1 ? '' : 's'} from the take-home page` : '',
-      ]
-        .filter(Boolean)
-        .join('; ')
-    }
-    case 'mortgage': {
-      const state = mortgageState(inputs)
-      if (state.kind === 'none') return NOT_SET_UP
-      if (state.kind === 'missing') return `Needs ${state.refusal.problems.map((x) => lower(x.label)).join(', ')}`
-      const m = inputs.mortgage
-      return `${pounds(m.balance as Money)} from ${formatIsoDate(m.startDate as IsoDate)}${m.erc ? ', with a charge' : ''}`
-    }
+    case 'date':
+      if (inputs.asOf === null) return 'Not set'
+      return inputs.asOf === today ? `Today, ${formatIsoDate(inputs.asOf)}` : formatIsoDate(inputs.asOf)
   }
 }
 
@@ -615,9 +674,27 @@ const count = (label: string, value: number): SummaryRow => ({ label, value: { k
 
 const NOT_ENTERED = 'Not entered'
 
+/** Where a source came from, in words for compare. */
+export function sourceName(source: PaySource | MortgageSource): string {
+  switch (source.kind) {
+    case 'scenario':
+      return source.name
+    case 'session':
+      return 'Take-home inputs this visit'
+    case 'kept':
+      return 'Saved with this scenario'
+    case 'none':
+      return 'No mortgage'
+    case 'auto':
+      return 'The most recent'
+  }
+}
+
 function inputRows(inputs: NextPoundPageInputs): SummaryRow[] {
   const m = inputs.mortgage
   return [
+    text(SOURCE_LABELS.pay, sourceName(inputs.paySource)),
+    text(SOURCE_LABELS.mortgage, sourceName(inputs.mortgageSource)),
     money(FIELD_LABELS.lumpSum, inputs.lumpSum),
     count(FIELD_LABELS.horizonYears, inputs.horizonYears),
     text(FIELD_LABELS.asOf, inputs.asOf === null ? NOT_ENTERED : formatIsoDate(inputs.asOf)),
@@ -661,7 +738,7 @@ export const nextPoundCalculator: CalculatorDefinition<NextPoundPageInputs> = de
   name: 'Where does the next £X go?',
   summary:
     'One lump sum of take-home pay, now, into a pension, a mortgage overpayment or an ISA: what each adds to your net worth at a horizon, after tax on withdrawal, in today’s money and nominal, with the ISA return that would match each of the others.',
-  inputsVersion: 1,
+  inputsVersion: 2,
   defaultInputs: () => ({
     lumpSum: ZERO,
     horizonYears: DEFAULT_PROJECTION_YEARS,
@@ -673,6 +750,8 @@ export const nextPoundCalculator: CalculatorDefinition<NextPoundPageInputs> = de
     retirementTaxRate: null,
     otherPensionsUseAllowance: false,
     mortgage: asLeg(mortgageCalculator.defaultInputs()),
+    paySource: { kind: 'auto' },
+    mortgageSource: { kind: 'auto' },
     growthLow: percentText(NEXT_POUND_GROWTH_LOW),
     growthMid: percentText(NEXT_POUND_GROWTH_MID),
     growthHigh: percentText(NEXT_POUND_GROWTH_HIGH),
@@ -682,8 +761,8 @@ export const nextPoundCalculator: CalculatorDefinition<NextPoundPageInputs> = de
   }),
   applySettings: (inputs, settings) => ({ ...inputs, pay: { ...inputs.pay, region: settings.region === 'scotland' ? 'scotland' : 'rUK' } }),
   validateInputs: validate,
-  migrateInputs(from) {
-    // Version 1 is the first: there is nothing older to migrate from.
+  migrateInputs(from, old) {
+    if (from === 1) return fromVersion1(old)
     throw new Error(`The next pound calculator has no inputs version ${from} to migrate from`)
   },
   summarise(inputs, config) {

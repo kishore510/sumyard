@@ -12,8 +12,8 @@ import { add, fromPounds, percent, ratio, subtract, ZERO } from '@/lib/money'
 import { readScenario } from '@/scenarios/scenario'
 import { CALCULATORS } from '../index'
 import { mortgageCalculator } from '../mortgage/definition'
-import { optimiserCalculator } from '../optimiser/definition'
 import { thresholdContributions } from '../optimiser/calc'
+import { optimiserCalculator } from '../optimiser/definition'
 import { toOptimiserInputs } from '../optimiser/optimiserInputs'
 import { DEFAULT_POLICY } from '../optimiser/types'
 import { isInputRefusal } from '../registry'
@@ -134,7 +134,11 @@ describe('migration from version 1 (sources added)', () => {
   })
 
   it('no pay in version 1: the pay source is the most recent (auto); no mortgage: none', () => {
-    const read = CALCULATORS.readInputs('next-pound', 1, v1({ pay: optimiserCalculator.defaultInputs(), mortgage: mortgageCalculator.defaultInputs() }))
+    const read = CALCULATORS.readInputs(
+      'next-pound',
+      1,
+      v1({ pay: optimiserCalculator.defaultInputs(), mortgage: mortgageCalculator.defaultInputs() }),
+    )
     expect(read.ok && (read.inputs as NextPoundPageInputs).paySource).toEqual({ kind: 'auto' })
     expect(read.ok && (read.inputs as NextPoundPageInputs).mortgageSource).toEqual({ kind: 'none' })
   })
@@ -260,11 +264,18 @@ describe('validateInputs', () => {
   })
 
   it('a picked scenario is kept by id and its name, cleaned', () => {
-    const picked = { ...example, paySource: { kind: 'scenario', id: 'a1', name: '  My pay ' }, mortgageSource: { kind: 'scenario', id: 'm1', name: 'Home' } }
+    const picked = {
+      ...example,
+      paySource: { kind: 'scenario', id: 'a1', name: '  My pay ' },
+      mortgageSource: { kind: 'scenario', id: 'm1', name: 'Home' },
+    }
     const result = check(picked)
     expect(result.ok && result.inputs.paySource).toEqual({ kind: 'scenario', id: 'a1', name: 'My pay' })
     expect(result.ok && result.inputs.mortgageSource).toEqual({ kind: 'scenario', id: 'm1', name: 'Home' })
-    expect(check({ ...example, paySource: { kind: 'session', extra: 1 } })).toMatchObject({ ok: true, inputs: { paySource: { kind: 'session' } } })
+    expect(check({ ...example, paySource: { kind: 'session', extra: 1 } })).toMatchObject({
+      ok: true,
+      inputs: { paySource: { kind: 'session' } },
+    })
   })
 
   it('refuses hostile keys and things that are not inputs', () => {
