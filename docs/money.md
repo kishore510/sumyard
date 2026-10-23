@@ -185,6 +185,24 @@ Decisions MO3, MO9, MO10 and MO15 in `docs/modelling-decisions.md`, confirmed by
 | Break-even point | The first month whose cumulative interest saved is at least the cumulative ERC paid: whole pence, exact | engine | MO9 |
 | Effective guaranteed return, per rate period | `'monthly'`: shared `annualRate` of a twelfth of the rate. `'daily'`: twelve monthly factors multiplied in `Factor` fixed point (C9). Shown with `roundRatio`, nearest; no blended rate | engine | MO9 |
 
+## Next pound decision (session C0)
+
+Decisions CP2 to CP7 in `docs/modelling-decisions.md`; to be built in C1 (`src/calculators/next-pound/`). The composer rounds as little as it can: each engine keeps its own rounding (`docs/money.md` sections above), and the composer works on the whole-pence results they return. The pages read in C0 state **no rounding rule** for the tax-free lump sum or for tax on a pension withdrawal (NP-2, NP-8): those modes are modelling choices, marked "not stated", named in the assumptions, for the owner to confirm.
+
+| Step | Mode | Where | Basis |
+|---|---|---|---|
+| Extra contribution E for X of take-home | Whole pence, searched; no rounding of its own. Its cost is spendable income at two optimiser points (each already whole pence), so exact | composer, on `optimise()` | CP3; the optimiser's own rounding (above, "Decided rounding") |
+| Pension added (net cost to gross) | The difference in `pension.total` between the two points: whole pence, exact. A relief-at-source gross-up keeps the optimiser's rounding (nearest penny, above) | composer | CP3, D3 |
+| Leftover cash in a column | X less what the leg used: whole pence, exact | composer | CP2 |
+| Pension pot and ISA at the horizon | Compound interest's `project()`: fine fixed point, the closing balance rounded once to the nearest penny, nominal and real | `compound-interest` | C6, C9 |
+| Tax-free part of the pot | Pot × the tax-free share, capped at the allowance available. **Not stated**; proposed `mulRound` **down** (never overstates what is tax-free) | composer | CP4, NP-2, NP-6 |
+| Tax on the rest | (Pot − tax-free part) × the retirement rate, `mulRound` to the **nearest** penny, as each income tax band (above). **Not stated** for a withdrawal | composer | CP4, NP-8, D3 |
+| Pension after tax | Pot − tax: whole pence, exact | composer | CP4 |
+| Mortgage leg | Balances and payments from `overpay()` (its own modes, "Mortgage overpayment" above); differences and the sum of freed payments are whole pence, exact | composer | CP5, MO10 |
+| Overpayment O within X with its ERC | Whole pence, searched (the ERC is the mortgage engine's, nearest penny) | composer, on `overpay()` | CP5, MO7 |
+| Today's money for the mortgage leg and leftover cash | Nominal × one over (one plus inflation) to the power of the years, in `Factor` fixed point (`factorPow`), rounded once to the nearest penny. The ISA and pension use compound interest's real view, the same deflator | composer | CP2, C5, C9 |
+| Break-even ISA return | Bisection on the growth rate within `GROWTH_RATE_BOUND`, comparing whole-pence closings; stopped when the bracket is narrower than the display precision, shown with `roundRatio`, nearest. A penny tie gives a bracket, not one rate: the lower end is shown. **Not stated** (no source involved) | composer, on `project()` | CP7 |
+
 ## Display (`format.ts`)
 
 Locale en-GB. Formatting works from integer pence in `BigInt`, never by dividing a float, so the digits are exact at any size. **Display rounding is nearest, halves away from zero**; it is for showing results and is not a tax rule.
