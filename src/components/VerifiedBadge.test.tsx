@@ -27,6 +27,18 @@ afterEach(() => {
 
 const render = (config: TaxYearConfig, linked?: boolean) => act(() => root.render(<VerifiedBadge config={config} linked={linked} />))
 
+/** The text a screen reader reads (aria-hidden left out), or what is seen (screen-reader-only text left out too), spaces collapsed. */
+function textOf(node: Node, { skipScreenReaderOnly }: { skipScreenReaderOnly: boolean }): string {
+  const walk = (n: Node): string => {
+    if (n.nodeType === Node.TEXT_NODE) return n.textContent ?? ''
+    if (!(n instanceof Element)) return ''
+    if (n.getAttribute('aria-hidden') === 'true') return ''
+    if (skipScreenReaderOnly && n.classList.contains('sr-only')) return ''
+    return [...n.childNodes].map(walk).join('')
+  }
+  return walk(node).replace(/\s+/g, ' ').trim()
+}
+
 describe('VerifiedBadge', () => {
   it('shows the real latest year with the label its verified values call for', () => {
     render(latestTaxYear())
@@ -54,9 +66,20 @@ describe('VerifiedBadge', () => {
     render(FAKE_TODO_YEAR)
     const link = host.querySelector('a')!
     expect(link.getAttribute('href')).toBe('#/tax-data')
-    expect(link.getAttribute('aria-label')).toMatch(/2096 to 2097 tax year: not yet verified\. See tax data/i)
     act(() => link.click())
     expect(location.hash).toBe('#/tax-data')
+  })
+
+  it('names the link by its visible text, then where it goes (label in name)', () => {
+    for (const config of [FAKE_TODO_YEAR, FAKE_VERIFIED_YEAR]) {
+      render(config)
+      const link = host.querySelector('a')!
+      expect(link.hasAttribute('aria-label')).toBe(false)
+      const visible = textOf(link, { skipScreenReaderOnly: true })
+      const name = textOf(link, { skipScreenReaderOnly: false })
+      expect(visible).toMatch(/^\d{4} to \d{4} tax year (Not yet verified|Last verified .+)$/)
+      expect(name).toBe(`${visible} (see tax data)`)
+    }
   })
 
   it('is plain text where it would link to itself (on the Tax data screen)', () => {
