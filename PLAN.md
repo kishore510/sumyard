@@ -46,7 +46,7 @@ Rules for this file: add a row when scope is added; update the Status cell when 
 | C0 Next pound brief and decisions | Reuse audit, GOV.UK lookups (NP-1 to NP-12), decisions CP1 to CP10, rounding per step, the engine import rule (CP9), the brief, a cross-check placeholder (docs only) | Done (0.27.2, PR #42, 23 October 2026) |
 | C0.5 Next pound config values | Owner's NP-1 to NP-4 decisions (CP11); 2026-27 config leaves, each read again on GOV.UK: the pension access age now, the announced age and its start date, the tax-free lump sum share, the lump sum allowance (pension group) and the ISA annual limit (new ISA group); tests first, verification rows, Tax data screen (config and docs only) | Done (0.28.0, PR #43, 23 October 2026) |
 | C1 Next pound composer | The pure composer on the C0.5 config leaves, tests first, with an independent reference: pension, mortgage and ISA legs, horizon and access age, today's money, break-even, warnings, refusals; the engine import guard test (internal, no UI) | Done (0.29.0, PR #44, 23 October 2026) |
-| C2 Next pound page | The page on C1: inputs in sections, sticky result, three columns with the break-even, warnings, assumptions, verified badge, scenarios, compare, Help | Done (0.30.0, 23 October 2026) |
+| C2 Next pound page | The page on C1: inputs in sections, sticky result, three columns with the break-even, warnings, assumptions, verified badge, scenarios, compare, Help | Done (0.30.0, PR #45, 23 October 2026) |
 | Loan / APR | Verify the APR definition against official guidance | Parked |
 | ISA vs pension vs mortgage | Builds on 1b and the overpayment calculator | Parked |
 | Bonus and salary sacrifice | Largely an input mode of 1b; may fold into it | Parked |

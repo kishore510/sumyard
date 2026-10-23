@@ -1,6 +1,6 @@
 # PHASE-BRIEF: Where does the next £X go?
 
-Status: **C0 (brief and decisions, docs only)** Done (PR #42); **C0.5 (config values)** Done (0.28.0, PR #43); **C1 (composer, internal)** Done (0.29.0, PR #44); **C2 (page)** Done (0.30.0); the slice waits on the owner's checks (below) before `PLAN.md` marks it Done. Mortgage overpayment M0 to M2 are Done (0.26.0 to 0.27.2, PRs #36 to #41, deployed); the slice waits on the owner's checks (below) before `PLAN.md` marks it Done. Slices 1 to 3 and the budget are Done. Finished briefs, the mortgage slice's included, are in `docs/history/phase-brief-archive.md`.
+Status: **C0 (brief and decisions, docs only)** Done (PR #42); **C0.5 (config values)** Done (0.28.0, PR #43); **C1 (composer, internal)** Done (0.29.0, PR #44); **C2 (page)** Done (0.30.0, PR #45); the slice waits on the owner's checks (below) before `PLAN.md` marks it Done. Mortgage overpayment M0 to M2 are Done (0.26.0 to 0.27.2, PRs #36 to #41, deployed); the slice waits on the owner's checks (below) before `PLAN.md` marks it Done. Slices 1 to 3 and the budget are Done. Finished briefs, the mortgage slice's included, are in `docs/history/phase-brief-archive.md`.
 
 ## Docs rule
 
@@ -17,7 +17,7 @@ Close out every session with the tiered checklist in `CLAUDE.md` ("Session close
 - **C0, brief and decisions (PR #42):** docs only. No code, config or UI.
 - **C0.5, config values (PR #43):** the owner's NP-1 to NP-4 decisions (CP11); 2026-27 leaves `pension.minimumAge.current`, `.announced`, `.announcedFrom`, `pension.lumpSum.taxFreeShare`, `.allowance` and `isa.annualLimit`, each with a Values row. Read them through `requireVerified`; the basic rate for the retirement tax default is the "Basic rate" band in `incomeTax.bands`.
 - **C1, composer (internal, no UI), tests first: red then green (Done, 0.29.0, PR #44; `src/calculators/next-pound/README.md`).** `src/calculators/next-pound/` (`types.ts`, `calc.ts`, `README.md`, `fixtures/reference.ts`, `calc.test.ts`, `properties.test.ts`, `reference.test.ts`, `crossChecks.test.ts` on `docs/next-pound-cross-checks.json`, `literals.test.ts`), and `src/calculators/engineImports.test.ts` (CP9's spec). Starting rates for low, mid and high growth as named starting values in `src/lib/inputLimits.ts`, for the owner. Mutation spot-checks on the composer.
-- **C2, page (Done, 0.30.0):** `definition.ts` (inputs version 1, `validateInputs`, `migrateInputs`, `summarise`, `applySettings` for the region), `NextPoundPage.tsx` from shared components (`StickyResult`, `Section`, inputs, `ResultCard`/`StatRow`, `AssumptionsPanel`, `VerifiedBadge`, `RefusalNotice`), registry and route, scenarios and compare, Help topic `next-pound`, README. Browser matrix once. No new storage key.
+- **C2, page (Done, 0.30.0, PR #45):** `definition.ts` (inputs version 1, `validateInputs`, `migrateInputs`, `summarise`, `applySettings` for the region), `NextPoundPage.tsx` from shared components (`StickyResult`, `Section`, inputs, `ResultCard`/`StatRow`, `AssumptionsPanel`, `VerifiedBadge`, `RefusalNotice`), registry and route, scenarios and compare, Help topic `next-pound`, README. Browser matrix once. No new storage key.
 
 ### Reuse (audited in C0)
 
