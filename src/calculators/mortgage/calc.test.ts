@@ -293,6 +293,102 @@ describe('early repayment charge and allowance (MO7, MO10)', () => {
   })
 })
 
+describe('a mortgage already running: allowance used this year and payments to the reset (MO16)', () => {
+  // As above: balance 12345678p, allowance 10% of the balance now, rounded down: 1234567p.
+  const erc = { rate: percent('3'), endMonth: 24, allowance: { kind: 'rate', rate: percent('10') } } as const
+  const base = { balance: fromPence(12_345_678) }
+  const lumps = [
+    { month: 1, amount: fromPounds(500) },
+    { month: 3, amount: fromPounds(20_000) },
+    { month: 14, amount: fromPounds(15_000) },
+  ]
+
+  it('by default the allowance year is a fresh one from the start date: M1 results are unchanged', () => {
+    const fresh = run({ ...base, erc, lumpSums: lumps })
+    expect(run({ ...base, erc: { ...erc, usedThisYear: fromPence(0), paymentsToReset: 12 }, lumpSums: lumps })).toEqual(fresh)
+    expect(fresh.allowances.map((y) => [y.fromMonth, y.toMonth, p(y.usedBefore)])).toEqual([
+      [1, 12, 0],
+      [13, 24, 0],
+    ])
+  })
+
+  it('allowance already used reduces the penalty-free room left this year', () => {
+    // Room 1234567 − 1000000 = 234567p. £5,000 in month three: 500000 − 234567 = 265433p over, × 3% = 7962.99 → 7963p.
+    const r = run({
+      ...base,
+      erc: { ...erc, usedThisYear: fromPounds(10_000), paymentsToReset: 12 },
+      lumpSums: [{ month: 3, amount: fromPounds(5_000) }],
+    })
+    expect(p(r.overpaying.rows[2]!.erc)).toBe(7_963)
+    expect(p(r.allowances[0]!.usedBefore)).toBe(1_000_000)
+    expect(p(r.allowances[0]!.overpaid)).toBe(500_000)
+    // The same lump on a fresh year is within the allowance.
+    expect(p(run({ ...base, erc, lumpSums: [{ month: 3, amount: fromPounds(5_000) }] }).overpaying.totalErc)).toBe(0)
+  })
+
+  it('a reset part-way through the schedule starts a new allowance year on the balance then, then every twelve payments', () => {
+    const used = { ...erc, usedThisYear: fromPence(1_234_567), paymentsToReset: 2 }
+    const r = run({
+      ...base,
+      erc: used,
+      lumpSums: [
+        { month: 2, amount: fromPounds(1_000) },
+        { month: 3, amount: fromPounds(1_000) },
+      ],
+    })
+    // Month two is still in the year whose allowance is used up: the whole £1,000 is charged at 3%.
+    expect(p(r.overpaying.rows[1]!.erc)).toBe(3_000)
+    // Month three opens a new year: its allowance is a tenth of that month's opening balance, rounded down.
+    expect(p(r.overpaying.rows[2]!.erc)).toBe(0)
+    expect(BigInt(p(r.allowances[1]!.allowance))).toBe(BigInt(p(r.overpaying.rows[2]!.opening)) / 10n)
+    expect(r.allowances.map((y) => [y.year, y.fromMonth, y.toMonth])).toEqual([
+      [1, 1, 2],
+      [2, 3, 14],
+      [3, 15, 24],
+    ])
+    expect(p(r.allowances[1]!.usedBefore)).toBe(0)
+  })
+
+  it('used above the limit: nothing is left, every overpayment until the reset is charged in full, and nothing already used is charged', () => {
+    const r = run({
+      ...base,
+      erc: { ...erc, usedThisYear: fromPounds(20_000), paymentsToReset: 6 },
+      lumpSums: [
+        { month: 1, amount: fromPounds(1_000) },
+        { month: 7, amount: fromPounds(1_000) },
+      ],
+    })
+    expect(p(r.overpaying.rows[0]!.erc)).toBe(3_000)
+    expect(p(r.overpaying.rows[6]!.erc)).toBe(0)
+    expect(p(r.overpaying.totalErc)).toBe(3_000)
+  })
+
+  it('zero payments to the reset: a fresh year from the first payment, the amount used ignored', () => {
+    const r = run({ ...base, erc: { ...erc, usedThisYear: fromPounds(20_000), paymentsToReset: 0 }, lumpSums: lumps })
+    expect(r).toEqual(run({ ...base, erc, lumpSums: lumps }))
+  })
+
+  it('a reset after the charge’s end opens no later year', () => {
+    const r = run({ ...base, erc: { ...erc, endMonth: 3, paymentsToReset: 5 } })
+    expect(r.allowances.map((y) => [y.fromMonth, y.toMonth])).toEqual([[1, 3]])
+  })
+
+  it('refuses allowance used or payments to the reset outside their bounds', () => {
+    expect(refusal({ erc: { ...erc, usedThisYear: fromPence(-1) } })).toContainEqual({ field: 'allowanceUsed', reason: 'below-minimum' })
+    expect(refusal({ erc: { ...erc, usedThisYear: 1.5 as Money } })).toContainEqual({ field: 'allowanceUsed', reason: 'not-money' })
+    expect(refusal({ erc: { ...erc, paymentsToReset: 13 } })).toContainEqual({ field: 'paymentsToReset', reason: 'above-maximum' })
+    expect(refusal({ erc: { ...erc, paymentsToReset: -1 } })).toContainEqual({ field: 'paymentsToReset', reason: 'below-minimum' })
+    expect(refusal({ erc: { ...erc, paymentsToReset: 1.5 } })).toContainEqual({ field: 'paymentsToReset', reason: 'not-whole' })
+  })
+
+  it('names the year already running in the assumptions, with no digits', () => {
+    const r = run({ ...base, erc: { ...erc, usedThisYear: fromPounds(1_000), paymentsToReset: 4 } })
+    const text = r.assumptions.join(' ')
+    expect(text).toMatch(/already used/)
+    expect(text).not.toMatch(/\d/)
+  })
+})
+
 describe('interest methods (MO3)', () => {
   // £100,000 at 5% from 15 January: 31 days. Daily, a common year: 10000000 × 0.05 × 31/365 = 42465.75… → 42466p.
   // Monthly: 10000000 × 0.05 / 12 = 41666.67 → 41667p.
